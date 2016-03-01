@@ -42,7 +42,7 @@ void tgl_do_lookup_state (struct tgl_state *TLS);
 
 void tgl_do_help_get_config_dc (struct tgl_state *TLS, struct tgl_dc *D, void (*callback)(struct tgl_state *TLS, void *, int), void *callback_extra);
 
-void tgl_do_request_exchange (struct tgl_state *TLS, struct tgl_secret_chat *E);
+void tgl_do_request_exchange (struct tgl_secret_chat *E);
 
 void tgl_do_create_keys_end (struct tgl_state *TLS, struct tgl_secret_chat *U);
 

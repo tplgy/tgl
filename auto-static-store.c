@@ -1,11 +1,56 @@
+/*
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+    Copyright Vitaly Valtman 2014-2015
+*/
+
 #include <assert.h>
 
 #include "config.h"
+
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include "auto.h"
 
 static int cur_token_len;
 static char *cur_token;
 static int cur_token_real_len;
 static int cur_token_quoted;
+static int multiline_output = 1;
+static int multiline_offset;
+static int multiline_offset_size = 2;
+
+static int *in_ptr, *in_end;
+
+static inline int fetch_int (void) {
+  return *(in_ptr ++); 
+}
+
+static inline int fetch_long (void) {
+  long long r = *(long long *)in_ptr;
+  in_ptr += 2;
+  return r; 
+}
+
+static inline void out_int (int a) {}
+static inline void out_double (double a) {}
+static inline void out_string (char *s, int l) {}
+static inline void out_long (long long a) {}
+
+static int disable_field_names;
 
 #define expect_token(token,len) \
   if (len != cur_token_len || memcmp (cur_token, token, cur_token_len)) { return -1; } \

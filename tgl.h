@@ -36,7 +36,7 @@
 #define TG_SERVER_IPV6_3 "2001:b28:f23d:f003::a"
 #define TG_SERVER_IPV6_4 "2001:67c:4e8:f004::a"
 #define TG_SERVER_IPV6_5 "2001:b28:f23f:f005::a"
-#define TG_SERVER_DEFAULT 2
+#define TG_SERVER_DEFAULT 5
 
 #define TG_SERVER_TEST_1 "149.154.175.10"
 #define TG_SERVER_TEST_2 "149.154.167.40"
@@ -44,7 +44,7 @@
 #define TG_SERVER_TEST_IPV6_1 "2001:b28:f23d:f001::e"
 #define TG_SERVER_TEST_IPV6_2 "2001:67c:4e8:f002::e"
 #define TG_SERVER_TEST_IPV6_3 "2001:b28:f23d:f003::e"
-#define TG_SERVER_TEST_DEFAULT 2
+#define TG_SERVER_TEST_DEFAULT 1
 
 #define TGL_VERSION "2.1.0"
 
@@ -96,28 +96,30 @@ enum tgl_value_type {
 };
 
 struct tgl_update_callback {
-  void (*new_msg)(struct tgl_state *TLS, struct tgl_message *M);
-  void (*marked_read)(struct tgl_state *TLS, int num, struct tgl_message *list[]);
-  void (*logprintf)(const char *format, ...)  __attribute__ ((format (__printf__, 1, 2)));
-  void (*get_values)(struct tgl_state *TLS, enum tgl_value_type type, const char *prompt, int num_values,
-          void (*callback)(struct tgl_state *TLS, const char *string[], void *arg), void *arg);
-  void (*logged_in)(struct tgl_state *TLS);
-  void (*started)(struct tgl_state *TLS);
-  void (*type_notification)(struct tgl_state *TLS, struct tgl_user *U, enum tgl_typing_status status);
-  void (*type_in_chat_notification)(struct tgl_state *TLS, struct tgl_user *U, struct tgl_chat *C, enum tgl_typing_status status);
-  void (*type_in_secret_chat_notification)(struct tgl_state *TLS, struct tgl_secret_chat *E);
-  void (*status_notification)(struct tgl_state *TLS, struct tgl_user *U);
-  void (*user_registered)(struct tgl_state *TLS, struct tgl_user *U);
-  void (*user_activated)(struct tgl_state *TLS, struct tgl_user *U);
-  void (*new_authorization)(struct tgl_state *TLS, const char *device, const char *location);
-  void (*chat_update)(struct tgl_state *TLS, struct tgl_chat *C, unsigned flags);
-  void (*channel_update)(struct tgl_state *TLS, struct tgl_channel *C, unsigned flags);
-  void (*user_update)(struct tgl_state *TLS, struct tgl_user *C, unsigned flags);
-  void (*secret_chat_update)(struct tgl_state *TLS, struct tgl_secret_chat *C, unsigned flags);
-  void (*msg_receive)(struct tgl_state *TLS, struct tgl_message *M);
-  void (*our_id)(struct tgl_state *TLS, tgl_peer_id_t id);
-  void (*notification)(struct tgl_state *TLS, const char *type, const char *message);
-  void (*user_status_update)(struct tgl_state *TLS, struct tgl_user *U);
+  void (*new_msg)(struct tgl_message *M);
+  void (*msg_deleted)(struct tgl_message *M);
+  void (*marked_read)(int num, struct tgl_message *list[]);
+  void (*logprintf)(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
+  void (*get_values)(enum tgl_value_type type, const char *prompt, int num_values,
+          void (*callback)(struct tgl_state *TLS, const void *answer, const void *arg), const void *arg);
+  void (*logged_in)();
+  void (*started)();
+  void (*type_notification)(struct tgl_user *U, enum tgl_typing_status status);
+  void (*type_in_chat_notification)(struct tgl_user *U, struct tgl_chat *C, enum tgl_typing_status status);
+  void (*type_in_secret_chat_notification)(struct tgl_secret_chat *E);
+  void (*status_notification)(struct tgl_user *U);
+  void (*user_registered)(struct tgl_user *U);
+  void (*user_activated)(struct tgl_user *U);
+  void (*new_authorization)(const char *device, const char *location);
+  void (*chat_update)(struct tgl_chat *C, unsigned flags);
+  void (*channel_update)(struct tgl_channel *C, unsigned flags);
+  void (*user_update)(struct tgl_user *C, unsigned flags);
+  void (*secret_chat_update)(struct tgl_secret_chat *C, unsigned flags);
+  void (*msg_receive)(struct tgl_message *M);
+  void (*our_id)(int id);
+  void (*notification)(const char *type, const char *message);
+  void (*user_status_update)(struct tgl_user *U);
+  void (*dc_update)(const char *ip, int port, const char *auth_key, int64_t key_id);
   char *(*create_print_name) (struct tgl_state *TLS, tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
   void (*on_failed_login) (struct tgl_state *TLS);
 };
@@ -196,8 +198,6 @@ struct tgl_state {
   long long cur_downloading_bytes;
   long long cur_downloaded_bytes;
 
-  char *binlog_name;
-  char *auth_file;
   char *downloads_directory;
 
   struct tgl_update_callback callback;
@@ -235,8 +235,6 @@ struct tgl_state {
   tgl_peer_t **Peers;
   struct tgl_message message_list;
 
-  int binlog_fd;
-
   struct tgl_timer_methods *timer_methods;
 
   struct tree_query *queries_tree;
@@ -266,6 +264,7 @@ struct tgl_state {
   int last_temp_id;
 };
 #pragma pack(pop)
+
 //extern struct tgl_state tgl_state;
 
 #ifdef __cplusplus

@@ -221,7 +221,7 @@ static int send_req_pq_packet (struct tgl_state *TLS, struct connection *c) {
   tglt_secure_random (DC->nonce, 16);
   clear_packet ();
   out_int (CODE_req_pq);
-  out_ints ((int *)DC->nonce, 4);
+  out_ints ((int32_t *)DC->nonce, 4);
   rpc_send_packet (TLS, c);
 
   DC->state = st_reqpq_sent;
@@ -236,7 +236,7 @@ static int send_req_pq_temp_packet (struct tgl_state *TLS, struct connection *c)
   tglt_secure_random (DC->nonce, 16);
   clear_packet ();
   out_int (CODE_req_pq);
-  out_ints ((int *)DC->nonce, 4);
+  out_ints ((int32_t *)DC->nonce, 4);
   rpc_send_packet (TLS, c);
 
   DC->state = st_reqpq_sent_temp;
@@ -263,7 +263,7 @@ static void send_req_dh_packet (struct tgl_state *TLS, struct connection *c, TGL
   out_bignum (p);
   out_bignum (q);
 
-  out_ints ((int *) DC->nonce, 4);
+  out_ints ((int32_t *) DC->nonce, 4);
   out_ints ((int *) DC->server_nonce, 4);
   tglt_secure_random (DC->new_nonce, 32);
   out_ints ((int *) DC->new_nonce, 8);
@@ -352,14 +352,15 @@ static void send_dh_params (struct tgl_state *TLS, struct connection *c, TGLC_bn
 // resPQ#05162463 nonce:int128 server_nonce:int128 pq:string server_public_key_fingerprints:Vector long = ResPQ
 static int process_respq_answer (struct tgl_state *TLS, struct connection *c, char *packet, int len, int temp_key) {
   assert (!(len & 3));
-  in_ptr = (int *)packet;
+  in_ptr = (int32_t *)packet;
   in_end = in_ptr + (len / 4);
   if (check_unauthorized_header (TLS) < 0) {
     return -1;
   }
 
-  int *in_save = in_ptr;
-  if (skip_type_any (TYPE_TO_PARAM (res_p_q)) < 0 || in_ptr != in_end) {
+  int32_t *in_save = in_ptr;
+  struct paramed_type type = TYPE_TO_PARAM (res_p_q);
+  if (skip_type_any (&type) < 0 || in_ptr != in_end) {
     vlogprintf (E_ERROR, "can not parse req_p_q answer\n");
     return -1;
   }
@@ -369,7 +370,7 @@ static int process_respq_answer (struct tgl_state *TLS, struct connection *c, ch
 
   assert (fetch_int() == CODE_res_p_q);
 
-  static int tmp[4];
+  static int32_t tmp[4];
   fetch_ints (tmp, 4);
   if (memcmp (tmp, DC->nonce, 16)) {
     vlogprintf (E_ERROR, "nonce mismatch\n");
@@ -424,7 +425,8 @@ static int process_dh_answer (struct tgl_state *TLS, struct connection *c, char 
   }
 
   int *in_save = in_ptr;
-  if (skip_type_any (TYPE_TO_PARAM (server_d_h_params)) < 0 || in_ptr != in_end) {
+  struct paramed_type type = TYPE_TO_PARAM (server_d_h_params);
+  if (skip_type_any (&type) < 0 || in_ptr != in_end) {
     vlogprintf (E_ERROR, "can not parse server_DH_params answer\n");
     return -1;
   }
@@ -435,7 +437,7 @@ static int process_dh_answer (struct tgl_state *TLS, struct connection *c, char 
   unsigned op = fetch_int ();
   assert (op == CODE_server__d_h_params_ok || op == CODE_server__d_h_params_fail);
 
-  int tmp[4];
+  int32_t tmp[4];
   fetch_ints (tmp, 4);
   if (memcmp (tmp, DC->nonce, 16)) {
     vlogprintf (E_ERROR, "nonce mismatch\n");
@@ -467,7 +469,8 @@ static int process_dh_answer (struct tgl_state *TLS, struct connection *c, char 
 
   in_ptr = decrypt_buffer + 5;
   in_end = decrypt_buffer + (l >> 2);
-  if (skip_type_any (TYPE_TO_PARAM (server_d_h_inner_data)) < 0) {
+  struct paramed_type type2 = TYPE_TO_PARAM (server_d_h_inner_data);
+  if (skip_type_any (&type2) < 0) {
     vlogprintf (E_ERROR, "can not parse server_DH_inner_data answer\n");
     return -1;
   }
@@ -493,11 +496,11 @@ static int process_dh_answer (struct tgl_state *TLS, struct connection *c, char 
   assert (fetch_bignum (dh_prime) > 0);
   assert (fetch_bignum (g_a) > 0);
 
-  if (tglmp_check_DH_params (TLS, dh_prime, g) < 0) {
+  if (tglmp_check_DH_params (TLS->BN_ctx, dh_prime, g) < 0) {
     vlogprintf (E_ERROR, "bad DH params\n");
     return -1;
   }
-  if (tglmp_check_g_a (TLS, dh_prime, g_a) < 0) {
+  if (tglmp_check_g_a (dh_prime, g_a) < 0) {
     vlogprintf (E_ERROR, "bad dh_prime\n");
     return -1;
   }
@@ -533,7 +536,7 @@ static void create_temp_auth_key (struct tgl_state *TLS, struct connection *c) {
   send_req_pq_temp_packet (TLS, c);
 }
 
-int tglmp_encrypt_inner_temp (struct tgl_state *TLS, struct connection *c, int *msg, int msg_ints, int useful, void *data, long long msg_id);
+int tglmp_encrypt_inner_temp (struct tgl_state *TLS, struct connection *c, int32_t *msg, int msg_ints, int useful, void *data, long long msg_id);
 static long long msg_id_override;
 static void mpc_on_get_config (struct tgl_state *TLS, void *extra, int success);
 static void bind_temp_auth_key (struct tgl_state *TLS, struct connection *c);
@@ -547,14 +550,15 @@ static int process_auth_complete (struct tgl_state *TLS, struct connection *c, c
   struct tgl_dc *DC = TLS->net_methods->get_dc (c);
 
   assert (!(len & 3));
-  in_ptr = (int *)packet;
+  in_ptr = (int32_t *)packet;
   in_end = in_ptr + (len / 4);
   if (check_unauthorized_header (TLS) < 0) {
     return -1;
   }
 
-  int *in_save = in_ptr;
-  if (skip_type_any (TYPE_TO_PARAM (set_client_d_h_params_answer)) < 0 || in_ptr != in_end) {
+  int32_t *in_save = in_ptr;
+  struct paramed_type type = TYPE_TO_PARAM (set_client_d_h_params_answer);
+  if (skip_type_any (&type) < 0 || in_ptr != in_end) {
     vlogprintf (E_ERROR, "can not parse server_DH_params answer\n");
     return -1;
   }
@@ -563,7 +567,7 @@ static int process_auth_complete (struct tgl_state *TLS, struct connection *c, c
   unsigned op = fetch_int ();
   assert (op == CODE_dh_gen_ok || op == CODE_dh_gen_retry || op == CODE_dh_gen_fail);
 
-  int tmp[4];
+  int32_t tmp[4];
   fetch_ints (tmp, 4);
   if (memcmp (DC->nonce, tmp, 16)) {
     vlogprintf (E_ERROR, "nonce mismatch\n");
@@ -719,7 +723,7 @@ static int aes_encrypt_message (struct tgl_state *TLS, char *key, struct encrypt
   const int MINSZ = offsetof (struct encrypted_message, message);
   const int UNENCSZ = offsetof (struct encrypted_message, server_salt);
 
-  int enc_len = (MINSZ - UNENCSZ) + enc->msg_len;
+  int32_t enc_len = (MINSZ - UNENCSZ) + enc->msg_len;
   assert (enc->msg_len >= 0 && enc->msg_len <= MAX_MESSAGE_INTS * 4 - 16 && !(enc->msg_len & 3));
   TGLC_sha1 ((unsigned char *) &enc->server_salt, enc_len, sha1_buffer);
   vlogprintf (E_DEBUG, "sending message with sha1 %08x\n", *(int *)sha1_buffer);
@@ -728,7 +732,7 @@ static int aes_encrypt_message (struct tgl_state *TLS, char *key, struct encrypt
   return tgl_pad_aes_encrypt ((char *) &enc->server_salt, enc_len, (char *) &enc->server_salt, MAX_MESSAGE_INTS * 4 + (MINSZ - UNENCSZ));
 }
 
-long long tglmp_encrypt_send_message (struct tgl_state *TLS, struct connection *c, int *msg, int msg_ints, int flags) {
+long long tglmp_encrypt_send_message (struct tgl_state *TLS, struct connection *c, int32_t *msg, int32_t msg_ints, int flags) {
   struct tgl_dc *DC = TLS->net_methods->get_dc (c);
   struct tgl_session *S = TLS->net_methods->get_session (c);
   assert (S);
@@ -757,7 +761,7 @@ long long tglmp_encrypt_send_message (struct tgl_state *TLS, struct connection *
   return S->last_msg_id;
 }
 
-int tglmp_encrypt_inner_temp (struct tgl_state *TLS, struct connection *c, int *msg, int msg_ints, int useful, void *data, long long msg_id) {
+int tglmp_encrypt_inner_temp (struct tgl_state *TLS, struct connection *c, int32_t *msg, int msg_ints, int useful, void *data, long long msg_id) {
   struct tgl_dc *DC = TLS->net_methods->get_dc (c);
   struct tgl_session *S = TLS->net_methods->get_session (c);
   assert (S);
@@ -1183,7 +1187,7 @@ static int rpc_execute (struct tgl_state *TLS, struct connection *c, int op, int
     return 0;
   case st_authorized:
     if (op < 0 && op >= -999) {
-      vlogprintf (E_WARNING, "Server error %d\n", op);
+      //vlogprintf (E_WARNING, "Server error %d\n", op);
     } else {
       return process_rpc_message (TLS, c, (void *)(Response/* + 8*/), Response_len/* - 12*/);
     }
@@ -1209,7 +1213,7 @@ static void mpc_on_get_config (struct tgl_state *TLS, void *extra, int success) 
 }
 
 static int tc_becomes_ready (struct tgl_state *TLS, struct connection *c) {
-  vlogprintf (E_NOTICE, "outbound rpc connection from dc #%d becomed ready\n", TLS->net_methods->get_dc(c)->id);
+  vlogprintf (E_NOTICE, "outbound rpc connection from dc #%d became ready\n", TLS->net_methods->get_dc(c)->id);
   //char byte = 0xef;
   //assert (TLS->net_methods->write_out (c, &byte, 1) == 1);
   //TLS->net_methods->flush_out (c);

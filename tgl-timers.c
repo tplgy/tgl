@@ -17,15 +17,9 @@
 
     Copyright Vitaly Valtman 2013-2015
 */
-#include "config.h"
-#ifdef EVENT_V2
-#include <event2/event.h>
-#include <event2/bufferevent.h>
-#include <event2/buffer.h>
-#else
 #include <event.h>
-#include "event-old.h"
-#endif
+//#include <bufferevent.h>
+//#include <buffer.h>
 
 #include "tgl.h"
 #include <stdlib.h>

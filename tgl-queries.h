@@ -8,7 +8,7 @@ void tgl_do_get_terms_of_service (struct tgl_state *TLS, void (*callback)(struct
 /* {{{ WORK WITH ACCOUNT */
 // sets account password
 // user will be requested to type his current password and new password (twice)
-void tgl_do_set_password (struct tgl_state *TLS, const char *hint, int hint_len, void (*callback)(struct tgl_state *TLS, void *extra, int success), void *extra);
+void tgl_do_set_password (struct tgl_state *TLS, const char *hint, int hint_len, void (*callback)(struct tgl_state *TLS, void *extra, bool success), void *extra);
 
 void tgl_do_set_phone_number (struct tgl_state *TLS, const char *phonenumber, int phonenumber_len, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success), void *callback_extra);
 /* }}} */
@@ -20,26 +20,26 @@ struct tl_ds_reply_markup;
 // send plain text message to peer id
 // flags is combination of TGL_SEND_MSG_FLAG_*
 // reply markup can be NULL
-void tgl_do_send_message (struct tgl_state *TLS, tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_send_message (struct tgl_state *TLS, tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // sends plain text reply on message *reply_id*
 // message *reply_id* should be cached
-void tgl_do_reply_message (struct tgl_state *TLS, tgl_message_id_t *msg_id, const char *text, int text_len, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_reply_message (struct tgl_state *TLS, tgl_message_id_t *msg_id, const char *text, int text_len, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // sends contents of text file *file_name* as plain text message
-void tgl_do_send_text (struct tgl_state *TLS, tgl_peer_id_t peer_id, const char *file_name, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_send_text (struct tgl_state *TLS, tgl_peer_id_t peer_id, const char *file_name, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
-void tgl_do_reply_text (struct tgl_state *TLS, tgl_message_id_t *msg_id, const char *file_name, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_reply_text (struct tgl_state *TLS, tgl_message_id_t *msg_id, const char *file_name, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // send media from file *file_name* to peer *to_id*
 // if reply > 0 this message is sent as reply to message *reply*
 // *caption* is used only for photos
-void tgl_do_send_document (struct tgl_state *TLS, tgl_peer_id_t to_id, const char *file_name, const char *caption, int caption_len, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
-void tgl_do_reply_document (struct tgl_state *TLS, tgl_message_id_t *msg_id, const char *file_name, const char *caption, int caption_len, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_send_document (struct tgl_state *TLS, tgl_peer_id_t to_id, const char *file_name, const char *caption, int caption_len, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+void tgl_do_reply_document (struct tgl_state *TLS, tgl_message_id_t *msg_id, const char *file_name, const char *caption, int caption_len, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // forward message *msg_id* to peer *id*
 // message can not be encrypted and peer can not be secret chat
-void tgl_do_forward_message (struct tgl_state *TLS, tgl_user_or_chat_id_t id, tgl_message_id_t *msg_id, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_forward_message (struct tgl_state *TLS, tgl_user_or_chat_id_t id, tgl_message_id_t *msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // forward messages *ids* to peer *id*
 // messages can not be encrypted and peer can not be secret chat
@@ -47,22 +47,22 @@ void tgl_do_forward_messages (struct tgl_state *TLS, tgl_user_or_chat_id_t id, i
 
 // sends contact to another user.
 // This contact may be or may not be telegram user
-void tgl_do_send_contact (struct tgl_state *TLS, tgl_peer_id_t id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name, int last_name_len, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_send_contact (struct tgl_state *TLS, tgl_peer_id_t id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name, int last_name_len, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // reply on message *reply_id* with contact
-void tgl_do_reply_contact (struct tgl_state *TLS, tgl_message_id_t *reply_id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name, int last_name_len, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_reply_contact (struct tgl_state *TLS, tgl_message_id_t *reply_id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name, int last_name_len, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // sends media from message *msg_id* to another dialog
 // a bit different from forwarding message with media
 // secret message media can be forwarded to secret chats
 // and non-secret - to non-secret chats and users
-void tgl_do_forward_media (struct tgl_state *TLS, tgl_peer_id_t id, tgl_message_id_t *msg_id, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_forward_media (struct tgl_state *TLS, tgl_peer_id_t id, tgl_message_id_t *msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // sends location to chat *id*
-void tgl_do_send_location (struct tgl_state *TLS, tgl_peer_id_t id, double latitude, double longitude, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_send_location (struct tgl_state *TLS, tgl_peer_id_t id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // replies on message *reply_id* with location
-void tgl_do_reply_location (struct tgl_state *TLS, tgl_message_id_t *reply_id, double latitude, double longitude, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_reply_location (struct tgl_state *TLS, tgl_message_id_t *reply_id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // sends broadcast (i.e. message to several users at once)
 // flags are same as in tgl_do_send_message
@@ -159,7 +159,7 @@ void tgl_do_unblock_user (struct tgl_state *TLS, tgl_peer_id_t id, void (*callba
 void tgl_do_accept_encr_chat_request (struct tgl_state *TLS, struct tgl_secret_chat *E, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra);
 
 // sets ttl of secret chat
-void tgl_do_set_encr_chat_ttl (struct tgl_state *TLS, struct tgl_secret_chat *E, int ttl, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_set_encr_chat_ttl (struct tgl_state *TLS, struct tgl_secret_chat *E, int ttl, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // returns secret chat fingerprint
 int tgl_do_visualize_key (struct tgl_state *TLS, tgl_secret_chat_id_t id, unsigned char buf[16]);
@@ -272,7 +272,7 @@ void tgl_do_msg_search (struct tgl_state *TLS, tgl_user_or_chat_id_t id, int fro
 void tgl_do_delete_msg (struct tgl_state *TLS, tgl_message_id_t *msg_id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success), void *callback_extra);
 
 // gets message by *id*
-void tgl_do_get_message (struct tgl_state *TLS, tgl_message_id_t *msg_id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_get_message (struct tgl_state *TLS, tgl_message_id_t *msg_id, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 /* }}} */
 

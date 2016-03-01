@@ -18,10 +18,6 @@
     Copyright Vitaly Valtman 2013-2015
 */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #define _GNU_SOURCE
 #include <string.h>
 #include <stdlib.h>
@@ -38,12 +34,7 @@
 #include <poll.h>
 #include "crypto/rand.h"
 #include <arpa/inet.h>
-#ifdef EVENT_V2
-#include <event2/event.h>
-#else
 #include <event.h>
-#include "event-old.h"
-#endif
 #include <sys/time.h>
 #include <time.h>
 

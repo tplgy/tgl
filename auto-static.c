@@ -19,8 +19,8 @@
 */
 
 #include "mtproto-common.h"
-#include "config.h"
 #include <string.h>
+#include "auto.h"
 
 #ifndef DISABLE_EXTF
 static int cur_token_len;

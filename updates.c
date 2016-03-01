@@ -23,9 +23,9 @@
 #include "tgl-binlog.h"
 #include "auto.h"
 #include "auto/auto-types.h"
-#include "auto/auto-skip.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
+#include "auto/auto-store-ds.h"
 #include "tgl-structures.h"
 #include "tgl-methods-in.h"
 #include "tree.h"
@@ -189,7 +189,8 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       struct tgl_message *M = tglf_fetch_alloc_message (TLS, DS_U->message, &new_msg);
       assert (M);
       if (new_msg) {
-        bl_do_msg_update (TLS, &M->permanent_id);
+        //bl_do_msg_update (TLS, &M->permanent_id);
+        TLS->callback.new_msg(M);
       }
       break;
     };
@@ -250,7 +251,7 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
       if (TLS->callback.type_notification && U) {
-        TLS->callback.type_notification (TLS, (void *)U, status);
+        TLS->callback.type_notification ((void *)U, status);
       }
     }
     break;
@@ -264,7 +265,7 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       
       if (U && C) {
         if (TLS->callback.type_in_chat_notification) {
-          TLS->callback.type_in_chat_notification (TLS, (void *)U, (void *)C, status);
+          TLS->callback.type_in_chat_notification ((void *)U, (void *)C, status);
         }
       }
     }
@@ -277,7 +278,7 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
         tglf_fetch_user_status (TLS, &U->user.status, &U->user, DS_U->status);
 
         if (TLS->callback.status_notification) {
-          TLS->callback.status_notification (TLS, (void *)U);
+          TLS->callback.status_notification ((void *)U);
         }
       }
     }
@@ -319,7 +320,7 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       tgl_peer_t *U = tgl_peer_get (TLS, user_id);
       if (TLS->callback.user_registered && U) {
-        TLS->callback.user_registered (TLS, (void *)U);
+        TLS->callback.user_registered ((void *)U);
       }
     }
     break;
@@ -340,7 +341,7 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
   case CODE_update_new_authorization:
     {
       if (TLS->callback.new_authorization) {
-        TLS->callback.new_authorization (TLS, DS_U->device->data, DS_U->location->data);
+        TLS->callback.new_authorization (DS_U->device->data, DS_U->location->data);
       }
     }
     break;
@@ -352,7 +353,8 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
     {
       struct tgl_message *M = tglf_fetch_alloc_encrypted_message (TLS, DS_U->encr_message);
       if (M) {
-        bl_do_msg_update (TLS, &M->permanent_id);
+        //bl_do_msg_update (TLS, &M->permanent_id);
+        TLS->callback.new_msg(M);
       }
     }
     break;
@@ -372,7 +374,7 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       
       if (P) {
         if (TLS->callback.type_in_secret_chat_notification) {
-          TLS->callback.type_in_secret_chat_notification (TLS, (void *)P);
+          TLS->callback.type_in_secret_chat_notification ((void *)P);
         }
       }
     }
@@ -449,7 +451,7 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
     {
       vlogprintf (E_ERROR, "Notification %.*s: %.*s\n", DS_RSTR (DS_U->type), DS_RSTR (DS_U->message_text));
       if (TLS->callback.notification) {
-        TLS->callback.notification (TLS, DS_U->type->data, DS_U->message_text->data);
+        TLS->callback.notification (DS_U->type->data, DS_U->message_text->data);
       }
     }
     break;
@@ -498,7 +500,7 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
     {
       struct tgl_message *M = tgl_message_get (TLS, DS_LVAL (DS_U->id));
       if (M) {
-        bl_do_msg_update (TLS, M->id);
+        TLS->callback.new_msg(M);
       }
     }
     break;*/
@@ -650,7 +652,8 @@ void tglu_work_update_short_message (struct tgl_state *TLS, int check_only, stru
   assert (M);
 
   if (1) {
-    bl_do_msg_update (TLS, &M->permanent_id);
+    //bl_do_msg_update (TLS, &M->permanent_id);
+    TLS->callback.new_msg(M);
   }
   
   if (check_only) { return; }
@@ -680,7 +683,8 @@ void tglu_work_update_short_chat_message (struct tgl_state *TLS, int check_only,
   assert (M);
 
   if (1) {
-    bl_do_msg_update (TLS, &M->permanent_id);
+    //bl_do_msg_update (TLS, &M->permanent_id);
+    TLS->callback.new_msg(M);
   }
 
   if (check_only) { return; }
@@ -788,11 +792,11 @@ void tglu_work_any_updates (struct tgl_state *TLS, int check_only, struct tl_ds_
 }
 
 void tglu_work_any_updates_buf (struct tgl_state *TLS) {
-  struct tl_ds_updates *DS_U = fetch_ds_type_updates (TYPE_TO_PARAM (updates));
+  struct tl_ds_updates *DS_U = fetch_ds_type_updates (&TYPE_TO_PARAM (updates));
   assert (DS_U);
   tglu_work_any_updates (TLS, 1, DS_U, NULL);
   tglu_work_any_updates (TLS, 0, DS_U, NULL);
-  free_ds_type_updates (DS_U, TYPE_TO_PARAM (updates)); 
+  free_ds_type_updates (DS_U, &TYPE_TO_PARAM (updates)); 
 }
 
 #define user_cmp(a,b) (tgl_get_peer_id ((a)->id) - tgl_get_peer_id ((b)->id))
@@ -801,7 +805,7 @@ DEFINE_TREE(user, struct tgl_user *,user_cmp,0)
 static void notify_status (struct tgl_user *U, void *ex) {
   struct tgl_state *TLS = ex;
   if (TLS->callback.user_status_update) {
-    TLS->callback.user_status_update (TLS, U);
+    TLS->callback.user_status_update (U);
   }
 }
 

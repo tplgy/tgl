@@ -22,7 +22,6 @@
 
 //#include "structures.h"
 #include "tgl.h"
-#include "auto/auto-types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,7 +52,6 @@ void bl_do_chat_del_user (struct tgl_state *TLS, tgl_peer_id_t id, int version, 
 
 void bl_do_msg_update (struct tgl_state *TLS, struct tgl_message_id *id);
 void bl_do_reset_authorization (struct tgl_state *TLS);
-
 
 void bl_do_edit_message (struct tgl_state *TLS, struct tgl_message_id *id, tgl_peer_id_t *from_id, tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date, int *date, const char *message, int message_len, struct tl_ds_message_media *media, struct tl_ds_message_action *action, int *reply_id, struct tl_ds_reply_markup *reply_markup, struct tl_ds_vector *entities, int flags);
 void bl_do_edit_message_encr (struct tgl_state *TLS, struct tgl_message_id *id, tgl_peer_id_t *from_id, tgl_peer_id_t *to_id, int *date, const char *message, int message_len, struct tl_ds_decrypted_message_media *media, struct tl_ds_decrypted_message_action *action, struct tl_ds_encrypted_file *file, int flags);

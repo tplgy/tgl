@@ -37,15 +37,7 @@ struct tgl_state tgl_state;
 void tgl_set_binlog_mode (struct tgl_state *TLS, int mode) {
   TLS->binlog_enabled = mode;
 }
-
-void tgl_set_binlog_path (struct tgl_state *TLS, const char *path) {
-  TLS->binlog_name = tstrdup (path);
-}
     
-void tgl_set_auth_file_path (struct tgl_state *TLS, const char *path) {
-  TLS->auth_file = tstrdup (path);
-}
-
 void tgl_set_download_directory (struct tgl_state *TLS, const char *path) {
   if (TLS->downloads_directory) {
     tfree_str (TLS->downloads_directory);

@@ -35,6 +35,11 @@ void tgls_free_message (struct tgl_state *TLS, struct tgl_message *M);
 void tgls_free_bot_info (struct tgl_state *TLS, struct tgl_bot_info *B);
 void tgls_clear_message (struct tgl_state *TLS, struct tgl_message *M);
 
+struct tgl_message *tglm_message_create(struct tgl_state *TLS, long long id, int *from_id,
+                                        int *to_type, int *to_id, int *fwd_from_id, int *fwd_date,
+                                        int *date, const char *message, int message_len,
+                                        struct tl_ds_message_media *media, struct tl_ds_message_action *action,
+                                        int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags);
 struct tgl_message *tglm_message_alloc (struct tgl_state *TLS, tgl_message_id_t *id);
 void tglm_message_insert_tree (struct tgl_state *TLS, struct tgl_message *M);
 void tglm_update_message_id (struct tgl_state *TLS, struct tgl_message *M, long long id);

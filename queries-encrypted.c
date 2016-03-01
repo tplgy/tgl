@@ -1,4 +1,8 @@
 
+// This file will be included
+
+#include "tgl-layout.h"
+
 /* {{{ Encrypt decrypted */
 static int *encr_extra;
 static int *encr_ptr;
@@ -53,30 +57,30 @@ static char *encrypt_decrypted_message (struct tgl_secret_chat *E) {
 }
 
 static void encr_start (void) {
-  encr_extra = packet_ptr;
-  packet_ptr += 1; // str len
-  packet_ptr += 2; // fingerprint
-  packet_ptr += 4; // msg_key
-  packet_ptr += 1; // len
+    encr_extra = packet_ptr;
+    packet_ptr += 1; // str len
+    packet_ptr += 2; // fingerprint
+    packet_ptr += 4; // msg_key
+    packet_ptr += 1; // len
 }
 
 
 static void encr_finish (struct tgl_secret_chat *E) {
-  int l = packet_ptr - (encr_extra +  8);
-  while (((packet_ptr - encr_extra) - 3) & 3) {  
-    int t;
-    tglt_secure_random (&t, 4);
-    out_int (t);
-  }
+    int l = packet_ptr - (encr_extra +  8);
+    while (((packet_ptr - encr_extra) - 3) & 3) {
+        int t;
+        tglt_secure_random ((unsigned char*)&t, 4);
+        out_int (t);
+    }
 
-  *encr_extra = ((packet_ptr - encr_extra) - 1) * 4 * 256 + 0xfe;
-  encr_extra ++;
-  *(long long *)encr_extra = E->key_fingerprint;
-  encr_extra += 2;
-  encr_extra[4] = l * 4;
-  encr_ptr = encr_extra + 4;
-  encr_end = packet_ptr;
-  memcpy (encr_extra, encrypt_decrypted_message (E), 16);
+    *encr_extra = ((packet_ptr - encr_extra) - 1) * 4 * 256 + 0xfe;
+    encr_extra ++;
+    *(long long *)encr_extra = E->key_fingerprint;
+    encr_extra += 2;
+    encr_extra[4] = l * 4;
+    encr_ptr = encr_extra + 4;
+    encr_end = packet_ptr;
+    memcpy (encr_extra, encrypt_decrypted_message (E), 16);
 }
 /* }}} */
 
@@ -96,20 +100,20 @@ void tgl_do_send_encr_action (struct tgl_state *TLS, struct tgl_secret_chat *E, 
 }
 
 void tgl_do_send_encr_chat_layer (struct tgl_state *TLS, struct tgl_secret_chat *E) {
-  static struct tl_ds_decrypted_message_action A;
-  A.magic = CODE_decrypted_message_action_notify_layer;
-  int layer = TGL_ENCRYPTED_LAYER;
-  A.layer = &layer;
+    static struct tl_ds_decrypted_message_action A;
+    A.magic = CODE_decrypted_message_action_notify_layer;
+    int layer = TGL_ENCRYPTED_LAYER;
+    A.layer = &layer;
 
-  tgl_do_send_encr_action (TLS, E, &A);
+    tgl_do_send_encr_action (TLS, E, &A);
 }
 
 void tgl_do_set_encr_chat_ttl (struct tgl_state *TLS, struct tgl_secret_chat *E, int ttl, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
-  static struct tl_ds_decrypted_message_action A;
-  A.magic = CODE_decrypted_message_action_set_message_t_t_l;
-  A.layer = &ttl;
+    static struct tl_ds_decrypted_message_action A;
+    A.magic = CODE_decrypted_message_action_set_message_t_t_l;
+    A.layer = &ttl;
 
-  tgl_do_send_encr_action (TLS, E, &A);
+    tgl_do_send_encr_action (TLS, E, &A);
 }
 
 
@@ -149,10 +153,11 @@ static int msg_send_encr_on_error (struct tgl_state *TLS, struct query *q, int e
   return 0;
 }
 
+struct paramed_type msg_enc_type = TYPE_TO_PARAM(messages_sent_encrypted_message);
 static struct query_methods msg_send_encr_methods = {
   .on_answer = msg_send_encr_on_answer,
   .on_error = msg_send_encr_on_error,
-  .type = TYPE_TO_PARAM(messages_sent_encrypted_message),
+  .type = &msg_enc_type
   .name = "send encrypted (message)",
   .timeout = 0,
 };
@@ -274,10 +279,10 @@ void tgl_do_send_encr_msg (struct tgl_state *TLS, struct tgl_message *M, void (*
 }
 
 static int mark_read_encr_on_receive (struct tgl_state *TLS, struct query *q, void *D) {
-  if (q->callback) {
-    ((void (*)(struct tgl_state *, void *, int))q->callback)(TLS, q->callback_extra, 1);
-  }
-  return 0;
+    if (q->callback) {
+        ((void (*)(struct tgl_state *, void *, int))q->callback)(TLS, q->callback_extra, 1);
+    }
+    return 0;
 }
 
 static int mark_read_encr_on_error (struct tgl_state *TLS, struct query *q, int error_code, int error_len, const char *error) {
@@ -286,26 +291,26 @@ static int mark_read_encr_on_error (struct tgl_state *TLS, struct query *q, int 
     if (strncmp (error, "ENCRYPTION_DECLINED", 19) == 0) {
       bl_do_peer_delete (TLS, P->id);
     }
-  }
-  return 0;
+    return 0;
 }
 
+struct paramed_type bool_type = (struct paramed_type) {.type = &tl_type_bool, .params=0};
 static struct query_methods mark_read_encr_methods = {
   .on_answer = mark_read_encr_on_receive,
   .on_error = mark_read_encr_on_error,
-  .type = TYPE_TO_PARAM(bool),
+  .type = &bool_type
   .name = "read encrypted",
   .timeout = 0,
 };
 
 void tgl_do_messages_mark_read_encr (struct tgl_state *TLS, tgl_peer_id_t id, long long access_hash, int last_time, void (*callback)(struct tgl_state *TLS, void *callback_extra, int), void *callback_extra) {
-  clear_packet ();
-  out_int (CODE_messages_read_encrypted_history);
-  out_int (CODE_input_encrypted_chat);
-  out_int (tgl_get_peer_id (id));
-  out_long (access_hash);
-  out_int (last_time);
-  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &mark_read_encr_methods, tgl_peer_get (TLS, id), callback, callback_extra);
+    clear_packet ();
+    out_int (CODE_messages_read_encrypted_history);
+    out_int (CODE_input_encrypted_chat);
+    out_int (tgl_get_peer_id (id));
+    out_long (access_hash);
+    out_int (last_time);
+    tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &mark_read_encr_methods, tgl_peer_get (TLS, id), (void*)callback, callback_extra);
 }
 
 static int send_encr_file_on_answer (struct tgl_state *TLS, struct query *q, void *D) {
@@ -324,10 +329,11 @@ static int send_encr_file_on_answer (struct tgl_state *TLS, struct query *q, voi
   return 0;
 }
 
+struct paramed_type msg_send_enc_type = TYPE_TO_PARAM(messages_sent_encrypted_message);
 static struct query_methods send_encr_file_methods = {
   .on_answer = send_encr_file_on_answer,
   .on_error = msg_send_encr_on_error,
-  .type = TYPE_TO_PARAM(messages_sent_encrypted_message),
+  .type = &msg_send_enc_type,
   .name = "send encrypted (file)",
   .timeout = 0,
 };
@@ -443,7 +449,6 @@ static void send_file_encrypted_end (struct tgl_state *TLS, struct send_file *f,
   
   tfree_str (f->file_name);
   tfree (f, sizeof (*f));
-
 }
 
 void tgl_do_send_location_encr (struct tgl_state *TLS, tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
@@ -463,8 +468,8 @@ void tgl_do_send_location_encr (struct tgl_state *TLS, tgl_peer_id_t peer_id, do
   struct tgl_message_id id = tgl_peer_id_to_random_msg_id (P->id);;
   bl_do_edit_message_encr (TLS, &id, &from_id, &peer_id, &date, NULL, 0, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
 
-  tfree (TDSM.latitude, sizeof (double));
-  tfree (TDSM.longitude, sizeof (double));
+  free (TDSM.latitude);
+  free (TDSM.longitude);
 
   struct tgl_message *M = tgl_message_get (TLS, &id);
 
@@ -506,10 +511,11 @@ static int encr_accept_on_error (struct tgl_state *TLS, struct query *q, int err
   return 0;
 }
 
+struct paramed_type enc_chat_type = TYPE_TO_PARAM(encrypted_chat);
 static struct query_methods send_encr_accept_methods  = {
   .on_answer = send_encr_accept_on_answer,
   .on_error = encr_accept_on_error,
-  .type = TYPE_TO_PARAM(encrypted_chat),
+  .type = &enc_chat_type,
   .name = "send encrypted (chat accept)",
   .timeout = 0,
 };
@@ -517,7 +523,7 @@ static struct query_methods send_encr_accept_methods  = {
 static struct query_methods send_encr_request_methods  = {
   .on_answer = send_encr_request_on_answer,
   .on_error = q_ptr_on_error,
-  .type = TYPE_TO_PARAM(encrypted_chat),
+  .type = &enc_chat_type,
   .name = "send encrypted (chat request)",
   .timeout = 0,
 };
@@ -745,64 +751,65 @@ void tgl_do_discard_secret_chat (struct tgl_state *TLS, struct tgl_secret_chat *
 }
 
 static int get_dh_config_on_answer (struct tgl_state *TLS, struct query *q, void *D) {
-  struct tl_ds_messages_dh_config *DS_MDC = D;
+    struct tl_ds_messages_dh_config *DS_MDC = (struct tl_ds_messages_dh_config *)D;
 
-  if (DS_MDC->magic == CODE_messages_dh_config) {
-    assert (DS_MDC->p->len == 256);
-    bl_do_set_dh_params (TLS, DS_LVAL (DS_MDC->g), (void *)DS_MDC->p->data, DS_LVAL (DS_MDC->version));   
-  } else {
-    assert (TLS->encr_param_version);
-  }
-  unsigned char *random = talloc (256);
-  assert (DS_MDC->random->len == 256);
-  memcpy (random, DS_MDC->random->data, 256);
-  
-  if (q->extra) {
-    void **x = q->extra;
-    ((void (*)(struct tgl_state *, void *, void *, void *, void *))(*x))(TLS, x[1], random, q->callback, q->callback_extra);
-    tfree (x, 2 * sizeof (void *));
-    tfree_secure (random, 256);
-  } else {
-    tfree_secure (random, 256);
-  }
-  return 0;
+    if (DS_MDC->magic == CODE_messages_dh_config) {
+        assert (DS_MDC->p->len == 256);
+        bl_do_set_dh_params (TLS, DS_LVAL (DS_MDC->g), (unsigned char *)DS_MDC->p->data, DS_LVAL (DS_MDC->version));
+    } else {
+        assert (TLS->encr_param_version);
+    }
+    unsigned char *random = (unsigned char *)malloc (256);
+    assert (DS_MDC->random->len == 256);
+    memcpy (random, DS_MDC->random->data, 256);
+
+    if (q->extra) {
+        void **x = (void **)q->extra;
+        ((void (*)(struct tgl_state *, void *, void *, void *, void *))(*x))(TLS, x[1], random, q->callback, q->callback_extra);
+        free (x);
+        free (random);
+    } else {
+        free (random);
+    }
+    return 0;
 }
 
+struct paramed_type dh_config_type = TYPE_TO_PARAM(messages_dh_config);
 static struct query_methods get_dh_config_methods  = {
   .on_answer = get_dh_config_on_answer,
   .on_error = q_void_on_error,
-  .type = TYPE_TO_PARAM(messages_dh_config),
+  .type = &dh_config_type,
   .name = "dh config",
   .timeout = 0,
 };
 
 void tgl_do_accept_encr_chat_request (struct tgl_state *TLS, struct tgl_secret_chat *E, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra) {
-  if (E->state != sc_request) {
-    if (callback) {
-      callback (TLS, callback_extra, 0, E);
+    if (E->state != sc_request) {
+        if (callback) {
+            callback (TLS, callback_extra, 0, E);
+        }
+        return;
     }
-    return;
-  }
-  assert (E->state == sc_request);
-  
-  clear_packet ();
-  out_int (CODE_messages_get_dh_config);
-  out_int (TLS->encr_param_version);
-  out_int (256);
-  void **x = talloc (2 * sizeof (void *));
-  x[0] = tgl_do_send_accept_encr_chat;
-  x[1] = E;
-  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dh_config_methods, x, callback, callback_extra);
+    assert (E->state == sc_request);
+
+    clear_packet ();
+    out_int (CODE_messages_get_dh_config);
+    out_int (TLS->encr_param_version);
+    out_int (256);
+    void **x = (void **)malloc (2 * sizeof (void *));
+    x[0] = (void*)tgl_do_send_accept_encr_chat;
+    x[1] = E;
+    tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dh_config_methods, x, (void*)callback, callback_extra);
 }
 
 void tgl_do_create_encr_chat_request (struct tgl_state *TLS, int user_id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra) {
-  clear_packet ();
-  out_int (CODE_messages_get_dh_config);
-  out_int (TLS->encr_param_version);
-  out_int (256);
-  void **x = talloc (2 * sizeof (void *));
-  x[0] = tgl_do_send_create_encr_chat;
-  x[1] = (void *)(long)(user_id);
-  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dh_config_methods, x, callback, callback_extra);
+    clear_packet ();
+    out_int (CODE_messages_get_dh_config);
+    out_int (TLS->encr_param_version);
+    out_int (256);
+    void **x = (void **)malloc (2 * sizeof (void *));
+    x[0] = (void*)tgl_do_send_create_encr_chat;
+    x[1] = (void*)(long)(user_id);
+    tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dh_config_methods, x, (void*)callback, callback_extra);
 }
 /* }}} */

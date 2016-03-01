@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -35,18 +35,21 @@
 #include "crypto/bn.h"
 
 #include "tgl-binlog.h"
-#include "mtproto-common.h"
 //#include "net.h"
 #include "mtproto-client.h"
-#include "mtproto-utils.h"
 
 #include "tgl.h"
+
+//extern "C" {
+#include "mtproto-common.h"
+#include "mtproto-utils.h"
 #include "auto.h"
-#include "auto/auto-types.h"
-#include "auto/auto-skip.h"
-#include "auto/auto-store-ds.h"
 #include "auto/auto-fetch-ds.h"
+#include "auto/auto-store-ds.h"
+#include "auto/auto-skip.h"
 #include "auto/auto-free-ds.h"
+#include "constants.h"
+//}
 
 #include "tgl-structures.h"
 #include "tgl-methods-in.h"
@@ -54,8 +57,8 @@
 #include "crypto/sha.h"
 
 static int mystreq1 (const char *a, const char *b, int l) {
-  if ((int)strlen (a) != l) { return 1; }
-  return memcmp (a, b, l);
+    if ((int)strlen (a) != l) { return 1; }
+    return memcmp (a, b, l);
 }
 
 void bl_do_dc_option (struct tgl_state *TLS, int flags, int id, const char *name, int l1, const char *ip, int l2, int port) /* {{{ */ {
@@ -727,7 +730,6 @@ void bl_do_chat (struct tgl_state *TLS, int id, const char *title, int title_len
       tglf_fetch_file_location (TLS, &C->photo_small, chat_photo->photo_small);
       updates |= TGL_UPDATE_PHOTO;
     }
-  }
 
   if (photo) {
     if (!C->photo || C->photo->id != DS_LVAL (photo->id)) {
@@ -738,7 +740,6 @@ void bl_do_chat (struct tgl_state *TLS, int id, const char *title, int title_len
       C->flags |= TGLPF_HAS_PHOTO;
       //updates |= TGL_UPDATE_PHOTO;
     }
-  }
 
   if (admin && *admin != C->admin_id) {
     C->admin_id = *admin;
@@ -858,7 +859,6 @@ void bl_do_encr_chat (struct tgl_state *TLS, int id, long long *access_hash, int
       }
       tglp_peer_insert_name (TLS, (void *)U);
     }
-  }
 
   if (g_key) {
     if (!U->g_key)  {
@@ -960,7 +960,6 @@ void bl_do_channel (struct tgl_state *TLS, int id, long long *access_hash, int *
       tglf_fetch_file_location (TLS, &C->photo_small, chat_photo->photo_small);
       updates |= TGL_UPDATE_PHOTO;
     }
-  }
 
   if (photo) {
     if (!C->photo || C->photo->id != DS_LVAL (photo->id)) {
@@ -970,7 +969,6 @@ void bl_do_channel (struct tgl_state *TLS, int id, long long *access_hash, int *
       C->photo = tglf_fetch_alloc_photo (TLS, photo);
       C->flags |= TGLPF_HAS_PHOTO;
     }
-  }
 
   if (username) {
     if (!C->username || mystreq1 (C->username, username, username_len)) {
