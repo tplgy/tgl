@@ -364,7 +364,12 @@ struct tgl_user *tglf_fetch_alloc_user (struct tgl_state *TLS, struct tl_ds_user
   
   if (DS_LVAL (DS_U->flags) & (1 << 13)) {
     if (!(U->flags & TGLUF_DELETED)) {
-      bl_do_peer_delete (TLS, U->id);
+      //bl_do_peer_delete (TLS, U->id);
+      U->flags |= TGLUF_DELETED;
+
+      if (TLS->callback.user_update) {
+        TLS->callback.user_update (U, TGL_UPDATE_DELETED);
+      }
     }
   }
   
@@ -2342,18 +2347,6 @@ void tgls_free_bot_info (struct tgl_state *TLS, struct tgl_bot_info *B) {
 
 /* Messages {{{ */
 
-void tglm_message_del_use (struct tgl_state *TLS, struct tgl_message *M) {
-    M->next_use->prev_use = M->prev_use;
-    M->prev_use->next_use = M->next_use;
-}
-
-void tglm_message_add_use (struct tgl_state *TLS, struct tgl_message *M) {
-    M->next_use = TLS->message_list.next_use;
-    M->prev_use = &TLS->message_list;
-    M->next_use->prev_use = M;
-    M->prev_use->next_use = M;
-}
-
 void tglm_message_add_peer (struct tgl_state *TLS, struct tgl_message *M) {
   tgl_peer_id_t id;
   if (!tgl_cmp_peer_id (M->to_id, TLS->our_id)) {
@@ -2468,7 +2461,6 @@ void tglm_message_remove_tree (struct tgl_state *TLS, struct tgl_message *M) {
 }
 
 void tglm_message_insert (struct tgl_state *TLS, struct tgl_message *M) {
-    tglm_message_add_use (TLS, M);
     tglm_message_add_peer (TLS, M);
 }
 

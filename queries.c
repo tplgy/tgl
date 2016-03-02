@@ -347,6 +347,8 @@ int tglq_query_error (struct tgl_state *TLS, long long id) {
             int offset = -1;
             if (error_len >= 15 && !memcmp (error, "PHONE_MIGRATE_", 14)) {
                 offset = 14;
+            //} else if (error_len >= 14 && !memcmp (error, "FILE_MIGRATE_", 13)) {
+            //    offset = 13;
             }
             if (error_len >= 17 && !memcmp (error, "NETWORK_MIGRATE_", 16)) {
                 offset = 16;
@@ -360,8 +362,9 @@ int tglq_query_error (struct tgl_state *TLS, long long id) {
                     i = i * 10 + error[offset] - '0';
                     offset ++;
                 }
+                vlogprintf (E_WARNING, "Trying to handle error...");
                 if (i > 0 && i < TGL_MAX_DC_NUM) {
-                    bl_do_set_working_dc (TLS, i);
+                    tgl_set_working_dc(TLS, i);
                     q->flags &= ~QUERY_ACK_RECEIVED;
                     //q->session_id = 0;
                     //struct tgl_dc *DC = q->DC;
@@ -372,7 +375,13 @@ int tglq_query_error (struct tgl_state *TLS, long long id) {
                     TLS->timer_methods->insert (q->ev, 0);
                     error_handled = 1;
                     res = 1;
+                    vlogprintf (E_WARNING, "handled\n");
                 }
+                if (!error_handled) {
+                    vlogprintf (E_WARNING, "failed\n");
+                }
+            } else {
+                vlogprintf (E_WARNING, "wrong offset\n");
             }
         }
             break;
@@ -424,7 +433,7 @@ int tglq_query_error (struct tgl_state *TLS, long long id) {
         }
 
         if (error_handled) {
-            vlogprintf (E_DEBUG - 2, "error for query #%lld: #%d %.*s (HANDLED)\n", id, error_code, error_len, error);
+            vlogprintf (E_NOTICE, "error for query #%lld: #%d %.*s (HANDLED)\n", id, error_code, error_len, error);
         } else {
             vlogprintf (E_WARNING, "error for query #%lld: #%d %.*s\n", id, error_code, error_len, error);
             if (q->methods && q->methods->on_error) {
@@ -825,7 +834,8 @@ static char *process_html_text (struct tgl_state *TLS, const char *text, int tex
 /* {{{ Get config */
 
 static void fetch_dc_option (struct tgl_state *TLS, struct tl_ds_dc_option *DS_DO) {
-  bl_do_dc_option (TLS, DS_LVAL (DS_DO->flags), DS_LVAL (DS_DO->id), NULL, 0, DS_STR (DS_DO->ip_address), DS_LVAL (DS_DO->port));
+  //bl_do_dc_option (TLS, DS_LVAL (DS_DO->flags), DS_LVAL (DS_DO->id), NULL, 0, DS_STR (DS_DO->ip_address), DS_LVAL (DS_DO->port));
+  tgl_set_dc_option (TLS, DS_LVAL (DS_DO->flags), DS_LVAL (DS_DO->id), DS_STR (DS_DO->ip_address), DS_LVAL (DS_DO->port));
 }
 
 static int help_get_config_on_answer (struct tgl_state *TLS, struct query *q, void *DS) {
@@ -943,7 +953,7 @@ static int sign_in_on_answer (struct tgl_state *TLS, struct query *q, void *D) {
 
   struct tgl_user *U = tglf_fetch_alloc_user (TLS, DS_AA->user);
 
-    bl_do_dc_signed (TLS, TLS->DC_working->id);
+    tgl_set_dc_signed (TLS, TLS->DC_working->id);
 
     if (q->callback) {
         ((void (*)(struct tgl_state *TLS, void *, int, struct tgl_user *))q->callback) (TLS, q->callback_extra, 1, U);
@@ -1364,7 +1374,8 @@ static int mark_read_on_receive (struct tgl_state *TLS, struct query *q, void *D
   int r = tgl_check_pts_diff (TLS, DS_LVAL (DS_MAM->pts), DS_LVAL (DS_MAM->pts_count));
 
   if (r > 0) {
-    bl_do_set_pts (TLS, DS_LVAL (DS_MAM->pts));
+    //bl_do_set_pts (TLS, DS_LVAL (DS_MAM->pts));
+    tgl_set_pts(TLS, DS_LVAL (DS_MAH->pts));
   }
 
   struct mark_read_extra *E = q->extra;
@@ -3095,7 +3106,7 @@ void tgl_do_get_user_info (struct tgl_state *TLS, tgl_peer_id_t id, int offline_
 static void resend_query_cb (struct tgl_state *TLS, void *_q, int success) {
     assert (success);
 
-    bl_do_dc_signed (TLS, TLS->DC_working->id);
+    tgl_set_dc_signed (TLS, TLS->DC_working->id);
 
     struct query *q = (struct query *)_q;
 
@@ -3454,7 +3465,7 @@ static int import_auth_on_answer (struct tgl_state *TLS, struct query *q, void *
   struct tl_ds_auth_authorization *DS_U = (struct tl_ds_auth_authorization *)D;
   tglf_fetch_alloc_user (TLS, DS_U->user);
 
-    bl_do_dc_signed (TLS, ((struct tgl_dc *)q->extra)->id);
+    tgl_set_dc_signed (TLS, ((struct tgl_dc *)q->extra)->id);
 
     if (q->callback) {
         ((void (*)(struct tgl_state *, void *, int))q->callback) (TLS, q->callback_extra, 1);
@@ -3473,8 +3484,8 @@ static struct query_methods import_auth_methods = {
 static int export_auth_on_answer (struct tgl_state *TLS, struct query *q, void *D) {
     struct tl_ds_auth_exported_authorization *DS_EA = (struct tl_ds_auth_exported_authorization *)D;
 
-  bl_do_set_our_id (TLS, TGL_MK_USER (DS_LVAL (DS_EA->id)));
-
+  //bl_do_set_our_id (TLS, TGL_MK_USER (DS_LVAL (DS_EA->id)));
+  tgl_set_our_id(TLS, DS_LVAL (DS_EA->id));
 
   clear_packet ();
   tgl_do_insert_header (TLS);
@@ -3736,10 +3747,10 @@ static int get_state_on_answer (struct tgl_state *TLS, struct query *q, void *D)
     assert (TLS->locks & TGL_LOCK_DIFF);
     TLS->locks ^= TGL_LOCK_DIFF;
 
-    bl_do_set_pts (TLS, DS_LVAL (DS_US->pts));
-    bl_do_set_qts (TLS, DS_LVAL (DS_US->qts));
-    bl_do_set_date (TLS, DS_LVAL (DS_US->date));
-    bl_do_set_seq (TLS, DS_LVAL (DS_US->seq));
+    tgl_set_pts (TLS, DS_LVAL (DS_US->pts));
+    tgl_set_qts (TLS, DS_LVAL (DS_US->qts));
+    tgl_set_date (TLS, DS_LVAL (DS_US->date));
+    tgl_set_seq (TLS, DS_LVAL (DS_US->seq));
 
     if (q->callback) {
         ((void (*)(struct tgl_state *, void *, int))q->callback) (TLS, q->callback_extra, 1);
@@ -3769,8 +3780,8 @@ static int get_difference_on_answer (struct tgl_state *TLS, struct query *q, voi
     TLS->locks ^= TGL_LOCK_DIFF;
 
     if (DS_UD->magic == CODE_updates_difference_empty) {
-        bl_do_set_date (TLS, DS_LVAL (DS_UD->date));
-        bl_do_set_seq (TLS, DS_LVAL (DS_UD->seq));
+        tgl_set_date (TLS, DS_LVAL (DS_UD->date));
+        tgl_set_seq (TLS, DS_LVAL (DS_UD->seq));
 
         vlogprintf (E_DEBUG, "Empty difference. Seq = %d\n", TLS->seq);
         if (q->callback) {
@@ -3822,18 +3833,18 @@ static int get_difference_on_answer (struct tgl_state *TLS, struct query *q, voi
         free (EL);
 
         if (DS_UD->state) {
-            bl_do_set_pts (TLS, DS_LVAL (DS_UD->state->pts));
-            bl_do_set_qts (TLS, DS_LVAL (DS_UD->state->qts));
-            bl_do_set_date (TLS, DS_LVAL (DS_UD->state->date));
-            bl_do_set_seq (TLS, DS_LVAL (DS_UD->state->seq));
+            tgl_set_pts (TLS, DS_LVAL (DS_UD->state->pts));
+            tgl_set_qts (TLS, DS_LVAL (DS_UD->state->qts));
+            tgl_set_date (TLS, DS_LVAL (DS_UD->state->date));
+            tgl_set_seq (TLS, DS_LVAL (DS_UD->state->seq));
 
             if (q->callback) {
                 ((void (*)(struct tgl_state *, void *, int))q->callback) (TLS, q->callback_extra, 1);
             }
         } else {
-            bl_do_set_pts (TLS, DS_LVAL (DS_UD->intermediate_state->pts));
-            bl_do_set_qts (TLS, DS_LVAL (DS_UD->intermediate_state->qts));
-            bl_do_set_date (TLS, DS_LVAL (DS_UD->intermediate_state->date));
+            tgl_set_pts (TLS, DS_LVAL (DS_UD->intermediate_state->pts));
+            tgl_set_qts (TLS, DS_LVAL (DS_UD->intermediate_state->qts));
+            tgl_set_date (TLS, DS_LVAL (DS_UD->intermediate_state->date));
 
             tgl_do_get_difference (TLS, 0, (void (*)(struct tgl_state *, void *, int ))q->callback, q->callback_extra);
         }
@@ -4166,7 +4177,7 @@ static int delete_msg_on_answer (struct tgl_state *TLS, struct query *q, void *D
     int r = tgl_check_pts_diff (TLS, DS_LVAL (DS_MAM->pts), DS_LVAL (DS_MAM->pts_count));
 
     if (r > 0) {
-        bl_do_set_pts (TLS, DS_LVAL (DS_MAM->pts));
+        tgl_set_pts (TLS, DS_LVAL (DS_MAM->pts));
     }
 
     if (q->callback) {
@@ -5191,19 +5202,19 @@ void tgl_export_auth_callback (struct tgl_state *TLS, void *arg, int success) {
 
 void tgl_export_all_auth (struct tgl_state *TLS) {
     int i;
-    int ok = 1;
+    ///int ok = 1;
     for (i = 0; i <= TLS->max_dc_num; i++) if (TLS->DC_list[i] && !tgl_signed_dc (TLS, TLS->DC_list[i])) {
         tgl_do_export_auth (TLS, i, tgl_export_auth_callback, TLS->DC_list[i]);
-        ok = 0;
+        //ok = 0;
     }
-    if (ok) {
+    //if (ok) {
         if (TLS->callback.logged_in) {
             TLS->callback.logged_in ();
         }
 
         tglm_send_all_unsent (TLS);
         tgl_do_get_difference (TLS, 0, tgl_started_cb, 0);
-    }
+    //}
 }
 
 struct sign_up_extra {
@@ -5375,6 +5386,10 @@ static void check_authorized (struct tgl_state *TLS, void *arg) {
       ok = 0;
       break;
     }
+
+//    if (TLS->DC_working && !tgl_signed_dc (TLS, TLS->DC_working) && !tgl_authorized_dc (TLS, TLS->DC_working)) {
+//        ok = 0;
+//    }
 
     if (ok) {
         TLS->timer_methods->free ((struct tgl_timer *)TLS->ev_login);

@@ -56,9 +56,9 @@
 #define O_BINARY 0
 #endif
 
-static int32_t __packet_buffer[PACKET_BUFFER_SIZE + 16];
-int32_t *tgl_packet_ptr;
-int32_t *tgl_packet_buffer = __packet_buffer + 16;
+static int __packet_buffer[PACKET_BUFFER_SIZE + 16];
+int *tgl_packet_ptr;
+int *tgl_packet_buffer = __packet_buffer + 16;
 
 static long long rsa_encrypted_chunks, rsa_decrypted_chunks;
 
@@ -189,7 +189,7 @@ int tgl_serialize_bignum (TGLC_bn *b, char *buffer, int maxlen) {
   if (itslen < 254) {
     *buffer++ = itslen;
   } else {
-    *(int32_t *)buffer = (itslen << 8) + 0xfe;
+    *(int *)buffer = (itslen << 8) + 0xfe;
     buffer += 4;
   }
   int l = TGLC_bn_bn2bin (b, (unsigned char *)buffer);
@@ -229,7 +229,7 @@ void tgl_out_cstring (const char *str, long len) {
   while ((long) dest & 3) {
     *dest++ = 0;
   }
-  packet_ptr = (int32_t *) dest;
+  packet_ptr = (int *) dest;
 }
 
 void tgl_out_cstring_careful (const char *str, long len) {
@@ -264,7 +264,7 @@ void tgl_out_data (const void *data, long len) {
   packet_ptr += len >> 2;
 }
 
-int32_t *tgl_in_ptr, *tgl_in_end;
+int *tgl_in_ptr, *tgl_in_end;
 
 int tgl_fetch_bignum (TGLC_bn *x) {
   int l = prefetch_strlen ();

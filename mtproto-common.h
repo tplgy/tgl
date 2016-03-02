@@ -117,7 +117,7 @@ struct encrypted_message {
   long long msg_id;
   int seq_no;
   int msg_len;   // divisible by 4
-  int32_t message[MAX_MESSAGE_INTS];
+  int message[MAX_MESSAGE_INTS];
 };
 
 #pragma pack(pop)
@@ -131,23 +131,23 @@ long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key);
 #define packet_buffer tgl_packet_buffer
 #define packet_ptr tgl_packet_ptr
 
-extern int32_t *tgl_packet_buffer;
-extern int32_t *tgl_packet_ptr;
+extern int *tgl_packet_buffer;
+extern int *tgl_packet_ptr;
 
-static inline void out_ints (const int32_t *what, int len) {
+static inline void out_ints (const int *what, int len) {
   assert (packet_ptr + len <= packet_buffer + PACKET_BUFFER_SIZE);
   memcpy (packet_ptr, what, len * 4);
   packet_ptr += len;
 }
 
 
-static inline void out_int (int32_t x) {
+static inline void out_int (int x) {
   assert (packet_ptr + 1 <= packet_buffer + PACKET_BUFFER_SIZE);
   *packet_ptr++ = x;
 }
 
 
-static inline void out_long (int64_t x) {
+static inline void out_long (long long int x) {
   assert (packet_ptr + 2 <= packet_buffer + PACKET_BUFFER_SIZE);
   *(long long *)packet_ptr = x;
   packet_ptr += 2;
@@ -183,7 +183,7 @@ static inline void out_bignum (TGLC_bn *n) {
 
 #define in_ptr tgl_in_ptr
 #define in_end tgl_in_end
-extern int32_t *tgl_in_ptr, *tgl_in_end;
+extern int *tgl_in_ptr, *tgl_in_end;
 
 
 //void fetch_pts (void);
@@ -250,7 +250,7 @@ static inline int fetch_update_str (char **s) {
   return 0;
 }
 
-static inline int fetch_update_int (int32_t *value) {
+static inline int fetch_update_int (int *value) {
   if (*value == *in_ptr) {
     in_ptr ++;
     return 0;
@@ -260,18 +260,18 @@ static inline int fetch_update_int (int32_t *value) {
   }
 }
 
-static inline int fetch_update_long (int64_t *value) {
-  if (*value == *(int64_t *)in_ptr) {
+static inline int fetch_update_long (long long int *value) {
+  if (*value == *(long long int *)in_ptr) {
     in_ptr += 2;
     return 0;
   } else {
-    *value = *(int64_t*)(in_ptr);
+    *value = *(long long int*)(in_ptr);
     in_ptr += 2;
     return 1;
   }
 }
 
-static inline int set_update_int (int32_t *value, int32_t new_value) {
+static inline int set_update_int (int *value, int new_value) {
   if (*value == new_value) {
     return 0;
   } else {
@@ -298,18 +298,18 @@ static inline long have_prefetch_ints (void) {
 int tgl_fetch_bignum (TGLC_bn *x);
 #define fetch_bignum tgl_fetch_bignum
 
-static inline int32_t fetch_int (void) {
+static inline int fetch_int (void) {
   assert (in_ptr + 1 <= in_end);
   return *(in_ptr ++);
 }
 
-static inline int32_t fetch_bool (void) {
+static inline int fetch_bool (void) {
   assert (in_ptr + 1 <= in_end);
-  assert (*(in_ptr) == (int32_t)CODE_bool_true || *(in_ptr) == (int32_t)CODE_bool_false);
-  return *(in_ptr ++) == (int32_t)CODE_bool_true;
+  assert (*(in_ptr) == (int)CODE_bool_true || *(in_ptr) == (int)CODE_bool_false);
+  return *(in_ptr ++) == (int)CODE_bool_true;
 }
 
-static inline int32_t prefetch_int (void) {
+static inline int prefetch_int (void) {
   assert (in_ptr < in_end);
   return *(in_ptr);
 }

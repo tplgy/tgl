@@ -27,17 +27,108 @@
 #include "tools.h"
 #include "mtproto-client.h"
 #include "tgl-structures.h"
+#include <openssl/sha.h>
 //#include "net.h"
 
 #include <assert.h>
 
 struct tgl_state tgl_state;
 
-    
-void tgl_set_binlog_mode (struct tgl_state *TLS, int mode) {
-  TLS->binlog_enabled = mode;
+void tgl_set_auth_key(struct tgl_state *TLS, int num, const char *buf)
+{
+    fprintf(stderr, "set auth %d\n", num);
+    assert (num > 0 && num <= MAX_DC_ID);
+    assert (TLS->DC_list[num]);
+
+    if (buf) {
+        memcpy(TLS->DC_list[num]->auth_key, buf, 256);
+    }
+
+    static unsigned char sha1_buffer[20];
+    SHA1 ((unsigned char *)TLS->DC_list[num]->auth_key, 256, sha1_buffer);
+    TLS->DC_list[num]->auth_key_id = *(long long *)(sha1_buffer + 12);
+
+    TLS->DC_list[num]->flags |= TGLDCF_AUTHORIZED;
+
+    TLS->callback.dc_update(TLS->DC_list[num]);
 }
-    
+
+void tgl_set_our_id(struct tgl_state *TLS, int id)
+{
+    TLS->our_id = id;
+    assert (TLS->our_id > 0);
+    if (TLS->callback.our_id) {
+        TLS->callback.our_id (TLS->our_id);
+    }
+}
+
+void tgl_set_dc_option (struct tgl_state *TLS, int flags, int id, const char *ip, int l2, int port)
+{
+    struct tgl_dc *DC = TLS->DC_list[id];
+
+    if (DC) {
+        struct tgl_dc_option *O = DC->options[flags & 3];
+        while (O) {
+            if (!strncmp (O->ip, ip, l2)) {
+                return;
+            }
+            O = O->next;
+        }
+    }
+
+    // make sure ip is 0 terminated
+    int ip_cpy_length = l2 + (ip[l2-1] == '\0' ? 0 : 1);
+    char *ip_cpy = (char*)malloc(ip_cpy_length);
+    memcpy(ip_cpy, ip, l2);
+    ip_cpy[ip_cpy_length-1] = '\0';
+
+    tglmp_alloc_dc (TLS, flags, id, ip_cpy, port);
+}
+
+void tgl_set_dc_signed(struct tgl_state *TLS, int num)
+{
+    fprintf(stderr, "set signed %d\n", num);
+    assert (num > 0 && num <= MAX_DC_ID);
+    assert (TLS->DC_list[num]);
+    TLS->DC_list[num]->flags |= TGLDCF_LOGGED_IN;
+}
+
+void tgl_set_working_dc(struct tgl_state *TLS, int num)
+{
+    fprintf(stderr, "set working %d\n", num);
+    assert (num > 0 && num <= MAX_DC_ID);
+    TLS->DC_working = TLS->DC_list[num];
+    TLS->dc_working_num = num;
+    TLS->callback.change_active_dc(num);
+}
+
+void tgl_set_qts(struct tgl_state *TLS, int qts)
+{
+    if (TLS->locks & TGL_LOCK_DIFF) { return; }
+    if (qts <= TLS->qts) { return; }
+    TLS->qts = qts;
+}
+
+void tgl_set_pts(struct tgl_state *TLS, int pts)
+{
+    if (TLS->locks & TGL_LOCK_DIFF) { return; }
+    if (pts <= TLS->pts) { return; }
+    TLS->pts = pts;
+}
+
+void tgl_set_date(struct tgl_state *TLS, int date)
+{
+    if (TLS->locks & TGL_LOCK_DIFF) { return; }
+    if (date <= TLS->date) { return; }
+    TLS->date = date;
+}
+
+void tgl_set_seq(struct tgl_state *TLS, int seq)
+{
+    if (TLS->locks & TGL_LOCK_DIFF) { return; }
+    if (seq <= TLS->seq) { return; }
+    TLS->seq = seq;
+}
 void tgl_set_download_directory (struct tgl_state *TLS, const char *path) {
   if (TLS->downloads_directory) {
     tfree_str (TLS->downloads_directory);
@@ -87,7 +178,7 @@ int tgl_init (struct tgl_state *TLS) {
 
 int tgl_authorized_dc (struct tgl_state *TLS, struct tgl_dc *DC) {
   assert (DC);
-  return (DC->flags & 4) != 0;//DC->auth_key_id;
+  return DC->flags & TGLDCF_AUTHORIZED;//(DC->flags & 4) != 0;//DC->auth_key_id;
 }
 
 int tgl_signed_dc (struct tgl_state *TLS, struct tgl_dc *DC) {

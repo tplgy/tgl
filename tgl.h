@@ -36,7 +36,7 @@
 #define TG_SERVER_IPV6_3 "2001:b28:f23d:f003::a"
 #define TG_SERVER_IPV6_4 "2001:67c:4e8:f004::a"
 #define TG_SERVER_IPV6_5 "2001:b28:f23f:f005::a"
-#define TG_SERVER_DEFAULT 5
+#define TG_SERVER_DEFAULT 2
 
 #define TG_SERVER_TEST_1 "149.154.175.10"
 #define TG_SERVER_TEST_2 "149.154.167.40"
@@ -111,15 +111,18 @@ struct tgl_update_callback {
   void (*user_registered)(struct tgl_user *U);
   void (*user_activated)(struct tgl_user *U);
   void (*new_authorization)(const char *device, const char *location);
-  void (*chat_update)(struct tgl_chat *C, unsigned flags);
   void (*channel_update)(struct tgl_channel *C, unsigned flags);
   void (*user_update)(struct tgl_user *C, unsigned flags);
+  void (*chat_update)(int chat_id, int peers_num, int admin, struct tgl_photo *photo, int date, const char *title, int tl);
+  void (*chat_add_user)(int chat_id, int user, int inviter, int date);
+  void (*chat_delete_user)(int chat_id, int user);
   void (*secret_chat_update)(struct tgl_secret_chat *C, unsigned flags);
   void (*msg_receive)(struct tgl_message *M);
   void (*our_id)(int id);
   void (*notification)(const char *type, const char *message);
   void (*user_status_update)(struct tgl_user *U);
-  void (*dc_update)(const char *ip, int port, const char *auth_key, int64_t key_id);
+  void (*dc_update)(struct tgl_dc *);
+  void (*change_active_dc)(int new_dc_id);
   char *(*create_print_name) (struct tgl_state *TLS, tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
   void (*on_failed_login) (struct tgl_state *TLS);
 };
@@ -176,7 +179,6 @@ struct tgl_state {
   int qts;
   int date;
   int seq;
-  int binlog_enabled;
   int test_mode;
   int verbosity;
   int unread_messages;
@@ -304,8 +306,15 @@ int tgl_do_send_bot_auth (struct tgl_state *TLS, const char *code, int code_len,
 #define TGL_MK_GEO_CHAT(id) tgl_set_peer_id (TGL_PEER_GEO_CHAT,id)
 #define TGL_MK_ENCR_CHAT(id) tgl_set_peer_id (TGL_PEER_ENCR_CHAT,id)
 
-void tgl_set_binlog_mode (struct tgl_state *TLS, int mode);
-void tgl_set_binlog_path (struct tgl_state *TLS, const char *path);
+void tgl_set_auth_key(struct tgl_state *TLS, int num, const char *buf);
+void tgl_set_our_id(struct tgl_state *TLS, int id);
+void tgl_set_dc_option (struct tgl_state *TLS, int flags, int id, const char *ip, int l2, int port);
+void tgl_set_dc_signed(struct tgl_state *TLS, int num);
+void tgl_set_working_dc(struct tgl_state *TLS, int num);
+void tgl_set_qts(struct tgl_state *TLS, int qts);
+void tgl_set_pts(struct tgl_state *TLS, int pts);
+void tgl_set_date(struct tgl_state *TLS, int date);
+void tgl_set_seq(struct tgl_state *TLS, int seq);
 void tgl_set_auth_file_path (struct tgl_state *TLS, const char *path);
 void tgl_set_download_directory (struct tgl_state *TLS, const char *path);
 void tgl_set_callback (struct tgl_state *TLS, struct tgl_update_callback *cb);
