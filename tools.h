@@ -48,7 +48,6 @@ struct tgl_allocator {
 #define tstrdup tgl_strdup
 #define tmemdup tgl_memdup
 #define tstrndup tgl_strndup
-#define tasprintf tgl_asprintf
 #define tsnprintf tgl_snprintf
 
 

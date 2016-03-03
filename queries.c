@@ -262,6 +262,8 @@ struct query *tglq_send_query (struct tgl_state *TLS, struct tgl_dc *DC, int int
 }
 
 static int fail_on_error (struct tgl_state *TLS, struct query *q, int error_code, int l, const char *error) {
+  TGL_UNUSED(TLS);
+  TGL_UNUSED(q);
   vlogprintf (E_ERROR, "error #%d: %.*s\n", error_code, l, error);
   assert (0);
   return 0;
@@ -1247,9 +1249,14 @@ void tgl_do_send_message (struct tgl_state *TLS, tgl_peer_id_t peer_id, const ch
       tfree (ent, 4 * ent_size);
     }
 
-      
-    bl_do_edit_message (TLS, &id, &from_id, &peer_id, NULL, NULL, &date, text, text_len, &TDSM, NULL, reply ? &reply : NULL, reply_markup, EN, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | disable_preview);
-    
+
+    //bl_do_edit_message (TLS, &id, &from_id, &peer_id, NULL, NULL, &date, text, text_len, &TDSM, NULL, reply ? &reply : NULL, reply_markup, EN, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | disable_preview);
+    struct tl_ds_message_media TDSM;
+    TDSM.magic = CODE_message_media_empty;
+
+    tglm_message_create (TLS, t, &from_id, &peer_type, &peer_id, NULL, NULL, &date, text, text_len, &TDSM, NULL, NULL,
+            reply_markup, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND);
+
     if (flags & TGLMF_HTML) {
       tfree_str (new_text);
       free_ds_type_any (EN, TYPE_TO_PARAM_1 (vector, TYPE_TO_PARAM (message_entity)));
@@ -1378,10 +1385,11 @@ static int mark_read_on_receive (struct tgl_state *TLS, struct query *q, void *D
     tgl_set_pts(TLS, DS_LVAL (DS_MAH->pts));
   }
 
-  struct mark_read_extra *E = q->extra;
+  struct mark_read_extra *E = (struct mark_read_extra *)q->extra;
 
   if (tgl_get_peer_type (E->id) == TGL_PEER_USER) {
-    bl_do_user (TLS, tgl_get_peer_id (E->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, &E->max_id, NULL, NULL, TGL_FLAGS_UNCHANGED);
+    //bl_do_user (TLS, tgl_get_peer_id (E->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, &E->max_id, NULL, NULL, TGL_FLAGS_UNCHANGED);
+    TLS->callback.new_user(tgl_get_peer_id (E->id), "", "", "", "");
   } else {
     assert (tgl_get_peer_type (E->id) == TGL_PEER_CHAT);
     bl_do_chat (TLS, tgl_get_peer_id (E->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &E->max_id, NULL, TGL_FLAGS_UNCHANGED);
@@ -1567,45 +1575,6 @@ static struct query_methods get_history_methods = {
   .name = "get history"
 };
 
-void tgl_do_get_local_history (struct tgl_state *TLS, tgl_peer_id_t id, int offset, int limit, void (*callback)(struct tgl_state *TLS,void *callback_extra, int success, int size, struct tgl_message *list[]), void *callback_extra) {
-    tgl_peer_t *P = tgl_peer_get (TLS, id);
-    if (!P || !P->last) {
-        tgl_set_query_error (TLS, EINVAL, "unknown peer");
-        if (callback) {
-            callback (TLS, callback_extra, 0, 0, 0);
-        }
-        return;
-    }
-    struct tgl_message *M = P->last;
-    int count = 1;
-    assert (!M->prev);
-    while (count < limit + offset && M->next) {
-        M = M->next;
-        count ++;
-    }
-    if (count <= offset) {
-        if (callback) {
-            callback (TLS, callback_extra, 1, 0, 0);
-        }
-        return;
-    }
-    struct tgl_message **ML = (struct tgl_message **)malloc (sizeof (char) * (count - offset));
-    M = P->last;
-    ML[0] = M;
-    count = 1;
-    while (count < limit && M->next) {
-        M = M->next;
-        if (count >= offset) {
-            ML[count - offset] = M;
-        }
-        count ++;
-    }
-
-    if (callback) {
-        callback (TLS, callback_extra, 1, count - offset, ML);
-    }
-    free (ML);
-}
 
 static void _tgl_do_get_history (struct tgl_state *TLS, struct get_history_extra *E, void (*callback)(struct tgl_state *TLS,void *callback_extra, int success, int size, struct tgl_message *list[]), void *callback_extra) {
   clear_packet ();
@@ -2351,7 +2320,6 @@ static int send_msgs_on_answer (struct tgl_state *TLS, struct query *q, void *D)
   tglu_work_any_updates (TLS, 1, D, (!E || E->multi) ? NULL : tgl_message_get (TLS, &E->id));
   tglu_work_any_updates (TLS, 0, D, (!E || E->multi) ? NULL : tgl_message_get (TLS, &E->id));
 
-
   if (!E) {
     if (q->callback) {
       ((void (*)(struct tgl_state *, void *, int))q->callback) (TLS, q->callback_extra, 1);
@@ -2991,8 +2959,7 @@ void tgl_do_get_chat_info (struct tgl_state *TLS, tgl_peer_id_t id, int offline_
     }
     clear_packet ();
     out_int (CODE_messages_get_full_chat);
-    assert (tgl_get_peer_type (id) == TGL_PEER_CHAT);
-    out_int (tgl_get_peer_id (id));
+    out_int (chat_id);
     tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &chat_info_methods, 0, (void*)callback, callback_extra);
 }
 /* }}} */
@@ -3058,36 +3025,14 @@ static struct query_methods user_info_methods = {
   .name = "user info"
 };
 
-void tgl_do_get_user_info (struct tgl_state *TLS, tgl_peer_id_t id, int offline_mode, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_user *U), void *callback_extra) {
-    if (tgl_get_peer_type (id) != TGL_PEER_USER) {
-        tgl_set_query_error (TLS, EINVAL, "id should be user id");
-        if (callback) {
-            callback (TLS, callback_extra, 0, NULL);
-        }
-        return;
-    }
-    if (offline_mode) {
-        tgl_peer_t *C = tgl_peer_get (TLS, id);
-        if (!C) {
-            tgl_set_query_error (TLS, EINVAL, "unknown user id");
-            if (callback) {
-                callback (TLS, callback_extra, 0, 0);
-            }
-        } else {
-            if (callback) {
-                callback (TLS, callback_extra, 1, &C->user);
-            }
-        }
-        return;
-    }
+void tgl_do_get_user_info (struct tgl_state *TLS, tgl_peer_id_t id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_user *U), void *callback_extra) {
     clear_packet ();
     out_int (CODE_users_get_full_user);
     assert (tgl_get_peer_type (id) == TGL_PEER_USER);
-    tgl_peer_t *U = tgl_peer_get (TLS, id);
-    if (U && U->user.access_hash) {
+    if (id.access_hash) {
         out_int (CODE_input_user_foreign);
         out_int (tgl_get_peer_id (id));
-        out_long (U->user.access_hash);
+        out_long (id.access_hash);
     } else {
         out_int (CODE_input_user_contact);
         out_int (tgl_get_peer_id (id));
@@ -3592,7 +3537,7 @@ void tgl_do_del_contact (struct tgl_state *TLS, tgl_peer_id_t id, void (*callbac
   out_int (CODE_input_user);
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
-  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &del_contact_methods, 0, callback, callback_extra);
+  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &del_contact_methods, 0, (void*)callback, callback_extra);
 }
 /* }}} */
 
@@ -3998,17 +3943,16 @@ void tgl_do_get_channel_difference (struct tgl_state *TLS, int id, void (*callba
 
 /* {{{ Visualize key */
 
-int tgl_do_visualize_key (struct tgl_state *TLS, tgl_peer_id_t id, unsigned char buf[16]) {
-    assert (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT);
-    tgl_peer_t *P = tgl_peer_get (TLS, id);
-    assert (P);
-    if (P->encr_chat.state != sc_ok) {
-        vlogprintf (E_WARNING, "Chat is not initialized yet\n");
-        return -1;
-    }
-    memcpy (buf, P->encr_chat.first_key_sha, 16);
-    return 0;
-}
+//int tgl_do_visualize_key (struct tgl_state *TLS, tgl_peer_id_t id, unsigned char buf[16]) {
+//    assert (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT);
+//    assert (P);
+//    if (P->encr_chat.state != sc_ok) {
+//        vlogprintf (E_WARNING, "Chat is not initialized yet\n");
+//        return -1;
+//    }
+//    memcpy (buf, P->encr_chat.first_key_sha, 16);
+//    return 0;
+//}
 /* }}} */
 
 /* {{{ Add user to chat */
@@ -4025,11 +3969,10 @@ void tgl_do_add_user_to_chat (struct tgl_state *TLS, tgl_peer_id_t chat_id, tgl_
   out_int (limit);
 
     assert (tgl_get_peer_type (id) == TGL_PEER_USER);
-    tgl_peer_t *U = tgl_peer_get (TLS, id);
-    if (U && U->user.access_hash) {
+    if (id.access_hash) {
         out_int (CODE_input_user_foreign);
         out_int (tgl_get_peer_id (id));
-        out_long (U->user.access_hash);
+        out_long (id.access_hash);
     } else {
         out_int (CODE_input_user_contact);
         out_int (tgl_get_peer_id (id));
@@ -4048,7 +3991,7 @@ void tgl_do_del_user_from_chat (struct tgl_state *TLS, tgl_peer_id_t chat_id, tg
   out_int (CODE_input_user);
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
-  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback, callback_extra);
+  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
 }
 
 /* }}} */
@@ -4090,18 +4033,8 @@ void tgl_do_channel_kick_user (struct tgl_state *TLS, tgl_peer_id_t channel_id, 
 
 /* {{{ Create secret chat */
 
-void tgl_do_create_secret_chat (struct tgl_state *TLS, tgl_peer_id_t id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra) {
-    assert (tgl_get_peer_type (id) == TGL_PEER_USER);
-    tgl_peer_t *U = tgl_peer_get (TLS, id);
-    if (!U) {
-        tgl_set_query_error (TLS, EINVAL, "Can not create secret chat with unknown user");
-        if (callback) {
-            callback (TLS, callback_extra, 0, NULL);
-        }
-        return;
-    }
-
-    tgl_do_create_encr_chat_request (TLS, tgl_get_peer_id (id), callback, callback_extra);
+void tgl_do_create_secret_chat (struct tgl_state *TLS, int user_id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra) {
+    tgl_do_create_encr_chat_request (TLS, user_id, callback, callback_extra);
 }
 /* }}} */
 
@@ -4321,6 +4254,7 @@ void tgl_do_start_bot (struct tgl_state *TLS, tgl_peer_id_t bot, tgl_peer_id_t c
 
 /* {{{ Send typing */
 static int send_typing_on_answer (struct tgl_state *TLS, struct query *q, void *D) {
+    TGL_UNUSED(D);
     if (q->callback) {
         ((void (*)(struct tgl_state *, void *, int))q->callback)(TLS, q->callback_extra, 1);
     }
@@ -4955,6 +4889,7 @@ void tgl_do_send_broadcast (struct tgl_state *TLS, int num, tgl_peer_id_t peer_i
 
 /* {{{ block user */
 static int block_user_on_answer (struct tgl_state *TLS, struct query *q, void *D) {
+    TGL_UNUSED(D);
     if (q->callback) {
         ((void (*)(struct tgl_state *, void *, int))q->callback)(TLS, q->callback_extra, 1);
     }
@@ -4968,15 +4903,7 @@ static struct query_methods block_user_methods = {
   .name = "block user"
 };
 
-void tgl_do_block_user (struct tgl_state *TLS, tgl_peer_id_t id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success), void *callback_extra) {
-    if (tgl_get_peer_type (id) != TGL_PEER_USER) {
-        tgl_set_query_error (TLS, EINVAL, "id should be user id");
-        if (callback) {
-            callback (TLS, callback_extra, 0);
-        }
-        return;
-    }
-
+void tgl_do_block_user (struct tgl_state *TLS, int user_id, long long int access_hash, void (*callback)(void *callback_extra, int success), void *callback_extra) {
     clear_packet ();
 
   out_int (CODE_contacts_block);
@@ -4986,15 +4913,8 @@ void tgl_do_block_user (struct tgl_state *TLS, tgl_peer_id_t id, void (*callback
   tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &block_user_methods, 0, (void*)callback, callback_extra);
 }
 
-void tgl_do_unblock_user (struct tgl_state *TLS, tgl_peer_id_t id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success), void *callback_extra) {
-    if (tgl_get_peer_type (id) != TGL_PEER_USER) {
-        tgl_set_query_error (TLS, EINVAL, "id should be user id");
-        if (callback) {
-            callback (TLS, callback_extra, 0);
-        }
-        return;
-    }
 
+void tgl_do_unblock_user (struct tgl_state *TLS, int user_id, long long int access_hash, void (*callback)(void *callback_extra, int success), void *callback_extra) {
     clear_packet ();
 
   out_int (CODE_contacts_unblock);
@@ -5163,6 +5083,7 @@ void tgl_do_abort_exchange (struct tgl_state *TLS, struct tgl_secret_chat *E) {
 }
 
 void tgl_started_cb (struct tgl_state *TLS, void *arg, int success) {
+  TGL_UNUSED(arg);
   if (!success) {
     vlogprintf (E_ERROR, "login problem: error #%d (%s)\n", TLS->error_code, TLS->error);
     if (TLS->callback.on_failed_login) {
@@ -5174,11 +5095,12 @@ void tgl_started_cb (struct tgl_state *TLS, void *arg, int success) {
   }
   TLS->started = 1;
   if (TLS->callback.started) {
-    TLS->callback.started (TLS);
+    TLS->callback.started ();
   }
 }
 
 void tgl_export_auth_callback (struct tgl_state *TLS, void *arg, int success) {
+  TGL_UNUSED(arg);
   if (!success) {
     vlogprintf (E_ERROR, "login problem: error #%d (%s)\n", TLS->error_code, TLS->error);
     if (TLS->callback.on_failed_login) {
@@ -5193,7 +5115,7 @@ void tgl_export_auth_callback (struct tgl_state *TLS, void *arg, int success) {
     return;
   }
   if (TLS->callback.logged_in) {
-    TLS->callback.logged_in (TLS);
+    TLS->callback.logged_in ();
   }
 
     tglm_send_all_unsent (TLS);
@@ -5203,7 +5125,7 @@ void tgl_export_auth_callback (struct tgl_state *TLS, void *arg, int success) {
 void tgl_export_all_auth (struct tgl_state *TLS) {
     int i;
     ///int ok = 1;
-    for (i = 0; i <= TLS->max_dc_num; i++) if (TLS->DC_list[i] && !tgl_signed_dc (TLS, TLS->DC_list[i])) {
+    for (i = 0; i <= TLS->max_dc_num; i++) if (TLS->DC_list[i] && !tgl_signed_dc(TLS->DC_list[i])) {
         tgl_do_export_auth (TLS, i, tgl_export_auth_callback, TLS->DC_list[i]);
         //ok = 0;
     }
@@ -5230,6 +5152,7 @@ struct sign_up_extra {
 
 void tgl_sign_in_code (struct tgl_state *TLS, const void *code, const void *_T);
 void tgl_sign_in_result (struct tgl_state *TLS, void *_T, int success, struct tgl_user *U) {
+    TGL_UNUSED(U);
     struct sign_up_extra *E = (struct sign_up_extra *)_T;
     if (success) {
         free (E->phone);
@@ -5256,6 +5179,7 @@ void tgl_sign_in_code (struct tgl_state *TLS, const void *code, const void *_T) 
 
 void tgl_sign_up_code (struct tgl_state *TLS, const void *code, const void *_T);
 void tgl_sign_up_result (struct tgl_state *TLS, void *_T, int success, struct tgl_user *U) {
+    TGL_UNUSED(U);
     struct sign_up_extra *E = (struct sign_up_extra *)_T;
     if (success) {
         free (E->phone);
@@ -5353,6 +5277,7 @@ void tgl_sign_in_phone (struct tgl_state *TLS, const void *phone, const void *ar
 void tgl_bot_hash_cb (struct tgl_state *TLS, const void *code, const void *arg);
 
 void tgl_sign_in_bot_cb (struct tgl_state *TLS, void *_T, int success, struct tgl_user *U) {
+    TGL_UNUSED(U);
     if (!success) {
         vlogprintf (E_ERROR, "incorrect bot hash\n");
         TLS->callback.get_values (tgl_bot_hash, tgl_bot_hash_cb, NULL);
@@ -5362,11 +5287,12 @@ void tgl_sign_in_bot_cb (struct tgl_state *TLS, void *_T, int success, struct tg
 }
 
 void tgl_bot_hash_cb (struct tgl_state *TLS, const void *code, const void *arg) {
+    TGL_UNUSED(arg);
     tgl_do_send_bot_auth (TLS, (const char*)code, strlen ((const char*)code), tgl_sign_in_bot_cb, NULL);
 }
 
 void tgl_sign_in (struct tgl_state *TLS) {
-    if (!tgl_signed_dc (TLS, TLS->DC_working)) {
+    if (!tgl_signed_dc(TLS->DC_working)) {
         TLS->callback.get_values (tgl_phone_number, tgl_sign_in_phone, NULL);
     } else {
         tgl_export_all_auth (TLS);
@@ -5374,6 +5300,7 @@ void tgl_sign_in (struct tgl_state *TLS) {
 }
 
 static void check_authorized (struct tgl_state *TLS, void *arg) {
+  TGL_UNUSED(arg);
   int i;
   int ok = 1;
   for (i = 0; i <= TLS->max_dc_num; i++) {
@@ -5382,12 +5309,12 @@ static void check_authorized (struct tgl_state *TLS, void *arg) {
     }
   }
   for (i = 0; i <= TLS->max_dc_num; i++) {
-    if (TLS->DC_list[i] && !tgl_signed_dc (TLS, TLS->DC_list[i]) && !tgl_authorized_dc (TLS, TLS->DC_list[i])) {
+    if (TLS->DC_list[i] && !tgl_signed_dc (TLS->DC_list[i]) && !tgl_authorized_dc (TLS->DC_list[i])) {
       ok = 0;
       break;
     }
 
-//    if (TLS->DC_working && !tgl_signed_dc (TLS, TLS->DC_working) && !tgl_authorized_dc (TLS, TLS->DC_working)) {
+//    if (TLS->DC_working && !tgl_signed_dc(TLS->DC_working) && !tgl_authorized_dc(TLS->DC_working)) {
 //        ok = 0;
 //    }
 
@@ -5405,7 +5332,7 @@ void tgl_login (struct tgl_state *TLS) {
     int i;
     int ok = 1;
     for (i = 0; i <= TLS->max_dc_num; i++) {
-        if (TLS->DC_list[i] && !tgl_signed_dc (TLS, TLS->DC_list[i]) && !tgl_authorized_dc (TLS, TLS->DC_list[i])) {
+        if (TLS->DC_list[i] && !tgl_signed_dc(TLS->DC_list[i]) && !tgl_authorized_dc(TLS->DC_list[i])) {
             ok = 0;
             break;
         }

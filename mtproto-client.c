@@ -888,14 +888,14 @@ static int work_bad_server_salt (struct tgl_state *TLS, struct connection *c, lo
   return 0;
 }
 
-static int work_pong (struct tgl_state *TLS, struct connection *c, long long msg_id) {
+static int work_pong () {
   assert (fetch_int () == CODE_pong);
   fetch_long (); // msg_id
   fetch_long (); // ping_id
   return 0;
 }
 
-static int work_detailed_info (struct tgl_state *TLS, struct connection *c, long long msg_id) {
+static int work_detailed_info () {
   assert (fetch_int () == CODE_msg_detailed_info);
   fetch_long (); // msg_id
   fetch_long (); // answer_msg_id
@@ -904,7 +904,7 @@ static int work_detailed_info (struct tgl_state *TLS, struct connection *c, long
   return 0;
 }
 
-static int work_new_detailed_info (struct tgl_state *TLS, struct connection *c, long long msg_id) {
+static int work_new_detailed_info () {
   assert (fetch_int () == (int)CODE_msg_new_detailed_info);
   fetch_long (); // answer_msg_id
   fetch_int (); // bytes
@@ -963,11 +963,11 @@ static int rpc_execute_answer (struct tgl_state *TLS, struct connection *c, long
   case CODE_bad_server_salt:
     return work_bad_server_salt (TLS, c, msg_id);
   case CODE_pong:
-    return work_pong (TLS, c, msg_id);
+    return work_pong ();
   case CODE_msg_detailed_info:
-    return work_detailed_info (TLS, c, msg_id);
+    return work_detailed_info();
   case CODE_msg_new_detailed_info:
-    return work_new_detailed_info (TLS, c, msg_id);
+    return work_new_detailed_info();
   case CODE_bad_msg_notification:
     return work_bad_msg_notification (TLS, c, msg_id);
   }

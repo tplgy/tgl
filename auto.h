@@ -36,6 +36,8 @@ struct paramed_type {
 
 #define NAME_ARRAY 0x89932ad9
 
+#define TGL_UNUSED(x) (void)x;
+
 #define TYPE_TO_PARAM(NAME) ((struct paramed_type) {.type = &tl_type_## NAME, .params=0})
 #define TYPE_TO_PARAM_1(NAME,PARAM1) ((struct paramed_type) {.type = &tl_type_## NAME, .params=(struct paramed_type *[1]){PARAM1}})
 #define ODDP(x) (((long)(x)) & 1)
@@ -53,6 +55,9 @@ static inline void *memdup (const void *d, int len) {
 
 #define DS_LVAL(x) ((x) ? *(x) : 0)
 #define DS_STR(x) ((x) ? (x)->data : NULL), ((x) ? (x)->len : 0)
+#define DS_CSTR(varname, x) char *varname = malloc((x ? x->len : 0) + 1); \
+                            if (x) {memcpy(varname, x->data, x->len); varname[x->len]='\0';} \
+                            else {varname[0]='\0';}
 #define DS_RSTR(x) ((x) ? (x)->len : 0), ((x) ? (x)->data : NULL)
 #define DS_STR_DUP(x) memdup(((x) ? (x)->data : NULL), ((x) ? (x)->len + 1: 0))
 #define DS_BVAL(x) ((x) && ((x)->magic == CODE_bool_true))

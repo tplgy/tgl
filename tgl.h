@@ -95,32 +95,49 @@ enum tgl_value_type {
     tgl_bot_hash
 };
 
+enum tgl_user_update_type {
+    tgl_update_firstname = 0,
+    tgl_update_last_name,
+    tgl_update_username,
+    tgl_update_phone,
+    tgl_update_blocked
+};
+
+enum tgl_user_status_type {
+    tgl_user_status_offline,
+    tgl_user_status_online,
+    tgl_user_status_recently,
+    tgl_user_status_last_week,
+    tgl_user_status_last_month
+};
+
 struct tgl_update_callback {
   void (*new_msg)(struct tgl_message *M);
-  void (*msg_deleted)(struct tgl_message *M);
+  void (*msg_deleted)(long long int msg_id);
   void (*marked_read)(int num, struct tgl_message *list[]);
   void (*logprintf)(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
   void (*get_values)(enum tgl_value_type type, const char *prompt, int num_values,
           void (*callback)(struct tgl_state *TLS, const void *answer, const void *arg), const void *arg);
   void (*logged_in)();
   void (*started)();
-  void (*type_notification)(struct tgl_user *U, enum tgl_typing_status status);
-  void (*type_in_chat_notification)(struct tgl_user *U, struct tgl_chat *C, enum tgl_typing_status status);
+  void (*type_notification)(int user_id, enum tgl_typing_status status);
+  void (*type_in_chat_notification)(int user_id, int chat_id, enum tgl_typing_status status);
   void (*type_in_secret_chat_notification)(struct tgl_secret_chat *E);
-  void (*status_notification)(struct tgl_user *U);
-  void (*user_registered)(struct tgl_user *U);
-  void (*user_activated)(struct tgl_user *U);
+  void (*status_notification)(int user_id, enum tgl_user_status_type, int expires);
+  void (*user_registered)(int user_id);
   void (*new_authorization)(const char *device, const char *location);
-  void (*channel_update)(struct tgl_channel *C, unsigned flags);
-  void (*user_update)(struct tgl_user *C, unsigned flags);
+  void (*new_user)(int user_id, const char *phone, const char *fistname, const char *lastname, const char *username);
+  void (*user_update)(int user_id, void *value, enum tgl_user_update_type update_type);
+  void (*user_deleted)(int id);
+  void (*profile_picture_update)(int peer_id, long long int photo_id, struct tgl_file_location *photo_small, struct tgl_file_location *photo_big);
   void (*chat_update)(int chat_id, int peers_num, int admin, struct tgl_photo *photo, int date, const char *title, int tl);
   void (*chat_add_user)(int chat_id, int user, int inviter, int date);
   void (*chat_delete_user)(int chat_id, int user);
   void (*secret_chat_update)(struct tgl_secret_chat *C, unsigned flags);
+  void (*channel_update)(struct tgl_channel *C, unsigned flags);
   void (*msg_receive)(struct tgl_message *M);
   void (*our_id)(int id);
   void (*notification)(const char *type, const char *message);
-  void (*user_status_update)(struct tgl_user *U);
   void (*dc_update)(struct tgl_dc *);
   void (*change_active_dc)(int new_dc_id);
   char *(*create_print_name) (struct tgl_state *TLS, tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
@@ -350,8 +367,8 @@ void tgl_set_net_methods (struct tgl_state *TLS, struct tgl_net_methods *methods
 void tgl_set_timer_methods (struct tgl_state *TLS, struct tgl_timer_methods *methods);
 void tgl_set_ev_base (struct tgl_state *TLS, void *ev_base);
 
-int tgl_authorized_dc (struct tgl_state *TLS, struct tgl_dc *DC);
-int tgl_signed_dc (struct tgl_state *TLS, struct tgl_dc *DC);
+int tgl_authorized_dc(struct tgl_dc *DC);
+int tgl_signed_dc(struct tgl_dc *DC);
 
 int tgl_init (struct tgl_state *TLS);
 void tgl_dc_authorize (struct tgl_state *TLS, struct tgl_dc *DC);

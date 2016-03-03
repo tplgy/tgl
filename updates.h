@@ -22,9 +22,6 @@
 #define __UPDATES_H__
 struct tl_ds_updates;
 struct tl_ds_update;
-void tgl_insert_status_update (struct tgl_state *TLS, struct tgl_user *U);
-void tgl_insert_status_expire (struct tgl_state *TLS, struct tgl_user *U);
-void tgl_remove_status_expire (struct tgl_state *TLS, struct tgl_user *U);
   
 int tgl_check_pts_diff (struct tgl_state *TLS, int pts, int pts_count);
 void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_update *DS_U);

@@ -48,7 +48,7 @@ enum tgl_typing_status tglf_fetch_typing (struct tl_ds_send_message_action *DS_S
 void tglf_fetch_chat_participants (struct tgl_state *TLS, struct tgl_chat *C, struct tl_ds_chat_participants *DS_CP);
 void tglf_fetch_int_array (int *dst, struct tl_ds_vector *src, int len);
 void tglf_fetch_int_tuple (int *dst, int **src, int len);
-int tglf_fetch_file_location (struct tgl_state *TLS, struct tgl_file_location *loc, struct tl_ds_file_location *DS_FL);
+int tglf_fetch_file_location (struct tgl_file_location *loc, struct tl_ds_file_location *DS_FL);
 
 void tglf_fetch_message_short (struct tgl_state *TLS, struct tgl_message *M, struct tl_ds_updates *DS_U);
 void tglf_fetch_message_short_chat (struct tgl_state *TLS, struct tgl_message *M, struct tl_ds_updates *DS_U);

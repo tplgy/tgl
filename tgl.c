@@ -176,12 +176,12 @@ int tgl_init (struct tgl_state *TLS) {
   return 0;
 }
 
-int tgl_authorized_dc (struct tgl_state *TLS, struct tgl_dc *DC) {
+int tgl_authorized_dc(struct tgl_dc *DC) {
   assert (DC);
   return DC->flags & TGLDCF_AUTHORIZED;//(DC->flags & 4) != 0;//DC->auth_key_id;
 }
 
-int tgl_signed_dc (struct tgl_state *TLS, struct tgl_dc *DC) {
+int tgl_signed_dc(struct tgl_dc *DC) {
   assert (DC);
   return (DC->flags & TGLDCF_LOGGED_IN) != 0;
 }

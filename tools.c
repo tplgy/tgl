@@ -82,16 +82,6 @@ int clock_gettime(int ignored, struct timespec *spec)
 #include "valgrind/memcheck.h"
 #endif
 
-#define RES_PRE 8
-#define RES_AFTER 8
-#define MAX_BLOCKS 1000000
-static void *blocks[MAX_BLOCKS];
-static void *free_blocks[MAX_BLOCKS];
-static int used_blocks;
-static int free_blocks_cnt;
-
-static long long total_allocated_bytes;
-
 void logprintf (const char *format, ...) __attribute__ ((format (printf, 1, 2), weak));
 void logprintf (const char *format, ...) {
   va_list ap;
@@ -99,10 +89,6 @@ void logprintf (const char *format, ...) {
   vfprintf (stdout, format, ap);
   va_end (ap);
 }
-
-//extern int verbosity;
-
-//static long long total_allocated_bytes;
 
 int tgl_snprintf (char *buf, int len, const char *format, ...) {
   va_list ap;
@@ -162,8 +148,6 @@ void tgl_free_release (void *ptr, int size) {
   free (ptr);
 }
 
-
-
 void *tgl_realloc_debug (void *ptr, size_t old_size __attribute__ ((unused)), size_t size) {
   void *p = talloc (size);
   memcpy (p, ptr, size >= old_size ? old_size : size); 
@@ -180,20 +164,6 @@ void *tgl_realloc_release (void *ptr, size_t old_size __attribute__ ((unused)), 
   void *p = realloc (ptr, size);
   ensure_ptr (p);
   return p;
-}
-
-void *tgl_alloc_debug (size_t size) {
-  total_allocated_bytes += size;
-  void *p = malloc (size + RES_PRE + RES_AFTER);
-  ensure_ptr (p);
-  *(int *)p = size ^ 0xbedabeda;
-  *(int *)(p + 4) = size;
-  *(int *)(p + RES_PRE + size) = size ^ 0x7bed7bed;
-  *(int *)(p + RES_AFTER + 4 + size) = used_blocks;
-  blocks[used_blocks ++] = p;
-
-  //tcheck ();
-  return p + 8;
 }
 
 void *tgl_alloc_release (size_t size) {
@@ -252,51 +222,6 @@ int tgl_inflate (void *input, int ilen, void *output, int olen) {
   return total_out;
 }
 
-void tgl_check_debug (void) {
-  int i;
-  for (i = 0; i < used_blocks; i++) {
-    void *ptr = blocks[i];
-    int size = (*(int *)ptr) ^ 0xbedabeda;
-    if (!(*(int *)(ptr + 4) == size) || 
-        !(*(int *)(ptr + RES_PRE + size) == (size ^ 0x7bed7bed)) ||
-        !(*(int *)(ptr + RES_PRE + 4 + size) == i)) {
-      logprintf ("Bad block at address %p (size %d, num %d)\n", ptr, size, i);
-      assert (0 && "Bad block");
-    }
-  }
-  for (i = 0; i < free_blocks_cnt; i++) {
-    void *ptr = free_blocks[i];
-    int l = *(int *)ptr;
-    int j = 0;
-    for (j = 0; j < l; j++) {
-      if (*(char *)(ptr + 4 + j)) {
-        hexdump (ptr + 8, ptr + 8 + l + ((-l) & 3)); 
-        logprintf ("Used freed memory size = %d. ptr = %p\n", l + 4 - RES_PRE - RES_AFTER, ptr);
-        assert (0);
-      }
-    }
-  }
-  //logprintf ("ok. Used_blocks = %d. Free blocks = %d\n", used_blocks, free_blocks_cnt);
-}
-
-void tgl_exists_debug (void *ptr, int size) {
-  ptr -= RES_PRE;
-  if (size != (int)((*(int *)ptr) ^ 0xbedabeda)) {
-    logprintf ("size = %d, ptr = %d\n", size, (*(int *)ptr) ^ 0xbedabeda);
-  }
-  assert (*(int *)ptr == (int)((size) ^ 0xbedabeda));
-  assert (*(int *)(ptr + RES_PRE + size) == (int)((size) ^ 0x7bed7bed));
-  assert (*(int *)(ptr + 4) == size);
-  int block_num = *(int *)(ptr + 4 + RES_PRE + size);
-  if (block_num >= used_blocks) {
-    logprintf ("block_num = %d, used = %d\n", block_num, used_blocks);
-  }
-  assert (block_num < used_blocks);
-}
-
-void tgl_exists_release (void *ptr, int size) {}
-void tgl_check_release (void) {}
-
 void tgl_my_clock_gettime (int clock_id, struct timespec *T) {
 #ifdef __MACH__
   // We are ignoring MONOTONIC and hope time doesn't go back too often
@@ -333,20 +258,10 @@ void tglt_secure_random (void *s, int l) {
   }
 }
 
-struct tgl_allocator tgl_allocator_debug = {
-  .alloc = tgl_alloc_debug,
-  .realloc = tgl_realloc_debug,
-  .free = tgl_free_debug,
-  .check = tgl_check_debug,
-  .exists = tgl_exists_debug
-};
-
 struct tgl_allocator tgl_allocator_release = {
   .alloc = tgl_alloc_release,
   .realloc = tgl_realloc_release,
-  .free = tgl_free_release,
-  .check = tgl_check_release,
-  .exists = tgl_exists_release
+  .free = tgl_free_release
 };
 
 long long tgl_get_allocated_bytes (void) {

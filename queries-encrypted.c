@@ -109,6 +109,7 @@ void tgl_do_send_encr_chat_layer (struct tgl_state *TLS, struct tgl_secret_chat 
 }
 
 void tgl_do_set_encr_chat_ttl (struct tgl_state *TLS, struct tgl_secret_chat *E, int ttl, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
+    TGL_UNUSED(callback_extra);
     static struct tl_ds_decrypted_message_action A;
     A.magic = CODE_decrypted_message_action_set_message_t_t_l;
     A.layer = &ttl;
@@ -119,6 +120,7 @@ void tgl_do_set_encr_chat_ttl (struct tgl_state *TLS, struct tgl_secret_chat *E,
 
 /* {{{ Seng msg (plain text, encrypted) */
 static int msg_send_encr_on_answer (struct tgl_state *TLS, struct query *q, void *D) {
+  TGL_UNUSED(D);
   struct tgl_message *M = q->extra;
   assert (M->flags & TGLMF_ENCRYPTED);
   
@@ -127,7 +129,8 @@ static int msg_send_encr_on_answer (struct tgl_state *TLS, struct query *q, void
       &M->date,
       NULL, 0, NULL, NULL, NULL, M->flags ^ TGLMF_PENDING);
     
-    bl_do_msg_update (TLS, &M->permanent_id);
+    //bl_do_msg_update (TLS, &M->permanent_id);
+    TLS->callback.new_msg(M->permanent_id);
   }
 
   if (q->callback) {
@@ -310,7 +313,7 @@ void tgl_do_messages_mark_read_encr (struct tgl_state *TLS, tgl_peer_id_t id, lo
     out_int (tgl_get_peer_id (id));
     out_long (access_hash);
     out_int (last_time);
-    tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &mark_read_encr_methods, tgl_peer_get (TLS, id), (void*)callback, callback_extra);
+    tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &mark_read_encr_methods, /*tgl_peer_get (TLS, id)*/0, (void*)callback, callback_extra);
 }
 
 static int send_encr_file_on_answer (struct tgl_state *TLS, struct query *q, void *D) {
@@ -499,7 +502,8 @@ static int send_encr_request_on_answer (struct tgl_state *TLS, struct query *q, 
 }
 
 static int encr_accept_on_error (struct tgl_state *TLS, struct query *q, int error_code, int error_len, const char *error) {
-  tgl_peer_t *P = q->extra;
+  TGL_UNUSED(error_len);
+  tgl_peer_t *P = (tgl_peer_t *)q->extra;
   if (P && P->encr_chat.state != sc_deleted &&  error_code == 400) {
     if (strncmp (error, "ENCRYPTION_DECLINED", 19) == 0) {
       bl_do_peer_delete (TLS, P->id);
