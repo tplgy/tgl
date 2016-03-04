@@ -122,7 +122,7 @@ struct tgl_update_callback {
   void (*started)();
   void (*type_notification)(int user_id, enum tgl_typing_status status);
   void (*type_in_chat_notification)(int user_id, int chat_id, enum tgl_typing_status status);
-  void (*type_in_secret_chat_notification)(struct tgl_secret_chat *E);
+  void (*type_in_secret_chat_notification)(int chat_id);
   void (*status_notification)(int user_id, enum tgl_user_status_type, int expires);
   void (*user_registered)(int user_id);
   void (*new_authorization)(const char *device, const char *location);
@@ -140,8 +140,8 @@ struct tgl_update_callback {
   void (*notification)(const char *type, const char *message);
   void (*dc_update)(struct tgl_dc *);
   void (*change_active_dc)(int new_dc_id);
-  char *(*create_print_name) (struct tgl_state *TLS, tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
-  void (*on_failed_login) (struct tgl_state *TLS);
+  char *(*create_print_name) (tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
+  void (*on_failed_login) ();
 };
 
 struct tgl_net_methods {
@@ -177,6 +177,7 @@ struct tgl_timer_methods {
 #define E_ERROR 0
 #define E_WARNING 1
 #define E_NOTICE 2
+#define E_DEBUG2 3
 #define E_DEBUG 6
 
 #define TGL_LOCK_DIFF 1
@@ -290,12 +291,7 @@ struct tgl_state {
 extern "C" {
 #endif
 
-void tgl_reopen_binlog_for_writing (struct tgl_state *TLS);
-void tgl_replay_log (struct tgl_state *TLS);
-
-int tgl_print_stat (struct tgl_state *TLS, char *s, int len);
 tgl_peer_t *tgl_peer_get (struct tgl_state *TLS, tgl_peer_id_t id);
-tgl_peer_t *tgl_peer_get_by_name (struct tgl_state *TLS, const char *s);
 
 struct tgl_message *tgl_message_get (struct tgl_state *TLS, tgl_message_id_t *id);
 void tgl_peer_iterator_ex (struct tgl_state *TLS, void (*it)(tgl_peer_t *P, void *extra), void *extra);
@@ -372,9 +368,6 @@ int tgl_signed_dc(struct tgl_dc *DC);
 
 int tgl_init (struct tgl_state *TLS);
 void tgl_dc_authorize (struct tgl_state *TLS, struct tgl_dc *DC);
-
-void tgl_dc_iterator (struct tgl_state *TLS, void (*iterator)(struct tgl_dc *DC));
-void tgl_dc_iterator_ex (struct tgl_state *TLS, void (*iterator)(struct tgl_dc *DC, void *extra), void *extra);
 
 #define TGL_SEND_MSG_FLAG_DISABLE_PREVIEW 1
 #define TGL_SEND_MSG_FLAG_ENABLE_PREVIEW 2

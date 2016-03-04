@@ -155,9 +155,6 @@ void tgl_set_rsa_key_direct (struct tgl_state *TLS, unsigned long e, int n_bytes
 int tgl_init (struct tgl_state *TLS) {
   assert (TLS->timer_methods);
   assert (TLS->net_methods);
-  if (!TLS->callback.create_print_name) {
-    TLS->callback.create_print_name = tgls_default_create_print_name;
-  }
   if (!TLS->temp_key_expire_time) {
     TLS->temp_key_expire_time = 100000;
   }
@@ -193,10 +190,6 @@ void tgl_register_app_id (struct tgl_state *TLS, int app_id, const char *app_has
 
 struct tgl_state *tgl_state_alloc (void) {
   return (struct tgl_state *)talloc0 (sizeof (struct tgl_state));
-}
-
-void tgl_incr_verbosity (struct tgl_state *TLS) {
-  TLS->verbosity ++;
 }
 
 void tgl_set_verbosity (struct tgl_state *TLS, int val) {

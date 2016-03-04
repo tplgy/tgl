@@ -20,7 +20,7 @@ void tgl_do_send_code (struct tgl_state *TLS, const char *phone, int phone_len, 
 void tgl_do_phone_call (struct tgl_state *TLS, const char *phone, int phone_len, const char *hash, int hash_len, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success), void *callback_extra);
 
 // sends code from SMS to server. This step should end authorization, unless user have password
-int tgl_do_send_code_result (struct tgl_state *TLS, const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_user *Self), void *callback_extra);
+int tgl_do_send_code_result (struct tgl_state *TLS, const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success), void *callback_extra);
 
 
 // sends code from SMS, username and lastname to server. This step should end new user registration

@@ -25,9 +25,6 @@
 #include "tgl-fetch.h"
 #include "tgl.h"
 
-char *tgls_default_create_print_name (struct tgl_state *TLS, tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
-
-
 void tgls_free_user (struct tgl_state *TLS, struct tgl_user *U);
 void tgls_free_chat (struct tgl_state *TLS, struct tgl_chat *U);
 void tgls_free_photo (struct tgl_state *TLS, struct tgl_photo *P);
@@ -55,8 +52,8 @@ void tglm_message_add_use (struct tgl_state *TLS, struct tgl_message *M);
 void tglm_message_del_temp_id (struct tgl_state *TLS, struct tgl_message *M);
 void tglm_message_del_random_id (struct tgl_state *TLS, struct tgl_message *M);
 
-void tglp_peer_insert_name (struct tgl_state *TLS, tgl_peer_t *P);
-void tglp_peer_delete_name (struct tgl_state *TLS, tgl_peer_t *P);
+//void tglp_peer_insert_name (struct tgl_state *TLS, tgl_peer_t *P);
+//void tglp_peer_delete_name (struct tgl_state *TLS, tgl_peer_t *P);
 void tglp_insert_encrypted_chat (struct tgl_state *TLS, tgl_peer_t *P);
 void tglp_insert_user (struct tgl_state *TLS, tgl_peer_t *P);
 void tglp_insert_chat (struct tgl_state *TLS, tgl_peer_t *P);

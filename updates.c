@@ -366,6 +366,7 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       }
     }
         break;
+    }
     case CODE_update_encryption:
     {
       struct tgl_secret_chat *E = tglf_fetch_alloc_encrypted_chat (TLS, DS_U->encr_chat);     
@@ -375,16 +376,14 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       }
     }
         break;
+    }
+
     case CODE_update_encrypted_chat_typing:
     {
-        tgl_peer_id_t id = TGL_MK_ENCR_CHAT (DS_LVAL (DS_U->chat_id));
-        tgl_peer_t *P = tgl_peer_get (TLS, id);
-
-        if (P) {
             if (TLS->callback.type_in_secret_chat_notification) {
-                TLS->callback.type_in_secret_chat_notification ((void *)P);
+                TLS->callback.type_in_secret_chat_notification(DS_LVAL (DS_U->chat_id));
             }
-        }
+
         break;
     }
     case CODE_update_encrypted_messages_read:
@@ -722,7 +721,7 @@ void tglu_work_update_short_chat_message (struct tgl_state *TLS, int check_only,
 
   if (1) {
     //bl_do_msg_update (TLS, &M->permanent_id);
-    TLS->callback.new_msg(M);
+    TLS->callback.new_msg(&M->permanent_id);
   }
 
   if (check_only) { return; }

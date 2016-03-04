@@ -312,29 +312,32 @@ struct tgl_user *tglf_fetch_alloc_user (struct tgl_state *TLS, struct tl_ds_user
     DS_CSTR(phone, DS_U->phone);
     DS_CSTR(username, DS_U->username);
 
-    TLS->callback.new_user(tgl_get_peer_id (U->id), phone, firstname, lastname, username);
+    if (DS_LVAL (DS_U->flags) & (1 << 13)) {
+        if (TLS->callback.user_deleted) {
+            TLS->callback.user_deleted (user_id);
+        }
+        return user_id;
+    } else {
+        DS_CSTR(firstname, DS_U->first_name);
+        DS_CSTR(lastname, DS_U->last_name);
+        DS_CSTR(phone, DS_U->phone);
+        DS_CSTR(username, DS_U->username);
 
-    if (DS_U->photo) {
-        struct tgl_file_location photo_small, photo_big;
-        tglf_fetch_file_location_new (&photo_big, DS_U->photo->photo_big);
-        tglf_fetch_file_location_new (&photo_small, DS_U->photo->photo_small);
+        TLS->callback.new_user(user_id, phone, firstname, lastname, username);
 
-        TLS->callback.profile_picture_update(tgl_get_peer_id (U->id), DS_LVAL(DS_U->photo->photo_id), &photo_small, &photo_big);
-    }
-
-    //    if (DS_U->status) {
-    //        assert (tglf_fetch_user_status_new (TLS, &U->status, U, DS_U->status) >= 0);
-    //    }
+        free(firstname);
+        free(lastname);
+        free(phone);
+        free(username);
 
     if (DS_LVAL (DS_U->flags) & (1 << 13)) {
         if (!(U->flags & TGLUF_DELETED)) {
             //bl_do_peer_delete (TLS, U->id);
             U->flags |= TGLUF_DELETED;
 
-            if (TLS->callback.user_deleted) {
-                TLS->callback.user_deleted (U->id.id);
-            }
+            TLS->callback.profile_picture_update(user_id, DS_LVAL(DS_U->photo->photo_id), &photo_small, &photo_big);
         }
+        return user_id;
     }
   }
   
@@ -370,13 +373,13 @@ struct tgl_user *tglf_fetch_alloc_user_full (struct tgl_state *TLS, struct tl_ds
   );
 #endif
 
-    TLS->callback.new_user(tgl_get_peer_id (U->id), "", "", "", "");
+    TLS->callback.new_user(user_id, "", "", "", "");
 
     if (DS_UF->user->photo) {
         struct tgl_file_location photo_small, photo_big;
         tglf_fetch_file_location_new(&photo_big, DS_UF->user->photo->photo_big);
         tglf_fetch_file_location_new(&photo_small, DS_UF->user->photo->photo_small);
-        TLS->callback.profile_picture_update(tgl_get_peer_id (U->id), DS_LVAL(DS_UF->user->photo->photo_id), &photo_small, &photo_big);
+        TLS->callback.profile_picture_update(user_id, DS_LVAL(DS_UF->user->photo->photo_id), &photo_small, &photo_big);
     }
 
   return U;
@@ -1952,7 +1955,7 @@ struct tgl_message *tglf_fetch_alloc_encrypted_message (struct tgl_state *TLS, s
         if (M->action.type == tgl_message_action_notify_layer) {
             bl_do_encr_chat_new (TLS, tgl_get_peer_id (E->id),
                                  NULL, NULL, NULL, NULL,
-                                 NULL, NULL, NULL, NULL,
+                                 NULL, NULL, NULL,
                                  NULL, &M->action.layer, NULL, NULL, NULL, NULL,
                                  TGL_FLAGS_UNCHANGED
                                  );
@@ -1961,7 +1964,7 @@ struct tgl_message *tglf_fetch_alloc_encrypted_message (struct tgl_state *TLS, s
             //bl_do_encr_chat_set_ttl (TLS, E, M->action.ttl);
             bl_do_encr_chat_new (TLS, tgl_get_peer_id (E->id),
                                  NULL, NULL, NULL, NULL,
-                                 NULL, NULL, NULL, NULL,
+                                 NULL, NULL, NULL,
                                  &M->action.ttl, NULL, NULL, NULL, NULL, NULL,
                                  TGL_FLAGS_UNCHANGED
                                  );
@@ -2673,21 +2676,6 @@ void tgl_free_all (struct tgl_state *TLS) {
 
   tfree (TLS->Peers, TLS->peer_size * sizeof (void *));
   tfree (TLS, sizeof (*TLS));
-}
-
-int tgl_print_stat (struct tgl_state *TLS, char *s, int len) {
-    return tsnprintf (s, len,
-                      "users_allocated\t%d\n"
-                      "chats_allocated\t%d\n"
-                      "encr_chats_allocated\t%d\n"
-                      "peer_num\t%d\n"
-                      "messages_allocated\t%d\n",
-                      TLS->users_allocated,
-                      TLS->chats_allocated,
-                      TLS->encr_chats_allocated,
-                      TLS->peer_num,
-                      TLS->messages_allocated
-                      );
 }
 
 void tglf_fetch_int_array (int *dst, struct tl_ds_vector *src, int len) {

@@ -108,8 +108,7 @@ void tgl_do_send_encr_chat_layer (struct tgl_state *TLS, struct tgl_secret_chat 
     tgl_do_send_encr_action (TLS, E, &A);
 }
 
-void tgl_do_set_encr_chat_ttl (struct tgl_state *TLS, struct tgl_secret_chat *E, int ttl, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
-    TGL_UNUSED(callback_extra);
+void tgl_do_set_encr_chat_ttl (struct tgl_state *TLS, struct tgl_secret_chat *E, int ttl) {
     static struct tl_ds_decrypted_message_action A;
     A.magic = CODE_decrypted_message_action_set_message_t_t_l;
     A.layer = &ttl;
@@ -151,7 +150,8 @@ static int msg_send_encr_on_error (struct tgl_state *TLS, struct query *q, int e
     ((void (*)(struct tgl_state *TLS, void *, int, struct tgl_message *))q->callback) (TLS, q->callback_extra, 0, M);
   }
   if (M) {
-    bl_do_message_delete (TLS, &M->permanent_id);
+    //bl_do_message_delete (TLS, &M->permanent_id);
+    TLS->callback.msg_deleted(&M->permanent_id);
   }
   return 0;
 }
@@ -282,6 +282,7 @@ void tgl_do_send_encr_msg (struct tgl_state *TLS, struct tgl_message *M, void (*
 }
 
 static int mark_read_encr_on_receive (struct tgl_state *TLS, struct query *q, void *D) {
+    TGL_UNUSED(D);
     if (q->callback) {
         ((void (*)(struct tgl_state *, void *, int))q->callback)(TLS, q->callback_extra, 1);
     }
@@ -612,7 +613,7 @@ void tgl_do_send_accept_encr_chat (struct tgl_state *TLS, struct tgl_secret_chat
   TGLC_bn_clear_free (g_a);
   TGLC_bn_clear_free (r);
 
-  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_encr_accept_methods, E, callback, callback_extra);
+  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_encr_accept_methods, E, (void*)callback, callback_extra);
 }
 
 void tgl_do_create_keys_end (struct tgl_state *TLS, struct tgl_secret_chat *U) {
@@ -714,7 +715,7 @@ void tgl_do_send_create_encr_chat (struct tgl_state *TLS, void *x, unsigned char
   TGLC_bn_clear_free (p);
   TGLC_bn_clear_free (r);
 
-  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_encr_request_methods, E, callback, callback_extra);
+  tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_encr_request_methods, E, (void*)callback, callback_extra);
 }
 
 static int send_encr_discard_on_answer (struct tgl_state *TLS, struct query *q, void *D) {

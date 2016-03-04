@@ -319,13 +319,6 @@ struct tgl_encr_document {
   int duration;
 };
 
-
-struct tgl_user_status {
-  int online;
-  int when;
-  struct tgl_timer *ev;
-};
-
 struct tgl_bot_command {
   char *command;
   char *description;
@@ -357,7 +350,7 @@ struct tgl_user {
   char *last_name;
   char *phone;
   long long access_hash;
-  struct tgl_user_status status;
+//  /struct tgl_user_status status;
   int blocked;
   char *real_first_name;
   char *real_last_name;
