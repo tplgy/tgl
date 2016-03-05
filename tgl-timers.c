@@ -22,9 +22,12 @@
 //#include <buffer.h>
 
 #include "tgl.h"
+#include "auto.h"
 #include <stdlib.h>
 
 static void timer_alarm (evutil_socket_t fd, short what, void *arg) {
+  TGL_UNUSED(fd);
+  TGL_UNUSED(what);
   void **p = arg;
   ((void (*)(struct tgl_state *, void *))p[1]) (p[0], p[2]);
 }

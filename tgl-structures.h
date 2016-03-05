@@ -25,19 +25,14 @@
 #include "tgl-fetch.h"
 #include "tgl.h"
 
-void tgls_free_user (struct tgl_state *TLS, struct tgl_user *U);
-void tgls_free_chat (struct tgl_state *TLS, struct tgl_chat *U);
-void tgls_free_photo (struct tgl_state *TLS, struct tgl_photo *P);
-void tgls_free_message (struct tgl_state *TLS, struct tgl_message *M);
 void tgls_free_bot_info (struct tgl_bot_info *B);
-void tgls_clear_message (struct tgl_state *TLS, struct tgl_message *M);
 
 struct tgl_message *tglm_message_create(struct tgl_state *TLS, long long id, int *from_id,
                                         int *to_type, int *to_id, int *fwd_from_id, int *fwd_date,
-                                        int *date, const char *message, int message_len,
+                                        int *date, const char *message,
                                         struct tl_ds_message_media *media, struct tl_ds_message_action *action,
                                         int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags);
-struct tgl_message *tglm_message_alloc (struct tgl_state *TLS, tgl_message_id_t *id);
+struct tgl_message *tglm_message_alloc (tgl_message_id_t *id);
 void tglm_message_insert_tree (struct tgl_state *TLS, struct tgl_message *M);
 void tglm_update_message_id (struct tgl_state *TLS, struct tgl_message *M, long long id);
 void tglm_message_insert (struct tgl_state *TLS, struct tgl_message *M);
@@ -52,14 +47,14 @@ void tglm_message_add_use (struct tgl_state *TLS, struct tgl_message *M);
 void tglm_message_del_temp_id (struct tgl_state *TLS, struct tgl_message *M);
 void tglm_message_del_random_id (struct tgl_state *TLS, struct tgl_message *M);
 
-//void tglp_peer_insert_name (struct tgl_state *TLS, tgl_peer_t *P);
-//void tglp_peer_delete_name (struct tgl_state *TLS, tgl_peer_t *P);
+#ifdef ENABLE_SECRET_CHAT
 void tglp_insert_encrypted_chat (struct tgl_state *TLS, tgl_peer_t *P);
 void tglp_insert_user (struct tgl_state *TLS, tgl_peer_t *P);
 void tglp_insert_chat (struct tgl_state *TLS, tgl_peer_t *P);
 void tglp_insert_channel (struct tgl_state *TLS, tgl_peer_t *P);
 //enum tgl_typing_status tglf_fetch_typing_buf (void);
 void tgls_messages_mark_read (struct tgl_state *TLS, struct tgl_message *M, int out, int seq);
+#endif
 
 //void tgls_insert_random2local (struct tgl_state *TLS, long long random_id, tgl_message_id_t *local_id);
 //void tgls_insert_temp2local (struct tgl_state *TLS, int temp_id, tgl_message_id_t *local_id);

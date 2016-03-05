@@ -18,9 +18,9 @@
     Copyright Vitaly Valtman 2013-2015
 */
 
-#ifdef HAVE_CONFIG_H
-#  include "config.h"
-#endif
+#include "tgl.h"
+
+#ifdef ENABLE_SECRET_CHAT
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -35,10 +35,7 @@
 #include "crypto/bn.h"
 
 #include "tgl-binlog.h"
-//#include "net.h"
 #include "mtproto-client.h"
-
-#include "tgl.h"
 
 //extern "C" {
 #include "mtproto-common.h"

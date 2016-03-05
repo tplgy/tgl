@@ -20,8 +20,9 @@
 #ifndef __BINLOG_H__
 #define __BINLOG_H__
 
-//#include "structures.h"
 #include "tgl.h"
+#ifdef ENABLE_SECRET_CHAT
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,6 +65,8 @@ void bl_do_peer_delete (struct tgl_state *TLS, tgl_peer_id_t id);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 #endif

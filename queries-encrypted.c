@@ -1,12 +1,20 @@
 
 // This file will be included
 
+#ifdef ENABLE_SECRET_CHAT
 #include "tgl-layout.h"
 
 /* {{{ Encrypt decrypted */
 static int *encr_extra;
 static int *encr_ptr;
 static int *encr_end;
+
+static void out_random (int n) {
+    assert (n <= 32);
+    static unsigned char buf[32];
+    tglt_secure_random (buf, n);
+    out_cstring ((char*)buf, n);
+}
 
 static char *encrypt_decrypted_message (struct tgl_secret_chat *E) {
   static int msg_key[4];
@@ -298,7 +306,6 @@ static int mark_read_encr_on_error (struct tgl_state *TLS, struct query *q, int 
     return 0;
 }
 
-struct paramed_type bool_type = (struct paramed_type) {.type = &tl_type_bool, .params=0};
 static struct query_methods mark_read_encr_methods = {
   .on_answer = mark_read_encr_on_receive,
   .on_error = mark_read_encr_on_error,
@@ -818,3 +825,4 @@ void tgl_do_create_encr_chat_request (struct tgl_state *TLS, int user_id, void (
     tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dh_config_methods, x, (void*)callback, callback_extra);
 }
 /* }}} */
+#endif

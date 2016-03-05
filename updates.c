@@ -376,7 +376,6 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       }
     }
         break;
-    }
 
     case CODE_update_encrypted_chat_typing:
     {
@@ -399,8 +398,9 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
           }
           M = M->next;
         }
-    }
+#endif
         break;
+    }
     case CODE_update_chat_participant_add:
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
@@ -411,10 +411,13 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       tgl_peer_t *C = tgl_peer_get (TLS, chat_id);
       if (C && (C->flags & TGLPF_CREATED)) {
         //bl_do_chat_add_user (TLS, C->id, version, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
-        TLS->callback.chat_add_user(chat_id.id, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
+        if (TLS->callback.chat_add_user) {
+          TLS->callback.chat_add_user(chat_id.id, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
+        }
       }
     }
         break;
+    }
     case CODE_update_chat_participant_delete:
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
@@ -424,10 +427,13 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       tgl_peer_t *C = tgl_peer_get (TLS, chat_id);
       if (C && (C->flags & TGLPF_CREATED)) {
         //bl_do_chat_del_user (TLS, C->id, version, tgl_get_peer_id (user_id));
-        TLS->callback.chat_delete_user (C->chat.id.id, tgl_get_peer_id (user_id));
+        if (TLS->callback.chat_delete_user) {
+          TLS->callback.chat_delete_user (C->chat.id.id, tgl_get_peer_id (user_id));
+        }
       }
     }
         break;
+    }
     case CODE_update_dc_options:
     {
       int i;
@@ -436,6 +442,7 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       }
     }
         break;
+    }
     case CODE_update_user_blocked:
     {
         int blocked = DS_BVAL (DS_U->blocked);
@@ -448,14 +455,16 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
                 flags &= ~TGLUF_BLOCKED;
             }
             //bl_do_user (TLS, tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, flags);
-            TLS->callback.user_update(tgl_get_peer_id (P->id), &blocked, tgl_update_blocked);
+            if (TLS->callback.user_update) {
+              TLS->callback.user_update(tgl_get_peer_id (P->id), &blocked, tgl_update_blocked);
+            }
         }
-    }
         break;
+    }
     case CODE_update_notify_settings:
     {
-    }
         break;
+    }
     case CODE_update_service_notification:
     {
         vlogprintf (E_ERROR, "Notification %.*s: %.*s\n", DS_RSTR (DS_U->type), DS_RSTR (DS_U->message_text));
@@ -472,11 +481,14 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       tgl_peer_t *U = tgl_peer_get (TLS, TGL_MK_USER (DS_LVAL (DS_U->user_id)));
       if (U && (U->flags & TGLPF_CREATED)) {
         //bl_do_user (TLS, tgl_get_peer_id (U->id), NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-        DS_CSTR (phone, DS_U->phone);
-        TLS->callback.user_update(tgl_get_peer_id (U->id), phone, tgl_update_phone);
+        if(TLS->callback.user_update) {
+          DS_CSTR (phone, DS_U->phone);
+          TLS->callback.user_update(tgl_get_peer_id (U->id), phone, tgl_update_phone);
+        }
       }
     }
         break;
+    }
     case CODE_update_read_history_inbox:
     {
       tgl_peer_id_t id = tglf_fetch_peer_id (TLS, DS_U->peer);
@@ -518,10 +530,10 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
     break;
   /*case CODE_update_msg_update:
     {
-        struct tgl_message *M = tgl_message_get (TLS, DS_LVAL (DS_U->id));
-        if (M) {
-            TLS->callback.new_msg(M);
-        }
+//        struct tgl_message *M = tgl_message_get (TLS, DS_LVAL (DS_U->id));
+//        if (M) {
+//            TLS->callback.new_msg(M);
+//        }
     }
         break;
     case CODE_update_read_messages_contents:

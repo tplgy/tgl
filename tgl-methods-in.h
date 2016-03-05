@@ -28,7 +28,7 @@ int tgl_do_send_code_result_auth (struct tgl_state *TLS, const char *phone, int 
 
 /* }}} */
 
-void tgl_do_send_msg (struct tgl_state *TLS, struct tgl_message *M, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+void tgl_do_send_msg (struct tgl_state *TLS, struct tgl_message *M, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
 
 void tgl_do_check_password (struct tgl_state *TLS, void (*callback)(struct tgl_state *TLS, void *extra, int success), void *callback_extra);
 

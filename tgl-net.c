@@ -42,8 +42,7 @@
 #include "tgl-net.h"
 #include "tgl.h"
 #include "tgl-inner.h"
-//#include "mtproto-client.h"
-//#include "mtproto-common.h"
+#include "auto.h"
 #include "tree.h"
 #include "tools.h"
 #include "mtproto-client.h"
@@ -62,6 +61,8 @@ static void fail_connection (struct connection *c);
 
 static void start_ping_timer (struct connection *c);
 static void ping_alarm (evutil_socket_t fd, short what, void *arg) {
+  TGL_UNUSED(fd);
+  TGL_UNUSED(what);
   struct connection *c = arg;
   struct tgl_state *TLS = c->TLS;
   vlogprintf (E_DEBUG + 2,"ping alarm\n");
@@ -90,6 +91,8 @@ static void start_ping_timer (struct connection *c) {
 static void restart_connection (struct connection *c);
 
 static void fail_alarm (evutil_socket_t fd, short what, void *arg) {
+  TGL_UNUSED(fd);
+  TGL_UNUSED(what);
   struct connection *c = arg;
   c->in_fail_timer = 0;
   restart_connection (c);
@@ -211,6 +214,7 @@ int tgln_read_in_lookup (struct connection *c, void *_data, int len) {
 }
 
 void tgln_flush_out (struct connection *c) {
+    TGL_UNUSED(c);
 }
 
 #define MAX_CONNECTIONS 100
@@ -235,12 +239,16 @@ static void try_read (struct connection *c);
 static void try_write (struct connection *c);
 
 static void conn_try_read (evutil_socket_t fd, short what, void *arg) {
+  TGL_UNUSED(fd);
+  TGL_UNUSED(what);
   struct connection *c = arg;
   struct tgl_state *TLS = c->TLS;
   vlogprintf (E_DEBUG + 1, "Try read. Fd = %d\n", c->fd);
   try_read (c);
 }
 static void conn_try_write (evutil_socket_t fd, short what, void *arg) {
+  TGL_UNUSED(fd);
+  TGL_UNUSED(what);
   struct connection *c = arg;
   struct tgl_state *TLS = c->TLS;
   if (c->state == conn_connecting) {

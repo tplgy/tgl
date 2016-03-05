@@ -46,6 +46,7 @@ void tglf_fetch_message_action_encrypted (struct tgl_state *TLS, struct tgl_mess
 int tglf_fetch_user_status (struct tgl_state *TLS, struct tgl_user_status *S, struct tgl_user *U, struct tl_ds_user_status *DS_US);
 enum tgl_typing_status tglf_fetch_typing (struct tl_ds_send_message_action *DS_SMA);
 void tglf_fetch_chat_participants (struct tgl_state *TLS, struct tgl_chat *C, struct tl_ds_chat_participants *DS_CP);
+
 void tglf_fetch_int_array (int *dst, struct tl_ds_vector *src, int len);
 void tglf_fetch_int_tuple (int *dst, int **src, int len);
 int tglf_fetch_file_location (struct tgl_file_location *loc, struct tl_ds_file_location *DS_FL);
@@ -55,8 +56,8 @@ void tglf_fetch_message_short_chat (struct tgl_state *TLS, struct tgl_message *M
 
 struct tgl_message *tglf_fetch_alloc_message_short (struct tgl_state *TLS, struct tl_ds_updates *DS_U);
 struct tgl_message *tglf_fetch_alloc_message_short_chat (struct tgl_state *TLS, struct tl_ds_updates *DS_U);
-struct tgl_photo *tglf_fetch_alloc_photo (struct tgl_state *TLS, struct tl_ds_photo *DS_P);
+struct tgl_photo *tglf_fetch_alloc_photo (struct tl_ds_photo *DS_P);
 struct tgl_bot_info *tglf_fetch_alloc_bot_info (struct tl_ds_bot_info *DS_BI);
-struct tgl_message_reply_markup *tglf_fetch_alloc_reply_markup (struct tgl_state *TLS, struct tgl_message *M, struct tl_ds_reply_markup *DS_RM);
+struct tgl_message_reply_markup *tglf_fetch_alloc_reply_markup (struct tgl_message *M, struct tl_ds_reply_markup *DS_RM);
 void tglf_fetch_message_entities (struct tgl_state *TLS, struct tgl_message *M, struct tl_ds_vector *DS);
 #endif

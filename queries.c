@@ -539,13 +539,6 @@ int tglq_query_result (struct tgl_state *TLS, long long id) {
   return 0;
 }
 
-static void out_random (int n) {
-    assert (n <= 32);
-    static unsigned char buf[32];
-    tglt_secure_random (buf, n);
-    out_cstring ((char*)buf, n);
-}
-
 void tgl_do_insert_header (struct tgl_state *TLS) {
   out_int (CODE_invoke_with_layer);
   out_int (TGL_SCHEME_LAYER);
@@ -1097,7 +1090,9 @@ static int msg_send_on_error (struct tgl_state *TLS, struct query *q, int error_
   }
   if (M) {
     //bl_do_message_delete (TLS, &M->permanent_id);
-    TLS->callback.msg_deleted(&M->permanent_id);
+    if (TLS->callback.msg_deleted) {
+      TLS->callback.msg_deleted(&M->permanent_id);
+    }
   }
   return 0;
 }
@@ -1868,7 +1863,7 @@ static int send_file_part_on_error (struct tgl_state *TLS, struct query *q, int 
     free (f);
     return 0;
 }
-
+struct paramed_type bool_type = (struct paramed_type) {.type = &tl_type_bool, .params=0};
 static struct query_methods send_file_part_methods = {
   .on_answer = send_file_part_on_answer,
   .on_error = send_file_part_on_error,
@@ -1933,6 +1928,7 @@ static void send_avatar_end (struct tgl_state *TLS, struct send_file *f, void *c
 }
 
 
+#ifdef ENABLE_SECRET_CHAT
 static void send_file_unencrypted_end (struct tgl_state *TLS, struct send_file *f, void *callback, void *callback_extra) {
   out_int (CODE_messages_send_media);
   out_int ((f->reply ? 1 : 0) | f->channel);
@@ -2054,6 +2050,7 @@ static void send_file_unencrypted_end (struct tgl_state *TLS, struct send_file *
     free (f->caption);
     free (f);
 }
+#endif
 
 static void send_file_end (struct tgl_state *TLS, struct send_file *f, void *callback, void *callback_extra) {
     TLS->cur_uploaded_bytes -= f->size;
@@ -2388,10 +2385,11 @@ static int send_msgs_on_error (struct tgl_state *TLS, struct query *q, int error
     }
 }
 
+struct updates_type = TYPE_TO_PARAM(updates);
 static struct query_methods send_msgs_methods = {
   .on_answer = send_msgs_on_answer,
   .on_error = send_msgs_on_error,
-  .type = TYPE_TO_PARAM(updates),
+  .type = &updates_type,
   .name = "forward messages"
 };
 
@@ -2523,11 +2521,12 @@ void tgl_do_forward_message (struct tgl_state *TLS, tgl_peer_id_t peer_id, tgl_m
   tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, callback, callback_extra);
 }
 
-void tgl_do_send_contact (struct tgl_state *TLS, tgl_peer_id_t id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name, int last_name_len, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
+void tgl_do_send_contact (struct tgl_state *TLS, tgl_peer_id_t id, const char *phone, const char *first_name, const char *last_name,
+        unsigned long long flags, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
     if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
         tgl_set_query_error (TLS, EINVAL, "can not send contact to secret chat");
         if (callback) {
-            callback (TLS, callback_extra, 0, 0);
+            callback (callback_extra, 0, 0);
         }
         return;
     }
@@ -2540,9 +2539,9 @@ void tgl_do_send_contact (struct tgl_state *TLS, tgl_peer_id_t id, const char *p
     if (reply_id) { out_int (reply_id); }
     out_peer_id(id);
     out_int (CODE_input_media_contact);
-    out_cstring (phone, phone_len);
-    out_cstring (first_name, first_name_len);
-    out_cstring (last_name, last_name_len);
+    out_cstring (phone, strlen(phone));
+    out_cstring (first_name, strlen(first_name));
+    out_cstring (last_name, strlen(last_name));
 
   struct messages_send_extra *E = (struct messages_send_extra *)talloc0 (sizeof (*E));
   tglt_secure_random ((unsigned char*)&E->id, 8);
@@ -3783,7 +3782,6 @@ static int get_difference_on_answer (struct tgl_state *TLS, struct query *q, voi
       }
     }
 
-        free (ML);
         free (EL);
 
         if (DS_UD->state) {
@@ -4043,9 +4041,11 @@ void tgl_do_channel_kick_user (struct tgl_state *TLS, tgl_peer_id_t channel_id, 
 
 /* {{{ Create secret chat */
 
+#ifdef ENABLE_SECRET_CHAT
 void tgl_do_create_secret_chat (struct tgl_state *TLS, int user_id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra) {
     tgl_do_create_encr_chat_request (TLS, user_id, callback, callback_extra);
 }
+#endif
 /* }}} */
 
 /* {{{ Create group chat */
@@ -4871,7 +4871,8 @@ void tgl_do_send_broadcast (struct tgl_state *TLS, int num, tgl_peer_id_t peer_i
     E->list[i] = id;
 
     tgl_peer_id_t from_id = TLS->our_id;
-    bl_do_edit_message (TLS, &id, &from_id, &peer_id[i], NULL, NULL, &date, text, text_len, &TDSM, NULL, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | disable_preview);
+    //bl_do_edit_message (TLS, &id, &from_id, &peer_id[i], NULL, NULL, &date, text, text_len, &TDSM, NULL, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | disable_preview);
+    tglm_message_create (TLS, E->list[i], &TLS->our_id, &peer_type, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | disable_preview);
   }
 
   clear_packet ();
@@ -5096,6 +5097,7 @@ void tgl_do_abort_exchange (struct tgl_state *TLS, struct tgl_secret_chat *E) {
   assert (0);
   exit (2);
 }
+#endif
 
 void tgl_started_cb (struct tgl_state *TLS, void *arg, int success) {
   TGL_UNUSED(arg);
