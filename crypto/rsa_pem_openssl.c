@@ -56,8 +56,11 @@ void TGLC_rsa_free (TGLC_rsa *p) {
   RSA_free (unwrap_rsa (p));
 }
 
-TGLC_rsa *TGLC_pem_read_RSAPublicKey (FILE *fp) {
-  return wrap_rsa (PEM_read_RSAPublicKey (fp, NULL, NULL, NULL));
+TGLC_rsa *TGLC_pem_read_RSAPublicKey (const char *pem) {
+  BIO *bufio = BIO_new_mem_buf((void*)pem, strlen(pem));
+  RSA *res = PEM_read_bio_RSAPublicKey(bufio, 0, 0, NULL);
+  BIO_free(bufio);
+  return wrap_rsa(res);
 }
 
 #endif

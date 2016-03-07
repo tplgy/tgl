@@ -142,7 +142,7 @@ void tgl_set_callback (struct tgl_state *TLS, struct tgl_update_callback *cb) {
 
 void tgl_set_rsa_key (struct tgl_state *TLS, const char *key) {
   assert (TLS->rsa_key_num < TGL_MAX_RSA_KEYS_NUM);
-  TLS->rsa_key_list[TLS->rsa_key_num ++] = tstrdup (key);
+  TLS->rsa_key_list[TLS->rsa_key_num ++] = tstrdup(key);
 }
 
 void tgl_set_rsa_key_direct (struct tgl_state *TLS, unsigned long e, int n_bytes, const unsigned char *n) {

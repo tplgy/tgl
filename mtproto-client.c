@@ -90,14 +90,8 @@ static double get_utime (int clock_id) {
 
 #define MAX_RESPONSE_SIZE        (1L << 24)
 
-static TGLC_rsa *rsa_load_public_key (struct tgl_state *TLS, const char *public_key_name) {
-  FILE *f = fopen (public_key_name, "r");
-  if (f == NULL) {
-    vlogprintf (E_WARNING, "Couldn't open public key file: %s\n", public_key_name);
-    return NULL;
-  }
-  TGLC_rsa *res = TGLC_pem_read_RSAPublicKey (f);
-  fclose (f);
+static TGLC_rsa *rsa_load_public_key (struct tgl_state *TLS, const char *public_key) {
+  TGLC_rsa *res = TGLC_pem_read_RSAPublicKey (public_key);
   if (res == NULL) {
     vlogprintf (E_WARNING, "TGLC_pem_read_RSAPublicKey returns NULL.\n");
     return NULL;
