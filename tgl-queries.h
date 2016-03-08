@@ -59,10 +59,12 @@ void tgl_do_reply_contact (struct tgl_state *TLS, tgl_message_id_t *reply_id, co
 void tgl_do_forward_media (struct tgl_state *TLS, tgl_peer_id_t id, tgl_message_id_t *msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // sends location to chat *id*
-void tgl_do_send_location (struct tgl_state *TLS, tgl_peer_id_t id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+void tgl_do_send_location (struct tgl_state *TLS, tgl_peer_id_t id, double latitude, double longitude, int reply_id, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
+#if 0
 // replies on message *reply_id* with location
 void tgl_do_reply_location (struct tgl_state *TLS, tgl_message_id_t *reply_id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+#endif
 
 // sends broadcast (i.e. message to several users at once)
 // flags are same as in tgl_do_send_message

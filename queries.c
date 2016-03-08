@@ -2664,11 +2664,10 @@ void tgl_do_forward_media (struct tgl_state *TLS, tgl_peer_id_t peer_id, tgl_mes
 
 /* {{{ Send location */
 
-void tgl_do_send_location (struct tgl_state *TLS, tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
+void tgl_do_send_location (struct tgl_state *TLS, tgl_peer_id_t peer_id, double latitude, double longitude, int reply_id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
   if (tgl_get_peer_type (peer_id) == TGL_PEER_ENCR_CHAT) {
     tgl_do_send_location_encr (TLS, peer_id, latitude, longitude, flags, callback, callback_extra);
   } else {
-    int reply_id = flags >> 32;
     clear_packet ();
     out_int (CODE_messages_send_media);
     unsigned f = reply_id ? 1 : 0;
@@ -2691,6 +2690,7 @@ void tgl_do_send_location (struct tgl_state *TLS, tgl_peer_id_t peer_id, double 
   }
 }
 
+#if 0
 void tgl_do_reply_location (struct tgl_state *TLS, tgl_message_id_t *_reply_id, double latitude, double longitude, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
   tgl_message_id_t reply_id = *_reply_id;
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
@@ -2713,6 +2713,7 @@ void tgl_do_reply_location (struct tgl_state *TLS, tgl_message_id_t *_reply_id, 
 
   tgl_do_send_location (TLS, peer_id, latitude, longitude, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), callback, callback_extra);
 }
+#endif
 /* }}} */
 
 /* {{{ Rename chat */
