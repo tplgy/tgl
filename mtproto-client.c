@@ -608,7 +608,7 @@ static int process_auth_complete (struct tgl_state *TLS, struct connection *c, c
         DC->temp_auth_key_id = DC->auth_key_id;
         memcpy (DC->temp_auth_key, DC->auth_key, 256);
         DC->flags |= 2;
-        if (!(DC->flags & 4)) {
+        if (!(DC->flags & TGLDCF_CONFIGURED)) {
           tgl_do_help_get_config_dc(TLS, DC, mpc_on_get_config, DC);
         }
       }
@@ -720,12 +720,14 @@ long long tglmp_encrypt_send_message (struct tgl_state *TLS, struct connection *
     struct tgl_dc *DC = TLS->net_methods->get_dc (c);
     struct tgl_session *S = TLS->net_methods->get_session (c);
     assert (S);
-    if (!(DC->flags & 4) && !(flags & 2)) {
+    if (!(DC->flags & TGLDCF_CONFIGURED) && !(flags & QUERY_FORCE_SEND)) {
+        //vlogprintf(E_NOTICE, "generate next msg ID...request not sent\n");
         return generate_next_msg_id(DC, S);
     }
 
     const int UNENCSZ = offsetof (struct encrypted_message, server_salt);
     if (msg_ints <= 0 || msg_ints > MAX_MESSAGE_INTS - 4) {
+        vlogprintf(E_NOTICE, "message too long\n");
         return -1;
     }
     if (msg) {
@@ -733,6 +735,7 @@ long long tglmp_encrypt_send_message (struct tgl_state *TLS, struct connection *
         enc_msg.msg_len = msg_ints * 4;
     } else {
         if ((enc_msg.msg_len & 0x80000003) || enc_msg.msg_len > MAX_MESSAGE_INTS * 4 - 16) {
+            vlogprintf(E_NOTICE, "message too long\n");
             return -1;
         }
     }
@@ -1192,7 +1195,7 @@ static void mpc_on_get_config (struct tgl_state *TLS, void *extra, int success) 
     TGL_UNUSED(TLS);
     assert (success);
     struct tgl_dc *DC = extra;
-    DC->flags |= 4;
+    DC->flags |= TGLDCF_CONFIGURED;
 }
 
 static int tc_becomes_ready (struct tgl_state *TLS, struct connection *c) {
@@ -1223,7 +1226,7 @@ static int tc_becomes_ready (struct tgl_state *TLS, struct connection *c) {
       } else {
         bind_temp_auth_key (TLS, c);
       }
-    } else if (!(DC->flags & 4)) {
+    } else if (!(DC->flags & TGLDCF_CONFIGURED)) {
       tgl_do_help_get_config_dc (TLS, DC, mpc_on_get_config, DC);
     }
     break;

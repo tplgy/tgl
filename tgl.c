@@ -55,6 +55,9 @@ void tgl_set_auth_key(struct tgl_state *TLS, int num, const char *buf)
 
 void tgl_set_our_id(struct tgl_state *TLS, int id)
 {
+    if (TLS->our_id == id) {
+        return;
+    }
     TLS->our_id = id;
     assert (TLS->our_id > 0);
     if (TLS->callback.our_id) {
@@ -175,7 +178,7 @@ int tgl_init (struct tgl_state *TLS) {
 
 int tgl_authorized_dc(struct tgl_dc *DC) {
   assert (DC);
-  return DC->flags & TGLDCF_AUTHORIZED;//(DC->flags & 4) != 0;//DC->auth_key_id;
+  return DC->flags & TGLDCF_AUTHORIZED;
 }
 
 int tgl_signed_dc(struct tgl_dc *DC) {

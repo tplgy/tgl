@@ -155,7 +155,7 @@ static int alarm_query (struct tgl_state *TLS, struct query *q) {
     vlogprintf (E_NOTICE, "Resent query #%" INT64_PRINTF_MODIFIER "d as #%" INT64_PRINTF_MODIFIER "d of size %d to DC %d\n", old_id, q->msg_id, 4 * q->data_len, q->DC->id);
     TLS->queries_tree = tree_insert_query (TLS->queries_tree, q, rand ());
     q->session_id = q->session->session_id;
-    if (!(q->session->dc->flags & 4) && !(q->flags & QUERY_FORCE_SEND)) {
+    if (!(q->session->dc->flags & TGLDCF_CONFIGURED) && !(q->flags & QUERY_FORCE_SEND)) {
       q->session_id = 0;
     }
     return 0;
@@ -169,7 +169,7 @@ void tglq_regen_query (struct tgl_state *TLS, long long id) {
     if (!(q->session && q->session_id && q->DC && q->DC->sessions[0] == q->session && q->session->session_id == q->session_id)) {
         q->session_id = 0;
     } else {
-        if (!(q->session->dc->flags & 4) && !(q->flags & QUERY_FORCE_SEND)) {
+        if (!(q->session->dc->flags & TGLDCF_CONFIGURED) && !(q->flags & QUERY_FORCE_SEND)) {
             q->session_id = 0;
         }
     }
@@ -233,7 +233,7 @@ struct query *tglq_send_query_ex (struct tgl_state *TLS, struct tgl_dc *DC, int 
   q->session = DC->sessions[0];
   q->seq_no = q->session->seq_no - 1;
   q->session_id = q->session->session_id;
-  if (!(DC->flags & 4) && !(flags & QUERY_FORCE_SEND)) {
+  if (!(DC->flags & TGLDCF_CONFIGURED) && !(flags & QUERY_FORCE_SEND)) {
     q->session_id = 0;
   }
   vlogprintf (E_DEBUG, "Msg_id is %" INT64_PRINTF_MODIFIER "d %p\n", q->msg_id, q);
@@ -3420,15 +3420,16 @@ void tgl_do_load_encr_document (struct tgl_state *TLS, struct tgl_encr_document 
 /* {{{ Export auth */
 
 static int import_auth_on_answer (struct tgl_state *TLS, struct query *q, void *D) {
+  vlogprintf (E_NOTICE, "import_auth_on_answer %d\n", ((struct tgl_dc *)q->extra)->id);
   struct tl_ds_auth_authorization *DS_U = (struct tl_ds_auth_authorization *)D;
   tglf_fetch_alloc_user (TLS, DS_U->user);
 
-    tgl_set_dc_signed (TLS, ((struct tgl_dc *)q->extra)->id);
+  tgl_set_dc_signed (TLS, ((struct tgl_dc *)q->extra)->id);
 
-    if (q->callback) {
-        ((void (*)(struct tgl_state *, void *, int))q->callback) (TLS, q->callback_extra, 1);
-    }
-    return 0;
+  if (q->callback) {
+      ((void (*)(struct tgl_state *, void *, int))q->callback) (TLS, q->callback_extra, 1);
+  }
+  return 0;
 }
 
 static struct query_methods import_auth_methods = {
@@ -3440,18 +3441,19 @@ static struct query_methods import_auth_methods = {
 };
 
 static int export_auth_on_answer (struct tgl_state *TLS, struct query *q, void *D) {
-    vlogprintf (E_DEBUG2, "import_auth_on_answer\n");
-    struct tl_ds_auth_exported_authorization *DS_EA = (struct tl_ds_auth_exported_authorization *)D;
+  vlogprintf (E_NOTICE, "export_auth_on_answer %d\n", ((struct tgl_dc *)q->extra)->id);
+  struct tl_ds_auth_exported_authorization *DS_EA = (struct tl_ds_auth_exported_authorization *)D;
 
   //bl_do_set_our_id (TLS, TGL_MK_USER (DS_LVAL (DS_EA->id)));
   tgl_set_our_id(TLS, DS_LVAL (DS_EA->id));
+
 
   clear_packet ();
   tgl_do_insert_header (TLS);
   out_int (CODE_auth_import_authorization);
   out_int (tgl_get_peer_id (TLS->our_id));
   out_cstring (DS_STR (DS_EA->bytes));
-  tglq_send_query (TLS, q->extra, packet_ptr - packet_buffer, packet_buffer, &import_auth_methods, q->extra, q->callback, q->callback_extra);
+  tglq_send_query (TLS, (struct tgl_dc *)q->extra, packet_ptr - packet_buffer, packet_buffer, &import_auth_methods, q->extra, q->callback, q->callback_extra);
   return 0;
 }
 
@@ -3464,6 +3466,7 @@ static struct query_methods export_auth_methods = {
 };
 
 void tgl_do_export_auth (struct tgl_state *TLS, int num, void (*callback) (struct tgl_state *TLS, void *callback_extra, int success), void *callback_extra) {
+    vlogprintf (E_NOTICE, "Exporting out DC %d\n", num);
     clear_packet ();
     out_int (CODE_auth_export_authorization);
     out_int (num);
@@ -5010,7 +5013,7 @@ void tgl_do_upgrade_group (struct tgl_state *TLS, tgl_peer_id_t id, void (*callb
 static void set_flag_4 (struct tgl_state *TLS, void *_D, int success) {
     struct tgl_dc *D = (struct tgl_dc *)_D;
     assert (success);
-    D->flags |= 4;
+    D->flags |= TGLDCF_CONFIGURED;
 
     TLS->timer_methods->insert (D->ev, TLS->temp_key_expire_time * 0.9);
 }
