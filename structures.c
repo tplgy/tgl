@@ -1079,9 +1079,9 @@ struct tgl_message *tglf_fetch_alloc_message_short (struct tgl_state *TLS, struc
 
     int flags = M->flags & 0xffff;
 
-    if (M->flags & TGLMF_PENDING) {
-        M->flags ^= TGLMF_PENDING;
-    }
+//    if (M->flags & TGLMF_PENDING) {
+//        M->flags ^= TGLMF_PENDING;
+//    }
 
     if (!(flags & TGLMF_CREATED)) {
         flags |= TGLMF_CREATE | TGLMF_CREATED;
@@ -1144,9 +1144,9 @@ void tglf_fetch_message_short_chat_new (struct tgl_state *TLS, struct tgl_messag
 {
     int flags = M->flags & 0xffff;
 
-    if (M->flags & TGLMF_PENDING) {
-        M->flags ^= TGLMF_PENDING;
-    }
+//    if (M->flags & TGLMF_PENDING) {
+//        M->flags ^= TGLMF_PENDING;
+//    }
 
     if (!(flags & TGLMF_CREATED)) {
         flags |= TGLMF_CREATE | TGLMF_CREATED;

@@ -37,6 +37,7 @@
 #define TGLMF_EMPTY (1 << 12)
 #define TGLMF_SERVICE (1 << 13)
 #define TGLMF_SESSION_OUTBOUND (1 << 14)
+#define TGLMF_TEMP_MSG_ID (1 << 15)
 #define TGLMF_POST_AS_CHANNEL (1 << 8)
 #define TGLMF_HTML (1 << 9)
 

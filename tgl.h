@@ -115,6 +115,7 @@ enum tgl_user_status_type {
 
 struct tgl_update_callback {
   void (*new_msg)(struct tgl_message *M);
+  void (*msg_sent)(long long int old_msg_id, long long int new_msg_id, int chat_id);
   void (*msg_deleted)(long long int msg_id);
   void (*marked_read)(int num, struct tgl_message *list[]);
   void (*logprintf)(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));

@@ -1071,9 +1071,9 @@ static int msg_send_on_answer (struct tgl_state *TLS, struct query *q, void *D) 
 
   M = tgl_message_get (TLS, &id);
 
-    if (q->callback) {
-        ((void (*)(struct tgl_state *,void *, int, struct tgl_message *))q->callback) (TLS, q->callback_extra, 1, M);
-    }
+//    if (q->callback) {
+//        ((void (*)(struct tgl_state *,void *, int, struct tgl_message *))q->callback) (TLS, q->callback_extra, 1, M);
+//    }
     return 0;
 }
 
@@ -1258,7 +1258,7 @@ void tgl_do_send_message (struct tgl_state *TLS, tgl_peer_id_t peer_id, const ch
     TDSM.magic = CODE_message_media_empty;
 
     tglm_message_create (TLS, t, &from_id, &peer_type, &peer_id, NULL, NULL, &date, text, text_len, &TDSM, NULL, NULL,
-            reply_markup, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND);
+            reply_markup, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_TEMP_MSG_ID);
 
     if (flags & TGLMF_HTML) {
       tfree_str (new_text);
