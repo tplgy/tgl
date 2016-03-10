@@ -77,8 +77,6 @@ static int webpage_id_cmp (struct tgl_webpage *L, struct tgl_webpage *R) {
     return 0;
 }
 
-DEFINE_TREE(peer,tgl_peer_t *,peer_cmp,0)
-DEFINE_TREE(peer_by_name,tgl_peer_t *,peer_cmp_name,0)
 DEFINE_TREE(message,struct tgl_message *,id_cmp,0)
 DEFINE_TREE(random_id,struct tgl_message *, random_id_cmp,0)
 DEFINE_TREE(temp_id,struct tgl_message *, temp_id_cmp,0)
@@ -1964,13 +1962,13 @@ struct tgl_message *tglf_fetch_alloc_encrypted_message (struct tgl_state *TLS, s
 
 struct tgl_bot_info *tglf_fetch_alloc_bot_info (struct tgl_state *TLS, struct tl_ds_bot_info *DS_BI) {
     if (!DS_BI || DS_BI->magic == CODE_bot_info_empty) { return NULL; }
-    struct tgl_bot_info *B = (struct tgl_bot_info *)talloc (sizeof (*B));
+    struct tgl_bot_info *B = (struct tgl_bot_info *)malloc (sizeof (*B));
     B->version = DS_LVAL (DS_BI->version);
     B->share_text = DS_STR_DUP (DS_BI->share_text);
     B->description = DS_STR_DUP (DS_BI->description);
 
     B->commands_num = DS_LVAL (DS_BI->commands->cnt);
-    B->commands = (struct tgl_bot_command *)talloc (sizeof (struct tgl_bot_command) * B->commands_num);
+    B->commands = (struct tgl_bot_command *)malloc (sizeof (struct tgl_bot_command) * B->commands_num);
     int i;
     for (i = 0; i < B->commands_num; i++) {
         struct tl_ds_bot_command *BC = DS_BI->commands->data[i];
@@ -1990,7 +1988,7 @@ struct tgl_message_reply_markup *tglf_fetch_alloc_reply_markup (struct tgl_messa
     R->rows = DS_RM->rows ? DS_LVAL (DS_RM->rows->cnt) : 0;
 
     int total = 0;
-    R->row_start = (int *)talloc ((R->rows + 1) * 4);
+    R->row_start = (int *)malloc ((R->rows + 1) * 4);
     R->row_start[0] = 0;
     int i;
     for (i = 0; i < R->rows; i++) {
@@ -1998,7 +1996,7 @@ struct tgl_message_reply_markup *tglf_fetch_alloc_reply_markup (struct tgl_messa
         total += DS_LVAL (DS_K->buttons->cnt);
         R->row_start[i + 1] = total;
     }
-    R->buttons = (char **)talloc (sizeof (void *) * total);
+    R->buttons = (char **)malloc (sizeof (void *) * total);
     int r = 0;
     for (i = 0; i < R->rows; i++) {
         struct tl_ds_keyboard_button_row *DS_K = DS_RM->rows->data[i];
@@ -2075,7 +2073,6 @@ void tgls_free_photo (struct tgl_state *TLS, struct tgl_photo *P) {
         }
         free (P->sizes);
     }
-    TLS->photo_tree = tree_delete_photo (TLS->photo_tree, P);
     free (P);
 }
 
@@ -2084,7 +2081,6 @@ void tgls_free_document (struct tgl_state *TLS, struct tgl_document *D) {
     if (D->caption) { free (D->caption);}
     tgls_free_photo_size (&D->thumb);
 
-    TLS->document_tree = tree_delete_document (TLS->document_tree, D);
     free (D);
 }
 
@@ -2104,7 +2100,6 @@ void tgls_free_webpage (struct tgl_state *TLS, struct tgl_webpage *W) {
     if (W->embed_type) { tfree_str (W->embed_type); }
     if (W->author) { tfree_str (W->author); }
 
-    TLS->webpage_tree = tree_delete_webpage (TLS->webpage_tree, W);
     tfree (W, sizeof (*W));
 }
 

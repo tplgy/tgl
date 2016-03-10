@@ -34,7 +34,7 @@ struct tree_ ## X_NAME { \
 };\
 \
 static struct tree_ ## X_NAME *new_tree_node_ ## X_NAME (X_TYPE x, int y) {\
-  struct tree_ ## X_NAME *T = (struct tree_ ## X_NAME *)talloc (sizeof (*T));\
+  struct tree_ ## X_NAME *T = (struct tree_ ## X_NAME *)malloc (sizeof (*T));\
   T->x = x;\
   T->y = y;\
   T->left = T->right = 0;\

@@ -178,7 +178,7 @@ void *tgl_alloc_release (size_t size) {
 
 char *tgl_strdup (const char *s) {
   int l = strlen (s);
-  char *p = (char*)talloc (l + 1);
+  char *p = (char*)malloc (l + 1);
   memcpy (p, s, l + 1);
   return p;
 }
@@ -186,14 +186,14 @@ char *tgl_strdup (const char *s) {
 char *tgl_strndup (const char *s, size_t n) {
   size_t l = 0;
   for (l = 0; l < n && s[l]; l++) { }
-  char *p = (char*)talloc (l + 1);
+  char *p = (char*)malloc (l + 1);
   memcpy (p, s, l);
   p[l] = 0;
   return p;
 }
 
 void *tgl_memdup (const void *s, size_t n) {
-  void *r = talloc (n);
+  void *r = malloc (n);
   memcpy (r, s, n);
   return r;
 }

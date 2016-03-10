@@ -37,7 +37,7 @@ struct tgl_allocator {
   void (*exists)(void *ptr, int size);
 };
 
-#define talloc tgl_allocator->alloc
+//#define talloc tgl_allocator->alloc
 #define talloc0 tgl_alloc0
 #define tfree tgl_allocator->free
 #define tfree_str tgl_free_str

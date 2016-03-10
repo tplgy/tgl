@@ -221,7 +221,7 @@ static inline char *fetch_str_dup (void) {
   for (i = 0; i < l; i++) {
     if (!s[i]) { break; }
   }
-  char *r = (char *)talloc (i + 1);
+  char *r = (char *)malloc (i + 1);
   memcpy (r, s, i);
   r[i] = 0;
   return r;
@@ -236,7 +236,7 @@ static inline int fetch_update_str (char **s) {
   char *r = fetch_str (l);
   if (memcmp (*s, r, l) || (*s)[l]) {
     tfree_str (*s);
-    *s = (char *)talloc (l + 1);
+    *s = (char *)malloc (l + 1);
     memcpy (*s, r, l);
     (*s)[l] = 0;
     return 1;

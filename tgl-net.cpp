@@ -112,7 +112,7 @@ static void start_fail_timer (struct connection *c) {
 
 static struct connection_buffer *new_connection_buffer (int size) {
   struct connection_buffer *b = (struct connection_buffer *)talloc0(sizeof (struct connection_buffer));
-  b->start = (unsigned char*)talloc (size);
+  b->start = (unsigned char*)malloc (size);
   b->end = b->start + size;
   b->rptr = b->wptr = b->start;
   return b;
