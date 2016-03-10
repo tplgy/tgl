@@ -44,46 +44,8 @@ extern "C" {
 }
 
 static int id_cmp (struct tgl_message *M1, struct tgl_message *M2);
-#define peer_cmp(a,b) (tgl_cmp_peer_id (a->id, b->id))
-#define peer_cmp_name(a,b) (strcmp (a->print_name, b->print_name))
-
-static int random_id_cmp (struct tgl_message *L, struct tgl_message *R) {
-  if (L->random_id < R->random_id) { return -1; }
-  if (L->random_id > R->random_id) { return 1; }
-  return 0;
-}
-
-static int temp_id_cmp (struct tgl_message *L, struct tgl_message *R) {
-  if (L->temp_id < R->temp_id) { return -1; }
-  if (L->temp_id > R->temp_id) { return 1; }
-  return 0;
-}
-
-static int photo_id_cmp (struct tgl_photo *L, struct tgl_photo *R) {
-    if (L->id < R->id) { return -1; }
-    if (L->id > R->id) { return 1; }
-    return 0;
-}
-
-static int document_id_cmp (struct tgl_document *L, struct tgl_document *R) {
-    if (L->id < R->id) { return -1; }
-    if (L->id > R->id) { return 1; }
-    return 0;
-}
-
-static int webpage_id_cmp (struct tgl_webpage *L, struct tgl_webpage *R) {
-    if (L->id < R->id) { return -1; }
-    if (L->id > R->id) { return 1; }
-    return 0;
-}
 
 DEFINE_TREE(message,struct tgl_message *,id_cmp,0)
-DEFINE_TREE(random_id,struct tgl_message *, random_id_cmp,0)
-DEFINE_TREE(temp_id,struct tgl_message *, temp_id_cmp,0)
-DEFINE_TREE(photo,struct tgl_photo *,photo_id_cmp,0)
-DEFINE_TREE(document,struct tgl_document *,document_id_cmp,0)
-DEFINE_TREE(webpage,struct tgl_webpage *,webpage_id_cmp,0)
-
 
 static void increase_peer_size (struct tgl_state *TLS);
 
@@ -1607,9 +1569,6 @@ struct tgl_message *tglf_fetch_alloc_message (struct tgl_state *TLS, struct tl_d
   return M;
 }
 
-static int *decr_ptr;
-static int *decr_end;
-
 #ifdef ENABLE_SECRET_CHAT
 static int decrypt_encrypted_message (struct tgl_secret_chat *E) {
   int *msg_key = decr_ptr;
@@ -2060,7 +2019,7 @@ void tgl_insert_empty_chat (struct tgl_state *TLS, int cid) {
 void tgls_free_photo_size (struct tgl_photo_size *S) {
     tfree_str (S->type);
     if (S->data) {
-        tfree (S->data, S->size);
+        tfree (S->data);
     }
 }
 
@@ -2100,7 +2059,7 @@ void tgls_free_webpage (struct tgl_state *TLS, struct tgl_webpage *W) {
     if (W->embed_type) { tfree_str (W->embed_type); }
     if (W->author) { tfree_str (W->author); }
 
-    tfree (W, sizeof (*W));
+    tfree (W);
 }
 
 void tgls_free_message_media (struct tgl_state *TLS, struct tgl_message_media *M) {
@@ -2234,7 +2193,7 @@ void tgls_free_message (struct tgl_state *TLS, struct tgl_message *M) {
     if (M->reply_markup) {
         tgls_free_reply_markup (M->reply_markup);
     }
-    tfree (M, sizeof (*M));
+    tfree (M);
 }
 
 void tgls_free_chat (struct tgl_state *TLS, struct tgl_chat *U) {
@@ -2299,10 +2258,10 @@ void tgls_free_bot_info (struct tgl_bot_info *B) {
         tfree_str (B->commands[i].command);
         tfree_str (B->commands[i].description);
     }
-    tfree (B->commands, sizeof (struct tgl_bot_command) * B->commands_num);
+    tfree (B->commands);
     tfree_str (B->share_text);
     tfree_str (B->description);
-    tfree (B, sizeof (*B));
+    tfree (B);
 }
 /* }}} */
 

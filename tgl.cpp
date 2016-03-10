@@ -229,10 +229,6 @@ void tgl_enable_ipv6 (struct tgl_state *TLS) {
   TLS->ipv6_enabled = 1;
 }
 
-void tgl_disable_link_preview (struct tgl_state *TLS) {
-  TLS->disable_link_preview = 1;
-}
-
 void tgl_enable_bot (struct tgl_state *TLS) {
   TLS->is_bot = 1;
 }

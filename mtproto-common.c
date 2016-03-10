@@ -165,7 +165,7 @@ void tgl_prng_seed (struct tgl_state *TLS, const char *password_filename, int pa
         TGLC_rand_add (a, l, l);
       }
       close (fd);
-      tfree_secure (a, password_length);
+      tfree_secure (a);
     }
   }
   TLS->TGLC_bn_ctx = TGLC_bn_ctx_new ();

@@ -119,8 +119,8 @@ static struct connection_buffer *new_connection_buffer (int size) {
 }
 
 static void delete_connection_buffer (struct connection_buffer *b) {
-  tfree (b->start, b->end - b->start);
-  tfree (b, sizeof (*b));
+  tfree (b->start);
+  tfree (b);
 }
 
 int tgln_write_out (struct connection *c, const void *_data, int len) {
@@ -571,7 +571,7 @@ static void tgln_free (struct connection *c) {
   }
 
   if (c->fd >= 0) { Connections[c->fd] = 0; close (c->fd); }
-  tfree (c, sizeof (*c));
+  tfree (c);
 }
 
 struct tgl_net_methods tgl_conn_methods = {

@@ -73,7 +73,7 @@ char *tg_extension_by_mime (const char *mime_type) {
   return NULL;
 }
 
-char *tg_mime_by_filename (const char *filename) {
+const char *tg_mime_by_filename (const char *filename) {
   int l = strlen (filename);
   const char *p = filename - 1 + l;
   while (p >= filename && *p != '.') {
@@ -85,7 +85,7 @@ char *tg_mime_by_filename (const char *filename) {
     mime_init ();
   }
 
-  static char *def = "application/octet-stream";
+  static char const *def = "application/octet-stream";
   if (strlen (p) > 10) {
     return def;
   }

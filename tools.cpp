@@ -115,67 +115,6 @@ int tgl_asprintf (char **res, const char *format, ...) {
   return r;
 }
 
-void tgl_free_debug (void *ptr, int size __attribute__ ((unused))) {
-  if (!ptr) {
-    assert (!size);
-    return;
-  }
-  total_allocated_bytes -= size;
-  ptr -= RES_PRE;
-  if (size != (int)((*(int *)ptr) ^ 0xbedabeda)) {
-    logprintf ("size = %d, ptr = %d\n", size, (*(int *)ptr) ^ 0xbedabeda);
-  }
-  assert (*(int *)ptr == (int)((size) ^ 0xbedabeda));
-  assert (*(int *)(ptr + RES_PRE + size) == (int)((size) ^ 0x7bed7bed));
-  assert (*(int *)(ptr + 4) == size);
-  int block_num = *(int *)(ptr + 4 + RES_PRE + size);
-  if (block_num >= used_blocks) {
-    logprintf ("block_num = %d, used = %d\n", block_num, used_blocks);
-  }
-  assert (block_num < used_blocks);
-  if (block_num < used_blocks - 1) {
-    void *p = blocks[used_blocks - 1];
-    int s = (*(int *)p) ^ 0xbedabeda;
-    *(int *)(p + 4 + RES_PRE + s) = block_num;
-    blocks[block_num] = p;
-  }
-  blocks[--used_blocks] = 0;
-  memset (ptr, 0, size + RES_PRE + RES_AFTER);
-  *(int *)ptr = size + 12;
-  free_blocks[free_blocks_cnt ++] = ptr;
-}
-
-void tgl_free_release (void *ptr, int size) {
-  total_allocated_bytes -= size;
-  memset (ptr, 0, size);
-  free (ptr);
-}
-
-void *tgl_realloc_debug (void *ptr, size_t old_size __attribute__ ((unused)), size_t size) {
-  void *p = talloc (size);
-  memcpy (p, ptr, size >= old_size ? old_size : size); 
-  if (ptr) {
-    tfree (ptr, old_size);
-  } else {
-    assert (!old_size);
-  }
-  return p;
-}
-
-void *tgl_realloc_release (void *ptr, size_t old_size __attribute__ ((unused)), size_t size) {
-  total_allocated_bytes += (size - old_size);
-  void *p = realloc (ptr, size);
-  ensure_ptr (p);
-  return p;
-}
-
-void *tgl_alloc_release (size_t size) {
-  total_allocated_bytes += size;
-  void *p = malloc (size);
-  ensure_ptr (p);
-  return p;
-}
-
 char *tgl_strdup (const char *s) {
   int l = strlen (s);
   char *p = (char*)malloc (l + 1);
@@ -197,7 +136,6 @@ void *tgl_memdup (const void *s, size_t n) {
   memcpy (r, s, n);
   return r;
 }
-
 
 int tgl_inflate (void *input, int ilen, void *output, int olen) {
   z_stream strm;
@@ -239,14 +177,3 @@ void tglt_secure_random (unsigned char *s, int l) {
     #endif
   }
 }
-
-struct tgl_allocator tgl_allocator_release = {
-  .alloc = tgl_alloc_release,
-  .realloc = tgl_realloc_release,
-  .free = tgl_free_release
-};
-
-long long tgl_get_allocated_bytes (void) {
-  return total_allocated_bytes;
-}
-struct tgl_allocator *tgl_allocator = &tgl_allocator_release;

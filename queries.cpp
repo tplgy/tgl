@@ -2199,7 +2199,7 @@ static void _tgl_do_send_photo (struct tgl_state *TLS, tgl_peer_id_t to_id, cons
 
 void tgl_do_send_document (struct tgl_state *TLS, tgl_peer_id_t to_id, const char *file_name, const char *caption, int caption_len, unsigned long long flags, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
   if (flags & TGL_SEND_MSG_FLAG_DOCUMENT_AUTO) {
-    char *mime_type = tg_mime_by_filename (file_name);
+    const char *mime_type = tg_mime_by_filename (file_name);
     if (strcmp (mime_type, "image/gif") == 0) {
       flags |= TGL_SEND_MSG_FLAG_DOCUMENT_ANIMATED;
     } else if (!memcmp (mime_type, "image/", 6)) {
@@ -3354,7 +3354,7 @@ static void _tgl_do_load_document (struct tgl_state *TLS, struct tgl_document *V
     D->fd = -1;
 
     if (V->mime_type) {
-        char *r = tg_extension_by_mime (V->mime_type);
+        const char *r = tg_extension_by_mime (V->mime_type);
         if (r) {
             D->ext = tstrdup (r);
         }
@@ -3373,7 +3373,7 @@ static void _tgl_do_load_document (struct tgl_state *TLS, struct tgl_document *V
   D->fd = -1;
   
   if (V->mime_type) {
-    char *r = tg_extension_by_mime (V->mime_type);
+    const char *r = tg_extension_by_mime (V->mime_type);
     if (r) {
       D->ext = tstrdup (r);
     }
@@ -3419,7 +3419,7 @@ void tgl_do_load_encr_document (struct tgl_state *TLS, struct tgl_encr_document 
   D->iv = talloc (32);
   memcpy (D->iv, V->iv, 32);
   if (V->mime_type) {
-    char *r = tg_extension_by_mime (V->mime_type);
+    const char *r = tg_extension_by_mime (V->mime_type);
     if (r) {
       D->ext = tstrdup (r);
     }
@@ -4910,8 +4910,8 @@ void tgl_do_send_broadcast (struct tgl_state *TLS, int num, tgl_peer_id_t peer_i
     E->list[i] = id;
 
     tgl_peer_id_t from_id = TLS->our_id;
-    //bl_do_edit_message (TLS, &id, &from_id, &peer_id[i], NULL, NULL, &date, text, text_len, &TDSM, NULL, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | disable_preview);
-    tglm_message_create (TLS, E->list[i], &TLS->our_id, &peer_type, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | disable_preview);
+    //bl_do_edit_message (TLS, &id, &from_id, &peer_id[i], NULL, NULL, &date, text, text_len, &TDSM, NULL, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
+    tglm_message_create (TLS, E->list[i], &TLS->our_id, &peer_type, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
   }
 
   clear_packet ();

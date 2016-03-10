@@ -1489,7 +1489,7 @@ void tgls_free_session (struct tgl_state *TLS, struct tgl_session *S) {
   if (S->c) {
     TLS->net_methods->free (S->c);
   }
-  tfree (S, sizeof (*S));
+  tfree (S);
 }
 
 void tgls_free_dc (struct tgl_state *TLS, struct tgl_dc *DC) {
@@ -1510,7 +1510,7 @@ void tgls_free_dc (struct tgl_state *TLS, struct tgl_dc *DC) {
   }
 
   if (DC->ev) { TLS->timer_methods->free (DC->ev); }
-  tfree (DC, sizeof (*DC));
+  tfree (DC);
 }
 
 void tgls_free_pubkey (struct tgl_state *TLS) {

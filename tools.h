@@ -25,43 +25,22 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-//#include "tgl.h"
 #include "crypto/err.h"
 #include "crypto/rand.h"
 
-struct tgl_allocator {
-  void *(*alloc)(size_t size);
-  void *(*realloc)(void *ptr, size_t old_size, size_t size);
-  void (*free)(void *ptr, int size);
-  void (*check)(void);
-  void (*exists)(void *ptr, int size);
-};
-
-//#define talloc tgl_allocator->alloc
-#define talloc0 tgl_alloc0
-#define tfree tgl_allocator->free
-#define tfree_str tgl_free_str
-#define tfree_secure tgl_free_secure
-#define trealloc tgl_allocator->realloc
-#define tcheck tgl_allocator->check
-#define texists tgl_allocator->exists
+#define talloc0(X) calloc(1,X)
+#define tfree free
+#define tfree_str free
+#define tfree_secure free
 #define tstrdup tgl_strdup
 #define tmemdup tgl_memdup
 #define tstrndup tgl_strndup
 #define tsnprintf tgl_snprintf
 
 
-extern struct tgl_allocator *tgl_allocator;
 double tglt_get_double_time (void);
 
 int tgl_inflate (void *input, int ilen, void *output, int olen);
-//void ensure (int r);
-//void ensure_ptr (void *p);
-
-static inline void out_of_memory (void) {
-  fprintf (stderr, "Out of memory\n");
-  exit (1);
-}
 
 static inline void ensure (int r) {
   if (!r) {
@@ -73,28 +52,13 @@ static inline void ensure (int r) {
 
 static inline void ensure_ptr (void *p) {
   if (p == NULL) {
-    out_of_memory ();
+      fprintf (stderr, "Out of memory\n");
+      exit (1);
   }
 }
 
-void *tgl_alloc_debug (size_t size);
-void *tgl_alloc_release (size_t size);
-
-void *tgl_realloc_debug (void *ptr, size_t old_size, size_t size);
-void *tgl_realloc_release (void *ptr, size_t old_size, size_t size);
-
 char *tgl_strdup (const char *s);
 char *tgl_strndup (const char *s, size_t n);
-
-void tgl_free_debug (void *ptr, int size);
-void tgl_free_release (void *ptr, int size);
-//void tgl_free_str (void *ptr);
-//void tgl_free_secure (void *ptr, int size);
-
-void tgl_check_debug (void);
-void tgl_exists_debug (void *ptr, int size);
-void tgl_check_release (void);
-void tgl_exists_release (void *ptr, int size);
 
 void *tgl_memdup (const void *s, size_t n);
 
@@ -103,15 +67,6 @@ int tgl_asprintf (char **res, const char *format, ...) __attribute__ ((format (_
 
 void tglt_secure_random (unsigned char *s, int l);
 
-static inline void tgl_free_str (void *ptr) {
-  if (!ptr) { return; }
-  tfree (ptr, strlen ((const char *)ptr) + 1);
-}
-
-static inline void tgl_free_secure (void *ptr, int size) {
-  memset (ptr, 0, size);
-  tfree (ptr, size);
-}
 
 static inline void hexdump (void *ptr, void *end_ptr) {
   int total = 0;

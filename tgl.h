@@ -58,33 +58,6 @@ struct mtproto_methods;
 struct tgl_session;
 struct tgl_dc;
 
-#define TGL_UPDATE_CREATED 1
-#define TGL_UPDATE_DELETED 2
-#define TGL_UPDATE_PHONE 4
-#define TGL_UPDATE_CONTACT 8
-#define TGL_UPDATE_PHOTO 16
-#define TGL_UPDATE_BLOCKED 32
-#define TGL_UPDATE_REAL_NAME 64
-#define TGL_UPDATE_NAME 128
-#define TGL_UPDATE_REQUESTED 256
-#define TGL_UPDATE_WORKING 512
-#define TGL_UPDATE_FLAGS 1024
-#define TGL_UPDATE_TITLE 2048
-#define TGL_UPDATE_ADMIN 4096
-#define TGL_UPDATE_MEMBERS 8192
-#define TGL_UPDATE_ACCESS_HASH 16384
-#define TGL_UPDATE_USERNAME (1 << 15)
-
-/*struct tgl_allocator {
-  void *(*alloc)(size_t size);
-  void *(*realloc)(void *ptr, size_t old_size, size_t size);
-  void (*free)(void *ptr, int size);
-  void (*check)(void);
-  void (*exists)(void *ptr, int size);
-};*/
-struct tgl_allocator;
-extern struct tgl_allocator tgl_allocator_release;
-extern struct tgl_allocator tgl_allocator_debug;
 struct tgl_state;
 
 enum tgl_value_type {
@@ -202,13 +175,11 @@ struct tgl_state {
   int qts;
   int date;
   int seq;
-  int test_mode;
+  int test_mode; // Connects to the telegram test servers instead of the regular servers
   int verbosity;
-  int unread_messages;
   int active_queries;
   int max_msg_id;
   int started;
-  int disable_link_preview;
 
   long long locks;
   struct tgl_dc *DC_list[TGL_MAX_DC_NUM];
@@ -237,38 +208,11 @@ struct tgl_state {
 
   TGLC_bn_ctx *TGLC_bn_ctx;
 
-  struct tgl_allocator *allocator;
-
-  struct tree_peer *peer_tree;
-  struct tree_peer_by_name *peer_by_name_tree;
-  struct tree_message *message_tree;
   struct tree_message *message_unsent_tree;
-  struct tree_photo *photo_tree;
-  struct tree_document *document_tree;
-  struct tree_webpage *webpage_tree;
-  struct tree_encr_document *encr_document_tree;
-
-  int users_allocated;
-  int chats_allocated;
-  int messages_allocated;
-  int channels_allocated;
-  int peer_num;
-  int peer_size;
-  int encr_chats_allocated;
-  int geo_chats_allocated;
-
-  tgl_peer_t **Peers;
-  struct tgl_message message_list;
 
   struct tgl_timer_methods *timer_methods;
 
   struct tree_query *queries_tree;
-
-  char *base_path;
-
-  struct tree_user *online_updates;
-
-  struct tgl_timer *online_updates_timer;
 
   int app_id;
   char *app_hash;
@@ -388,11 +332,6 @@ typedef tgl_peer_id_t tgl_chat_id_t;
 typedef tgl_peer_id_t tgl_secret_chat_id_t;
 typedef tgl_peer_id_t tgl_user_or_chat_id_t;
 
-void tgl_insert_empty_user (struct tgl_state *TLS, int id);
-void tgl_insert_empty_chat (struct tgl_state *TLS, int id);
-
-
-void tgl_free_all (struct tgl_state *TLS);
 void tgl_register_app_id (struct tgl_state *TLS, int app_id, const char *app_hash);
 
 void tgl_login (struct tgl_state *TLS);
@@ -401,7 +340,6 @@ void tgl_enable_bot (struct tgl_state *TLS);
 
 struct tgl_state *tgl_state_alloc (void);
 
-void tgl_disable_link_preview (struct tgl_state *TLS);
 void tgl_do_lookup_state (struct tgl_state *TLS);
 
 long long tgl_get_allocated_bytes (void);
