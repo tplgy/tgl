@@ -18,7 +18,10 @@
     Copyright Vitaly Valtman 2013-2015
 */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
+
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
