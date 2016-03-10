@@ -28,7 +28,6 @@
 #include "mtproto-client.h"
 #include "tgl-structures.h"
 #include <openssl/sha.h>
-//#include "net.h"
 
 #include <assert.h>
 
@@ -216,7 +215,7 @@ void tgl_set_timer_methods (struct tgl_state *TLS, struct tgl_timer_methods *met
 }
 
 void tgl_set_ev_base (struct tgl_state *TLS, void *ev_base) {
-  TLS->ev_base = ev_base;
+  TLS->ev_base = (struct event_base *)ev_base;
 }
 
 void tgl_set_app_version (struct tgl_state *TLS, const char *app_version) {

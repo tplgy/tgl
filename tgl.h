@@ -189,6 +189,8 @@ struct tgl_timer_methods {
 #define TGL_MAX_RSA_KEYS_NUM 10
 // Do not modify this structure, unless you know what you do
 
+struct event_base;
+
 #pragma pack(push,4)
 struct tgl_state {
   tgl_peer_id_t our_id;
@@ -225,7 +227,7 @@ struct tgl_state {
 
   struct tgl_update_callback callback;
   struct tgl_net_methods *net_methods;
-  void *ev_base;
+  struct event_base *ev_base;
 
   char *rsa_key_list[TGL_MAX_RSA_KEYS_NUM];
   // (TGLC_rsa *)
@@ -289,10 +291,6 @@ struct tgl_state {
 #pragma pack(pop)
 
 //extern struct tgl_state tgl_state;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 tgl_peer_t *tgl_peer_get (struct tgl_state *TLS, tgl_peer_id_t id);
 
@@ -407,8 +405,5 @@ void tgl_disable_link_preview (struct tgl_state *TLS);
 void tgl_do_lookup_state (struct tgl_state *TLS);
 
 long long tgl_get_allocated_bytes (void);
-#ifdef __cplusplus
-}
-#endif
 
 #endif

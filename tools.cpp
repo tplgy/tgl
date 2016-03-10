@@ -33,8 +33,11 @@
 #include <time.h>
 #include <sys/time.h>
 
-//#include "interface.h"
 #include "tools.h"
+
+extern "C" {
+#include "mtproto-common.h"
+}
 
 #ifdef __MACH__
 #include <mach/clock.h>
@@ -173,15 +176,9 @@ void *tgl_alloc_release (size_t size) {
   return p;
 }
 
-void *tgl_alloc0 (size_t size) {
-  void *p = talloc (size);
-  memset (p, 0, size);
-  return p;
-}
-
 char *tgl_strdup (const char *s) {
   int l = strlen (s);
-  char *p = talloc (l + 1);
+  char *p = (char*)talloc (l + 1);
   memcpy (p, s, l + 1);
   return p;
 }
@@ -189,7 +186,7 @@ char *tgl_strdup (const char *s) {
 char *tgl_strndup (const char *s, size_t n) {
   size_t l = 0;
   for (l = 0; l < n && s[l]; l++) { }
-  char *p = talloc (l + 1);
+  char *p = (char*)talloc (l + 1);
   memcpy (p, s, l);
   p[l] = 0;
   return p;
@@ -207,9 +204,9 @@ int tgl_inflate (void *input, int ilen, void *output, int olen) {
   memset (&strm, 0, sizeof (strm));
   assert (inflateInit2 (&strm, 16 + MAX_WBITS) == Z_OK);
   strm.avail_in = ilen;
-  strm.next_in = input;
+  strm.next_in = (Bytef*)input;
   strm.avail_out = olen ;
-  strm.next_out = output;
+  strm.next_out = (Bytef*)output;
   int err = inflate (&strm, Z_FINISH); 
   int total_out = strm.total_out;
 
@@ -222,28 +219,13 @@ int tgl_inflate (void *input, int ilen, void *output, int olen) {
   return total_out;
 }
 
-void tgl_my_clock_gettime (int clock_id, struct timespec *T) {
-#ifdef __MACH__
-  // We are ignoring MONOTONIC and hope time doesn't go back too often
-  clock_serv_t cclock;
-  mach_timespec_t mts;
-  host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
-  clock_get_time(cclock, &mts);
-  mach_port_deallocate(mach_task_self(), cclock);
-  T->tv_sec = mts.tv_sec;
-  T->tv_nsec = mts.tv_nsec;
-#else
-  assert (clock_gettime(clock_id, T) >= 0);
-#endif
-}
-
 double tglt_get_double_time (void) {
   struct timespec tv;
   tgl_my_clock_gettime (CLOCK_REALTIME, &tv);
   return tv.tv_sec + 1e-9 * tv.tv_nsec;
 }
 
-void tglt_secure_random (void *s, int l) {
+void tglt_secure_random (unsigned char *s, int l) {
   if (TGLC_rand_bytes (s, l) <= 0) {
     /*if (allow_weak_random) {
       TGLC_rand_pseudo_bytes (s, l);

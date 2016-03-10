@@ -2,7 +2,7 @@
 #include <assert.h>
 #define MAX_MIME_TYPES_NUM 10000
 
-#include "mime-types.c"
+#include "mime-types.cpp"
   
 static int mime_initialized;
 static int mime_type_number;

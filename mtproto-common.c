@@ -156,7 +156,7 @@ void tgl_prng_seed (struct tgl_state *TLS, const char *password_filename, int pa
     if (fd < 0) {
       vlogprintf (E_WARNING, "Warning: fail to open password file - \"%s\", %s.\n", password_filename, strerror(errno));
     } else {
-      unsigned char *a = talloc0 (password_length);
+      unsigned char *a = (unsigned char *)talloc0(password_length);
       int l = read (fd, a, password_length);
       if (l < 0) {
         vlogprintf (E_WARNING, "Warning: fail to read password file - \"%s\", %s.\n", password_filename, strerror(errno));
@@ -230,38 +230,6 @@ void tgl_out_cstring (const char *str, long len) {
     *dest++ = 0;
   }
   packet_ptr = (int *) dest;
-}
-
-void tgl_out_cstring_careful (const char *str, long len) {
-  assert (len >= 0 && len < (1 << 24));
-  assert ((char *) packet_ptr + len + 8 < (char *) (packet_buffer + PACKET_BUFFER_SIZE));
-  char *dest = (char *) packet_ptr;
-  if (len < 254) {
-    dest++;
-    if (dest != str) {
-      memmove (dest, str, len);
-    }
-    dest[-1] = len;
-  } else {
-    dest += 4;
-    if (dest != str) {
-      memmove (dest, str, len);
-    }
-    *packet_ptr = (len << 8) + 0xfe;
-  }
-  dest += len;
-  while ((long) dest & 3) {
-    *dest++ = 0;
-  }
-  packet_ptr = (int *) dest;
-}
-
-
-void tgl_out_data (const void *data, long len) {
-  assert (len >= 0 && len < (1 << 24) && !(len & 3));
-  assert ((char *) packet_ptr + len + 8 < (char *) (packet_buffer + PACKET_BUFFER_SIZE));
-  memcpy (packet_ptr, data, len);
-  packet_ptr += len >> 2;
 }
 
 int *tgl_in_ptr, *tgl_in_end;
@@ -340,7 +308,7 @@ int tgl_pad_rsa_decrypt (struct tgl_state *TLS, char *from, int from_len, char *
 static unsigned char aes_key_raw[32], aes_iv[32];
 static TGLC_aes_key aes_key;
 
-void tgl_init_aes_unauth (const char server_nonce[16], const char hidden_client_nonce[32], int encrypt) {
+void tgl_init_aes_unauth (const unsigned char server_nonce[16], const unsigned char hidden_client_nonce[32], int encrypt) {
   static unsigned char buffer[64], hash[20];
   memcpy (buffer, hidden_client_nonce, 32);
   memcpy (buffer + 32, server_nonce, 16);
@@ -361,7 +329,7 @@ void tgl_init_aes_unauth (const char server_nonce[16], const char hidden_client_
   memset (aes_key_raw, 0, sizeof (aes_key_raw));
 }
 
-void tgl_init_aes_auth (char auth_key[192], char msg_key[16], int encrypt) {
+void tgl_init_aes_auth (unsigned char auth_key[192], unsigned char msg_key[16], int encrypt) {
   static unsigned char buffer[48], hash[20];
   //  sha1_a = SHA1 (msg_key + substr (auth_key, 0, 32));
   //  sha1_b = SHA1 (substr (auth_key, 32, 16) + msg_key + substr (auth_key, 48, 16));
@@ -401,7 +369,7 @@ void tgl_init_aes_auth (char auth_key[192], char msg_key[16], int encrypt) {
   memset (aes_key_raw, 0, sizeof (aes_key_raw));
 }
 
-int tgl_pad_aes_encrypt (char *from, int from_len, char *to, int size) {
+int tgl_pad_aes_encrypt (unsigned char *from, int from_len, unsigned char *to, int size) {
   int padded_size = (from_len + 15) & -16;
   assert (from_len > 0 && padded_size <= size);
   if (from_len < padded_size) {
@@ -411,7 +379,7 @@ int tgl_pad_aes_encrypt (char *from, int from_len, char *to, int size) {
   return padded_size;
 }
 
-int tgl_pad_aes_decrypt (char *from, int from_len, char *to, int size) {
+int tgl_pad_aes_decrypt (unsigned char *from, int from_len, unsigned char *to, int size) {
   if (from_len <= 0 || from_len > size || (from_len & 15)) {
     return -1;
   }

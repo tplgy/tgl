@@ -18,8 +18,6 @@
     Copyright Vitaly Valtman 2013-2015
 */
 #include <event.h>
-//#include <bufferevent.h>
-//#include <buffer.h>
 
 #include "tgl.h"
 #include "auto.h"
@@ -28,16 +26,16 @@
 static void timer_alarm (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
-  void **p = arg;
-  ((void (*)(struct tgl_state *, void *))p[1]) (p[0], p[2]);
+  void **p = (void**)arg;
+  ((void (*)(struct tgl_state *, void *))p[1]) ((struct tgl_state *)p[0], p[2]);
 }
 
 struct tgl_timer *tgl_timer_alloc (struct tgl_state *TLS, void (*cb)(struct tgl_state *TLS, void *arg), void *arg) {
-  void **p = malloc (sizeof (void *) * 3);
+  void **p = (void**)malloc (sizeof (void *) * 3);
   p[0] = TLS;
-  p[1] = cb;
+  p[1] = (void*)cb;
   p[2] = arg;
-  return (void *)evtimer_new (TLS->ev_base, timer_alarm, p);
+  return (struct tgl_timer *)evtimer_new ((struct event_base *)TLS->ev_base, timer_alarm, p);
 }
 
 void tgl_timer_insert (struct tgl_timer *t, double p) {
@@ -45,17 +43,17 @@ void tgl_timer_insert (struct tgl_timer *t, double p) {
   double e = p - (int)p;
   if (e < 0) { e = 0; }
   struct timeval pv = { (int)p, (int)(e * 1e6)};
-  event_add ((void *)t, &pv);
+  event_add ((struct event *)t, &pv);
 }
 
 void tgl_timer_delete (struct tgl_timer *t) {
-  event_del ((void *)t);
+  event_del ((struct event*)t);
 }
 
 void tgl_timer_free (struct tgl_timer *t) {
-  void *arg = event_get_callback_arg ((void *)t);
+  void *arg = event_get_callback_arg ((struct event *)t);
   free (arg);
-  event_free ((void *)t);
+  event_free ((struct event *)t);
 }
 
 struct tgl_timer_methods tgl_libevent_timers = {

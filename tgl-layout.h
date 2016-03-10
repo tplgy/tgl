@@ -169,11 +169,11 @@ struct tgl_dc {
   //char *ip;
   //char *user;
   struct tgl_session *sessions[MAX_DC_SESSIONS];
-  char auth_key[256];
-  char temp_auth_key[256];
-  char nonce[256];
-  char new_nonce[256];
-  char server_nonce[256];
+  unsigned char auth_key[256];
+  unsigned char temp_auth_key[256];
+  unsigned char nonce[256];
+  unsigned char new_nonce[256];
+  unsigned char server_nonce[256];
   long long auth_key_id;
   long long temp_auth_key_id;
   long long temp_auth_key_bind_query_id;

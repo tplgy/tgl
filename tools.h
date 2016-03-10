@@ -83,7 +83,6 @@ void *tgl_alloc_release (size_t size);
 void *tgl_realloc_debug (void *ptr, size_t old_size, size_t size);
 void *tgl_realloc_release (void *ptr, size_t old_size, size_t size);
 
-void *tgl_alloc0 (size_t size);
 char *tgl_strdup (const char *s);
 char *tgl_strndup (const char *s, size_t n);
 
@@ -102,8 +101,7 @@ void *tgl_memdup (const void *s, size_t n);
 int tgl_snprintf (char *buf, int len, const char *format, ...) __attribute__ ((format (__printf__, 3, 4)));
 int tgl_asprintf (char **res, const char *format, ...) __attribute__ ((format (__printf__, 2, 3)));
 
-void tglt_secure_random (void *s, int l);
-void tgl_my_clock_gettime (int clock_id, struct timespec *T);
+void tglt_secure_random (unsigned char *s, int l);
 
 static inline void tgl_free_str (void *ptr) {
   if (!ptr) { return; }

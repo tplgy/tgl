@@ -23,8 +23,6 @@
 #include "tgl.h"
 #ifdef ENABLE_SECRET_CHAT
 
-
-#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -63,9 +61,6 @@ void bl_do_encr_chat (struct tgl_state *TLS, int id, long long *access_hash, int
 void bl_do_channel (struct tgl_state *TLS, int id, long long *access_hash, int *date, const char *title, int title_len, const char *username, int username_len, struct tl_ds_chat_photo *chat_photo, struct tl_ds_photo *photo, int *version, char *about, int about_len, int *participants_count, int *admins_count, int *kicked_count, int *last_read_in, int flags);
 void bl_do_peer_delete (struct tgl_state *TLS, tgl_peer_id_t id);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -34,7 +34,6 @@
 #include "mtproto-client.h"
 #include "queries.h"
 #include "tree.h"
-#include "mtproto-common.h"
 #include "tgl-inner.h"
 #include "tgl-structures.h"
 //#include "interface.h"
@@ -45,10 +44,9 @@
 #include "crypto/sha.h"
 #include "crypto/md5.h"
 
-#include "no-preview.h"
 #include "tgl-binlog.h"
 #include "updates.h"
-//extern "C" {
+extern "C" {
 #include "auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-fetch-ds.h"
@@ -56,8 +54,11 @@
 #include "auto/auto-skip.h"
 #include "auto/auto-store.h"
 #include "auto/auto-print-ds.h"
+#include "mtproto-common.h"
+}
+
 #include "mtproto-utils.h"
-//}
+
 #include "tgl.h"
 #include "tg-mime-types.h"
 #include "tgl-methods-in.h"
@@ -225,7 +226,7 @@ struct query *tglq_send_query_ex (struct tgl_state *TLS, struct tgl_dc *DC, int 
     tglmp_dc_create_session (TLS, DC);
   }
   vlogprintf (E_DEBUG, "Sending query of size %d to DC %d\n", 4 * ints, DC->id);
-  struct query *q = talloc0 (sizeof (*q));
+  struct query *q = (struct query*) calloc(1, sizeof (struct query));
   q->data_len = ints;
   q->data = talloc (4 * ints);
   memcpy (q->data, data, 4 * ints);

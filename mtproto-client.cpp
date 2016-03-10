@@ -41,30 +41,28 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <poll.h>
+//#include <poll.h>
 #endif
 #include "crypto/rand.h"
 #include "crypto/rsa_pem.h"
 #include "crypto/sha.h"
 
-//#include "telegram.h"
 #include "queries.h"
-//#include "loop.h"
 #include "tgl-structures.h"
 #include "tgl-binlog.h"
-#include "auto.h"
-#include "auto/auto-types.h"
-#include "auto/auto-skip.h"
 #include "tgl.h"
 #include "mtproto-client.h"
 #include "tools.h"
 #include "tree.h"
 #include "updates.h"
 #include "mtproto-utils.h"
+extern "C" {
 #include "auto.h"
-#include "tgl-methods-in.h"
-
+#include "auto/auto-types.h"
+#include "auto/auto-skip.h"
 #include "mtproto-common.h"
+}
+#include "tgl-methods-in.h"
 
 #define MAX_NET_RES        (1L << 16)
 //extern int log_level;
@@ -118,13 +116,13 @@ static int encrypt_buffer[ENCRYPT_BUFFER_INTS];
 static int decrypt_buffer[ENCRYPT_BUFFER_INTS];
 
 static int encrypt_packet_buffer (struct tgl_state *TLS, struct tgl_dc *DC) {
-  TGLC_rsa *key = TLS->rsa_key_loaded[DC->rsa_key_idx];
+  TGLC_rsa *key = (TGLC_rsa *)TLS->rsa_key_loaded[DC->rsa_key_idx];
   return tgl_pad_rsa_encrypt (TLS, (char *) packet_buffer, (packet_ptr - packet_buffer) * 4, (char *) encrypt_buffer, ENCRYPT_BUFFER_INTS * 4, TGLC_rsa_n (key), TGLC_rsa_e (key));
 }
 
-static int encrypt_packet_buffer_aes_unauth (const char server_nonce[16], const char hidden_client_nonce[32]) {
-  tgl_init_aes_unauth (server_nonce, hidden_client_nonce, 1);
-  return tgl_pad_aes_encrypt ((char *) packet_buffer, (packet_ptr - packet_buffer) * 4, (char *) encrypt_buffer, ENCRYPT_BUFFER_INTS * 4);
+static int encrypt_packet_buffer_aes_unauth (const unsigned char server_nonce[16], const unsigned char hidden_client_nonce[32]) {
+  tgl_init_aes_unauth (server_nonce, hidden_client_nonce, AES_ENCRYPT);
+  return tgl_pad_aes_encrypt ((unsigned char *) packet_buffer, (packet_ptr - packet_buffer) * 4, (unsigned char *) encrypt_buffer, ENCRYPT_BUFFER_INTS * 4);
 }
 
 //
@@ -318,7 +316,7 @@ static void send_dh_params (struct tgl_state *TLS, struct connection *c, TGLC_bn
   assert (l >= 250 && l <= 256);
   assert (TGLC_bn_bn2bin (auth_key_num, (unsigned char *)(temp_key ? DC->temp_auth_key : DC->auth_key)));
   if (l < 256) {
-    char *key = temp_key ? DC->temp_auth_key : DC->auth_key;
+    unsigned char *key = temp_key ? DC->temp_auth_key : DC->auth_key;
     memmove (key + 256 - l, key, l);
     memset (key, 0, 256 - l);
   }
@@ -456,7 +454,7 @@ static int process_dh_answer (struct tgl_state *TLS, struct connection *c, char 
     vlogprintf (E_ERROR, "non-empty encrypted part expected\n");
     return -1;
   }
-  l = tgl_pad_aes_decrypt (fetch_str (l), l, (char *) decrypt_buffer, DECRYPT_BUFFER_INTS * 4 - 16);
+  l = tgl_pad_aes_decrypt((unsigned char *)fetch_str (l), l, (unsigned char *) decrypt_buffer, DECRYPT_BUFFER_INTS * 4 - 16);
   assert (in_ptr == in_end);
 
   in_ptr = decrypt_buffer + 5;
@@ -629,13 +627,13 @@ static void bind_temp_auth_key (struct tgl_state *TLS, struct connection *c) {
     clear_packet ();
     out_int (CODE_bind_auth_key_inner);
     long long rand;
-    tglt_secure_random (&rand, 8);
+    tglt_secure_random ((unsigned char*)&rand, 8);
     out_long (rand);
     out_long (DC->temp_auth_key_id);
     out_long (DC->auth_key_id);
 
     if (!S->session_id) {
-        tglt_secure_random (&S->session_id, 8);
+        tglt_secure_random ((unsigned char*)&S->session_id, 8);
     }
     out_long (S->session_id);
     int expires = time (0) + DC->server_time_delta + TLS->temp_key_expire_time;
@@ -682,7 +680,7 @@ static void init_enc_msg (struct tgl_state *TLS, struct tgl_session *S, int usef
   enc_msg.auth_key_id = DC->temp_auth_key_id;
   enc_msg.server_salt = DC->server_salt;
   if (!S->session_id) {
-    tglt_secure_random (&S->session_id, 8);
+    tglt_secure_random ((unsigned char*)&S->session_id, 8);
   }
   enc_msg.session_id = S->session_id;
   enc_msg.msg_id = msg_id_override ? msg_id_override : generate_next_msg_id (TLS, DC, S);
@@ -695,14 +693,14 @@ static void init_enc_msg (struct tgl_state *TLS, struct tgl_session *S, int usef
 
 static void init_enc_msg_inner_temp (struct tgl_dc *DC, long long msg_id) {
     enc_msg.auth_key_id = DC->auth_key_id;
-    tglt_secure_random (&enc_msg.server_salt, 8);
-    tglt_secure_random (&enc_msg.session_id, 8);
+    tglt_secure_random ((unsigned char*)&enc_msg.server_salt, 8);
+    tglt_secure_random ((unsigned char*)&enc_msg.session_id, 8);
     enc_msg.msg_id = msg_id;
     enc_msg.seq_no = 0;
 };
 
 
-static int aes_encrypt_message (struct tgl_state *TLS, char *key, struct encrypted_message *enc) {
+static int aes_encrypt_message (struct tgl_state *TLS, unsigned char *key, struct encrypted_message *enc) {
   unsigned char sha1_buffer[20];
   const int MINSZ = offsetof (struct encrypted_message, message);
   const int UNENCSZ = offsetof (struct encrypted_message, server_salt);
@@ -713,7 +711,7 @@ static int aes_encrypt_message (struct tgl_state *TLS, char *key, struct encrypt
   vlogprintf (E_DEBUG, "sending message with sha1 %08x\n", *(int *)sha1_buffer);
   memcpy (enc->msg_key, sha1_buffer + 4, 16);
   tgl_init_aes_auth (key, enc->msg_key, AES_ENCRYPT);
-  return tgl_pad_aes_encrypt ((char *) &enc->server_salt, enc_len, (char *) &enc->server_salt, MAX_MESSAGE_INTS * 4 + (MINSZ - UNENCSZ));
+  return tgl_pad_aes_encrypt ((unsigned char *) &enc->server_salt, enc_len, (unsigned char *) &enc->server_salt, MAX_MESSAGE_INTS * 4 + (MINSZ - UNENCSZ));
 }
 
 long long tglmp_encrypt_send_message (struct tgl_state *TLS, struct connection *c, int *msg, int msg_ints, int flags) {
@@ -931,7 +929,7 @@ static int work_bad_msg_notification (struct tgl_state *TLS, struct connection *
 }
 
 static int rpc_execute_answer (struct tgl_state *TLS, struct connection *c, long long msg_id) {
-  int op = prefetch_int ();
+  unsigned int op = prefetch_int ();
   switch (op) {
   case CODE_msg_container:
     return work_container (TLS, c, msg_id);
@@ -966,7 +964,7 @@ static int rpc_execute_answer (struct tgl_state *TLS, struct connection *c, long
   return 0;
 }
 
-static struct mtproto_methods mtproto_methods;
+//static struct mtproto_methods mtproto_methods;
 void tgls_free_session (struct tgl_state *TLS, struct tgl_session *S);
 /*
 static char *get_ipv6 (struct tgl_state *TLS, int num) {
@@ -1009,6 +1007,65 @@ static char *get_ipv6 (struct tgl_state *TLS, int num) {
   return res;
 }
 */
+
+static int tc_becomes_ready (struct tgl_state *TLS, struct connection *c) {
+    vlogprintf (E_NOTICE, "outbound rpc connection from dc #%d became ready\n", TLS->net_methods->get_dc(c)->id);
+    //char byte = 0xef;
+    //assert (TLS->net_methods->write_out (c, &byte, 1) == 1);
+    //TLS->net_methods->flush_out (c);
+
+    struct tgl_dc *DC = TLS->net_methods->get_dc (c);
+    if (DC->flags & 1) { DC->state = st_authorized; }
+    int o = DC->state;
+    if (o == st_authorized && !TLS->enable_pfs) {
+        DC->temp_auth_key_id = DC->auth_key_id;
+        memcpy (DC->temp_auth_key, DC->auth_key, 256);
+        DC->flags |= 2;
+    }
+    switch (o) {
+    case st_init:
+        send_req_pq_packet (TLS, c);
+        break;
+    case st_authorized:
+        if (!(DC->flags & 2)) {
+            assert (TLS->enable_pfs);
+            if (!DC->temp_auth_key_id) {
+                assert (!DC->temp_auth_key_id);
+                create_temp_auth_key (TLS, c);
+            } else {
+                bind_temp_auth_key (TLS, c);
+            }
+        } else if (!(DC->flags & TGLDCF_CONFIGURED)) {
+            tgl_do_help_get_config_dc (TLS, DC, mpc_on_get_config, DC);
+        }
+        break;
+    default:
+        vlogprintf (E_DEBUG, "c_state = %d\n", DC->state);
+        DC->state = st_init; // previous connection was reset
+        send_req_pq_packet (TLS, c);
+        break;
+    }
+    return 0;
+}
+
+static int rpc_becomes_ready (struct tgl_state *TLS, struct connection *c) {
+    return tc_becomes_ready (TLS, c);
+}
+
+static int tc_close (struct tgl_state *TLS, struct connection *c, int who) {
+    vlogprintf (E_DEBUG, "outbound rpc connection from dc #%d : closing by %d\n", TLS->net_methods->get_dc(c)->id, who);
+    return 0;
+}
+
+static int rpc_close (struct tgl_state *TLS, struct connection *c) {
+    return tc_close (TLS, c, 0);
+}
+
+static struct mtproto_methods mtproto_methods = {
+    .execute = rpc_execute,
+    .ready = rpc_becomes_ready,
+    .close = rpc_close
+};
 
 static void create_session_connect (struct tgl_state *TLS, struct tgl_session *S) {
     struct tgl_dc *DC = S->dc;
@@ -1060,7 +1117,7 @@ static int process_rpc_message (struct tgl_state *TLS, struct connection *c, str
     tgl_init_aes_auth (DC->auth_key + 8, enc->msg_key, 0);
   }
 
-  int l = tgl_pad_aes_decrypt ((char *)&enc->server_salt, len - UNENCSZ, (char *)&enc->server_salt, len - UNENCSZ);
+  int l = tgl_pad_aes_decrypt ((unsigned char *)&enc->server_salt, len - UNENCSZ, (unsigned char *)&enc->server_salt, len - UNENCSZ);
   assert (l == len - UNENCSZ);
 
   if (!(!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12)) {
@@ -1071,7 +1128,7 @@ static int process_rpc_message (struct tgl_state *TLS, struct connection *c, str
   assert (!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12);
 
   static unsigned char sha1_buffer[20];
-  TGLC_sha1 ((void *)&enc->server_salt, enc->msg_len + (MINSZ - UNENCSZ), sha1_buffer);
+  TGLC_sha1 ((unsigned char *)&enc->server_salt, enc->msg_len + (MINSZ - UNENCSZ), sha1_buffer);
   if (memcmp (&enc->msg_key, sha1_buffer + 4, 16)) {
     vlogprintf (E_WARNING, "Incorrect packet from server. Closing connection\n");
     fail_connection (TLS, c);
@@ -1128,7 +1185,6 @@ static int process_rpc_message (struct tgl_state *TLS, struct connection *c, str
   return 0;
 }
 
-
 static int rpc_execute (struct tgl_state *TLS, struct connection *c, int op, int len) {
     struct tgl_dc *DC = TLS->net_methods->get_dc (c);
 
@@ -1174,7 +1230,7 @@ static int rpc_execute (struct tgl_state *TLS, struct connection *c, int op, int
         if (op < 0 && op >= -999) {
             //vlogprintf (E_WARNING, "Server error %d\n", op);
         } else {
-            return process_rpc_message (TLS, c, (void *)(Response/* + 8*/), Response_len/* - 12*/);
+            return process_rpc_message (TLS, c, (struct encrypted_message *)(Response/* + 8*/), Response_len/* - 12*/);
         }
         return 0;
     default:
@@ -1185,16 +1241,10 @@ static int rpc_execute (struct tgl_state *TLS, struct connection *c, int op, int
     return 0;
 }
 
-
-static int tc_close (struct tgl_state *TLS, struct connection *c, int who) {
-    vlogprintf (E_DEBUG, "outbound rpc connection from dc #%d : closing by %d\n", TLS->net_methods->get_dc(c)->id, who);
-    return 0;
-}
-
 static void mpc_on_get_config (struct tgl_state *TLS, void *extra, int success) {
     TGL_UNUSED(TLS);
     assert (success);
-    struct tgl_dc *DC = extra;
+    struct tgl_dc *DC = (struct tgl_dc *)extra;
     DC->flags |= TGLDCF_CONFIGURED;
 }
 
@@ -1312,7 +1362,7 @@ static int send_all_acks (struct tgl_state *TLS, struct tgl_session *S) {
 }
 
 static void send_all_acks_gateway (struct tgl_state *TLS, void *arg) {
-  send_all_acks (TLS, arg);
+  send_all_acks (TLS, (struct tgl_session*)arg);
 }
 
 
@@ -1329,14 +1379,14 @@ void tgln_insert_msg_id (struct tgl_state *TLS, struct tgl_session *S, long long
 
 
 static void regen_temp_key_gw (struct tgl_state *TLS, void *arg) {
-  tglmp_regenerate_temp_auth_key (TLS, arg);
+  tglmp_regenerate_temp_auth_key (TLS, (struct tgl_dc *)arg);
 }
 
 struct tgl_dc *tglmp_alloc_dc (struct tgl_state *TLS, int flags, int id, char *ip, int port) {
   //assert (!TLS->DC_list[id]);
 
   if (!TLS->DC_list[id]) {
-    struct tgl_dc *DC = talloc0 (sizeof (*DC));
+    struct tgl_dc *DC = (struct tgl_dc *)talloc0(sizeof (struct tgl_dc));
     DC->id = id;
     TLS->DC_list[id] = DC;
     if (id > TLS->max_dc_num) {
@@ -1359,7 +1409,7 @@ struct tgl_dc *tglmp_alloc_dc (struct tgl_state *TLS, int flags, int id, char *i
     O2 = O2->next;
   }
 
-  struct tgl_dc_option *T = talloc (sizeof (*T));
+  struct tgl_dc_option *T = (struct tgl_dc_option *)talloc0(sizeof (struct tgl_dc_option));
   T->ip = ip;
   T->port = port;
   T->next = O;
@@ -1369,14 +1419,8 @@ struct tgl_dc *tglmp_alloc_dc (struct tgl_state *TLS, int flags, int id, char *i
   return DC;
 }
 
-static struct mtproto_methods mtproto_methods = {
-    .execute = rpc_execute,
-    .ready = rpc_becomes_ready,
-    .close = rpc_close
-};
-
 void tglmp_dc_create_session (struct tgl_state *TLS, struct tgl_dc *DC) {
-  struct tgl_session *S = talloc0 (sizeof (*S));
+  struct tgl_session *S = (struct tgl_session *)talloc0(sizeof (struct tgl_session));
   assert (TGLC_rand_pseudo_bytes ((unsigned char *) &S->session_id, 8) >= 0);
   S->dc = DC;
   //S->c = TLS->net_methods->create_connection (TLS, DC->ip, DC->port, S, DC, &mtproto_methods);
@@ -1419,7 +1463,7 @@ void tglmp_regenerate_temp_auth_key (struct tgl_state *TLS, struct tgl_dc *DC) {
   }
 
   struct tgl_session *S = DC->sessions[0];
-  tglt_secure_random (&S->session_id, 8);
+  tglt_secure_random ((unsigned char*)&S->session_id, 8);
   S->seq_no = 0;
 
   TLS->timer_methods->remove (S->ev);
@@ -1473,7 +1517,7 @@ void tgls_free_pubkey (struct tgl_state *TLS) {
   int i;
   for (i = 0; i < TLS->rsa_key_num; i++) {
     if (TLS->rsa_key_loaded[i]) {
-      TGLC_rsa_free (TLS->rsa_key_loaded[i]);
+      TGLC_rsa_free ((TGLC_rsa *)TLS->rsa_key_loaded[i]);
       TLS->rsa_key_loaded[i] = NULL;
     }
   }

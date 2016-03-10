@@ -19,13 +19,15 @@
 */
 #include "tgl.h"
 #include "updates.h"
-#include "mtproto-common.h"
 #include "tgl-binlog.h"
+extern "C" {
 #include "auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "auto/auto-store-ds.h"
+#include "mtproto-common.h"
+}
 #include "tgl-structures.h"
 #include "tgl-methods-in.h"
 #include "tree.h"
@@ -841,11 +843,12 @@ void tglu_work_any_updates (struct tgl_state *TLS, int check_only, struct tl_ds_
 }
 
 void tglu_work_any_updates_buf (struct tgl_state *TLS) {
-  struct tl_ds_updates *DS_U = fetch_ds_type_updates (&TYPE_TO_PARAM (updates));
+  struct paramed_type type = TYPE_TO_PARAM (updates);
+  struct tl_ds_updates *DS_U = fetch_ds_type_updates (&type);
   assert (DS_U);
   tglu_work_any_updates (TLS, 1, DS_U, NULL);
   tglu_work_any_updates (TLS, 0, DS_U, NULL);
-  free_ds_type_updates (DS_U, &TYPE_TO_PARAM (updates)); 
+  free_ds_type_updates (DS_U, &type);
 }
 
 #define user_cmp(a,b) (tgl_get_peer_id ((a)->id) - tgl_get_peer_id ((b)->id))

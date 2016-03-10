@@ -20,23 +20,12 @@
 */
 #ifndef __MTPROTO_CLIENT_H__
 #define __MTPROTO_CLIENT_H__
-//#include "net.h"
 #include "crypto/bn.h"
-//void on_start (void);
-//..long long encrypt_send_message (struct connection *c, int *msg, int msg_ints, int useful);
-//void dc_authorize (struct tgl_dc *DC);
-//void work_update (struct connection *c, long long msg_id);
-//void work_update_binlog (void);
-//int check_g (unsigned char p[256], BIGNUM *g);
-//int check_g_bn (BIGNUM *p, BIGNUM *g);
-//int check_DH_params (BIGNUM *p, int g);
-//void secure_random (void *s, int l);
 
 #include "tgl.h"
 
 struct connection;
 struct tgl_dc;
-//#include "queries.h"
 #define TG_APP_HASH "844584f2b1fd2daecee726166dcc1ef8"
 #define TG_APP_ID 10534
 

@@ -27,14 +27,12 @@
 #include <stdio.h>
 #include <assert.h>
 
-
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #define INT64_PRINTF_MODIFIER "I64"
 #else
 #define INT64_PRINTF_MODIFIER "ll"
 #endif
 
-//#include "interface.h"
 #include "tools.h"
 
 #include "constants.h"
@@ -108,7 +106,7 @@
 struct encrypted_message {
   // unencrypted header
   long long auth_key_id;
-  char msg_key[16];
+  unsigned char msg_key[16];
   // encrypted part, starts with encrypted header
   long long server_salt;
   long long session_id;
@@ -164,12 +162,8 @@ static inline void clear_packet (void) {
 }
 
 void tgl_out_cstring (const char *str, long len);
-void tgl_out_cstring_careful (const char *str, long len);
-void tgl_out_data (const void *data, long len);
 
 #define out_cstring tgl_out_cstring
-#define out_cstring_careful tgl_out_cstring_careful
-#define out_data tgl_out_data
 
 static inline void out_string (const char *str) {
   out_cstring (str, strlen (str));
@@ -372,18 +366,9 @@ int tgl_pad_rsa_decrypt (struct tgl_state *TLS, char *from, int from_len, char *
 //extern unsigned char aes_key_raw[32], aes_iv[32];
 //extern TGLC_aes_key aes_key;
 
-void tgl_init_aes_unauth (const char server_nonce[16], const char hidden_client_nonce[32], int encrypt);
-void tgl_init_aes_auth (char auth_key[192], char msg_key[16], int encrypt);
-int tgl_pad_aes_encrypt (char *from, int from_len, char *to, int size);
-int tgl_pad_aes_decrypt (char *from, int from_len, char *to, int size);
-/*
-static inline void hexdump_in (void) {
-  hexdump (in_ptr, in_end);
-}
+void tgl_my_clock_gettime (int clock_id, struct timespec *T);
 
-static inline void hexdump_out (void) {
-  hexdump (packet_buffer, packet_ptr);
-}*/
+void *tgl_alloc0 (size_t size);
 
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0

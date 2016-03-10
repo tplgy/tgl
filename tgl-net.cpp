@@ -47,6 +47,10 @@
 #include "tools.h"
 #include "mtproto-client.h"
 
+extern "C" {
+#include "mtproto-common.h"
+}
+
 #ifndef POLLRDHUP
 #define POLLRDHUP 0
 #endif
@@ -63,7 +67,7 @@ static void start_ping_timer (struct connection *c);
 static void ping_alarm (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
-  struct connection *c = arg;
+  struct connection *c = (struct connection *)arg;
   struct tgl_state *TLS = c->TLS;
   vlogprintf (E_DEBUG + 2,"ping alarm\n");
   assert (c->state == conn_ready || c->state == conn_connecting);
@@ -93,7 +97,7 @@ static void restart_connection (struct connection *c);
 static void fail_alarm (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
-  struct connection *c = arg;
+  struct connection *c = (struct connection *)arg;
   c->in_fail_timer = 0;
   restart_connection (c);
 }
@@ -107,8 +111,8 @@ static void start_fail_timer (struct connection *c) {
 }
 
 static struct connection_buffer *new_connection_buffer (int size) {
-  struct connection_buffer *b = talloc0 (sizeof (*b));
-  b->start = talloc (size);
+  struct connection_buffer *b = (struct connection_buffer *)talloc0(sizeof (struct connection_buffer));
+  b->start = (unsigned char*)talloc (size);
   b->end = b->start + size;
   b->rptr = b->wptr = b->start;
   return b;
@@ -122,7 +126,7 @@ static void delete_connection_buffer (struct connection_buffer *b) {
 int tgln_write_out (struct connection *c, const void *_data, int len) {
   struct tgl_state *TLS = c->TLS;
   vlogprintf (E_DEBUG, "write_out: %d bytes\n", len);
-  const unsigned char *data = _data;
+  const unsigned char *data = (const unsigned char *)_data;
   if (!len) { return 0; }
   assert (len > 0);
   int x = 0;
@@ -157,7 +161,7 @@ int tgln_write_out (struct connection *c, const void *_data, int len) {
 }
 
 int tgln_read_in (struct connection *c, void *_data, int len) {
-  unsigned char *data = _data;
+  unsigned char *data = (unsigned char *)_data;
   if (!len) { return 0; }
   assert (len > 0);
   if (len > c->in_bytes) {
@@ -177,7 +181,7 @@ int tgln_read_in (struct connection *c, void *_data, int len) {
       x += y;
       data += y;
       len -= y;
-      void *old = c->in_head;
+      struct connection_buffer *old = c->in_head;
       c->in_head = c->in_head->next;
       if (!c->in_head) {
         c->in_tail = 0;
@@ -189,7 +193,7 @@ int tgln_read_in (struct connection *c, void *_data, int len) {
 }
 
 int tgln_read_in_lookup (struct connection *c, void *_data, int len) {
-  unsigned char *data = _data;
+  unsigned char *data = (unsigned char *)_data;
   if (!len || !c->in_bytes) { return 0; }
   assert (len > 0);
   if (len > c->in_bytes) {
@@ -241,7 +245,7 @@ static void try_write (struct connection *c);
 static void conn_try_read (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
-  struct connection *c = arg;
+  struct connection *c = (struct connection *)arg;
   struct tgl_state *TLS = c->TLS;
   vlogprintf (E_DEBUG + 1, "Try read. Fd = %d\n", c->fd);
   try_read (c);
@@ -249,7 +253,7 @@ static void conn_try_read (evutil_socket_t fd, short what, void *arg) {
 static void conn_try_write (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
-  struct connection *c = arg;
+  struct connection *c = (struct connection *)arg;
   struct tgl_state *TLS = c->TLS;
   if (c->state == conn_connecting) {
     c->state = conn_ready;
@@ -313,7 +317,7 @@ static int my_connect (struct connection *c, const char *host) {
 }
 
 struct connection *tgln_create_connection (struct tgl_state *TLS, const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods) {
-  struct connection *c = talloc0 (sizeof (*c));
+  struct connection *c = (struct connection *) talloc0 (sizeof (struct connection));
   c->TLS = TLS;
   c->ip = tstrdup (host);
   c->port = port;
@@ -378,10 +382,10 @@ static void restart_connection (struct connection *c) {
   start_ping_timer (c);
   Connections[fd] = c;
   
-  c->write_ev = event_new (TLS->ev_base, c->fd, EV_WRITE, conn_try_write, c);
+  c->write_ev = event_new ((struct event_base *)TLS->ev_base, c->fd, EV_WRITE, conn_try_write, c);
 
   struct timeval tv = {5, 0};
-  c->read_ev = event_new (TLS->ev_base, c->fd, EV_READ | EV_PERSIST, conn_try_read, c);
+  c->read_ev = event_new ((struct event_base *)TLS->ev_base, c->fd, EV_READ | EV_PERSIST, conn_try_read, c);
   event_add (c->read_ev, &tv);
   
   char byte = 0xef;
