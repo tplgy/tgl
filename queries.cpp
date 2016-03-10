@@ -862,6 +862,7 @@ struct paramed_type config_type = TYPE_TO_PARAM(config);
 static struct query_methods help_get_config_methods  = {
   .on_answer = help_get_config_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &config_type,
   .name = "get config",
   .timeout = 1
@@ -900,6 +901,7 @@ struct paramed_type auth_sent_type = TYPE_TO_PARAM(auth_sent_code);
 static struct query_methods send_code_methods  = {
   .on_answer = send_code_on_answer,
   .on_error = q_list_on_error,
+  .on_timeout = NULL,
   .type =  &auth_sent_type,
   .name = "send code"
 };
@@ -932,6 +934,7 @@ struct paramed_type type_bool = TYPE_TO_PARAM(bool);
 static struct query_methods phone_call_methods  = {
   .on_answer = phone_call_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &type_bool,
   .name = "phone call"
 };
@@ -977,6 +980,7 @@ struct paramed_type auth_auth_type = TYPE_TO_PARAM(auth_authorization);
 static struct query_methods sign_in_methods  = {
   .on_answer = sign_in_on_answer,
   .on_error = sign_in_on_error,
+  .on_timeout = NULL,
   .type = &auth_auth_type,
   .name = "sign in"
 };
@@ -1038,6 +1042,7 @@ struct paramed_type contacts_contacts_type = TYPE_TO_PARAM(contacts_contacts);
 static struct query_methods get_contacts_methods = {
   .on_answer = get_contacts_on_answer,
   .on_error = q_list_on_error,
+  .on_timeout = NULL,
   .type = &contacts_contacts_type,
   .name = "get contacts"
 };
@@ -1102,6 +1107,7 @@ struct paramed_type mesg_sent_type = TYPE_TO_PARAM(messages_sent_message);
 static struct query_methods msg_send_methods = {
   .on_answer = msg_send_on_answer,
   .on_error = msg_send_on_error,
+  .on_timeout = NULL,
   .type = &mesg_sent_type,
   .name = "send message"
 };
@@ -1421,6 +1427,7 @@ struct paramed_type msg_aff_history_type = TYPE_TO_PARAM(messages_affected_histo
 static struct query_methods mark_read_methods = {
   .on_answer = mark_read_on_receive,
   .on_error = mark_read_on_error,
+  .on_timeout = NULL,
   .type = &msg_aff_history_type,
   .name = "mark read"
 };
@@ -1428,6 +1435,7 @@ static struct query_methods mark_read_methods = {
 static struct query_methods mark_read_channels_methods = {
   .on_answer = mark_read_channels_on_receive,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &bool_type,
   .name = "mark read (channels)"
 };
@@ -1575,6 +1583,7 @@ struct paramed_type msg_msg_type = TYPE_TO_PARAM(messages_messages);
 static struct query_methods get_history_methods = {
   .on_answer = get_history_on_answer,
   .on_error = get_history_on_error,
+  .on_timeout = NULL,
   .type = &msg_msg_type,
   .name = "get history"
 };
@@ -1764,6 +1773,7 @@ struct paramed_type msg_dialogs_type = TYPE_TO_PARAM(messages_dialogs);
 static struct query_methods get_dialogs_methods = {
   .on_answer = get_dialogs_on_answer,
   .on_error = get_dialogs_on_error,
+  .on_timeout = NULL,
   .type = &msg_dialogs_type,
   .name = "get dialogs"
 };
@@ -1868,6 +1878,7 @@ struct paramed_type bool_type = (struct paramed_type) {.type = &tl_type_bool, .p
 static struct query_methods send_file_part_methods = {
   .on_answer = send_file_part_on_answer,
   .on_error = send_file_part_on_error,
+  .on_timeout = NULL,
   .type = &bool_type,
   .name = "send file part"
 };
@@ -1876,6 +1887,7 @@ struct paramed_type photo_photo_type = TYPE_TO_PARAM(photos_photo);
 static struct query_methods set_photo_methods = {
   .on_answer = set_photo_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &photo_photo_type,
   .name = "set photo"
 };
@@ -2257,6 +2269,7 @@ struct paramed_type user_type = TYPE_TO_PARAM(user);
 static struct query_methods set_profile_name_methods = {
   .on_answer = set_profile_name_on_answer,
   .on_error = q_ptr_on_error,
+  .on_timeout = NULL,
   .type = &user_type,
   .name = "set profile name"
 };
@@ -2308,6 +2321,7 @@ struct paramed_type contacts_resolved_peer_type = TYPE_TO_PARAM(contacts_resolve
 static struct query_methods contact_search_methods = {
   .on_answer = contact_search_on_answer,
   .on_error = q_list_on_error,
+  .on_timeout = NULL,
   .type = &contacts_resolved_peer_type,
   .name = "contacts search"
 };
@@ -2952,6 +2966,7 @@ struct paramed_type msg_chat_full_type = TYPE_TO_PARAM(messages_chat_full);
 static struct query_methods chat_info_methods = {
   .on_answer = chat_info_on_answer,
   .on_error = q_ptr_on_error,
+  .on_timeout = NULL,
   .type = &msg_chat_full_type,
   .name = "chat info"
 };
@@ -3034,6 +3049,7 @@ struct paramed_type user_full_type = TYPE_TO_PARAM(user_full);
 static struct query_methods user_info_methods = {
   .on_answer = user_info_on_answer,
   .on_error = q_ptr_on_error,
+  .on_timeout = NULL,
   .type = &user_full_type,
   .name = "user info"
 };
@@ -3203,6 +3219,7 @@ struct paramed_type upload_file_type = TYPE_TO_PARAM(upload_file);
 static struct query_methods download_methods = {
   .on_answer = download_on_answer,
   .on_error = download_on_error,
+  .on_timeout = NULL,
   .type = &upload_file_type,
   .name = "download part"
 };
@@ -3436,7 +3453,7 @@ static int import_auth_on_answer (struct tgl_state *TLS, struct query *q, void *
 static struct query_methods import_auth_methods = {
   .on_answer = import_auth_on_answer,
   .on_error = fail_on_error,
-  .type = TYPE_TO_PARAM(auth_authorization),
+  .on_timeout = NULL,
   .type = &auth_auth_type,
   .name = "import authorization"
 };
@@ -3462,6 +3479,7 @@ struct paramed_type auth_export_auth_type = TYPE_TO_PARAM(auth_exported_authoriz
 static struct query_methods export_auth_methods = {
   .on_answer = export_auth_on_answer,
   .on_error = fail_on_error,
+  .on_timeout = NULL,
   .type = &auth_export_auth_type,
   .name = "export authorization"
 };
@@ -3504,6 +3522,7 @@ struct paramed_type contacts_imported_type = TYPE_TO_PARAM(contacts_imported_con
 static struct query_methods add_contact_methods = {
   .on_answer = add_contact_on_answer,
   .on_error = q_list_on_error,
+  .on_timeout = NULL,
   .type = &contacts_imported_type,
   .name = "add contact"
 };
@@ -3538,6 +3557,7 @@ struct paramed_type contacts_link_type = TYPE_TO_PARAM(contacts_link);
 static struct query_methods del_contact_methods = {
   .on_answer = del_contact_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &contacts_link_type,
   .name = "del contact"
 };
@@ -3647,6 +3667,7 @@ static int msg_search_on_error (struct tgl_state *TLS, struct query *q, int erro
 static struct query_methods msg_search_methods = {
   .on_answer = msg_search_on_answer,
   .on_error = msg_search_on_error,
+  .on_timeout = NULL,
   .type = &msg_msg_type,
   .name = "messages search"
 };
@@ -3813,6 +3834,7 @@ struct paramed_type update_state_type = TYPE_TO_PARAM(updates_state);
 static struct query_methods lookup_state_methods = {
   .on_answer = lookup_state_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &update_state_type,
   .name = "lookup state"
 };
@@ -3820,6 +3842,7 @@ static struct query_methods lookup_state_methods = {
 static struct query_methods get_state_methods = {
   .on_answer = get_state_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &update_state_type,
   .name = "get state"
 };
@@ -3828,6 +3851,7 @@ struct paramed_type update_diff_type = TYPE_TO_PARAM(updates_difference);
 static struct query_methods get_difference_methods = {
   .on_answer = get_difference_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &update_diff_type,
   .name = "get difference"
 };
@@ -4148,6 +4172,7 @@ struct paramed_type msg_affected_type = TYPE_TO_PARAM(messages_affected_messages
 static struct query_methods delete_msg_methods = {
   .on_answer = delete_msg_on_answer,
   .on_error = delete_msg_on_error,
+  .on_timeout = NULL,
   .type = &msg_affected_type,
   .name = "delete message"
 };
@@ -4214,6 +4239,7 @@ struct paramed_type vector_type = (struct paramed_type) {.type = &tl_type_vector
 static struct query_methods export_card_methods = {
   .on_answer = export_card_on_answer,
   .on_error = q_list_on_error,
+  .on_timeout = NULL,
   .type = &vector_type,
   .name = "export card"
 };
@@ -4239,6 +4265,7 @@ static int import_card_on_answer (struct tgl_state *TLS, struct query *q, void *
 static struct query_methods import_card_methods = {
   .on_answer = import_card_on_answer,
   .on_error = q_ptr_on_error,
+  .on_timeout = NULL,
   .type = &user_type,
   .name = "import card"
 };
@@ -4279,6 +4306,7 @@ static int send_typing_on_answer (struct tgl_state *TLS, struct query *q, void *
 static struct query_methods send_typing_methods = {
   .on_answer = send_typing_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &bool_type,
   .name = "send typing"
 };
@@ -4346,6 +4374,7 @@ static int ext_query_on_answer (struct tgl_state *TLS, struct query *q, void *D)
 static struct query_methods ext_query_methods = {
   .on_answer = ext_query_on_answer,
   .on_error = q_list_on_error,
+  .on_timeout = NULL,
   .name = "ext query"
 };
 
@@ -4423,6 +4452,7 @@ static int get_messages_on_answer (struct tgl_state *TLS, struct query *q, void 
 static struct query_methods get_messages_methods = {
   .on_answer = get_messages_on_answer,
   .on_error = q_ptr_on_error,
+  .on_timeout = NULL,
   .type = &msg_msg_type,
   .name = "get messages"
 };
@@ -4475,6 +4505,7 @@ struct paramed_type export_chat_invite_type = TYPE_TO_PARAM(exported_chat_invite
 static struct query_methods export_chat_link_methods = {
   .on_answer = export_chat_link_on_answer,
   .on_error = q_ptr_on_error,
+  .on_timeout = NULL,
   .type = &export_chat_invite_type,
   .name = "export chat link"
 };
@@ -4576,6 +4607,7 @@ static int set_password_on_error (struct tgl_state *TLS, struct query *q, int er
 static struct query_methods set_password_methods = {
   .on_answer = set_password_on_answer,
   .on_error = set_password_on_error,
+  .on_timeout = NULL,
   .type = &bool_type,
   .name = "set password"
 };
@@ -4723,6 +4755,7 @@ struct paramed_type account_pwd_type = TYPE_TO_PARAM(account_password);
 static struct query_methods set_get_password_methods = {
   .on_answer = set_get_password_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &account_pwd_type,
   .name = "get password"
 };
@@ -4762,6 +4795,7 @@ static int check_password_on_answer (struct tgl_state *TLS, struct query *q, voi
 static struct query_methods check_password_methods = {
   .on_answer = check_password_on_answer,
   .on_error = check_password_on_error,
+  .on_timeout = NULL,
   .type = &auth_auth_type,
   .name = "check password"
 };
@@ -4841,7 +4875,7 @@ static int check_get_password_on_answer (struct tgl_state *TLS, struct query *q,
 static struct query_methods check_get_password_methods = {
   .on_answer = check_get_password_on_answer,
   .on_error = check_get_password_on_error,
-  .type = TYPE_TO_PARAM(account_password),
+  .on_timeout = NULL,
   .type = &account_pwd_type,
   .name = "get password"
 };
@@ -4917,6 +4951,7 @@ static int block_user_on_answer (struct tgl_state *TLS, struct query *q, void *D
 static struct query_methods block_user_methods = {
   .on_answer = block_user_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &bool_type,
   .name = "block user"
 };
@@ -5040,6 +5075,7 @@ static int send_bind_on_error (struct tgl_state *TLS, struct query *q, int error
 static struct query_methods send_bind_temp_methods = {
   .on_answer = send_bind_temp_on_answer,
   .on_error = send_bind_on_error,
+  .on_timeout = NULL,
   .type = &bool_type,
   .name = "bind temp auth key"
 };
@@ -5066,6 +5102,7 @@ static int update_status_on_answer (struct tgl_state *TLS, struct query *q, void
 static struct query_methods update_status_methods = {
   .on_answer = update_status_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = NULL,
   .type = &bool_type,
   .name = "update status"
 };

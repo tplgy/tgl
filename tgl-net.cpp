@@ -580,8 +580,8 @@ struct tgl_net_methods tgl_conn_methods = {
   .read_in_lookup = tgln_read_in_lookup,
   .flush_out = tgln_flush_out,
   .incr_out_packet_num = incr_out_packet_num,
+  .free = tgln_free,
   .get_dc = get_dc,
   .get_session = get_session,
   .create_connection = tgln_create_connection,
-  .free = tgln_free
 };

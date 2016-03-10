@@ -1062,9 +1062,9 @@ static int rpc_close (struct tgl_state *TLS, struct connection *c) {
 }
 
 static struct mtproto_methods mtproto_methods = {
-    .execute = rpc_execute,
     .ready = rpc_becomes_ready,
-    .close = rpc_close
+    .close = rpc_close,
+    .execute = rpc_execute,
 };
 
 static void create_session_connect (struct tgl_state *TLS, struct tgl_session *S) {
