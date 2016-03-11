@@ -23,6 +23,7 @@
 #include "crypto/bn.h"
 #include "tgl-layout.h"
 #include <string.h>
+#include <string>
 #include <stdlib.h>
 #include <vector>
 

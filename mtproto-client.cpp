@@ -25,6 +25,7 @@
 
 #define        _FILE_OFFSET_BITS        64
 
+#include <algorithm>
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
