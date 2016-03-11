@@ -125,7 +125,6 @@ struct tgl_update_callback {
 struct tgl_net_methods {
   int (*write_out) (struct connection *c, const void *data, int len);
   int (*read_in) (struct connection *c, void *data, int len);
-  int (*read_in_lookup) (struct connection *c, void *data, int len);
   void (*flush_out) (struct connection *c);
   void (*incr_out_packet_num) (struct connection *c);
   void (*free) (struct connection *c);
