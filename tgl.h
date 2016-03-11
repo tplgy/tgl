@@ -24,6 +24,7 @@
 #include "tgl-layout.h"
 #include <string.h>
 #include <string>
+#include <iostream>
 #include <stdlib.h>
 #include <vector>
 
@@ -166,8 +167,14 @@ struct tgl_timer_methods {
 
 struct event_base;
 
-#pragma pack(push,4)
 struct tgl_state {
+  tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
+      DC_working(NULL), temp_key_expire_time(0), cur_uploading_bytes(0), cur_uploaded_bytes(0), cur_downloading_bytes(0),
+      cur_downloaded_bytes(0), net_methods(NULL), ev_base(0), BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
+      m_date(0), m_seq(0), m_test_mode(0), m_verbosity(0), m_our_id(0), m_enable_pfs(false), m_ipv6_enabled(false)
+  {
+  }
+
   tgl_peer_id_t our_id;
   int encr_root;
   unsigned char *encr_prime;
@@ -184,7 +191,7 @@ struct tgl_state {
   int started;
 
   long long locks;
-  struct tgl_dc *DC_list[TGL_MAX_DC_NUM];
+  std::vector<tgl_dc*> DC_list;
   struct tgl_dc *DC_working;
   int max_dc_num;
   int dc_working_num;
@@ -202,11 +209,9 @@ struct tgl_state {
   struct tgl_net_methods *net_methods;
   struct event_base *ev_base;
 
-  char *rsa_key_list[TGL_MAX_RSA_KEYS_NUM];
-  // (TGLC_rsa *)
-  void *rsa_key_loaded[TGL_MAX_RSA_KEYS_NUM];
-  long long rsa_key_fingerprint[TGL_MAX_RSA_KEYS_NUM];
-  int rsa_key_num;
+  std::vector<char*> rsa_key_list;
+  std::vector<void*> rsa_key_loaded;
+  std::vector<long long> rsa_key_fingerprint;
 
   TGLC_bn_ctx *TGLC_bn_ctx;
 
@@ -216,9 +221,6 @@ struct tgl_state {
 
   std::vector<query*> queries_tree;
 
-  int app_id;
-  char *app_hash;
-
   void *ev_login;
 
   char *app_version;
@@ -227,14 +229,70 @@ struct tgl_state {
   struct tree_random_id *random_id_tree;
   struct tree_temp_id *temp_id_tree;
 
-  char *error;
-  int error_code;
-
   int is_bot;
 
   int last_temp_id;
+
+  void init ();
+  void login ();
+
+  void set_auth_key(int num, const char *buf);
+  void set_our_id(int id);
+  void set_dc_option (int flags, int id, const char *ip, int l2, int port);
+  void set_dc_signed(int num);
+  void set_working_dc(int num);
+  void set_qts(int qts);
+  void set_pts(int pts, bool force = false);
+  void set_date(int date, bool force = false);
+  void set_seq(int seq);
+  void reset_server_state();
+  void set_download_directory (const std::string &path);
+  void set_callback (struct tgl_update_callback *cb);
+  void set_rsa_key (const char *key);
+  void set_app_version (const std::string &app_version);
+  void set_verbosity (int val);
+  void set_enable_pfs (bool); // enable perfect forward secrecy (does not work properly right now)
+  void set_test_mode (bool);
+  void set_net_methods (struct tgl_net_methods *methods);
+  void set_timer_methods (struct tgl_timer_methods *methods);
+  void set_ev_base (void *ev_base);
+  void register_app_id (int app_id, const std::string &app_hash);
+  void set_enable_ipv6 (bool val);
+  std::string app_version() { return m_app_version; }
+  std::string app_hash() { return m_app_hash; }
+  int app_id() { return m_app_id; }
+
+  void set_error(std::string error, int error_code);
+
+  int pts() { return m_pts; }
+  int qts() { return m_qts; }
+  int seq() { return m_seq; }
+  int date() { return m_date; }
+  bool test_mode() { return m_test_mode; }
+  int verbosity() { return m_verbosity; }
+  int our_id() { return m_our_id; }
+  bool ipv6_enabled() { return m_ipv6_enabled; }
+  std::string downloads_directory() { return m_downloads_directory; }
+  bool pfs_enabled() { return m_enable_pfs; }
+private:
+  int m_app_id;
+  std::string m_app_hash;
+
+  std::string m_error;
+  int m_error_code;
+
+  int m_pts;
+  int m_qts;
+  int m_date;
+  int m_seq;
+  bool m_test_mode; // Connects to the telegram test servers instead of the regular servers
+  int m_verbosity;
+  int m_our_id; // ID of logged in user
+  bool m_enable_pfs;
+  std::string m_app_version;
+  bool m_ipv6_enabled;
+  std::string m_downloads_directory;
 };
-#pragma pack(pop)
 
 //extern struct tgl_state tgl_state;
 
@@ -266,22 +324,6 @@ int tgl_do_send_bot_auth (struct tgl_state *TLS, const char *code, int code_len,
 #define TGL_MK_GEO_CHAT(id) tgl_set_peer_id (TGL_PEER_GEO_CHAT,id)
 #define TGL_MK_ENCR_CHAT(id) tgl_set_peer_id (TGL_PEER_ENCR_CHAT,id)
 
-void tgl_set_auth_key(struct tgl_state *TLS, int num, const char *buf);
-void tgl_set_our_id(struct tgl_state *TLS, int id);
-void tgl_set_dc_option (struct tgl_state *TLS, int flags, int id, const char *ip, int l2, int port);
-void tgl_set_dc_signed(struct tgl_state *TLS, int num);
-void tgl_set_working_dc(struct tgl_state *TLS, int num);
-void tgl_set_qts(struct tgl_state *TLS, int qts);
-void tgl_set_pts(struct tgl_state *TLS, int pts);
-void tgl_set_date(struct tgl_state *TLS, int date);
-void tgl_set_seq(struct tgl_state *TLS, int seq);
-void tgl_set_auth_file_path (struct tgl_state *TLS, const char *path);
-void tgl_set_download_directory (struct tgl_state *TLS, const char *path);
-void tgl_set_callback (struct tgl_state *TLS, struct tgl_update_callback *cb);
-void tgl_set_rsa_key (struct tgl_state *TLS, const char *key);
-void tgl_set_rsa_key_direct (struct tgl_state *TLS, unsigned long e, int n_bytes, const unsigned char *n);
-void tgl_set_app_version (struct tgl_state *TLS, const char *app_version);
-
 static inline int tgl_get_peer_type (tgl_peer_id_t id) {
   return id.peer_type;
 }
@@ -302,18 +344,9 @@ static inline int tgl_cmp_peer_id (tgl_peer_id_t a, tgl_peer_id_t b) {
   return memcmp (&a, &b, 8);
 }
 
-void tgl_incr_verbosity (struct tgl_state *TLS);
-void tgl_set_verbosity (struct tgl_state *TLS, int val);
-void tgl_enable_pfs (struct tgl_state *TLS);
-void tgl_set_test_mode (struct tgl_state *TLS);
-void tgl_set_net_methods (struct tgl_state *TLS, struct tgl_net_methods *methods);
-void tgl_set_timer_methods (struct tgl_state *TLS, struct tgl_timer_methods *methods);
-void tgl_set_ev_base (struct tgl_state *TLS, void *ev_base);
-
 int tgl_authorized_dc(struct tgl_dc *DC);
 int tgl_signed_dc(struct tgl_dc *DC);
 
-int tgl_init (struct tgl_state *TLS);
 void tgl_dc_authorize (struct tgl_state *TLS, struct tgl_dc *DC);
 
 #define TGL_SEND_MSG_FLAG_DISABLE_PREVIEW 1
@@ -333,14 +366,6 @@ typedef int tgl_user_id_t;
 typedef int tgl_chat_id_t;
 typedef int tgl_secret_chat_id_t;
 typedef int tgl_user_or_chat_id_t;
-
-void tgl_register_app_id (struct tgl_state *TLS, int app_id, const char *app_hash);
-
-void tgl_login (struct tgl_state *TLS);
-void tgl_enable_ipv6 (struct tgl_state *TLS);
-void tgl_enable_bot (struct tgl_state *TLS);
-
-struct tgl_state *tgl_state_alloc (void);
 
 void tgl_do_lookup_state (struct tgl_state *TLS);
 

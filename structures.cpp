@@ -209,7 +209,8 @@ struct tgl_user *tglf_fetch_alloc_user (struct tgl_state *TLS, struct tl_ds_user
   int flags = U->flags;
 
   if (DS_LVAL (DS_U->flags) & (1 << 10)) {
-    bl_do_set_our_id (TLS, U->id);
+    //bl_do_set_our_id (TLS, U->id);
+    TLS->set_our_id (user_id);
     flags |= TGLUF_SELF;
   } else {
     flags &= ~TGLUF_SELF;
@@ -1050,8 +1051,9 @@ struct tgl_message *tglf_fetch_alloc_message_short (struct tgl_state *TLS, struc
 
   struct tl_ds_message_media A;
   A.magic = CODE_message_media_empty;
+  int type = TGL_PEER_USER;
 
-  tgl_peer_id_t our_id = TLS->our_id;
+  tgl_peer_id_t our_id = TLS->our_id();
   tgl_peer_id_t peer_id = P->id;
 
   tgl_peer_id_t fwd_from_id;
@@ -1061,6 +1063,7 @@ struct tgl_message *tglf_fetch_alloc_message_short (struct tgl_state *TLS, struc
     fwd_from_id = TGL_MK_USER (0);
   }
 
+#if 0
   bl_do_edit_message (TLS, &msg_id, 
     (f & 2) ? &our_id : &peer_id,
     (f & 2) ? &peer_id : &our_id,
@@ -1075,6 +1078,24 @@ struct tgl_message *tglf_fetch_alloc_message_short (struct tgl_state *TLS, struc
     (void *)DS_U->entities,
     flags
   );
+#endif
+
+  DS_CSTR (msg_text, DS_U->message);
+  tglm_message_create (TLS, DS_LVAL (DS_U->id),
+          (f & 2) ? &our_id : &peer_id,
+          &type, (f & 2) ? &peer_id : &our_id,
+          DS_U->fwd_from_id ? &fwd_from_id : NULL,
+          DS_U->fwd_date,
+          DS_U->date,
+          msg_text,
+          &A,
+          NULL,
+          DS_U->reply_to_msg_id,
+          NULL,
+          flags
+          );
+  free(msg_text);
+
   return M;
 }
 

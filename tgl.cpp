@@ -36,40 +36,43 @@ extern "C" {
 
 struct tgl_state tgl_state;
 
-void tgl_set_auth_key(struct tgl_state *TLS, int num, const char *buf)
+void tgl_state::set_auth_key(int num, const char *buf)
 {
     fprintf(stderr, "set auth %d\n", num);
     assert (num > 0 && num <= MAX_DC_ID);
-    assert (TLS->DC_list[num]);
+    assert (DC_list[num]);
 
     if (buf) {
-        memcpy(TLS->DC_list[num]->auth_key, buf, 256);
+        memcpy(DC_list[num]->auth_key, buf, 256);
     }
 
     static unsigned char sha1_buffer[20];
-    SHA1 ((unsigned char *)TLS->DC_list[num]->auth_key, 256, sha1_buffer);
-    TLS->DC_list[num]->auth_key_id = *(long long *)(sha1_buffer + 12);
+    SHA1 ((unsigned char *)DC_list[num]->auth_key, 256, sha1_buffer);
+    DC_list[num]->auth_key_id = *(long long *)(sha1_buffer + 12);
 
-    TLS->DC_list[num]->flags |= TGLDCF_AUTHORIZED;
+    DC_list[num]->flags |= TGLDCF_AUTHORIZED;
 
-    TLS->callback.dc_update(TLS->DC_list[num]);
+    callback.dc_update(DC_list[num]);
 }
 
-void tgl_set_our_id(struct tgl_state *TLS, int id)
+void tgl_state::set_our_id(int id)
 {
-    if (TLS->our_id == id) {
+    if (m_our_id == id) {
         return;
     }
-    TLS->our_id = id;
-    assert (TLS->our_id > 0);
-    if (TLS->callback.our_id) {
-        TLS->callback.our_id (TLS->our_id);
+    m_our_id = id;
+    assert (our_id() > 0);
+    if (callback.our_id) {
+        callback.our_id (our_id());
     }
 }
 
-void tgl_set_dc_option (struct tgl_state *TLS, int flags, int id, const char *ip, int l2, int port)
+void tgl_state::set_dc_option (int flags, int id, const char *ip, int l2, int port)
 {
-    struct tgl_dc *DC = TLS->DC_list[id];
+    if (id >= DC_list.size()) {
+        DC_list.resize(id+1, NULL);
+    }
+    struct tgl_dc *DC = DC_list[id];
 
     if (DC) {
         struct tgl_dc_option *O = DC->options[flags & 3];
@@ -87,93 +90,87 @@ void tgl_set_dc_option (struct tgl_state *TLS, int flags, int id, const char *ip
     memcpy(ip_cpy, ip, l2);
     ip_cpy[ip_cpy_length-1] = '\0';
 
-    tglmp_alloc_dc (TLS, flags, id, ip_cpy, port);
+    tglmp_alloc_dc (this, flags, id, ip_cpy, port);
 }
 
-void tgl_set_dc_signed(struct tgl_state *TLS, int num)
+void tgl_state::set_dc_signed(int num)
 {
     fprintf(stderr, "set signed %d\n", num);
     assert (num > 0 && num <= MAX_DC_ID);
-    assert (TLS->DC_list[num]);
-    TLS->DC_list[num]->flags |= TGLDCF_LOGGED_IN;
+    assert (DC_list[num]);
+    DC_list[num]->flags |= TGLDCF_LOGGED_IN;
 }
 
-void tgl_set_working_dc(struct tgl_state *TLS, int num)
+void tgl_state::set_working_dc(int num)
 {
     fprintf(stderr, "set working %d\n", num);
     assert (num > 0 && num <= MAX_DC_ID);
-    TLS->DC_working = TLS->DC_list[num];
-    TLS->dc_working_num = num;
-    TLS->callback.change_active_dc(num);
+    DC_working = DC_list[num];
+    callback.change_active_dc(num);
 }
 
-void tgl_set_qts(struct tgl_state *TLS, int qts)
+void tgl_state::set_qts(int qts)
 {
-    if (TLS->locks & TGL_LOCK_DIFF) { return; }
-    if (qts <= TLS->qts) { return; }
-    TLS->qts = qts;
+    if (locks & TGL_LOCK_DIFF) { return; }
+    if (qts <= this->qts()) { return; }
+    m_qts = qts;
 }
 
-void tgl_set_pts(struct tgl_state *TLS, int pts)
+void tgl_state::set_pts(int pts, bool force)
 {
-    if (TLS->locks & TGL_LOCK_DIFF) { return; }
-    if (pts <= TLS->pts) { return; }
-    TLS->pts = pts;
+    if (locks & TGL_LOCK_DIFF && !force) { return; }
+    if (pts <= this->pts() && !force) { return; }
+    m_pts = pts;
 }
 
-void tgl_set_date(struct tgl_state *TLS, int date)
+void tgl_state::set_date(int date, bool force)
 {
-    if (TLS->locks & TGL_LOCK_DIFF) { return; }
-    if (date <= TLS->date) { return; }
-    TLS->date = date;
+    if (locks & TGL_LOCK_DIFF && !force) { return; }
+    if (date <= m_date && !force) { return; }
+    m_date = date;
 }
 
-void tgl_set_seq(struct tgl_state *TLS, int seq)
+void tgl_state::set_seq(int seq)
 {
-    if (TLS->locks & TGL_LOCK_DIFF) { return; }
-    if (seq <= TLS->seq) { return; }
-    TLS->seq = seq;
+    if (locks & TGL_LOCK_DIFF) { return; }
+    if (seq <= m_seq) { return; }
+    m_seq = seq;
 }
-void tgl_set_download_directory (struct tgl_state *TLS, const char *path) {
-  if (TLS->downloads_directory) {
-    tfree_str (TLS->downloads_directory);
+
+void tgl_state::reset_server_state()
+{
+    m_qts = 0;
+    m_pts = 0;
+    m_date = 0;
+    m_seq = 0;
+}
+
+void tgl_state::set_download_directory(const std::string &path) {
+    m_downloads_directory = path;
+}
+
+void tgl_state::set_callback(struct tgl_update_callback *cb) {
+  callback = *cb;
+}
+
+void tgl_state::set_rsa_key(const char *key) {
+  rsa_key_list.push_back(tstrdup(key));
+  rsa_key_fingerprint.push_back(0);
+  rsa_key_loaded.push_back(NULL);
+}
+
+void tgl_state::init () {
+  assert (timer_methods);
+  assert (net_methods);
+  if (!temp_key_expire_time) {
+    temp_key_expire_time = 100000;
   }
-  TLS->downloads_directory = tstrdup (path);
-}
 
-void tgl_set_callback (struct tgl_state *TLS, struct tgl_update_callback *cb) {
-  TLS->callback = *cb;
-}
+  tglmp_on_start (this);
 
-void tgl_set_rsa_key (struct tgl_state *TLS, const char *key) {
-  assert (TLS->rsa_key_num < TGL_MAX_RSA_KEYS_NUM);
-  TLS->rsa_key_list[TLS->rsa_key_num ++] = tstrdup(key);
-}
-
-void tgl_set_rsa_key_direct (struct tgl_state *TLS, unsigned long e, int n_bytes, const unsigned char *n) {
-  assert (TLS->rsa_key_num < TGL_MAX_RSA_KEYS_NUM);
-  TLS->rsa_key_list[TLS->rsa_key_num] = NULL;
-  TLS->rsa_key_loaded[TLS->rsa_key_num] = TGLC_rsa_new (e, n_bytes, n);
-  TLS->rsa_key_num ++;
-}
-
-int tgl_init (struct tgl_state *TLS) {
-  assert (TLS->timer_methods);
-  assert (TLS->net_methods);
-  if (!TLS->temp_key_expire_time) {
-    TLS->temp_key_expire_time = 100000;
-  }
-
-  TLS->message_list.next_use = &TLS->message_list;
-  TLS->message_list.prev_use = &TLS->message_list;
-
-  if (tglmp_on_start (TLS) < 0) {
-    return -1;
-  }
-  
-  if (!TLS->app_id) {
-    TLS->app_id = TG_APP_ID;
-    TLS->app_hash = tstrdup (TG_APP_HASH);
+  if (!m_app_id) {
+    m_app_id = TG_APP_ID;
+    m_app_hash = tstrdup (TG_APP_HASH);
   }
   return 0;
 }
@@ -188,46 +185,45 @@ int tgl_signed_dc(struct tgl_dc *DC) {
   return (DC->flags & TGLDCF_LOGGED_IN) != 0;
 }
 
-void tgl_register_app_id (struct tgl_state *TLS, int app_id, const char *app_hash) {
-  TLS->app_id = app_id;
-  TLS->app_hash = tstrdup (app_hash);
+void tgl_state::register_app_id (int app_id, const std::string &app_hash) {
+  this->m_app_id = app_id;
+  this->m_app_hash = app_hash;
 }
 
-struct tgl_state *tgl_state_alloc (void) {
-  return (struct tgl_state *)talloc0 (sizeof (struct tgl_state));
+void tgl_state::set_verbosity (int val) {
+  this->m_verbosity = val;
 }
 
-void tgl_set_verbosity (struct tgl_state *TLS, int val) {
-  TLS->verbosity = val;
+void tgl_state::set_enable_pfs (bool val) {
+  this->m_enable_pfs = val;
 }
 
-void tgl_enable_pfs (struct tgl_state *TLS) {
-  TLS->enable_pfs = 1;
+void tgl_state::set_test_mode (bool val) {
+  this->m_test_mode = val;
 }
 
-void tgl_set_test_mode (struct tgl_state *TLS) {
-  TLS->test_mode ++;
+void tgl_state::set_net_methods (struct tgl_net_methods *methods) {
+  this->net_methods = methods;
 }
 
-void tgl_set_net_methods (struct tgl_state *TLS, struct tgl_net_methods *methods) {
-  TLS->net_methods = methods;
+void tgl_state::set_timer_methods (struct tgl_timer_methods *methods) {
+  this->timer_methods = methods;
 }
 
-void tgl_set_timer_methods (struct tgl_state *TLS, struct tgl_timer_methods *methods) {
-  TLS->timer_methods = methods;
+void tgl_state::set_ev_base (void *ev_base) {
+  this->ev_base = (struct event_base *)ev_base;
 }
 
-void tgl_set_ev_base (struct tgl_state *TLS, void *ev_base) {
-  TLS->ev_base = (struct event_base *)ev_base;
+void tgl_state::set_app_version (const std::string &app_version) {
+  m_app_version = app_version;
 }
 
-void tgl_set_app_version (struct tgl_state *TLS, const char *app_version) {
-  if (TLS->app_version) {
-    tfree_str (TLS->app_version);
-  }
-  TLS->app_version = tstrdup (app_version);
+void tgl_state::set_enable_ipv6 (bool val) {
+  m_ipv6_enabled = val;
 }
 
-void tgl_enable_ipv6 (struct tgl_state *TLS) {
-  TLS->ipv6_enabled = 1;
+void tgl_state::set_error(std::string error, int error_code)
+{
+    m_error = error;
+    m_error_code = error_code;
 }

@@ -265,7 +265,7 @@ static void conn_try_write (evutil_socket_t fd, short what, void *arg) {
   
 static int my_connect (struct connection *c, const char *host) {
   struct tgl_state *TLS = c->TLS;
-  int v6 = TLS->ipv6_enabled;
+  bool v6 = TLS->ipv6_enabled();
   int fd = socket (v6 ? AF_INET6 : AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
     vlogprintf (E_ERROR, "Can not create socket: %s\n", strerror(errno));

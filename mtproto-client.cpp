@@ -408,7 +408,7 @@ static int process_respq_answer (struct tgl_state *TLS, struct connection *c, ch
   for (i = 0; i < fingerprints_num; i++) {
     int j;
     long long fprint = fetch_long ();
-    for (j = 0; j < TLS->rsa_key_num; j++) {
+    for (j = 0; j < TLS->rsa_key_loaded.size(); j++) {
       if (TLS->rsa_key_loaded[j]) {
         if (fprint == TLS->rsa_key_fingerprint[j]) {
           DC->rsa_key_idx = j;
@@ -535,7 +535,7 @@ static int process_dh_answer (struct tgl_state *TLS, struct connection *c, char 
 /* }}} */
 
 static void create_temp_auth_key (struct tgl_state *TLS, struct connection *c) {
-  assert (TLS->enable_pfs);
+  assert (TLS->pfs_enabled());
   send_req_pq_temp_packet (TLS, c);
 }
 
@@ -605,7 +605,7 @@ static int process_auth_complete (struct tgl_state *TLS, struct connection *c, c
 
   if (!temp_key) {
     //bl_do_set_auth_key (TLS, DC->id, (unsigned char *)DC->auth_key);
-    tgl_set_auth_key(TLS, DC->id, NULL);
+    TLS->set_auth_key(DC->id, NULL);
     TGLC_sha1 ((unsigned char *)DC->auth_key, 256, sha1_buffer);
   } else {
     TGLC_sha1 ((unsigned char *)DC->temp_auth_key, 256, sha1_buffer);
@@ -626,7 +626,7 @@ static int process_auth_complete (struct tgl_state *TLS, struct connection *c, c
       create_temp_auth_key (TLS, c);
     } else {
       DC->flags |= 1;
-      if (TLS->enable_pfs) {
+      if (TLS->pfs_enabled()) {
         create_temp_auth_key (TLS, c);
       } else {
         DC->temp_auth_key_id = DC->auth_key_id;
@@ -1043,7 +1043,7 @@ static int tc_becomes_ready (struct tgl_state *TLS, struct connection *c) {
     struct tgl_dc *DC = TLS->net_methods->get_dc (c);
     if (DC->flags & 1) { DC->state = st_authorized; }
     int o = DC->state;
-    if (o == st_authorized && !TLS->enable_pfs) {
+    if (o == st_authorized && !TLS->pfs_enabled()) {
         DC->temp_auth_key_id = DC->auth_key_id;
         memcpy (DC->temp_auth_key, DC->auth_key, 256);
         DC->flags |= 2;
@@ -1054,7 +1054,7 @@ static int tc_becomes_ready (struct tgl_state *TLS, struct connection *c) {
         break;
     case st_authorized:
         if (!(DC->flags & 2)) {
-            assert (TLS->enable_pfs);
+            assert (TLS->pfs_enabled());
             if (!DC->temp_auth_key_id) {
                 assert (!DC->temp_auth_key_id);
                 create_temp_auth_key (TLS, c);
@@ -1096,7 +1096,7 @@ static struct mtproto_methods mtproto_methods = {
 static void create_session_connect (struct tgl_state *TLS, struct tgl_session *S) {
     struct tgl_dc *DC = S->dc;
 
-    if (TLS->ipv6_enabled) {
+    if (TLS->ipv6_enabled()) {
         S->c = TLS->net_methods->create_connection (TLS, DC->options[1]->ip, DC->options[1]->port, S, DC, &mtproto_methods);
     } else {
         S->c = TLS->net_methods->create_connection (TLS, DC->options[0]->ip, DC->options[0]->port, S, DC, &mtproto_methods);
@@ -1330,7 +1330,7 @@ int tglmp_on_start (struct tgl_state *TLS) {
 
   int i;
   int ok = 0;
-  for (i = 0; i < TLS->rsa_key_num; i++) {
+  for (i = 0; i < TLS->rsa_key_list.size(); i++) {
     char *key = TLS->rsa_key_list[i];
     if (!key) {
       /* This key was provided using 'tgl_set_rsa_key_direct'. */
@@ -1540,7 +1540,7 @@ void tgls_free_dc (struct tgl_state *TLS, struct tgl_dc *DC) {
 
 void tgls_free_pubkey (struct tgl_state *TLS) {
   int i;
-  for (i = 0; i < TLS->rsa_key_num; i++) {
+  for (i = 0; i < TLS->rsa_key_loaded.size(); i++) {
     if (TLS->rsa_key_loaded[i]) {
       TGLC_rsa_free ((TGLC_rsa *)TLS->rsa_key_loaded[i]);
       TLS->rsa_key_loaded[i] = NULL;

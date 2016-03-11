@@ -27,7 +27,7 @@
 #ifndef vlogprintf
 #define vlogprintf(verbosity_level,...) \
   do { \
-    if (TLS->verbosity >= verbosity_level) { \
+    if (TLS->verbosity() >= verbosity_level) { \
       fprintf (stderr, __VA_ARGS__); \
     } \
   } while (0)
