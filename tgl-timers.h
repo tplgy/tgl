@@ -16,12 +16,18 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
+    Copyright Topology LP 2016
 */
 
 #ifndef __TGL_TIMERS_H__
 #define __TGL_TIMERS_H__
 
 #include "tgl.h"
+
+#if USING_LIBEVENT
 extern struct tgl_timer_methods tgl_libevent_timers;
+#elif USING_ASIO
+extern struct tgl_timer_methods tgl_asio_timer;
+#endif
 
 #endif

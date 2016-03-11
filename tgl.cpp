@@ -16,6 +16,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2014-2015
+    Copyright Topology LP 2016
 */
 
 #ifdef HAVE_CONFIG_H
@@ -210,9 +211,15 @@ void tgl_state::set_timer_methods (struct tgl_timer_methods *methods) {
   this->timer_methods = methods;
 }
 
+#if USING_LIBEVENT
 void tgl_state::set_ev_base (void *ev_base) {
   this->ev_base = (struct event_base *)ev_base;
 }
+#elif USING_ASIO
+void tgl_state::set_io_service (boost::asio::io_service *io_service) {
+  this->io_service = io_service;
+}
+#endif
 
 void tgl_state::set_app_version (const std::string &app_version) {
   m_app_version = app_version;

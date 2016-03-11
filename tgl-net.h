@@ -16,9 +16,14 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
+    Copyright Topology LP 2016
 */
 #ifndef __NET_H__
 #define __NET_H__
 
+#if USING_LIBEVENT
 extern struct tgl_net_methods tgl_conn_methods;
+#elif USING_ASIO
+extern struct tgl_net_methods tgl_asio_net;
+#endif
 #endif

@@ -16,6 +16,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2014-2015
+    Copyright Topology LP 2016
 */
 #ifndef __TGL_H__
 #define __TGL_H__
@@ -152,7 +153,15 @@ struct tgl_timer_methods {
 #define TGL_LOCK_DIFF 1
 #define TGL_LOCK_PASSWORD 2
 
+#if USING_LIBEVENT
 struct event_base;
+#elif USING_ASIO
+namespace boost {
+namespace asio {
+  class io_service;
+}
+}
+#endif
 
 struct tgl_state {
   static tgl_state *instance();
@@ -189,7 +198,11 @@ struct tgl_state {
 
   struct tgl_update_callback callback;
   struct tgl_net_methods *net_methods;
+#if USING_LIBEVENT
   struct event_base *ev_base;
+#elif USING_ASIO
+  boost::asio::io_service *io_service;
+#endif
 
   std::vector<char*> rsa_key_list;
   std::vector<void*> rsa_key_loaded;
@@ -236,7 +249,11 @@ struct tgl_state {
   void set_test_mode (bool);
   void set_net_methods (struct tgl_net_methods *methods);
   void set_timer_methods (struct tgl_timer_methods *methods);
+#if USING_LIBEVENT
   void set_ev_base (void *ev_base);
+#elif USING_ASIO
+  void set_io_service (boost::asio::io_service* io_service);
+#endif
   void register_app_id (int app_id, const std::string &app_hash);
   void set_enable_ipv6 (bool val);
   std::string app_version() { return m_app_version; }
@@ -274,7 +291,13 @@ private:
 
   tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
     DC_working(NULL), temp_key_expire_time(0), cur_uploading_bytes(0), cur_uploaded_bytes(0), cur_downloading_bytes(0),
-    cur_downloaded_bytes(0), net_methods(NULL), ev_base(0), BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
+    cur_downloaded_bytes(0), net_methods(NULL),
+#if USING_LIBEVENT
+    ev_base(NULL),
+#elif USING_ASIO
+    io_service(NULL),
+#endif
+    BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
     m_date(0), m_seq(0), m_test_mode(0), m_our_id(0), m_enable_pfs(false), m_ipv6_enabled(false)
   {
   }
