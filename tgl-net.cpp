@@ -224,10 +224,6 @@ void tgln_flush_out (struct connection *c) {
     TGL_UNUSED(c);
 }
 
-#define MAX_CONNECTIONS 100
-static struct connection *Connections[MAX_CONNECTIONS];
-static int max_connection_fd;
-
 static void rotate_port (struct connection *c) {
   switch (c->port) {
   case 443:
@@ -277,10 +273,7 @@ static int my_connect (struct connection *c, const char *host) {
     start_fail_timer (c);
     return -1;
   }
-  assert (fd >= 0 && fd < MAX_CONNECTIONS);
-  if (fd > max_connection_fd) {
-    max_connection_fd = fd;
-  }
+
   int flags = -1;
   setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof (flags));
   setsockopt (fd, SOL_SOCKET, SO_KEEPALIVE, &flags, sizeof (flags));
@@ -336,8 +329,6 @@ struct connection *tgln_create_connection (struct tgl_state *TLS, const char *ho
   c->state = conn_connecting;
   c->last_receive_time = tglt_get_double_time ();
   c->flags = 0;
-  assert (!Connections[fd]);
-  Connections[fd] = c;
  
   c->ping_ev = evtimer_new (TLS->ev_base, ping_alarm, c);
   c->fail_ev = evtimer_new (TLS->ev_base, fail_alarm, c);
@@ -383,7 +374,6 @@ static void restart_connection (struct connection *c) {
   c->state = conn_connecting;
   c->last_receive_time = tglt_get_double_time ();
   start_ping_timer (c);
-  Connections[fd] = c;
   
   c->write_ev = event_new ((struct event_base *)TLS->ev_base, c->fd, EV_WRITE, conn_try_write, c);
 
@@ -421,7 +411,6 @@ static void fail_connection (struct connection *c) {
   c->state = conn_failed;
   c->out_bytes = c->in_bytes = 0;
   close (c->fd);
-  Connections[c->fd] = 0;
   vlogprintf (E_NOTICE, "Lost connection to server... %s:%d\n", c->ip, c->port);
   restart_connection (c);
 }
@@ -573,7 +562,7 @@ static void tgln_free (struct connection *c) {
     delete_connection_buffer (d);
   }
 
-  if (c->fd >= 0) { Connections[c->fd] = 0; close (c->fd); }
+  if (c->fd >= 0) { close (c->fd); }
   tfree (c);
 }
 
