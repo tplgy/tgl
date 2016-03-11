@@ -2385,11 +2385,16 @@ void tglm_message_insert (struct tgl_state *TLS, struct tgl_message *M) {
 }
 
 void tglm_message_insert_unsent (struct tgl_state *TLS, struct tgl_message *M) {
-  TLS->message_unsent_tree = tree_insert_message (TLS->message_unsent_tree, M, rand ());
+  TLS->unsent_messages.push_back(M);
 }
 
 void tglm_message_remove_unsent (struct tgl_state *TLS, struct tgl_message *M) {
-    TLS->message_unsent_tree = tree_delete_message (TLS->message_unsent_tree, M);
+  for (auto it=TLS->unsent_messages.begin(); it != TLS->unsent_messages.end(); it++) {
+    if (M->id == (*it)->id) {
+      TLS->unsent_messages.erase(it);
+      return;
+    }
+  }
 }
 
 static void __send_msg (struct tgl_message *M, void *_TLS) {
@@ -2407,7 +2412,9 @@ static void __send_msg (struct tgl_message *M, void *_TLS) {
 }
 
 void tglm_send_all_unsent (struct tgl_state *TLS) {
-    tree_act_ex_message (TLS->message_unsent_tree, __send_msg, TLS);
+  for (auto it=TLS->unsent_messages.begin(); it != TLS->unsent_messages.end(); it++) {
+    __send_msg(*it, TLS);
+  }
 }
 /* }}} */
 

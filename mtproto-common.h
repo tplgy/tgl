@@ -37,7 +37,6 @@
 
 #include "constants.h"
 
-#include "tgl.h"
 #include "tgl-inner.h"
 /* DH key exchange protocol data structures */
 #define	CODE_req_pq			0x60469778
@@ -144,7 +143,6 @@ static inline void out_int (int x) {
   *packet_ptr++ = x;
 }
 
-
 static inline void out_long (long long int x) {
   assert (packet_ptr + 2 <= packet_buffer + PACKET_BUFFER_SIZE);
   *(long long *)packet_ptr = x;
@@ -179,11 +177,6 @@ static inline void out_bignum (TGLC_bn *n) {
 #define in_end tgl_in_end
 extern int *tgl_in_ptr, *tgl_in_end;
 
-
-//void fetch_pts (void);
-//void fetch_qts (void);
-//void fetch_date (void);
-//void fetch_seq (void);
 static inline int prefetch_strlen (void) {
   if (in_ptr >= in_end) { 
     return -1; 
@@ -340,18 +333,6 @@ static inline void fetch_ints (void *data, int count) {
   in_ptr += count;
 }
     
-static inline void fetch256 (void *buf) {
-  int l = prefetch_strlen ();
-  assert (l >= 0);
-  char *s = fetch_str (l);
-  if (l < 256) {
-    memcpy ((char *)buf + 256 - l, s, l);
-    memset (buf, 0, 256 - l);
-  } else {
-    memcpy (buf, s + (l - 256), 256);
-  }
-}
-
 static inline int in_remaining (void) {
   return 4 * (in_end - in_ptr);
 }

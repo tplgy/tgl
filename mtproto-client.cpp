@@ -115,6 +115,32 @@ static int encrypt_buffer[ENCRYPT_BUFFER_INTS];
 #define DECRYPT_BUFFER_INTS        16384
 static int decrypt_buffer[ENCRYPT_BUFFER_INTS];
 
+int tgl_pad_rsa_encrypt (struct tgl_state *TLS, char *from, int from_len, char *to, int size, BIGNUM *N, BIGNUM *E) {
+    int pad = (255000 - from_len - 32) % 255 + 32;
+    int chunks = (from_len + pad) / 255;
+    int bits = BN_num_bits (N);
+    assert (bits >= 2041 && bits <= 2048);
+    assert (from_len > 0 && from_len <= 2550);
+    assert (size >= chunks * 256);
+    assert (RAND_pseudo_bytes ((unsigned char *) from + from_len, pad) >= 0);
+    int i;
+    BIGNUM x, y;
+    BN_init (&x);
+    BN_init (&y);
+    for (i = 0; i < chunks; i++) {
+        BN_bin2bn ((unsigned char *) from, 255, &x);
+        assert (BN_mod_exp (&y, &x, E, N, TLS->BN_ctx) == 1);
+        unsigned l = 256 - BN_num_bytes (&y);
+        assert (l <= 256);
+        memset (to, 0, l);
+        BN_bn2bin (&y, (unsigned char *) to + l);
+        to += 256;
+    }
+    BN_free (&x);
+    BN_free (&y);
+    return chunks * 256;
+}
+
 static int encrypt_packet_buffer (struct tgl_state *TLS, struct tgl_dc *DC) {
   TGLC_rsa *key = (TGLC_rsa *)TLS->rsa_key_loaded[DC->rsa_key_idx];
   return tgl_pad_rsa_encrypt (TLS, (char *) packet_buffer, (packet_ptr - packet_buffer) * 4, (char *) encrypt_buffer, ENCRYPT_BUFFER_INTS * 4, TGLC_rsa_n (key), TGLC_rsa_e (key));
@@ -1296,7 +1322,6 @@ static int rpc_becomes_ready (struct tgl_state *TLS, struct connection *c) {
 static int rpc_close (struct tgl_state *TLS, struct connection *c) {
     return tc_close (TLS, c, 0);
 }
-
 
 #define RANDSEED_PASSWORD_FILENAME     NULL
 #define RANDSEED_PASSWORD_LENGTH       0

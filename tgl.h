@@ -24,6 +24,7 @@
 #include "tgl-layout.h"
 #include <string.h>
 #include <stdlib.h>
+#include <vector>
 
 //#define ENABLE_SECRET_CHAT
 
@@ -208,7 +209,7 @@ struct tgl_state {
 
   TGLC_bn_ctx *TGLC_bn_ctx;
 
-  struct tree_message *message_unsent_tree;
+  std::vector<tgl_message*> unsent_messages;
 
   struct tgl_timer_methods *timer_methods;
 
@@ -327,10 +328,10 @@ void tgl_dc_authorize (struct tgl_state *TLS, struct tgl_dc *DC);
 
 #define TGL_SEND_MSG_FLAG_REPLY(x) (((unsigned long long)x) << 32)
 
-typedef tgl_peer_id_t tgl_user_id_t;
-typedef tgl_peer_id_t tgl_chat_id_t;
-typedef tgl_peer_id_t tgl_secret_chat_id_t;
-typedef tgl_peer_id_t tgl_user_or_chat_id_t;
+typedef int tgl_user_id_t;
+typedef int tgl_chat_id_t;
+typedef int tgl_secret_chat_id_t;
+typedef int tgl_user_or_chat_id_t;
 
 void tgl_register_app_id (struct tgl_state *TLS, int app_id, const char *app_hash);
 

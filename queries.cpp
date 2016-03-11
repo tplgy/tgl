@@ -4381,7 +4381,7 @@ static struct query_methods ext_query_methods = {
 void tgl_do_send_extf (struct tgl_state *TLS, const char *data, int data_len, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, const char *buf), void *callback_extra) {
     clear_packet ();
 
-    ext_query_methods.type = tglf_extf_store (TLS, data, data_len);
+    ext_query_methods.type = tglf_extf_store (data, data_len);
 
     if (ext_query_methods.type) {
         tglq_send_query (TLS, TLS->DC_working, packet_ptr - packet_buffer, packet_buffer, &ext_query_methods, 0, (void*)callback, callback_extra);
