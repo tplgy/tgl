@@ -20,6 +20,8 @@
 #ifndef __TGL_LAYOUT_H__
 #define __TGL_LAYOUT_H__
 
+#include <vector>
+
 #define TGLDF_IMAGE 1
 #define TGLDF_STICKER 2
 #define TGLDF_ANIMATED 4
@@ -150,7 +152,7 @@ struct tgl_session {
   int seq_no;
   int received_messages;
   struct connection *c;
-  struct tree_long *ack_tree;
+  std::vector<long> ack_tree;
   struct tgl_timer *ev;
 };
 

@@ -52,11 +52,10 @@
 #include "tgl-binlog.h"
 #include "tgl.h"
 #include "mtproto-client.h"
-#include "tools.h"
-#include "tree.h"
 #include "updates.h"
 #include "mtproto-utils.h"
 extern "C" {
+#include "tools.h"
 #include "auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-skip.h"
@@ -1369,18 +1368,15 @@ void tgl_dc_authorize (struct tgl_state *TLS, struct tgl_dc *DC) {
   //net_loop (0, auth_ok);
 }
 
-#define long_cmp(a,b) ((a) > (b) ? 1 : (a) == (b) ? 0 : -1)
-DEFINE_TREE(long,long long,long_cmp,0)
-
 static int send_all_acks (struct tgl_state *TLS, struct tgl_session *S) {
   clear_packet ();
   out_int (CODE_msgs_ack);
   out_int (CODE_vector);
-  out_int (tree_count_long (S->ack_tree));
-  while (S->ack_tree) {
-    long long x = tree_get_min_long (S->ack_tree);
-    out_long (x);
-    S->ack_tree = tree_delete_long (S->ack_tree, x);
+  out_int (S->ack_tree.size());
+  while (S->ack_tree.begin() != S->ack_tree.end()) {
+    auto it = std::min_element(std::begin(S->ack_tree), std::end(S->ack_tree));
+    out_long (*it);
+    S->ack_tree.erase(it);
   }
   tglmp_encrypt_send_message (TLS, S->c, packet_buffer, packet_ptr - packet_buffer, 0);
   return 0;
@@ -1392,12 +1388,15 @@ static void send_all_acks_gateway (struct tgl_state *TLS, void *arg) {
 
 
 void tgln_insert_msg_id (struct tgl_state *TLS, struct tgl_session *S, long long id) {
-  if (!S->ack_tree) {
+  if (S->ack_tree.empty()) {
     TLS->timer_methods->insert (S->ev, ACK_TIMEOUT);
   }
-  if (!tree_lookup_long (S->ack_tree, id)) {
-    S->ack_tree = tree_insert_long (S->ack_tree, id, rand ());
+  for (auto it = S->ack_tree.begin(); it!=S->ack_tree.end(); it++) {
+    if (*it == id) {
+      return;
+    }
   }
+  S->ack_tree.push_back(id);
 }
 
 //extern struct tgl_dc *DC_list[];
@@ -1492,7 +1491,7 @@ void tglmp_regenerate_temp_auth_key (struct tgl_state *TLS, struct tgl_dc *DC) {
   S->seq_no = 0;
 
   TLS->timer_methods->remove (S->ev);
-  S->ack_tree = tree_clear_long (S->ack_tree);
+  S->ack_tree.clear();
 
   if (DC->state != st_authorized) {
     return;
@@ -1509,7 +1508,7 @@ void tglmp_regenerate_temp_auth_key (struct tgl_state *TLS, struct tgl_dc *DC) {
 }
 
 void tgls_free_session (struct tgl_state *TLS, struct tgl_session *S) {
-  S->ack_tree = tree_clear_long (S->ack_tree);
+  S->ack_tree.clear();
   if (S->ev) { TLS->timer_methods->free (S->ev); }
   if (S->c) {
     TLS->net_methods->free (S->c);

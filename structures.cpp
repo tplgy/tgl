@@ -23,7 +23,6 @@
 #include <string.h>
 #include <strings.h>
 #include "tgl-structures.h"
-#include "tree.h"
 #include "crypto/aes.h"
 #include "crypto/bn.h"
 #include "crypto/sha.h"
@@ -42,10 +41,6 @@ extern "C" {
 
 #include "mtproto-common.h"
 }
-
-static int id_cmp (struct tgl_message *M1, struct tgl_message *M2);
-
-DEFINE_TREE(message,struct tgl_message *,id_cmp,0)
 
 static void increase_peer_size (struct tgl_state *TLS);
 
@@ -1786,15 +1781,6 @@ void tglf_fetch_encrypted_message_file (struct tgl_state *TLS, struct tgl_messag
   }
 }
 #endif
-static int id_cmp (struct tgl_message *M1, struct tgl_message *M2) {
-  if (M1->permanent_id.peer_type < M2->permanent_id.peer_type) { return -1; }
-  if (M1->permanent_id.peer_type > M2->permanent_id.peer_type) { return 1; }
-  if (M1->permanent_id.peer_id < M2->permanent_id.peer_id) { return -1; }
-  if (M1->permanent_id.peer_id > M2->permanent_id.peer_id) { return 1; }
-  if (M1->permanent_id.id < M2->permanent_id.id) { return -1; }
-  if (M1->permanent_id.id > M2->permanent_id.id) { return 1; }
-  else { return 0; }
-}
 
 static void increase_peer_size (struct tgl_state *TLS) {
     if (TLS->peer_num == TLS->peer_size) {

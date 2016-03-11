@@ -33,7 +33,6 @@
 
 #include "mtproto-client.h"
 #include "queries.h"
-#include "tree.h"
 #include "tgl-inner.h"
 #include "tgl-structures.h"
 //#include "interface.h"
@@ -116,7 +115,6 @@ struct send_file {
 };
 
 #define memcmp8(a,b) memcmp ((a), (b), 8)
-DEFINE_TREE (query, struct query *, memcmp8, 0) ;
 
 static int mystreq1 (const char *a, const char *b, int l) {
     if ((int)strlen (a) != l) { return 1; }
@@ -125,8 +123,24 @@ static int mystreq1 (const char *a, const char *b, int l) {
 
 /* {{{ COMMON */
 
-struct query *tglq_query_get (struct tgl_state *TLS, long long id) {
-    return tree_lookup_query (TLS->queries_tree, (struct query *)&id);
+struct query *tglq_query_get (struct tgl_state *TLS, long long id)
+{
+    for (auto it = TLS->queries_tree.begin(); it != TLS->queries_tree.end(); it++) {
+        if (id == (*it)->msg_id) {
+            return *it;
+        }
+    }
+    return NULL;
+}
+
+void tglq_query_remove (struct tgl_state *TLS, struct query *q)
+{
+    for (auto it = TLS->queries_tree.begin(); it != TLS->queries_tree.end(); it++) {
+        if (q == (*it)) {
+            TLS->queries_tree.erase(it);
+            return;
+        }
+    }
 }
 
 static int alarm_query (struct tgl_state *TLS, struct query *q) {
@@ -135,31 +149,30 @@ static int alarm_query (struct tgl_state *TLS, struct query *q) {
 
   TLS->timer_methods->insert (q->ev, q->methods->timeout ? q->methods->timeout : QUERY_TIMEOUT);
 
-    if (q->session && q->session_id && q->DC && q->DC->sessions[0] == q->session && q->session->session_id == q->session_id) {
-        clear_packet ();
-        out_int (CODE_msg_container);
-        out_int (1);
-        out_long (q->msg_id);
-        out_int (q->seq_no);
-        out_int (4 * q->data_len);
-        out_ints ((int*)q->data, q->data_len);
+  if (q->session && q->session_id && q->DC && q->DC->sessions[0] == q->session && q->session->session_id == q->session_id) {
+    clear_packet ();
+    out_int (CODE_msg_container);
+    out_int (1);
+    out_long (q->msg_id);
+    out_int (q->seq_no);
+    out_int (4 * q->data_len);
+    out_ints ((int*)q->data, q->data_len);
 
     tglmp_encrypt_send_message (TLS, q->session->c, packet_buffer, packet_ptr - packet_buffer, q->flags & QUERY_FORCE_SEND);
   } else {
     q->flags &= ~QUERY_ACK_RECEIVED;
-    if (tree_lookup_query (TLS->queries_tree, q)) {
-      TLS->queries_tree = tree_delete_query (TLS->queries_tree, q);
-    }
+    tglq_query_remove(TLS, q);
     q->session = q->DC->sessions[0];
     long long old_id = q->msg_id;
-    q->msg_id = tglmp_encrypt_send_message (TLS, q->session->c, q->data, q->data_len, (q->flags & QUERY_FORCE_SEND) | 1);
+    q->msg_id = tglmp_encrypt_send_message (TLS, q->session->c, (int*)q->data, q->data_len, (q->flags & QUERY_FORCE_SEND) | 1);
     vlogprintf (E_NOTICE, "Resent query #%" INT64_PRINTF_MODIFIER "d as #%" INT64_PRINTF_MODIFIER "d of size %d to DC %d\n", old_id, q->msg_id, 4 * q->data_len, q->DC->id);
-    TLS->queries_tree = tree_insert_query (TLS->queries_tree, q, rand ());
+    TLS->queries_tree.push_back(q);
     q->session_id = q->session->session_id;
     if (!(q->session->dc->flags & TGLDCF_CONFIGURED) && !(q->flags & QUERY_FORCE_SEND)) {
       q->session_id = 0;
     }
-    return 0;
+  }
+  return 0;
 }
 
 void tglq_regen_query (struct tgl_state *TLS, long long id) {
@@ -230,7 +243,7 @@ struct query *tglq_send_query_ex (struct tgl_state *TLS, struct tgl_dc *DC, int 
   q->data_len = ints;
   q->data = talloc (4 * ints);
   memcpy (q->data, data, 4 * ints);
-  q->msg_id = tglmp_encrypt_send_message (TLS, DC->sessions[0]->c, data, ints, 1 | (flags & QUERY_FORCE_SEND));
+  q->msg_id = tglmp_encrypt_send_message (TLS, DC->sessions[0]->c, (int*)data, ints, 1 | (flags & QUERY_FORCE_SEND));
   q->session = DC->sessions[0];
   q->seq_no = q->session->seq_no - 1;
   q->session_id = q->session->session_id;
@@ -243,10 +256,7 @@ struct query *tglq_send_query_ex (struct tgl_state *TLS, struct tgl_dc *DC, int 
   q->type = methods->type;
   q->DC = DC;
   q->flags = flags & QUERY_FORCE_SEND;
-  if (TLS->queries_tree) {
-    vlogprintf (E_DEBUG + 2, "%" INT64_PRINTF_MODIFIER "d %" INT64_PRINTF_MODIFIER "d\n", q->msg_id, TLS->queries_tree->x->msg_id);
-  }
-  TLS->queries_tree = tree_insert_query (TLS->queries_tree, q, rand ());
+  TLS->queries_tree.push_back(q);
 
   q->ev = TLS->timer_methods->alloc (TLS, alarm_query_gateway, q);
   TLS->timer_methods->insert (q->ev, q->methods->timeout ? q->methods->timeout : QUERY_TIMEOUT);  
@@ -287,16 +297,16 @@ void tglq_query_delete (struct tgl_state *TLS, long long id) {
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
         TLS->timer_methods->remove (q->ev);
     }
-    TLS->queries_tree = tree_delete_query (TLS->queries_tree, q);
+
     free (q->data);
     TLS->timer_methods->free (q->ev);
+    tglq_query_remove(TLS, q);
     TLS->active_queries --;
 }
 
 static void resend_query_cb (struct tgl_state *TLS, void *_q, int success);
 
-void tglq_free_query (struct query *q, void *extra) {
-    struct tgl_state *TLS = (struct tgl_state*)extra;
+void tglq_free_query (struct query *q, struct tgl_state* TLS) {
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
         TLS->timer_methods->remove (q->ev);
     }
@@ -305,8 +315,11 @@ void tglq_free_query (struct query *q, void *extra) {
 }
 
 void tglq_query_free_all (struct tgl_state *TLS) {
-    tree_act_ex_query (TLS->queries_tree, tglq_free_query, TLS);
-    TLS->queries_tree = tree_clear_query (TLS->queries_tree);
+    for (auto it = TLS->queries_tree.begin(); it != TLS->queries_tree.end(); it++) {
+        tglq_free_query(*it, TLS);
+        free(*it);
+    }
+    TLS->queries_tree.clear();
 }
 
 int tglq_query_error (struct tgl_state *TLS, long long id) {
@@ -338,7 +351,7 @@ int tglq_query_error (struct tgl_state *TLS, long long id) {
         if (error_len >= 17 && !memcmp (error, "NETWORK_MIGRATE_", 16)) {
           offset = 16;
         }
-        TLS->queries_tree = tree_delete_query (TLS->queries_tree, q);
+        tglq_query_remove(TLS, q);
         int res = 0;
 
         int error_handled = 0;
@@ -505,7 +518,6 @@ int tglq_query_result (struct tgl_state *TLS, long long id) {
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
       TLS->timer_methods->remove (q->ev);
     }
-    TLS->queries_tree = tree_delete_query (TLS->queries_tree, q);
     if (q->methods && q->methods->on_answer) {
       assert (q->type);
       int *save = in_ptr;
@@ -529,7 +541,7 @@ int tglq_query_result (struct tgl_state *TLS, long long id) {
     }
     tfree (q->data, 4 * q->data_len);
     TLS->timer_methods->free (q->ev);
-    tfree (q, sizeof (*q));
+    tglq_query_remove(TLS, q);
 
   }
   if (end) {

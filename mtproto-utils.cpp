@@ -2,7 +2,9 @@
 #include "crypto/bn.h"
 #include "tl-parser/portable_endian.h"
 #include "tgl.h"
+extern "C" {
 #include "tools.h"
+}
 #include "mtproto-utils.h"
 
 static unsigned long long gcd (unsigned long long a, unsigned long long b) {

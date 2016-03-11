@@ -58,7 +58,7 @@ struct connection;
 struct mtproto_methods;
 struct tgl_session;
 struct tgl_dc;
-
+struct query;
 struct tgl_state;
 
 enum tgl_value_type {
@@ -92,7 +92,8 @@ struct tgl_update_callback {
   void (*msg_sent)(long long int old_msg_id, long long int new_msg_id, int chat_id);
   void (*msg_deleted)(long long int msg_id);
   void (*marked_read)(int num, struct tgl_message *list[]);
-  void (*logprintf)(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
+  //void (*logprintf)(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
+  void (*log_output)(int verbosity, const std::string &str);
   void (*get_values)(enum tgl_value_type type, const char *prompt, int num_values,
           void (*callback)(struct tgl_state *TLS, const void *answer, const void *arg), const void *arg);
   void (*logged_in)();
@@ -213,7 +214,7 @@ struct tgl_state {
 
   struct tgl_timer_methods *timer_methods;
 
-  struct tree_query *queries_tree;
+  std::vector<query*> queries_tree;
 
   int app_id;
   char *app_hash;

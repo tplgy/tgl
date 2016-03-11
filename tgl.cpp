@@ -24,7 +24,10 @@
 
 #include "crypto/rsa_pem.h"
 #include "tgl.h"
+
+extern "C" {
 #include "tools.h"
+}
 #include "mtproto-client.h"
 #include "tgl-structures.h"
 #include <openssl/sha.h>

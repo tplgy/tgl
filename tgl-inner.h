@@ -18,8 +18,11 @@
     Copyright Vitaly Valtman 2014-2015
 */
 
-#ifndef __TGL_INNER_H__
-#define __TGL_INNER_H__
+//#include <stringstream>
+
+#pragma once
+
+//#define TGL_DEBUG
 
 #ifndef vlogprintf
 #define vlogprintf(verbosity_level,...) \
@@ -30,4 +33,3 @@
   } while (0)
 #endif
 
-#endif

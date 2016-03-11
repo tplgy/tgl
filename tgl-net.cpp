@@ -46,11 +46,10 @@
 #include "tgl.h"
 #include "tgl-inner.h"
 #include "auto.h"
-#include "tree.h"
-#include "tools.h"
 #include "mtproto-client.h"
 
 extern "C" {
+#include "tools.h"
 #include "mtproto-common.h"
 }
 
