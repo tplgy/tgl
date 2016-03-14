@@ -22,6 +22,7 @@
 
 #include <vector>
 #include "types/tgl_file_location.h"
+#include "types/tgl_peer_id.h"
 
 #define TGLDF_IMAGE 1
 #define TGLDF_STICKER 2
@@ -332,7 +333,7 @@ struct tgl_bot_info {
 };
 
 struct tgl_user {
-  tgl_peer_id_t id;
+  tgl_peer_id id;
   int flags;
   struct tgl_message *last;
   char *print_name;
@@ -391,14 +392,14 @@ struct tgl_chat_user {
 };
 
 struct tgl_chat {
-  tgl_peer_id_t id;
+  tgl_peer_id id;
   int flags;
   struct tgl_message *last;
   char *print_title;
   char *username;
   int structure_version;
-  struct tgl_file_location photo_big;
-  struct tgl_file_location photo_small;
+  tgl_file_location photo_big;
+  tgl_file_location photo_small;
   int last_read_in;
   int last_read_out;
   long long pad;
@@ -432,7 +433,7 @@ enum tgl_secret_chat_exchange_state {
 };
 
 struct tgl_secret_chat {
-  tgl_peer_id_t id;
+  tgl_peer_id id;
   int flags;
   struct tgl_message *last;
   char *print_name;
@@ -469,7 +470,7 @@ struct tgl_secret_chat {
 
 typedef union tgl_peer {
   struct {
-    tgl_peer_id_t id;
+    tgl_peer_id id;
     int flags;
     struct tgl_message *last;
     char *print_name;
@@ -614,11 +615,11 @@ struct tgl_message {
   long long random_id;
   struct tgl_message_id permanent_id;
   int flags;
-  tgl_peer_id_t fwd_from_id;
+  tgl_peer_id fwd_from_id;
   int fwd_date;
   int reply_id;
-  tgl_peer_id_t from_id;
-  tgl_peer_id_t to_id;
+  tgl_peer_id from_id;
+  tgl_peer_id to_id;
   int date;
   struct tgl_message_reply_markup *reply_markup;
   int entities_num;

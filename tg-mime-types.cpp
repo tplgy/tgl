@@ -61,16 +61,16 @@ static void mime_init (void) {
 }
 
 char *tg_extension_by_mime (const char *mime_type) {
-  if (!mime_initialized) {
-    mime_init ();
-  }
-  int i;
-  for (i = 0; i < mime_type_number; i++) {
-    if (!strcmp (mime_type_names[i], mime_type)) {
-      return mime_type_extensions[i];
+    if (!mime_initialized) {
+        mime_init ();
     }
-  }
-  return NULL;
+    int i;
+    for (i = 0; i < mime_type_number; i++) {
+        if (!strcmp (mime_type_names[i], mime_type)) {
+            return mime_type_extensions[i];
+        }
+    }
+    return NULL;
 }
 
 const char *tg_mime_by_filename (const char *filename) {

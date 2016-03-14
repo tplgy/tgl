@@ -126,7 +126,6 @@ void tgl_do_set_encr_chat_ttl (struct tgl_secret_chat *E, int ttl) {
 
 
 /* {{{ Seng msg (plain text, encrypted) */
-<<<<<<< 7064ea2805712a7e727e45fc2e237ba016b7f8fc
 static int msg_send_encr_on_answer (struct query *q, void *D) {
   TGL_UNUSED(D);
   struct tgl_message *M = (struct tgl_message*)q->extra;
@@ -315,7 +314,7 @@ static struct query_methods mark_read_encr_methods = {
   .timeout = 0,
 };
 
-void tgl_do_messages_mark_read_encr (tgl_peer_id_t id, long long access_hash, int last_time, void (*callback)(void *callback_extra, int), void *callback_extra) {
+void tgl_do_messages_mark_read_encr (tgl_peer_id id, long long access_hash, int last_time, void (*callback)(void *callback_extra, int), void *callback_extra) {
     clear_packet ();
     out_int (CODE_messages_read_encrypted_history);
     out_int (CODE_input_encrypted_chat);

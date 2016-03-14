@@ -24,12 +24,6 @@ void  tgl_do_send_message (tgl_peer_id_t id, const char *text, struct tl_ds_repl
 // message *reply_id* should be cached
 void tgl_do_reply_message (long long int reply_id, tgl_peer_id_t to_id, const char *text, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
 
-// send media from file *file_name* to peer *to_id*
-// if reply > 0 this message is sent as reply to message *reply*
-// *caption* is used only for photos
-void tgl_do_send_document (tgl_peer_id_t to_id, const char *file_name, const char *caption, unsigned long long flags, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
-void tgl_do_reply_document (long long int reply_id, tgl_peer_id_t peer_id, const char *file_name, const char *caption, unsigned long long flags, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
-
 // forward message *msg_id* to peer *id*
 // message can not be encrypted and peer can not be secret chat
 void tgl_do_forward_message (int id, int msg_id, unsigned long long flags, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
@@ -63,9 +57,6 @@ void tgl_do_send_broadcast (int num, int id[], const char *text, unsigned long l
 /* }}} */
 
 /* {{{ EDITING SELF PROFILE */
-// sets self profile photo
-// server will cut central square from this photo
-void tgl_do_set_profile_photo (const char *file_name, void (*callback)(void *callback_extra, int success), void *callback_extra);
 
 // rename self account
 void tgl_do_set_profile_name (const char *first_name, const char *last_name);
@@ -81,10 +72,6 @@ void tgl_do_export_card (void (*callback)(void *callback_extra, int success, int
 /* }}} */
 
 /* {{{ WORKING WITH GROUP CHATS */
-
-// sets chat photo
-// server will cut central square from this photo
-void tgl_do_set_chat_photo (int chat_id, const char *file_name, void (*callback)(void *callback_extra, int success), void *callback_extra);
 
 // sets chat title
 void tgl_do_rename_chat (int id, const char *new_title, int new_title_len, void (*callback)(void *callback_extra, int success), void *callback_extra);
@@ -184,24 +171,6 @@ void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, void (*callbac
 // sends typing event to chat
 // set status=tgl_typing_typing for default typing event
 void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, void (*callback)(void *callback_extra, int success), void *callback_extra);
-
-/* }}} */
-
-/* {{{ WORKING WITH MEDIA */
-
-// loads photo/document/document_thumb to downloads directory
-// if file is presented it is not redownloaded (but if it is shortened tail will be downloaded)
-// returns file name in callback
-void tgl_do_load_photo (struct tgl_photo *photo, void (*callback)(void *callback_extra, int success, const char *file_name), void *callback_extra);
-void tgl_do_load_encr_document (struct tgl_encr_document *V, void (*callback)(void *callback_extra, int success, const char *file_name), void *callback_extra);
-void tgl_do_load_document (struct tgl_document *V, void (*callback)(void *callback_extra, int success, const char *file_name), void *callback_extra);
-void tgl_do_load_document_thumb (struct tgl_document *video, void (*callback)(void *callback_extra, int success, const char *file_name), void *callback_extra);
-void tgl_do_load_video (struct tgl_document *V, void (*callback)(void *callback_extra, int success, const char *filename), void *callback_extra);
-void tgl_do_load_audio (struct tgl_document *V, void (*callback)(void *callback_extra, int success, const char *filename), void *callback_extra);
-
-
-// loads file by location. Use only for small files!
-void tgl_do_load_file_location (struct tgl_file_location *FL, void (*callback)(void *callback_extra, int success, const char *file_name), void *callback_extra);
 
 /* }}} */
 

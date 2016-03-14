@@ -35,8 +35,8 @@
 #include "queries.h"
 #include "tgl-log.h"
 #include "tgl-structures.h"
-//#include "interface.h"
-//#include "net.h"
+#include "tgl_download_manager.h"
+
 #include "crypto/bn.h"
 #include "crypto/rand.h"
 #include "crypto/aes.h"
@@ -88,31 +88,6 @@ struct messages_send_extra {
   tgl_message_id_t *list;
 };
 #define QUERY_TIMEOUT 6.0
-
-struct send_file {
-  int fd;
-  long long size;
-  long long offset;
-  int part_num;
-  int part_size;
-  long long id;
-  long long thumb_id;
-  tgl_peer_id_t to_id;
-  int flags;
-  char *file_name;
-  int encr;
-  //int avatar;
-  tgl_peer_id_t avatar;
-  int reply;
-  unsigned char *iv;
-  unsigned char *init_iv;
-  unsigned char *key;
-  int w;
-  int h;
-  int duration;
-  char *caption;
-  int channel;
-};
 
 #define memcmp8(a,b) memcmp ((a), (b), 8)
 
@@ -228,7 +203,6 @@ static void alarm_query_gateway(void *arg) {
     alarm_query((struct query*)arg);
 }
 
-
 struct query *tglq_send_query_ex (struct tgl_dc *DC, int ints, void *data, struct query_methods *methods, void *extra, void *callback, void *callback_extra, int flags) {
   assert (DC);
   assert (DC->auth_key_id);
@@ -250,7 +224,7 @@ struct query *tglq_send_query_ex (struct tgl_dc *DC, int ints, void *data, struc
   TGL_DEBUG("Msg_id is " << q->msg_id << q);
   TGL_NOTICE("Sent query #" << q->msg_id << " of size " << 4 * ints << " to DC " << DC->id << "\n");
   q->methods = methods;
-  q->type = methods->type;
+  //q->type = methods->type;
   q->DC = DC;
   q->flags = flags & QUERY_FORCE_SEND;
   tgl_state::instance()->queries_tree.push_back(q);
@@ -513,11 +487,11 @@ int tglq_query_result (long long id) {
       tgl_state::instance()->timer_methods->remove (q->ev);
     }
     if (q->methods && q->methods->on_answer) {
-      assert (q->type);
+      //assert (q->type);
       int *save = in_ptr;
       TGL_DEBUG("in_ptr = " << in_ptr << ", end_ptr = " << in_end);
-      if (skip_type_any (q->type) < 0) {
-        TGL_ERROR("Skipped " << (long)(in_ptr - save) << " int out of " << (long)(in_end - save) << " type: " << q->type->type->id);
+      if (skip_type_any (q->methods->type) < 0) {
+        TGL_ERROR("Skipped " << (long)(in_ptr - save) << " int out of " << (long)(in_end - save) << " type: " << q->methods->type.type->id);
         TGL_ERROR(*(in_ptr - 1) << " " << *in_ptr);
         assert (0);
       }
@@ -525,11 +499,11 @@ int tglq_query_result (long long id) {
       assert (in_ptr == in_end);
       in_ptr = save;
 
-      void *DS = fetch_ds_type_any (q->type);
+      void *DS = fetch_ds_type_any (&q->methods->type);
       assert (DS);
 
       q->methods->on_answer (q, DS);
-      free_ds_type_any (DS, q->type);
+      free_ds_type_any (DS, &q->methods->type);
     }
     tfree (q->data, 4 * q->data_len);
     tgl_state::instance()->timer_methods->free (q->ev);
@@ -577,23 +551,10 @@ void tgl_do_insert_header () {
 #endif
 }
 
-void tgl_set_query_error (int error_code, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
-void tgl_set_query_error (int error_code, const char *format, ...) {
-    static char s[1001];
-
-    va_list ap;
-    va_start (ap, format);
-    vsnprintf (s, 1000, format, ap);
-    va_end (ap);
-
-    tgl_state::instance()->set_error(std::string(s), error_code);
-}
-/* }}} */
-
 /* {{{ Default on error */
 
 static int q_void_on_error (struct query *q, int error_code, int error_len, const char *error) {
-    tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
     if (q->callback) {
         ((void (*)(void *, int))(q->callback))(q->callback_extra, 0);
     }
@@ -601,7 +562,7 @@ static int q_void_on_error (struct query *q, int error_code, int error_len, cons
 }
 
 static int q_ptr_on_error (struct query *q, int error_code, int error_len, const char *error) {
-    tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
     if (q->callback) {
         ((void (*)(void *, int, void *))(q->callback))(q->callback_extra, 0, NULL);
     }
@@ -609,7 +570,7 @@ static int q_ptr_on_error (struct query *q, int error_code, int error_len, const
 }
 
 static int q_list_on_error (struct query *q, int error_code, int error_len, const char *error) {
-    tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
     if (q->callback) {
         ((void (*)(void *, int, int, void *))(q->callback))(q->callback_extra, 0, 0, NULL);
     }
@@ -857,12 +818,11 @@ static int help_get_config_on_answer (struct query *q, void *DS) {
     return 0;
 }
 
-struct paramed_type config_type = TYPE_TO_PARAM(config);
 static struct query_methods help_get_config_methods  = {
   .on_answer = help_get_config_on_answer,
   .on_error = q_void_on_error,
   .on_timeout = NULL,
-  .type = &config_type,
+  .type = TYPE_TO_PARAM(config),
   .name = "get config",
   .timeout = 1
 };
@@ -896,12 +856,11 @@ static int send_code_on_answer (struct query *q, void *D) {
     return 0;
 }
 
-struct paramed_type auth_sent_type = TYPE_TO_PARAM(auth_sent_code);
 static struct query_methods send_code_methods  = {
   .on_answer = send_code_on_answer,
   .on_error = q_list_on_error,
   .on_timeout = NULL,
-  .type =  &auth_sent_type,
+  .type = TYPE_TO_PARAM(auth_sent_code),
   .name = "send code"
 };
 
@@ -929,12 +888,11 @@ static int phone_call_on_answer(struct query *q, void *D) {
     return 0;
 }
 
-struct paramed_type type_bool = TYPE_TO_PARAM(bool);
 static struct query_methods phone_call_methods  = {
   .on_answer = phone_call_on_answer,
   .on_error = q_void_on_error,
   .on_timeout = NULL,
-  .type = &type_bool,
+  .type = TYPE_TO_PARAM(bool),
   .name = "phone call"
 };
 
@@ -968,19 +926,18 @@ static int sign_in_on_answer (struct query *q, void *D) {
 }
 
 static int sign_in_on_error (struct query *q, int error_code, int error_len, const char *error) {
-    tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
     if (q->callback) {
         ((void (*)(void *, int))q->callback) (q->callback_extra, 0);
     }
     return 0;
 }
 
-struct paramed_type auth_auth_type = TYPE_TO_PARAM(auth_authorization);
 static struct query_methods sign_in_methods  = {
   .on_answer = sign_in_on_answer,
   .on_error = sign_in_on_error,
   .on_timeout = NULL,
-  .type = &auth_auth_type,
+  .type = TYPE_TO_PARAM(auth_authorization),
   .name = "sign in"
 };
 
@@ -1037,12 +994,11 @@ static int get_contacts_on_answer (struct query *q, void *D) {
   return 0;
 }
 
-struct paramed_type contacts_contacts_type = TYPE_TO_PARAM(contacts_contacts);
 static struct query_methods get_contacts_methods = {
   .on_answer = get_contacts_on_answer,
   .on_error = q_list_on_error,
   .on_timeout = NULL,
-  .type = &contacts_contacts_type,
+  .type = TYPE_TO_PARAM(contacts_contacts),
   .name = "get contacts"
 };
 
@@ -1089,7 +1045,7 @@ static int msg_send_on_answer (struct query *q, void *D) {
 }
 
 static int msg_send_on_error (struct query *q, int error_code, int error_len, const char *error) {
-  tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+  TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << std::string(error, error_len));
   tgl_message_id_t id;
   id.peer_type = TGL_PEER_RANDOM_ID;
   id.id = *(long long *)q->extra;
@@ -1108,12 +1064,11 @@ static int msg_send_on_error (struct query *q, int error_code, int error_len, co
   return 0;
 }
 
-struct paramed_type mesg_sent_type = TYPE_TO_PARAM(messages_sent_message);
 static struct query_methods msg_send_methods = {
   .on_answer = msg_send_on_answer,
   .on_error = msg_send_on_error,
   .on_timeout = NULL,
-  .type = &mesg_sent_type,
+  .type = TYPE_TO_PARAM(messages_sent_message),
   .name = "send message"
 };
 
@@ -1368,11 +1323,11 @@ void tgl_do_reply_text (tgl_message_id_t *_reply_id, const char *file_name, unsi
 /* {{{ Mark read */
 
 struct mark_read_extra {
-    tgl_peer_id_t id;
+    tgl_peer_id id;
     int max_id;
 };
 
-void tgl_do_messages_mark_read (tgl_peer_id_t id, int max_id, int offset, void (*callback)(void *callback_extra, int), void *callback_extra);
+void tgl_do_messages_mark_read (tgl_peer_id id, int max_id, int offset, void (*callback)(void *callback_extra, int), void *callback_extra);
 
 static int mark_read_channels_on_receive (struct query *q, void *D) {
   struct mark_read_extra *E = q->extra;
@@ -1416,7 +1371,7 @@ static int mark_read_on_receive (struct query *q, void *D) {
 }
 
 static int mark_read_on_error (struct query *q, int error_code, int error_len, const char *error) {
-    tgl_set_query_error(EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
 
     struct mark_read_extra *E = (struct mark_read_extra *)q->extra;
     free (E);
@@ -1426,12 +1381,11 @@ static int mark_read_on_error (struct query *q, int error_code, int error_len, c
     return 0;
 }
 
-struct paramed_type msg_aff_history_type = TYPE_TO_PARAM(messages_affected_history);
 static struct query_methods mark_read_methods = {
   .on_answer = mark_read_on_receive,
   .on_error = mark_read_on_error,
   .on_timeout = NULL,
-  .type = &msg_aff_history_type,
+  .type = TYPE_TO_PARAM(messages_affected_history),
   .name = "mark read"
 };
 
@@ -1439,7 +1393,7 @@ static struct query_methods mark_read_channels_methods = {
   .on_answer = mark_read_channels_on_receive,
   .on_error = q_void_on_error,
   .on_timeout = NULL,
-  .type = &bool_type,
+  .type = TYPE_TO_PARAM(bool),
   .name = "mark read (channels)"
 };
 
@@ -1505,7 +1459,7 @@ struct get_history_extra {
     struct tgl_message **ML;
     int list_offset;
     int list_size;
-    tgl_peer_id_t id;
+    tgl_peer_id id;
     int limit;
     int offset;
     int max_id;
@@ -1577,7 +1531,7 @@ static int get_history_on_answer (struct query *q, void *D) {
 }
 
 static int get_history_on_error (struct query *q, int error_code, int error_len, const char *error) {
-    tgl_set_query_error(EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
 
     struct get_history_extra *E = (struct get_history_extra *)q->extra;
     free (E->ML);
@@ -1589,12 +1543,11 @@ static int get_history_on_error (struct query *q, int error_code, int error_len,
     return 0;
 }
 
-struct paramed_type msg_msg_type = TYPE_TO_PARAM(messages_messages);
 static struct query_methods get_history_methods = {
   .on_answer = get_history_on_answer,
   .on_error = get_history_on_error,
   .on_timeout = NULL,
-  .type = &msg_msg_type,
+  .type = TYPE_TO_PARAM(messages_messages),
   .name = "get history"
 };
 
@@ -1745,7 +1698,7 @@ static int get_dialogs_on_answer (struct query *q, void *D) {
 }
 
 static int get_dialogs_on_error (struct query *q, int error_code, int error_len, const char *error) {
-  tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+  TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
 
   struct get_dialogs_extra *E = (struct get_dialogs_extra *)q->extra;
   tfree (E->PL, sizeof (tgl_peer_id_t) * E->list_size);
@@ -1760,12 +1713,11 @@ static int get_dialogs_on_error (struct query *q, int error_code, int error_len,
   return 0;
 }
 
-struct paramed_type msg_dialogs_type = TYPE_TO_PARAM(messages_dialogs);
 static struct query_methods get_dialogs_methods = {
   .on_answer = get_dialogs_on_answer,
   .on_error = get_dialogs_on_error,
   .on_timeout = NULL,
-  .type = &msg_dialogs_type,
+  .type = TYPE_TO_PARAM(messages_dialogs),
   .name = "get dialogs"
 };
 
@@ -1833,429 +1785,6 @@ static void out_peer_id (tgl_peer_id_t id) {
   }
 }
 
-static void send_part (struct send_file *f, void *callback, void *callback_extra);
-static int send_file_part_on_answer (struct query *q, void *D) {
-    TGL_UNUSED(D);
-    send_part ((struct send_file *)q->extra, (void*)q->callback, q->callback_extra);
-    return 0;
-}
-
-static int set_photo_on_answer (struct query *q, void *D) {
-    TGL_UNUSED(D);
-    if (q->callback) {
-        ((void (*)(void *, int))q->callback)(q->callback_extra, 1);
-    }
-    return 0;
-}
-
-static int send_file_part_on_error (struct query *q, int error_code, int error_len, const char *error) {
-  tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
-
-  struct send_file *f = (struct send_file *)q->extra;
-  free (f->file_name);
-  free (f->caption);
-  if (!f->avatar.peer_type) {
-    if (q->callback) {
-      ((void (*)(void *, int, struct tgl_message *))q->callback) (q->callback_extra, 0, 0);
-    }
-  } else {
-    if (q->callback) {
-      ((void (*)(void *, int))q->callback) (q->callback_extra, 0);
-    }
-    free (f);
-    return 0;
-  }
-}
-
-struct paramed_type bool_type = (struct paramed_type) {.type = &tl_type_bool, .params=0};
-static struct query_methods send_file_part_methods = {
-  .on_answer = send_file_part_on_answer,
-  .on_error = send_file_part_on_error,
-  .on_timeout = NULL,
-  .type = &bool_type,
-  .name = "send file part"
-};
-
-struct paramed_type photo_photo_type = TYPE_TO_PARAM(photos_photo);
-static struct query_methods set_photo_methods = {
-  .on_answer = set_photo_on_answer,
-  .on_error = q_void_on_error,
-  .on_timeout = NULL,
-  .type = &photo_photo_type,
-  .name = "set photo"
-};
-
-static void send_avatar_end (struct send_file *f, void *callback, void *callback_extra) {
-  switch (tgl_get_peer_type (f->avatar)) {
-  case TGL_PEER_CHAT:
-    out_int (CODE_messages_edit_chat_photo);
-    out_int (f->avatar.peer_id);
-    out_int (CODE_input_chat_uploaded_photo);
-    break;
-  case TGL_PEER_USER:
-    out_int (CODE_photos_upload_profile_photo);
-    out_int (CODE_photos_upload_profile_photo);
-    break;
-  case TGL_PEER_CHANNEL:
-    out_int (CODE_channels_edit_photo);
-    out_int (CODE_input_channel);
-    out_int (f->avatar.peer_id);
-    out_long (f->avatar.access_hash);
-    out_int (CODE_input_chat_uploaded_photo);
-    break;
-  default:
-    assert (0);
-  }
-
-  if (f->size < (16 << 20)) {
-    out_int (CODE_input_file);
-  } else {
-    out_int (CODE_input_file_big);
-  }
-  out_long (f->id);
-  out_int (f->part_num);
-
-  char *s = f->file_name + strlen (f->file_name);
-  while (s >= f->file_name && *s != '/') { s --;}
-  out_string (s + 1);
-  if (f->size < (16 << 20)) {
-    out_string ("");
-  }
-
-  if (f->avatar.peer_type != TGL_PEER_USER) {
-    out_int (CODE_input_photo_crop_auto);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, NULL, callback, callback_extra);
-  } else {
-    out_string ("profile photo");
-    out_int (CODE_input_geo_point_empty);
-    out_int (CODE_input_photo_crop_auto);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_photo_methods, 0, callback, callback_extra);
-  }
-}
-
-
-#ifdef ENABLE_SECRET_CHAT
-static void send_file_unencrypted_end (struct send_file *f, void *callback, void *callback_extra) {
-  out_int (CODE_messages_send_media);
-  out_int ((f->reply ? 1 : 0) | f->channel);
-  out_peer_id (f->to_id);
-  if (f->reply) {
-    out_int (f->reply);
-  }
-  if (f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
-    out_int (CODE_input_media_uploaded_photo);
-  } else {
-    if (f->thumb_id > 0) {
-      out_int (CODE_input_media_uploaded_thumb_document);
-    } else {
-      out_int (CODE_input_media_uploaded_document);
-    }
-  }
-
-  if (f->size < (16 << 20)) {
-    out_int (CODE_input_file);
-  } else {
-    out_int (CODE_input_file_big);
-  }
-
-  out_long (f->id);
-  out_int (f->part_num);
-  char *s = f->file_name + strlen (f->file_name);
-  while (s >= f->file_name && *s != '/') { s --;}
-  out_string (s + 1);
-  if (f->size < (16 << 20)) {
-    out_string ("");
-  }
-
-        out_int (CODE_vector);
-        if (f->flags & TGLDF_IMAGE) {
-            if (f->flags & TGLDF_ANIMATED) {
-                out_int (2);
-                out_int (CODE_document_attribute_image_size);
-                out_int (f->w);
-                out_int (f->h);
-                out_int (CODE_document_attribute_animated);
-            } else {
-                out_int (1);
-                out_int (CODE_document_attribute_image_size);
-                out_int (f->w);
-                out_int (f->h);
-            }
-        } else if (f->flags & TGLDF_AUDIO) {
-            out_int (2);
-            out_int (CODE_document_attribute_audio);
-            out_int (f->duration);
-            out_int (CODE_document_attribute_filename);
-            out_string (s + 1);
-        } else if (f->flags & TGLDF_VIDEO) {
-            out_int (2);
-            out_int (CODE_document_attribute_video);
-            out_int (f->duration);
-            out_int (f->w);
-            out_int (f->h);
-            out_int (CODE_document_attribute_filename);
-            out_string (s + 1);
-        } else if (f->flags & TGLDF_STICKER) {
-            out_int (1);
-            out_int (CODE_document_attribute_sticker);
-        } else {
-            out_int (1);
-            out_int (CODE_document_attribute_filename);
-            out_string (s + 1);
-        }
-
-    out_int (CODE_vector);
-    if (f->flags & TGLDF_IMAGE) {
-      if (f->flags & TGLDF_ANIMATED) {
-        out_int (2);
-        out_int (CODE_document_attribute_image_size);
-        out_int (f->w);
-        out_int (f->h);
-        out_int (CODE_document_attribute_animated);
-      } else {
-        out_int (1);
-        out_int (CODE_document_attribute_image_size);
-        out_int (f->w);
-        out_int (f->h);
-      }
-    } else if (f->flags & TGLDF_AUDIO) {
-      out_int (2);
-      out_int (CODE_document_attribute_audio);
-      out_int (f->duration);
-      out_string ("");
-      out_string ("");
-      out_int (CODE_document_attribute_filename);
-      out_string (s + 1);
-    } else if (f->flags & TGLDF_VIDEO) {
-      out_int (2);
-      out_int (CODE_document_attribute_video);
-      out_int (f->duration);
-      out_int (f->w);
-      out_int (f->h);
-      out_int (CODE_document_attribute_filename);
-      out_string (s + 1);
-    } else if (f->flags & TGLDF_STICKER) {
-      out_int (1);
-      out_int (CODE_document_attribute_sticker);
-    } else {
-        out_string (f->caption ? f->caption : "");
-    }
-    
-    out_string (f->caption ? f->caption : "");
-  } else {
-    out_string (f->caption ? f->caption : "");
-  }
-
-
-  struct messages_send_extra *E = (struct messages_send_extra *)talloc0 (sizeof (*E));
-  E->id = tgl_peer_id_to_random_msg_id (f->to_id);
-  out_long (E->id.id);
-
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, callback, callback_extra);
-    free (f->file_name);
-    free (f->caption);
-    free (f);
-}
-#endif
-
-static void send_file_end (struct send_file *f, void *callback, void *callback_extra) {
-    tgl_state::instance()->cur_uploaded_bytes -= f->size;
-    tgl_state::instance()->cur_uploading_bytes -= f->size;
-    clear_packet ();
-
-  if (f->avatar.peer_id) {
-    send_avatar_end (f, callback, callback_extra);
-    return;
-  }
-
-#ifdef ENABLE_SECRET_CHAT
-    if (!f->encr) {
-        send_file_unencrypted_end (f, callback, callback_extra);
-        return;
-    }
-    send_file_encrypted_end (f, callback, callback_extra);
-#endif
-    return;
-}
-
-static void send_part (struct send_file *f, void *callback, void *callback_extra) {
-  if (f->fd >= 0) {
-    if (!f->part_num) {
-      tgl_state::instance()->cur_uploading_bytes += f->size;
-    }
-    clear_packet ();
-    if (f->size < (16 << 20)) {
-      out_int (CODE_upload_save_file_part);
-      out_long (f->id);
-      out_int (f->part_num ++);
-    } else {
-      out_int (CODE_upload_save_big_file_part);
-      out_long (f->id);
-      out_int (f->part_num ++);
-      out_int ((f->size + f->part_size - 1) / f->part_size);
-    }
-    static char buf[512 << 10];
-    int x = read (f->fd, buf, f->part_size);
-    assert (x > 0);
-    f->offset += x;
-    tgl_state::instance()->cur_uploaded_bytes += x;
-
-    if (f->encr) {
-      if (x & 15) {
-        assert (f->offset == f->size);
-        tglt_secure_random (buf + x, (-x) & 15);
-        x = (x + 15) & ~15;
-      }
-
-      TGLC_aes_key aes_key;
-      TGLC_aes_set_encrypt_key (f->key, 256, &aes_key);
-      TGLC_aes_ige_encrypt ((void *)buf, (void *)buf, x, &aes_key, f->iv, 1);
-      memset (&aes_key, 0, sizeof (aes_key));
-    }
-    out_cstring (buf, x);
-    TGL_DEBUG("offset=" << f->offset << " size=" << f->size);
-    if (f->offset == f->size) {
-      close (f->fd);
-      f->fd = -1;
-    } else {
-      assert (f->part_size == x);
-    }
-    //update_prompt ();
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_file_part_methods, f, callback, callback_extra);
-  } else {
-    send_file_end (f, callback, callback_extra);
-  }
-}
-
-static void send_file_thumb (struct send_file *f, const void *thumb_data, int thumb_len, void *callback, void *callback_extra) {
-  clear_packet ();
-  tglt_secure_random (&f->thumb_id, 8);
-  out_int (CODE_upload_save_file_part);
-  out_long (f->thumb_id);
-  out_int (0);
-  out_cstring ((void *)thumb_data, thumb_len);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_file_part_methods, f, callback, callback_extra);
-}
-
-
-static void _tgl_do_send_photo (tgl_peer_id_t to_id, const char *file_name, tgl_peer_id_t avatar, int w, int h, int duration, const void *thumb_data, int thumb_len, const char *caption, int caption_len, unsigned long long flags, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
-  int fd = open (file_name, O_RDONLY | O_BINARY);
-  if (fd < 0) {
-    tgl_set_query_error (EBADF, "Can not open file: %s", strerror(errno));
-    if (!avatar.peer_id) {
-      if (callback) {
-        callback (callback_extra, 0, 0);
-      }
-    } else {
-      if (callback) {
-        ((void (*)(void *, int))callback) (callback_extra, 0);
-      }
-    }
-    return;
-  }
-  struct stat buf;
-  fstat (fd, &buf);
-  long long size = buf.st_size;
-  if (size <= 0) {
-    tgl_set_query_error (EBADF, "File is empty");
-    close (fd);
-    if (!avatar.peer_id) {
-      if (callback) {
-        callback (callback_extra, 0, 0);
-      }
-    } else {
-      if (callback) {
-        ((void (*)(void *, int))callback) (callback_extra, 0);
-      }
-    }
-    return;
-  }
-  struct send_file *f = talloc0 (sizeof (*f));
-  f->fd = fd;
-  f->size = size;
-  f->offset = 0;
-  f->part_num = 0;
-  f->avatar = avatar;
-  f->reply = flags >> 32;
-  int tmp = ((size + 2999) / 3000);
-  f->part_size = (1 << 14);
-  while (f->part_size < tmp) {
-    f->part_size *= 2;
-  }
-  f->flags = flags;
-  f->channel = 0;
-  if (flags & TGLMF_POST_AS_CHANNEL) {
-    f->channel = 16;
-  }
-
-  if (f->part_size > (512 << 10)) {
-    close (fd);
-    tgl_set_query_error (E2BIG, "File is too big");
-    tfree (f, sizeof (*f));
-    if (!avatar.peer_id) {
-      if (callback) {
-        callback (callback_extra, 0, 0);
-      }
-    } else {
-        send_part (f, (void*)callback, callback_extra);
-    }
-}
-
-void tgl_do_send_document (tgl_peer_id_t to_id, const char *file_name, const char *caption, int caption_len, unsigned long long flags, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
-  if (flags & TGL_SEND_MSG_FLAG_DOCUMENT_AUTO) {
-    const char *mime_type = tg_mime_by_filename (file_name);
-    if (strcmp (mime_type, "image/gif") == 0) {
-      flags |= TGL_SEND_MSG_FLAG_DOCUMENT_ANIMATED;
-    } else if (!memcmp (mime_type, "image/", 6)) {
-      flags |= TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO;
-    } else if (!memcmp (mime_type, "video/", 6)) {
-      flags |= TGLDF_VIDEO;
-    } else if (!memcmp (mime_type, "audio/", 6)) {
-      flags |= TGLDF_AUDIO;
-    }
-  }
-  tgl_peer_id_t x;
-  x.peer_id = 0;
-  _tgl_do_send_photo (to_id, file_name, x, 100, 100, 100, 0, 0, caption, caption_len, flags, callback, callback_extra);
-}
-
-void tgl_do_reply_document (tgl_message_id_t *_reply_id, const char *file_name, const char *caption, int caption_len, unsigned long long flags, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
-  tgl_message_id_t reply_id = *_reply_id;
-  if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
-    reply_id = tgl_convert_temp_msg_id (reply_id);
-  }
-  if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
-    tgl_set_query_error (EINVAL, "unknown message");
-    if (callback) {
-      callback (callback_extra, 0, 0);
-    }
-    return;
-  }
-  if (reply_id.peer_type == TGL_PEER_ENCR_CHAT) {
-    tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
-    if (callback) {
-      callback (callback_extra, 0, 0);
-    }
-
-  tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id (reply_id);
-
-  tgl_do_send_document (peer_id, file_name, caption, caption_len, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), callback, callback_extra);
-}
-
-void tgl_do_set_chat_photo (tgl_peer_id_t chat_id, const char *file_name, void (*callback)(void *callback_extra, int success), void *callback_extra) {
-  assert (tgl_get_peer_type (chat_id) == TGL_PEER_CHAT);
-  _tgl_do_send_photo (chat_id, file_name, chat_id, 0, 0, 0, 0, 0, NULL, 0, TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, (void *)callback, callback_extra);
-}
-
-void tgl_do_set_channel_photo (tgl_peer_id_t chat_id, const char *file_name, void (*callback)(void *callback_extra, int success), void *callback_extra) {
-  assert (tgl_get_peer_type (chat_id) == TGL_PEER_CHANNEL);
-  _tgl_do_send_photo (chat_id, file_name, chat_id, 0, 0, 0, 0, 0, NULL, 0, TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, (void *)callback, callback_extra);
-}
-
-void tgl_do_set_profile_photo (const char *file_name, void (*callback)(void *callback_extra, int success), void *callback_extra) {
-  _tgl_do_send_photo (TGL_MK_USER(tgl_state::instance()->our_id()), file_name, tgl_state::instance()->our_id(), 0, 0, 0, 0, 0, NULL, TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
-      (void (*)(void *, int , struct tgl_message *))callback, callback_extra);
-}
 /* }}} */
 
 /* {{{ Profile name */
@@ -2270,12 +1799,11 @@ int set_profile_name_on_answer (struct query *q, void *D) {
   return 0;
 }
 
-struct paramed_type user_type = TYPE_TO_PARAM(user);
 static struct query_methods set_profile_name_methods = {
   .on_answer = set_profile_name_on_answer,
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
-  .type = &user_type,
+  .type = TYPE_TO_PARAM(user),
   .name = "set profile name"
 };
 
@@ -2322,12 +1850,11 @@ int contact_search_on_answer (struct query *q, void *D) {
   return 0;
 }
 
-struct paramed_type contacts_resolved_peer_type = TYPE_TO_PARAM(contacts_resolved_peer);
 static struct query_methods contact_search_methods = {
   .on_answer = contact_search_on_answer,
   .on_error = q_list_on_error,
   .on_timeout = NULL,
-  .type = &contacts_resolved_peer_type,
+  .type = TYPE_TO_PARAM(contacts_resolved_peer),
   .name = "contacts search"
 };
 
@@ -2406,17 +1933,16 @@ static int send_msgs_on_error (struct query *q, int error_code, int error_len, c
   }
 }
 
-struct updates_type = TYPE_TO_PARAM(updates);
 static struct query_methods send_msgs_methods = {
   .on_answer = send_msgs_on_answer,
   .on_error = send_msgs_on_error,
-  .type = &updates_type,
+  .type = TYPE_TO_PARAM(updates),
   .name = "forward messages"
 };
 
 void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_ids[], unsigned long long flags, void (*callback)(void *callback_extra, int success, int count, struct tgl_message *ML[]), void *callback_extra) {
   if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
-    tgl_set_query_error (EINVAL, "can not forward messages to secret chats");
+    TGL_ERROR("can not forward messages to secret chats");
     if (callback) {
       callback (callback_extra, 0, 0, 0);
     }
@@ -2521,7 +2047,7 @@ void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, u
     return;
   }
   if (peer_id.peer_type == TGL_PEER_ENCR_CHAT) {
-    tgl_set_query_error (EINVAL, "can not forward messages to secret chat");
+    TGL_ERROR("can not forward messages to secret chats");
     if (callback) {
       callback (callback_extra, 0, 0);
     }
@@ -2542,10 +2068,10 @@ void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, u
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, callback, callback_extra);
 }
 
-void tgl_do_send_contact (tgl_peer_id_t id, const char *phone, const char *first_name, const char *last_name,
+void tgl_do_send_contact (tgl_peer_id id, const char *phone, const char *first_name, const char *last_name,
         unsigned long long flags, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
     if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
-        tgl_set_query_error (EINVAL, "can not send contact to secret chat");
+        TGL_ERROR("can not send contact to secret chat");
         if (callback) {
             callback (callback_extra, 0, 0);
         }
@@ -2741,7 +2267,7 @@ void tgl_do_reply_location (tgl_message_id_t *_reply_id, double latitude, double
 
 /* {{{ Rename chat */
 
-void tgl_do_rename_chat (tgl_peer_id_t id, const char *name, int name_len, void (*callback)(void *callback_extra, int success), void *callback_extra) {
+void tgl_do_rename_chat (tgl_peer_id id, const char *name, int name_len, void (*callback)(void *callback_extra, int success), void *callback_extra) {
     clear_packet ();
     out_int (CODE_messages_edit_chat_title);
     assert (tgl_get_peer_type (id) == TGL_PEER_CHAT);
@@ -2970,12 +2496,11 @@ static int chat_info_on_answer (struct query *q, void *D) {
   return 0;
 }
 
-struct paramed_type msg_chat_full_type = TYPE_TO_PARAM(messages_chat_full);
 static struct query_methods chat_info_methods = {
   .on_answer = chat_info_on_answer,
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
-  .type = &msg_chat_full_type,
+  .type = TYPE_TO_PARAM(messages_chat_full),
   .name = "chat info"
 };
 
@@ -3057,16 +2582,15 @@ static int user_info_on_answer (struct query *q, void *D) {
   return 0;
 }
 
-struct paramed_type user_full_type = TYPE_TO_PARAM(user_full);
 static struct query_methods user_info_methods = {
   .on_answer = user_info_on_answer,
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
-  .type = &user_full_type,
+  .type = TYPE_TO_PARAM(user_full),
   .name = "user info"
 };
 
-void tgl_do_get_user_info (tgl_peer_id_t id, void (*callback)(void *callback_extra, int success, struct tgl_user *U), void *callback_extra) {
+void tgl_do_get_user_info (tgl_peer_id id, void (*callback)(void *callback_extra, int success, struct tgl_user *U), void *callback_extra) {
     clear_packet ();
     out_int (CODE_users_get_full_user);
     assert (tgl_get_peer_type (id) == TGL_PEER_USER);
@@ -3470,11 +2994,12 @@ static int import_auth_on_answer (struct query *q, void *D) {
   return 0;
 }
 
+
 static struct query_methods import_auth_methods = {
   .on_answer = import_auth_on_answer,
   .on_error = fail_on_error,
   .on_timeout = NULL,
-  .type = &auth_auth_type,
+  .type = TYPE_TO_PARAM(auth_authorization),
   .name = "import authorization"
 };
 
@@ -3494,12 +3019,11 @@ static int export_auth_on_answer (struct query *q, void *D) {
   return 0;
 }
 
-struct paramed_type auth_export_auth_type = TYPE_TO_PARAM(auth_exported_authorization);
 static struct query_methods export_auth_methods = {
   .on_answer = export_auth_on_answer,
   .on_error = fail_on_error,
   .on_timeout = NULL,
-  .type = &auth_export_auth_type,
+  .type = TYPE_TO_PARAM(auth_exported_authorization),
   .name = "export authorization"
 };
 
@@ -3537,12 +3061,11 @@ static int add_contact_on_answer (struct query *q, void *D) {
     return 0;
 }
 
-struct paramed_type contacts_imported_type = TYPE_TO_PARAM(contacts_imported_contacts);
 static struct query_methods add_contact_methods = {
   .on_answer = add_contact_on_answer,
   .on_error = q_list_on_error,
   .on_timeout = NULL,
-  .type = &contacts_imported_type,
+  .type = TYPE_TO_PARAM(contacts_imported_contacts),
   .name = "add contact"
 };
 
@@ -3572,16 +3095,15 @@ static int del_contact_on_answer (struct query *q, void *D) {
     return 0;
 }
 
-struct paramed_type contacts_link_type = TYPE_TO_PARAM(contacts_link);
 static struct query_methods del_contact_methods = {
   .on_answer = del_contact_on_answer,
   .on_error = q_void_on_error,
   .on_timeout = NULL,
-  .type = &contacts_link_type,
+  .type = TYPE_TO_PARAM(contacts_link),
   .name = "del contact"
 };
 
-void tgl_do_del_contact (tgl_peer_id_t id, void (*callback)(void *callback_extra, int success), void *callback_extra) {
+void tgl_do_del_contact (tgl_peer_id id, void (*callback)(void *callback_extra, int success), void *callback_extra) {
     clear_packet ();
     out_int (CODE_contacts_delete_contact);
 
@@ -3598,7 +3120,7 @@ struct msg_search_extra {
     struct tgl_message **ML;
     int list_offset;
     int list_size;
-    tgl_peer_id_t id;
+    tgl_peer_id id;
     int limit;
     int offset;
     int from;
@@ -3663,7 +3185,7 @@ static int msg_search_on_answer (struct query *q, void *D) {
 }
 
 static int msg_search_on_error (struct query *q, int error_code, int error_len, const char *error) {
-    tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
 
     struct msg_search_extra *E = (struct msg_search_extra *)q->extra;
     free (E->query);
@@ -3679,7 +3201,7 @@ static struct query_methods msg_search_methods = {
   .on_answer = msg_search_on_answer,
   .on_error = msg_search_on_error,
   .on_timeout = NULL,
-  .type = &msg_msg_type,
+  .type = TYPE_TO_PARAM(messages_messages),
   .name = "messages search"
 };
 
@@ -3708,9 +3230,9 @@ static void _tgl_do_msg_search (struct msg_search_extra *E, void (*callback)(voi
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_search_methods, E, (void*)callback, callback_extra);
 }
 
-void tgl_do_msg_search (tgl_peer_id_t id, int from, int to, int limit, int offset, const char *pattern, int pattern_len, void (*callback)(void *callback_extra, int success, int size, struct tgl_message *list[]), void *callback_extra) {
+void tgl_do_msg_search (tgl_peer_id id, int from, int to, int limit, int offset, const char *pattern, int pattern_len, void (*callback)(void *callback_extra, int success, int size, struct tgl_message *list[]), void *callback_extra) {
     if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
-        tgl_set_query_error (EINVAL, "can not search in secret chats");
+        TGL_ERROR("can not search in secret chats");
         if (callback) {
             callback (callback_extra, 0, 0, 0);
         }
@@ -3843,12 +3365,11 @@ static int get_difference_on_answer (struct query *q, void *D) {
     return 0;
 }
 
-struct paramed_type update_state_type = TYPE_TO_PARAM(updates_state);
 static struct query_methods lookup_state_methods = {
   .on_answer = lookup_state_on_answer,
   .on_error = q_void_on_error,
   .on_timeout = NULL,
-  .type = &update_state_type,
+  .type = TYPE_TO_PARAM(updates_state),
   .name = "lookup state"
 };
 
@@ -3856,16 +3377,15 @@ static struct query_methods get_state_methods = {
   .on_answer = get_state_on_answer,
   .on_error = q_void_on_error,
   .on_timeout = NULL,
-  .type = &update_state_type,
+  .type = TYPE_TO_PARAM(updates_state),
   .name = "get state"
 };
 
-struct paramed_type update_diff_type = TYPE_TO_PARAM(updates_difference);
 static struct query_methods get_difference_methods = {
   .on_answer = get_difference_on_answer,
   .on_error = q_void_on_error,
   .on_timeout = NULL,
-  .type = &update_diff_type,
+  .type = TYPE_TO_PARAM(updates_difference),
   .name = "get difference"
 };
 
@@ -3993,7 +3513,7 @@ void tgl_do_get_channel_difference (int id, void (*callback)(void *callback_extr
 
 /* {{{ Visualize key */
 
-//int tgl_do_visualize_key (tgl_peer_id_t id, unsigned char buf[16]) {
+//int tgl_do_visualize_key (tgl_peer_id id, unsigned char buf[16]) {
 //    assert (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT);
 //    assert (P);
 //    if (P->encr_chat.state != sc_ok) {
@@ -4170,12 +3690,11 @@ static int delete_msg_on_error (struct query *q, int error_code, int error_len, 
 }
 
 
-struct paramed_type msg_affected_type = TYPE_TO_PARAM(messages_affected_messages);
 static struct query_methods delete_msg_methods = {
   .on_answer = delete_msg_on_answer,
   .on_error = delete_msg_on_error,
   .on_timeout = NULL,
-  .type = &msg_affected_type,
+  .type = TYPE_TO_PARAM(messages_affected_messages),
   .name = "delete message"
 };
 
@@ -4268,7 +3787,7 @@ static struct query_methods import_card_methods = {
   .on_answer = import_card_on_answer,
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
-  .type = &user_type,
+  .type = TYPE_TO_PARAM(user),
   .name = "import card"
 };
 
@@ -4305,6 +3824,7 @@ static int send_typing_on_answer (struct query *q, void *D) {
     return 0;
 }
 
+struct paramed_type bool_type = (struct paramed_type) {.type = &tl_type_bool, .params=0};
 static struct query_methods send_typing_methods = {
   .on_answer = send_typing_on_answer,
   .on_error = q_void_on_error,
@@ -4313,7 +3833,7 @@ static struct query_methods send_typing_methods = {
   .name = "send typing"
 };
 
-void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, void (*callback)(void *callback_extra, int success), void *callback_extra) {
+void tgl_do_send_typing (tgl_peer_id id, enum tgl_typing_status status, void (*callback)(void *callback_extra, int success), void *callback_extra) {
     if (tgl_get_peer_type (id) != TGL_PEER_ENCR_CHAT) {
         clear_packet ();
         out_int (CODE_messages_set_typing);
@@ -4364,31 +3884,32 @@ void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, void (
 #ifndef DISABLE_EXTF
 char *tglf_extf_print_ds (void *DS, struct paramed_type *T);
 
-static int ext_query_on_answer (struct query *q, void *D) {
-    if (q->callback) {
-        char *buf = tglf_extf_print_ds (D, q->type);
-        ((void (*)( void *, int, char *))q->callback) (q->callback_extra, 1, buf);
-    }
-    tgl_paramed_type_free (q->type);
-    return 0;
-}
+//static int ext_query_on_answer (struct query *q, void *D) {
+//    if (q->callback) {
+//        char *buf = tglf_extf_print_ds (D, &q->methods->type);
+//        ((void (*)( void *, int, char *))q->callback) (q->callback_extra, 1, buf);
+//    }
+//    tgl_paramed_type_free (q->type);
+//    return 0;
+//}
 
-static struct query_methods ext_query_methods = {
-  .on_answer = ext_query_on_answer,
-  .on_error = q_list_on_error,
-  .on_timeout = NULL,
-  .name = "ext query"
-};
+//static struct query_methods ext_query_methods = {
+//  .on_answer = ext_query_on_answer,
+//  .on_error = q_list_on_error,
+//  .on_timeout = NULL,
+//  .type = NULL,
+//  .name = "ext query"
+//};
 
-void tgl_do_send_extf (const char *data, int data_len, void (*callback)(void *callback_extra, int success, const char *buf), void *callback_extra) {
-    clear_packet ();
+//void tgl_do_send_extf (const char *data, int data_len, void (*callback)(void *callback_extra, int success, const char *buf), void *callback_extra) {
+//    clear_packet ();
 
-    ext_query_methods.type = tglf_extf_store (data, data_len);
+//    ext_query_methods.type = tglf_extf_store (data, data_len);
 
-    if (ext_query_methods.type) {
-        tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &ext_query_methods, 0, (void*)callback, callback_extra);
-    }
-}
+//    if (ext_query_methods.type) {
+//        tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &ext_query_methods, 0, (void*)callback, callback_extra);
+//    }
+//}
 #else
 void tgl_do_send_extf (const char *data, int data_len, void (*callback)(void *callback_extra, int success, const char *buf), void *callback_extra) {
   assert (0);
@@ -4444,7 +3965,7 @@ static struct query_methods get_messages_methods = {
   .on_answer = get_messages_on_answer,
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
-  .type = &msg_msg_type,
+  .type = TYPE_TO_PARAM(messages_messages),
   .name = "get messages"
 };
 
@@ -4495,18 +4016,17 @@ static int export_chat_link_on_answer (struct query *q, void *D) {
     return 0;
 }
 
-struct paramed_type export_chat_invite_type = TYPE_TO_PARAM(exported_chat_invite);
 static struct query_methods export_chat_link_methods = {
   .on_answer = export_chat_link_on_answer,
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
-  .type = &export_chat_invite_type,
+  .type = TYPE_TO_PARAM(exported_chat_invite),
   .name = "export chat link"
 };
 
-void tgl_do_export_chat_link (tgl_peer_id_t id, void (*callback)(void *callback_extra, int success, const char *link), void *callback_extra) {
+void tgl_do_export_chat_link (tgl_peer_id id, void (*callback)(void *callback_extra, int success, const char *link), void *callback_extra) {
     if (tgl_get_peer_type (id) != TGL_PEER_CHAT) {
-        tgl_set_query_error (EINVAL, "Can only export chat link for chat");
+        TGL_ERROR("Can only export chat link for chat");
         if (callback) {
             callback (callback_extra, 0, NULL);
         }
@@ -4591,7 +4111,7 @@ static int set_password_on_error (struct query *q, int error_code, int error_len
             return 0;
         }
     }
-    tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
     if (q->callback) {
         ((void (*)( void *, int))q->callback)(q->callback_extra, 0);
     }
@@ -4745,12 +4265,11 @@ static int set_get_password_on_answer (struct query *q, void *D) {
     return 0;
 }
 
-struct paramed_type account_pwd_type = TYPE_TO_PARAM(account_password);
 static struct query_methods set_get_password_methods = {
   .on_answer = set_get_password_on_answer,
   .on_error = q_void_on_error,
   .on_timeout = NULL,
-  .type = &account_pwd_type,
+  .type = TYPE_TO_PARAM(account_password),
   .name = "get password"
 };
 
@@ -4770,7 +4289,7 @@ static int check_password_on_error (struct query *q, int error_code, int error_l
         return 0;
     }
     tgl_state::instance()->locks ^= TGL_LOCK_PASSWORD;
-    tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
     if (q->callback) {
         ((void (*)( void *, int))q->callback)(q->callback_extra, 0);
     }
@@ -4790,7 +4309,7 @@ static struct query_methods check_password_methods = {
   .on_answer = check_password_on_answer,
   .on_error = check_password_on_error,
   .on_timeout = NULL,
-  .type = &auth_auth_type,
+  .type = TYPE_TO_PARAM(auth_authorization),
   .name = "check password"
 };
 
@@ -4837,7 +4356,7 @@ static void tgl_pwd_got (const void *pwd, const void *_T) {
 
 static int check_get_password_on_error (struct query *q, int error_code, int error_len, const char *error) {
     tgl_state::instance()->locks ^= TGL_LOCK_PASSWORD;
-    tgl_set_query_error (EPROTO, "RPC_CALL_FAIL %d: %.*s", error_code, error_len, error);
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error, error_len));
     if (q->callback) {
         ((void (*)( void *, int))q->callback) (q->callback_extra, 0);
     }
@@ -4870,7 +4389,7 @@ static struct query_methods check_get_password_methods = {
   .on_answer = check_get_password_on_answer,
   .on_error = check_get_password_on_error,
   .on_timeout = NULL,
-  .type = &account_pwd_type,
+  .type = TYPE_TO_PARAM(account_password),
   .name = "get password"
 };
 

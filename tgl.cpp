@@ -30,10 +30,17 @@ extern "C" {
 #include "tools.h"
 }
 #include "mtproto-client.h"
+#include "tgl_download_manager.h"
 #include "tgl-structures.h"
 #include <openssl/sha.h>
 
 #include <assert.h>
+
+tgl_state::tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
+       DC_working(NULL), temp_key_expire_time(0),net_methods(NULL), ev_base(0), BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
+       m_date(0), m_seq(0), m_test_mode(0), m_our_id(0), m_enable_pfs(false), m_ipv6_enabled(false)
+{
+}
 
 tgl_state *tgl_state::instance()
 {
@@ -150,10 +157,6 @@ void tgl_state::reset_server_state()
     m_seq = 0;
 }
 
-void tgl_state::set_download_directory(const std::string &path) {
-    m_downloads_directory = path;
-}
-
 void tgl_state::set_callback(struct tgl_update_callback *cb) {
   callback = *cb;
 }
@@ -164,7 +167,12 @@ void tgl_state::set_rsa_key(const char *key) {
   rsa_key_loaded.push_back(NULL);
 }
 
-void tgl_state::init () {
+void tgl_state::init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version)
+{
+  m_download_manager = std::make_shared<tgl_download_manager>(download_dir);
+  m_app_id = app_id;
+  m_app_hash = app_hash;
+  m_app_version = app_version;
   assert (timer_methods);
   assert (net_methods);
   if (!temp_key_expire_time) {
@@ -188,11 +196,6 @@ int tgl_authorized_dc(struct tgl_dc *DC) {
 int tgl_signed_dc(struct tgl_dc *DC) {
   assert (DC);
   return (DC->flags & TGLDCF_LOGGED_IN) != 0;
-}
-
-void tgl_state::register_app_id (int app_id, const std::string &app_hash) {
-  this->m_app_id = app_id;
-  this->m_app_hash = app_hash;
 }
 
 void tgl_state::set_enable_pfs (bool val) {
@@ -220,10 +223,6 @@ void tgl_state::set_io_service (boost::asio::io_service *io_service) {
   this->io_service = io_service;
 }
 #endif
-
-void tgl_state::set_app_version (const std::string &app_version) {
-  m_app_version = app_version;
-}
 
 void tgl_state::set_enable_ipv6 (bool val) {
   m_ipv6_enabled = val;

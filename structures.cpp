@@ -135,13 +135,9 @@ tgl_peer_id_t tglf_fetch_peer_id (struct tl_ds_peer *DS_P) {
 
 }
 
-int tglf_fetch_file_location (struct tgl_file_location *loc, struct tl_ds_file_location *DS_FL) {
-  if (!DS_FL) { return 0; }
-  loc->dc = DS_LVAL (DS_FL->dc_id);
-  loc->volume = DS_LVAL (DS_FL->volume_id);
-  loc->local_id = DS_LVAL (DS_FL->local_id);
-  loc->secret = DS_LVAL (DS_FL->secret);
-  return 0;
+tgl_file_location tglf_fetch_file_location (struct tgl_file_location *loc, struct tl_ds_file_location *DS_FL) {
+  if (!DS_FL) { return tgl_file_location(); }
+  return tgl_file_location(DS_LVAL (DS_FL->dc_id), DS_LVAL (DS_FL->volume_id), DS_LVAL (DS_FL->local_id), DS_LVAL (DS_FL->secret));
 }
 
 int tglf_fetch_user_status (struct tgl_user_status *S, struct tgl_user *U, struct tl_ds_user_status *DS_US) {
@@ -329,7 +325,7 @@ struct tgl_user *tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_UF) {
     if (DS_UF->user->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location_new(DS_UF->user->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location_new(DS_UF->user->photo->photo_small);
-        tgl_state::instance()->callback.avatar_update(user_id, photo_small, photo_big);
+        tgl_state::instance()->callback.profile_picture_update(user_id, DS_LVAL(DS_UF->user->photo->photo_id), &photo_small, &photo_big);
     }
 
   return U;
@@ -519,6 +515,7 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
     flags &= ~TGLCF_DEACTIVATED;
   }
 
+#if 0
   bl_do_chat (tgl_get_peer_id (C->id),
     DS_STR (DS_C->title),
     DS_C->participants_count, 
@@ -531,6 +528,13 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
     NULL, NULL,
     flags
   );
+#endif
+
+  C->photo_big = tglf_fetch_file_location_new(DS_C->photo->photo_big);
+  C->photo_small = tglf_fetch_file_location_new(DS_C->photo->photo_small);
+
+  tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_C->participants_count, -1, C->photo, time(0), DS_C->title->data, DS_C->title->len);
+
   return C;
 }
 
@@ -583,6 +587,7 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
   struct tgl_chat *C = (void *)tgl_peer_get (chat_id);
   assert (C);
 
+#if 0
   bl_do_chat (tgl_get_peer_id (C->id),
     NULL, 0,
     NULL, 
@@ -596,6 +601,14 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
     NULL, NULL,
     C->flags & 0xffff
   );
+#endif
+
+  if (*DS_CF->chat_photo->sizes->cnt > 1) {
+    C->photo_big = tglf_fetch_file_location_new(DS_CF->chat_photo->sizes->data[1]->location);
+  }
+  if (*DS_CF->chat_photo->sizes->cnt > 0) {
+    C->photo_small = tglf_fetch_file_location_new(DS_CF->chat_photo->sizes->data[0]->location);
+  }
 
   tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, *DS_CF->participants->admin_id,
       C->photo, *DS_CF->chat_photo->date, DS_C->title->data, DS_C->title->len);
@@ -1543,6 +1556,7 @@ struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *n
       TGL_NOTICE("unknown fwd_id");
       return NULL;
     }
+  }
 
   tgl_message_id_t msg_id = tgl_peer_id_to_msg_id (P->id, DS_LVAL (DS_M->id));
   struct tgl_message *M = tgl_message_get (&msg_id);

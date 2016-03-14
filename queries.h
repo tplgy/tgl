@@ -23,19 +23,10 @@
 #include "tgl-structures.h"
 #include "auto.h"
 #include "tgl-layout.h"
+#include "types/query_methods.h"
 
 #define QUERY_ACK_RECEIVED 1
 #define QUERY_FORCE_SEND 2
-
-struct query;
-struct query_methods {
-  int (*on_answer)(struct query *q, void *DS);
-  int (*on_error)(struct query *q, int error_code, int len, const char *error);
-  int (*on_timeout)(struct query *q);
-  struct paramed_type *type;
-  char *name;
-  double timeout;
-};
 
 struct query {
   long long msg_id;
@@ -48,7 +39,7 @@ struct query {
   struct tgl_timer *ev;
   struct tgl_dc *DC;
   struct tgl_session *session;
-  struct paramed_type *type;
+  //struct paramed_type *type;
   void *extra;
   void *callback;
   void *callback_extra;

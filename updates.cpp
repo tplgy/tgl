@@ -315,10 +315,9 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
         //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, DS_U->photo, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
         tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), "", "", "", "");
         if (DS_U->photo) {
-            struct tgl_file_location photo_small, photo_big;
-            tglf_fetch_file_location_new(&photo_big, DS_U->photo->photo_big);
-            tglf_fetch_file_location_new(&photo_small, DS_U->photo->photo_small);
-            tgl_state::instance()->callback.profile_picture_update(tgl_get_peer_id(user_id), DS_LVAL(DS_U->photo->photo_id), &photo_small, &photo_big);
+          tgl_file_location photo_big = tglf_fetch_file_location_new(DS_U->photo->photo_big);
+          tgl_file_location photo_small = tglf_fetch_file_location_new(DS_U->photo->photo_small);
+          tgl_state::instance()->callback.profile_picture_update(tgl_get_peer_id(user_id), DS_LVAL(DS_U->photo->photo_id), &photo_small, &photo_big);
         }
       }
       break;

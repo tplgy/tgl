@@ -162,6 +162,7 @@ namespace asio {
 }
 }
 #endif
+class tgl_download_manager;
 
 struct tgl_state {
   static tgl_state *instance();
@@ -218,18 +219,8 @@ struct tgl_state {
 
   void *ev_login;
 
-  char *app_version;
-  int ipv6_enabled;
-
-  struct tree_random_id *random_id_tree;
-  struct tree_temp_id *temp_id_tree;
-
-  int is_bot;
-
-  int last_temp_id;
-
-  void init ();
-  void login ();
+  void init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
+  void login();
 
   void set_auth_key(int num, const char *buf);
   void set_our_id(int id);
@@ -241,10 +232,8 @@ struct tgl_state {
   void set_date(int date, bool force = false);
   void set_seq(int seq);
   void reset_server_state();
-  void set_download_directory (const std::string &path);
   void set_callback (struct tgl_update_callback *cb);
   void set_rsa_key (const char *key);
-  void set_app_version (const std::string &app_version);
   void set_enable_pfs (bool); // enable perfect forward secrecy (does not work properly right now)
   void set_test_mode (bool);
   void set_net_methods (struct tgl_net_methods *methods);
@@ -259,6 +248,7 @@ struct tgl_state {
   std::string app_version() { return m_app_version; }
   std::string app_hash() { return m_app_hash; }
   int app_id() { return m_app_id; }
+  std::shared_ptr<tgl_download_manager> download_manager() { return m_download_manager; }
 
   void set_error(std::string error, int error_code);
 
@@ -269,7 +259,6 @@ struct tgl_state {
   bool test_mode() { return m_test_mode; }
   int our_id() { return m_our_id; }
   bool ipv6_enabled() { return m_ipv6_enabled; }
-  std::string downloads_directory() { return m_downloads_directory; }
   bool pfs_enabled() { return m_enable_pfs; }
 private:
   int m_app_id;
@@ -287,11 +276,9 @@ private:
   bool m_enable_pfs;
   std::string m_app_version;
   bool m_ipv6_enabled;
-  std::string m_downloads_directory;
 
   tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
-    DC_working(NULL), temp_key_expire_time(0), cur_uploading_bytes(0), cur_uploaded_bytes(0), cur_downloading_bytes(0),
-    cur_downloaded_bytes(0), net_methods(NULL),
+    DC_working(NULL), temp_key_expire_time(0), net_methods(NULL),
 #if USING_LIBEVENT
     ev_base(NULL),
 #elif USING_ASIO
