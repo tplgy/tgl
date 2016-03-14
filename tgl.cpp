@@ -34,11 +34,15 @@ extern "C" {
 
 #include <assert.h>
 
-struct tgl_state tgl_state;
+tgl_state *tgl_state::instance()
+{
+    static tgl_state *tgl_instance = new tgl_state();
+    return tgl_instance;
+}
 
 void tgl_state::set_auth_key(int num, const char *buf)
 {
-    fprintf(stderr, "set auth %d\n", num);
+    TGL_DEBUG("set auth " << num);
     assert (num > 0 && num <= MAX_DC_ID);
     assert (DC_list[num]);
 
@@ -90,12 +94,12 @@ void tgl_state::set_dc_option (int flags, int id, const char *ip, int l2, int po
     memcpy(ip_cpy, ip, l2);
     ip_cpy[ip_cpy_length-1] = '\0';
 
-    tglmp_alloc_dc (this, flags, id, ip_cpy, port);
+    tglmp_alloc_dc (flags, id, ip_cpy, port);
 }
 
 void tgl_state::set_dc_signed(int num)
 {
-    fprintf(stderr, "set signed %d\n", num);
+    TGL_DEBUG2("set signed " << num);
     assert (num > 0 && num <= MAX_DC_ID);
     assert (DC_list[num]);
     DC_list[num]->flags |= TGLDCF_LOGGED_IN;
@@ -103,7 +107,7 @@ void tgl_state::set_dc_signed(int num)
 
 void tgl_state::set_working_dc(int num)
 {
-    fprintf(stderr, "set working %d\n", num);
+    TGL_DEBUG2("set working " << num);
     assert (num > 0 && num <= MAX_DC_ID);
     DC_working = DC_list[num];
     callback.change_active_dc(num);
@@ -166,7 +170,7 @@ void tgl_state::init () {
     temp_key_expire_time = 100000;
   }
 
-  tglmp_on_start (this);
+  tglmp_on_start();
 
   if (!m_app_id) {
     m_app_id = TG_APP_ID;
@@ -188,10 +192,6 @@ int tgl_signed_dc(struct tgl_dc *DC) {
 void tgl_state::register_app_id (int app_id, const std::string &app_hash) {
   this->m_app_id = app_id;
   this->m_app_hash = app_hash;
-}
-
-void tgl_state::set_verbosity (int val) {
-  this->m_verbosity = val;
 }
 
 void tgl_state::set_enable_pfs (bool val) {

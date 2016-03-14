@@ -52,7 +52,7 @@ static inline void ensure (int r) {
 
 static inline void ensure_ptr (void *p) {
   if (p == NULL) {
-      fprintf (stderr, "Out of memory\n");
+      fprintf(stderr, "Out of memory");
       exit (1);
   }
 }

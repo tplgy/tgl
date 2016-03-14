@@ -44,7 +44,7 @@
 #include "tgl-net-inner.h"
 #include "tgl-net.h"
 #include "tgl.h"
-#include "tgl-inner.h"
+#include "tgl-log.h"
 #include "auto.h"
 #include "mtproto-client.h"
 
@@ -70,15 +70,14 @@ static void ping_alarm (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
   struct connection *c = (struct connection *)arg;
-  struct tgl_state *TLS = c->TLS;
-  vlogprintf (E_DEBUG + 2,"ping alarm\n");
+  TGL_DEBUG2("ping alarm");
   assert (c->state == conn_ready || c->state == conn_connecting);
   if (tglt_get_double_time () - c->last_receive_time > 6 * PING_TIMEOUT) {
-    vlogprintf (E_WARNING, "fail connection: reason: ping timeout\n");
+    TGL_WARNING("fail connection: reason: ping timeout");
     c->state = conn_failed;
     fail_connection (c);
   } else if (tglt_get_double_time () - c->last_receive_time > 3 * PING_TIMEOUT && c->state == conn_ready) {
-    tgl_do_send_ping (c->TLS, c);
+    tgl_do_send_ping (c);
     start_ping_timer (c);
   } else {
     start_ping_timer (c);
@@ -126,8 +125,7 @@ static void delete_connection_buffer (struct connection_buffer *b) {
 }
 
 int tgln_write_out (struct connection *c, const void *_data, int len) {
-  struct tgl_state *TLS = c->TLS;
-  vlogprintf (E_DEBUG, "write_out: %d bytes\n", len);
+  TGL_DEBUG("write_out: " << len << " bytes");
   const unsigned char *data = (const unsigned char *)_data;
   if (!len) { return 0; }
   assert (len > 0);
@@ -244,18 +242,16 @@ static void conn_try_read (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
   struct connection *c = (struct connection *)arg;
-  struct tgl_state *TLS = c->TLS;
-  vlogprintf (E_DEBUG + 1, "Try read. Fd = %d\n", c->fd);
+  TGL_DEBUG2("Try read. Fd = " <<c->fd);
   try_read (c);
 }
 static void conn_try_write (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
   struct connection *c = (struct connection *)arg;
-  struct tgl_state *TLS = c->TLS;
   if (c->state == conn_connecting) {
     c->state = conn_ready;
-    c->methods->ready (TLS, c);
+    c->methods->ready(c);
   }
   try_write (c);
   if (c->out_bytes) {
@@ -264,11 +260,10 @@ static void conn_try_write (evutil_socket_t fd, short what, void *arg) {
 }
   
 static int my_connect (struct connection *c, const char *host) {
-  struct tgl_state *TLS = c->TLS;
-  bool v6 = TLS->ipv6_enabled();
+  bool v6 = tgl_state::instance()->ipv6_enabled();
   int fd = socket (v6 ? AF_INET6 : AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
-    vlogprintf (E_ERROR, "Can not create socket: %s\n", strerror(errno));
+    TGL_ERROR("Can not create socket");
     start_fail_timer (c);
     return -1;
   }
@@ -286,7 +281,7 @@ static int my_connect (struct connection *c, const char *host) {
     addr6.sin6_family = AF_INET6; 
     addr6.sin6_port = htons (c->port);
     if (inet_pton (AF_INET6, host, &addr6.sin6_addr.s6_addr) != 1) {    
-      vlogprintf (E_ERROR, "Bad ipv6 %s\n", host);
+      TGL_ERROR("Bad ipv6" << host);
       close (fd);
       return -1;
     }
@@ -294,7 +289,7 @@ static int my_connect (struct connection *c, const char *host) {
     addr.sin_family = AF_INET; 
     addr.sin_port = htons (c->port);
     if (inet_pton (AF_INET, host, &addr.sin_addr.s_addr) != 1) {
-      vlogprintf (E_ERROR, "Bad ipv4 %s\n", host);
+      TGL_ERROR("Bad ipv4" << host);
       close (fd);
       return -1;
     }
@@ -311,16 +306,15 @@ static int my_connect (struct connection *c, const char *host) {
   return fd;
 }
 
-struct connection *tgln_create_connection (struct tgl_state *TLS, const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods) {
+struct connection *tgln_create_connection (const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods) {
   struct connection *c = (struct connection *) talloc0 (sizeof (struct connection));
-  c->TLS = TLS;
   c->ip = tstrdup (host);
   c->port = port;
   
   int fd = my_connect (c, c->ip);
   if (fd < 0) {
-    vlogprintf (E_ERROR, "Can not connect to %s:%d %s\n", host, port, strerror(errno));
-    tfree (c, sizeof (*c));
+    TGL_ERROR("Can not connect to " << host << ":" << port << " " << strerror(errno));
+    tfree (c);
     return 0;
   }
 
@@ -329,12 +323,12 @@ struct connection *tgln_create_connection (struct tgl_state *TLS, const char *ho
   c->last_receive_time = tglt_get_double_time ();
   c->flags = 0;
  
-  c->ping_ev = evtimer_new (TLS->ev_base, ping_alarm, c);
-  c->fail_ev = evtimer_new (TLS->ev_base, fail_alarm, c);
-  c->write_ev = event_new (TLS->ev_base, c->fd, EV_WRITE, conn_try_write, c);
+  c->ping_ev = evtimer_new (tgl_state::instance()->ev_base, ping_alarm, c);
+  c->fail_ev = evtimer_new (tgl_state::instance()->ev_base, fail_alarm, c);
+  c->write_ev = event_new (tgl_state::instance()->ev_base, c->fd, EV_WRITE, conn_try_write, c);
 
   struct timeval tv = {5, 0};
-  c->read_ev = event_new (TLS->ev_base, c->fd, EV_READ | EV_PERSIST, conn_try_read, c);
+  c->read_ev = event_new (tgl_state::instance()->ev_base, c->fd, EV_READ | EV_PERSIST, conn_try_read, c);
   event_add (c->read_ev, &tv);
 
   start_ping_timer (c);
@@ -351,7 +345,6 @@ struct connection *tgln_create_connection (struct tgl_state *TLS, const char *ho
 }
 
 static void restart_connection (struct connection *c) {
-  struct tgl_state *TLS = c->TLS;
   if (c->last_connect_time == time (0)) {
     start_fail_timer (c);
     return;
@@ -364,7 +357,7 @@ static void restart_connection (struct connection *c) {
   c->last_connect_time = time (0);
   int fd = my_connect (c, c->ip);
   if (fd < 0) {
-    vlogprintf (E_WARNING, "Can not connect to %s:%d %s\n", c->ip, c->port, strerror(errno));
+    TGL_WARNING("Can not connect to " << c->ip << ":" << c->port << " " << strerror(errno));
     start_fail_timer (c);
     return;
   }
@@ -374,10 +367,10 @@ static void restart_connection (struct connection *c) {
   c->last_receive_time = tglt_get_double_time ();
   start_ping_timer (c);
   
-  c->write_ev = event_new ((struct event_base *)TLS->ev_base, c->fd, EV_WRITE, conn_try_write, c);
+  c->write_ev = event_new ((struct event_base *)tgl_state::instance()->ev_base, c->fd, EV_WRITE, conn_try_write, c);
 
   struct timeval tv = {5, 0};
-  c->read_ev = event_new ((struct event_base *)TLS->ev_base, c->fd, EV_READ | EV_PERSIST, conn_try_read, c);
+  c->read_ev = event_new ((struct event_base *)tgl_state::instance()->ev_base, c->fd, EV_READ | EV_PERSIST, conn_try_read, c);
   event_add (c->read_ev, &tv);
   
   char byte = 0xef;
@@ -386,7 +379,6 @@ static void restart_connection (struct connection *c) {
 }
 
 static void fail_connection (struct connection *c) {
-  struct tgl_state *TLS = c->TLS;
   if (c->state == conn_ready || c->state == conn_connecting) {
     stop_ping_timer (c);
   }
@@ -410,14 +402,12 @@ static void fail_connection (struct connection *c) {
   c->state = conn_failed;
   c->out_bytes = c->in_bytes = 0;
   close (c->fd);
-  vlogprintf (E_NOTICE, "Lost connection to server... %s:%d\n", c->ip, c->port);
+  TGL_NOTICE("Lost connection to server " << c->ip << ":" << c->port);
   restart_connection (c);
 }
 
 //extern FILE *log_net_f;
 static void try_write (struct connection *c) {
-  struct tgl_state *TLS = c->TLS;
-  vlogprintf (E_DEBUG, "try write: fd = %d\n", c->fd);
   int x = 0;
   while (c->out_head) {
     int r = write (c->fd, c->out_head->rptr, c->out_head->wptr - c->out_head->rptr);
@@ -435,7 +425,7 @@ static void try_write (struct connection *c) {
       delete_connection_buffer (b);
     } else {
       if (errno != EAGAIN && errno != EWOULDBLOCK) {
-        vlogprintf (E_NOTICE, "fail_connection: write_error %s\n", strerror(errno));
+        TGL_NOTICE("fail_connection: write_error " << strerror(errno));
         fail_connection (c);
         return;
       } else {
@@ -443,13 +433,12 @@ static void try_write (struct connection *c) {
       }
     }
   }
-  vlogprintf (E_DEBUG, "Sent %d bytes to %d\n", x, c->fd);
+  TGL_DEBUG("Sent "<< x << " bytes to " << c->fd);
   c->out_bytes -= x;
 }
 
 static void try_rpc_read (struct connection *c) {
   assert (c->in_head);
-  struct tgl_state *TLS = c->TLS;
 
   while (1) {
     if (c->in_bytes < 1) { return; }
@@ -479,15 +468,14 @@ static void try_rpc_read (struct connection *c) {
     len *= 4;
     int op;
     assert (tgln_read_in_lookup (c, &op, 4) == 4);
-    if (c->methods->execute (TLS, c, op, len) < 0) {
+    if (c->methods->execute (c, op, len) < 0) {
       return;
     }
   }
 }
 
 static void try_read (struct connection *c) {
-  struct tgl_state *TLS = c->TLS;
-  vlogprintf (E_DEBUG, "try read: fd = %d\n", c->fd);
+  TGL_DEBUG("try read: fd = " << c->fd);
   if (!c->in_tail) {
     c->in_head = c->in_tail = new_connection_buffer (1 << 20);
   }
@@ -514,7 +502,7 @@ static void try_read (struct connection *c) {
       c->in_tail = b;
     } else {
       if (errno != EAGAIN && errno != EWOULDBLOCK) {
-        vlogprintf (E_NOTICE, "fail_connection: read_error %s\n", strerror(errno));
+        TGL_NOTICE("fail_connection: read_error " << strerror(errno));
         fail_connection (c);
         return;
       } else {
@@ -522,7 +510,7 @@ static void try_read (struct connection *c) {
       }
     }
   }
-  vlogprintf (E_DEBUG, "Received %d bytes from %d\n", x, c->fd);
+  TGL_DEBUG("Received " << x << " bytes from " << c->fd);
   c->in_bytes += x;
   if (x) {
     try_rpc_read (c);

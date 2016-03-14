@@ -104,8 +104,7 @@ static void print_offset (void) {
     }
 }
 
-char *tglf_extf_print_ds (struct tgl_state *TLS, void *DS, struct paramed_type *T) {
-    TGL_UNUSED(TLS);
+char *tglf_extf_print_ds (void *DS, struct paramed_type *T) {
     out_buf_pos = 0;
     if (print_ds_type_any (DS, T) < 0) { return 0; }
     return out_buf;

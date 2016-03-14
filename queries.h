@@ -29,9 +29,9 @@
 
 struct query;
 struct query_methods {
-  int (*on_answer)(struct tgl_state *TLS, struct query *q, void *DS);
-  int (*on_error)(struct tgl_state *TLS, struct query *q, int error_code, int len, const char *error);
-  int (*on_timeout)(struct tgl_state *TLS, struct query *q);
+  int (*on_answer)(struct query *q, void *DS);
+  int (*on_error)(struct query *q, int error_code, int len, const char *error);
+  int (*on_timeout)(struct query *q);
   struct paramed_type *type;
   char *name;
   double timeout;
@@ -55,11 +55,11 @@ struct query {
 };
 
 
-struct query *tglq_send_query (struct tgl_state *TLS, struct tgl_dc *DC, int len, void *data, struct query_methods *methods, void *extra, void *callback, void *callback_extra);
-void tglq_query_ack (struct tgl_state *TLS, long long id);
-int tglq_query_error (struct tgl_state *TLS, long long id);
-int tglq_query_result (struct tgl_state *TLS, long long id);
-void tglq_query_restart (struct tgl_state *TLS, long long id);
+struct query *tglq_send_query (struct tgl_dc *DC, int len, void *data, struct query_methods *methods, void *extra, void *callback, void *callback_extra);
+void tglq_query_ack (long long id);
+int tglq_query_error (long long id);
+int tglq_query_result (long long id);
+void tglq_query_restart (long long id);
 
 //double next_timer_in (void);
 //void work_timers (void);
@@ -68,7 +68,7 @@ void tglq_query_restart (struct tgl_state *TLS, long long id);
 
 double get_double_time (void);
 
-void tgl_do_send_bind_temp_key (struct tgl_state *TLS, struct tgl_dc *D, long long nonce, int expires_at, void *data, int len, long long msg_id);
+void tgl_do_send_bind_temp_key (struct tgl_dc *D, long long nonce, int expires_at, void *data, int len, long long msg_id);
 
 void tgl_do_request_exchange (struct tgl_secret_chat *E);
 void tgl_do_confirm_exchange ( struct tgl_secret_chat *E, int sen_nop);
@@ -76,10 +76,10 @@ void tgl_do_accept_exchange (struct tgl_secret_chat *E, long long exchange_id, u
 void tgl_do_commit_exchange (struct tgl_secret_chat *E, unsigned char g_a[]);
 void tgl_do_abort_exchange (struct tgl_secret_chat *E);
 
-void tglq_regen_query (struct tgl_state *TLS, long long id);
-void tglq_query_delete (struct tgl_state *TLS, long long id);
-void tglq_query_free_all (struct tgl_state *TLS);
-void tglq_regen_queries_from_old_session (struct tgl_state *TLS, struct tgl_dc *DC, struct tgl_session *S);
+void tglq_regen_query (long long id);
+void tglq_query_delete (long long id);
+void tglq_query_free_all ();
+void tglq_regen_queries_from_old_session (struct tgl_dc *DC, struct tgl_session *S);
 // For binlog
 
 //int get_dh_config_on_answer (struct query *q);

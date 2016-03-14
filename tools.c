@@ -53,14 +53,6 @@
 #include "valgrind/memcheck.h"
 #endif
 
-void logprintf (const char *format, ...) __attribute__ ((format (printf, 1, 2), weak));
-void logprintf (const char *format, ...) {
-  va_list ap;
-  va_start (ap, format);
-  vfprintf (stdout, format, ap);
-  va_end (ap);
-}
-
 int tgl_snprintf (char *buf, int len, const char *format, ...) {
   va_list ap;
   va_start (ap, format);
@@ -104,8 +96,8 @@ int tgl_inflate (void *input, int ilen, void *output, int olen) {
   int total_out = strm.total_out;
 
   if (err != Z_OK && err != Z_STREAM_END) {
-    logprintf ( "inflate error = %d\n", err);
-    logprintf ( "inflated %d bytes\n", (int) strm.total_out);
+    fprintf(stderr, "inflate error = %d\n", err);
+    fprintf(stderr, "inflated %d bytes\n", (int) strm.total_out);
     total_out = 0;
   }
   inflateEnd (&strm);

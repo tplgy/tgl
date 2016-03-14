@@ -22,9 +22,7 @@
 
 #include "crypto/bn.h"
 #include "tgl-layout.h"
-#include <string.h>
-#include <string>
-#include <iostream>
+#include "tgl-log.h"
 #include <stdlib.h>
 #include <vector>
 
@@ -97,7 +95,7 @@ struct tgl_update_callback {
   //void (*logprintf)(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
   void (*log_output)(int verbosity, const std::string &str);
   void (*get_values)(enum tgl_value_type type, const char *prompt, int num_values,
-          void (*callback)(struct tgl_state *TLS, const void *answer, const void *arg), const void *arg);
+          void (*callback)(const void *answer, const void *arg), const void *arg);
   void (*logged_in)();
   void (*started)();
   void (*type_notification)(int user_id, enum tgl_typing_status status);
@@ -133,47 +131,31 @@ struct tgl_net_methods {
   struct tgl_dc *(*get_dc) (struct connection *c);
   struct tgl_session *(*get_session) (struct connection *c);
 
-  struct connection *(*create_connection) (struct tgl_state *TLS, const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods);
+  struct connection *(*create_connection) (const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods);
 };
 
 struct mtproto_methods {
-  int (*ready) (struct tgl_state *TLS, struct connection *c);
-  int (*close) (struct tgl_state *TLS, struct connection *c);
-  int (*execute) (struct tgl_state *TLS, struct connection *c, int op, int len);
+  int (*ready) (struct connection *c);
+  int (*close) (struct connection *c);
+  int (*execute) (struct connection *c, int op, int len);
 };
 
 struct tgl_timer;
-struct tree_random_id;
-struct tree_temp_id;
 
 struct tgl_timer_methods {
-  struct tgl_timer *(*alloc) (struct tgl_state *TLS, void (*cb)(struct tgl_state *TLS, void *arg), void *arg);
+  struct tgl_timer *(*alloc) (void (*cb)(void *arg), void *arg);
   void (*insert) (struct tgl_timer *t, double timeout);
   void (*remove) (struct tgl_timer *t);
   void (*free) (struct tgl_timer *t);
 };
 
-#define E_ERROR 0
-#define E_WARNING 1
-#define E_NOTICE 2
-#define E_DEBUG2 3
-#define E_DEBUG 6
-
 #define TGL_LOCK_DIFF 1
 #define TGL_LOCK_PASSWORD 2
-
-#define TGL_MAX_RSA_KEYS_NUM 10
-// Do not modify this structure, unless you know what you do
 
 struct event_base;
 
 struct tgl_state {
-  tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
-      DC_working(NULL), temp_key_expire_time(0), cur_uploading_bytes(0), cur_uploaded_bytes(0), cur_downloading_bytes(0),
-      cur_downloaded_bytes(0), net_methods(NULL), ev_base(0), BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
-      m_date(0), m_seq(0), m_test_mode(0), m_verbosity(0), m_our_id(0), m_enable_pfs(false), m_ipv6_enabled(false)
-  {
-  }
+  static tgl_state *instance();
 
   tgl_peer_id_t our_id;
   int encr_root;
@@ -250,7 +232,6 @@ struct tgl_state {
   void set_callback (struct tgl_update_callback *cb);
   void set_rsa_key (const char *key);
   void set_app_version (const std::string &app_version);
-  void set_verbosity (int val);
   void set_enable_pfs (bool); // enable perfect forward secrecy (does not work properly right now)
   void set_test_mode (bool);
   void set_net_methods (struct tgl_net_methods *methods);
@@ -269,7 +250,6 @@ struct tgl_state {
   int seq() { return m_seq; }
   int date() { return m_date; }
   bool test_mode() { return m_test_mode; }
-  int verbosity() { return m_verbosity; }
   int our_id() { return m_our_id; }
   bool ipv6_enabled() { return m_ipv6_enabled; }
   std::string downloads_directory() { return m_downloads_directory; }
@@ -286,28 +266,32 @@ private:
   int m_date;
   int m_seq;
   bool m_test_mode; // Connects to the telegram test servers instead of the regular servers
-  int m_verbosity;
   int m_our_id; // ID of logged in user
   bool m_enable_pfs;
   std::string m_app_version;
   bool m_ipv6_enabled;
   std::string m_downloads_directory;
+
+  tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
+    DC_working(NULL), temp_key_expire_time(0), cur_uploading_bytes(0), cur_uploaded_bytes(0), cur_downloading_bytes(0),
+    cur_downloaded_bytes(0), net_methods(NULL), ev_base(0), BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
+    m_date(0), m_seq(0), m_test_mode(0), m_our_id(0), m_enable_pfs(false), m_ipv6_enabled(false)
+  {
+  }
 };
 
-//extern struct tgl_state tgl_state;
+tgl_peer_t *tgl_peer_get (tgl_peer_id_t id);
 
-tgl_peer_t *tgl_peer_get (struct tgl_state *TLS, tgl_peer_id_t id);
+struct tgl_message *tgl_message_get (tgl_message_id_t *id);
+void tgl_peer_iterator_ex (void (*it)(tgl_peer_t *P, void *extra), void *extra);
 
-struct tgl_message *tgl_message_get (struct tgl_state *TLS, tgl_message_id_t *id);
-void tgl_peer_iterator_ex (struct tgl_state *TLS, void (*it)(tgl_peer_t *P, void *extra), void *extra);
-
-int tgl_complete_user_list (struct tgl_state *TLS, int index, const char *text, int len, char **R);
-int tgl_complete_chat_list (struct tgl_state *TLS, int index, const char *text, int len, char **R);
-int tgl_complete_encr_chat_list (struct tgl_state *TLS, int index, const char *text, int len, char **R);
-int tgl_complete_peer_list (struct tgl_state *TLS, int index, const char *text, int len, char **R);
-int tgl_complete_channel_list (struct tgl_state *TLS, int index, const char *text, int len, char **R);
-int tgl_secret_chat_for_user (struct tgl_state *TLS, tgl_peer_id_t user_id);
-int tgl_do_send_bot_auth (struct tgl_state *TLS, const char *code, int code_len, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success, struct tgl_user *Self), void *callback_extra);
+int tgl_complete_user_list (int index, const char *text, int len, char **R);
+int tgl_complete_chat_list (int index, const char *text, int len, char **R);
+int tgl_complete_encr_chat_list (int index, const char *text, int len, char **R);
+int tgl_complete_peer_list (int index, const char *text, int len, char **R);
+int tgl_complete_channel_list (int index, const char *text, int len, char **R);
+int tgl_secret_chat_for_user (tgl_peer_id_t user_id);
+int tgl_do_send_bot_auth (const char *code, int code_len, void (*callback)(void *callback_extra, int success, struct tgl_user *Self), void *callback_extra);
 
 #define TGL_PEER_USER 1
 #define TGL_PEER_CHAT 2
@@ -347,7 +331,7 @@ static inline int tgl_cmp_peer_id (tgl_peer_id_t a, tgl_peer_id_t b) {
 int tgl_authorized_dc(struct tgl_dc *DC);
 int tgl_signed_dc(struct tgl_dc *DC);
 
-void tgl_dc_authorize (struct tgl_state *TLS, struct tgl_dc *DC);
+void tgl_dc_authorize (struct tgl_dc *DC);
 
 #define TGL_SEND_MSG_FLAG_DISABLE_PREVIEW 1
 #define TGL_SEND_MSG_FLAG_ENABLE_PREVIEW 2
@@ -367,7 +351,7 @@ typedef int tgl_chat_id_t;
 typedef int tgl_secret_chat_id_t;
 typedef int tgl_user_or_chat_id_t;
 
-void tgl_do_lookup_state (struct tgl_state *TLS);
+void tgl_do_lookup_state ();
 
 long long tgl_get_allocated_bytes (void);
 

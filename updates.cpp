@@ -28,133 +28,134 @@ extern "C" {
 #include "auto/auto-store-ds.h"
 #include "mtproto-common.h"
 }
+#include "tgl-log.h"
 #include "tgl-structures.h"
 #include "tgl-methods-in.h"
 //#include "tree.h"
 
 #include <assert.h>
 
-void tgl_do_get_channel_difference (struct tgl_state *TLS, int channel_id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success), void *callback_extra);
+void tgl_do_get_channel_difference (int channel_id, void (*callback)(struct tgl_state *TLS, void *callback_extra, int success), void *callback_extra);
 
-static void fetch_dc_option (struct tgl_state *TLS, struct tl_ds_dc_option *DS_DO) {
-  vlogprintf (E_DEBUG, "id = %d, %.*s:%d\n", DS_LVAL (DS_DO->id), DS_RSTR (DS_DO->ip_address), DS_LVAL (DS_DO->port));
+static void fetch_dc_option (struct tl_ds_dc_option *DS_DO) {
+  TGL_DEBUG("id = " << DS_LVAL (DS_DO->id) << ", ip = " << std::string(DS_DO->ip_address->data, DS_DO->ip_address->len) << ", port = " << DS_LVAL (DS_DO->port));
 
   //bl_do_dc_option (TLS, DS_LVAL (DS_DO->flags), DS_LVAL (DS_DO->id), NULL, 0, DS_STR (DS_DO->ip_address), DS_LVAL (DS_DO->port));
-  TLS->set_dc_option (0, DS_LVAL (DS_DO->id), DS_STR (DS_DO->ip_address), DS_LVAL (DS_DO->port));
+  tgl_state::instance()->set_dc_option (0, DS_LVAL (DS_DO->id), DS_STR (DS_DO->ip_address), DS_LVAL (DS_DO->port));
 }
 
-int tgl_check_pts_diff (struct tgl_state *TLS, int pts, int pts_count) {
-    vlogprintf (E_DEBUG - 1, "pts = %d, pts_count = %d\n", pts, pts_count);
-    if (!TLS->pts()) {
+int tgl_check_pts_diff (int pts, int pts_count) {
+    TGL_DEBUG("pts = " << pts << ", pts_count = " << pts_count);
+    if (!tgl_state::instance()->pts()) {
         return 1;
     }
     //assert (TLS->pts);
-    if (pts < TLS->pts() + pts_count) {
-        vlogprintf (E_NOTICE, "Duplicate message with pts=%d\n", pts);
+    if (pts < tgl_state::instance()->pts() + pts_count) {
+        TGL_NOTICE("Duplicate message with pts=" << pts);
         return -1;
     }
-    if (pts > TLS->pts() + pts_count) {
-        vlogprintf (E_NOTICE, "Hole in pts (pts = %d, count = %d, cur_pts = %d)\n", pts, pts_count, TLS->pts());
-        tgl_do_get_difference (TLS, 0, 0, 0);
+    if (pts > tgl_state::instance()->pts() + pts_count) {
+        TGL_NOTICE("Hole in pts: pts = "<< pts <<", count = "<< pts_count <<", cur_pts = "<< tgl_state::instance()->pts());
+        tgl_do_get_difference(0, 0, 0);
         return -1;
     }
-    if (TLS->locks & TGL_LOCK_DIFF) {
-        vlogprintf (E_DEBUG, "Update during get_difference. pts = %d\n", pts);
+    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+        TGL_DEBUG("Update during get_difference. pts = " << pts);
         return -1;
     }
-    vlogprintf (E_DEBUG, "Ok update. pts = %d\n", pts);
+    TGL_DEBUG("Ok update. pts = " << pts);
     return 1;
 }
 
-int tgl_check_qts_diff (struct tgl_state *TLS, int qts, int qts_count) {
-    vlogprintf (E_ERROR, "qts = %d, qts_count = %d\n", qts, qts_count);
-    if (qts < TLS->qts() + qts_count) {
-        vlogprintf (E_NOTICE, "Duplicate message with qts=%d\n", qts);
+int tgl_check_qts_diff (int qts, int qts_count) {
+    TGL_ERROR("qts = " << qts << ", qts_count = " << qts_count);
+    if (qts < tgl_state::instance()->qts() + qts_count) {
+        TGL_NOTICE("Duplicate message with qts=" << qts);
         return -1;
     }
-    if (qts > TLS->qts() + qts_count) {
-        vlogprintf (E_NOTICE, "Hole in qts (qts = %d, count = %d, cur_qts = %d)\n", qts, qts_count, TLS->qts());
-        tgl_do_get_difference (TLS, 0, 0, 0);
+    if (qts > tgl_state::instance()->qts() + qts_count) {
+        TGL_NOTICE("Hole in qts (qts = " << qts << ", count = " << qts_count << ", cur_qts = " << tgl_state::instance()->qts() << ")");
+        tgl_do_get_difference (0, 0, 0);
         return -1;
     }
-    if (TLS->locks & TGL_LOCK_DIFF) {
-        vlogprintf (E_DEBUG, "Update during get_difference. qts = %d\n", qts);
+    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+        TGL_DEBUG("Update during get_difference. qts = " << qts);
         return -1;
     }
-    vlogprintf (E_DEBUG, "Ok update. qts = %d\n", qts);
+    TGL_DEBUG("Ok update. qts = " << qts);
     return 1;
 }
 
-int tgl_check_channel_pts_diff (struct tgl_state *TLS, tgl_peer_t *_E, int pts, int pts_count) {
+int tgl_check_channel_pts_diff (tgl_peer_t *_E, int pts, int pts_count) {
   struct tgl_channel *E = &_E->channel;
-  vlogprintf (E_DEBUG - 1, "channel %d: pts = %d, pts_count = %d, current_pts = %d\n", tgl_get_peer_id (E->id), pts, pts_count, E->pts);
+  TGL_DEBUG("channel " << tgl_get_peer_id (E->id) << ": pts = " << pts << ", pts_count = " << pts_count << ", current_pts = " << E->pts);
   if (!E->pts) {
     return 1;
   }
-  //assert (TLS->pts);
+  //assert (tgl_state::instance()->pts);
   if (pts < E->pts + pts_count) {
-    vlogprintf (E_NOTICE, "Duplicate message with pts=%d\n", pts);
+    TGL_NOTICE("Duplicate message with pts=" << pts);
     return -1;
   }
   if (pts > E->pts + pts_count) {
-    vlogprintf (E_NOTICE, "Hole in pts (pts = %d, count = %d, cur_pts = %d)\n", pts, pts_count, E->pts);
-    tgl_do_get_channel_difference (TLS, tgl_get_peer_id (E->id), 0, 0);
+    TGL_NOTICE("Hole in pts (pts = " << pts << ", count = " << pts_count << ", cur_pts = " << E->pts);
+    tgl_do_get_channel_difference (tgl_get_peer_id (E->id), 0, 0);
     return -1;
   }
   if (E->flags & TGLCHF_DIFF) {
-    vlogprintf (E_DEBUG, "Update during get_difference. pts = %d\n", pts);
+    TGL_DEBUG("Update during get_difference. pts = " << pts);
     return -1;
   }
-  vlogprintf (E_DEBUG, "Ok update. pts = %d\n", pts);
+  TGL_DEBUG("Ok update. pts = " << pts);
   return 1;
 }
 
-static int do_skip_seq (struct tgl_state *TLS, int seq) {
+static int do_skip_seq (int seq) {
     if (!seq) {
-        vlogprintf (E_DEBUG, "Ok update. seq = %d\n", seq);
+        TGL_DEBUG("Ok update. seq = " << seq);
         return 0;
     }
-    if (TLS->seq()) {
-        if (seq <= TLS->seq()) {
-            vlogprintf (E_NOTICE, "Duplicate message with seq=%d\n", seq);
+    if (tgl_state::instance()->seq()) {
+        if (seq <= tgl_state::instance()->seq()) {
+            TGL_NOTICE("Duplicate message with seq=" << seq);
             return -1;
         }
-        if (seq > TLS->seq() + 1) {
-            vlogprintf (E_NOTICE, "Hole in seq (seq = %d, cur_seq = %d)\n", seq, TLS->seq());
+        if (seq > tgl_state::instance()->seq() + 1) {
+            TGL_NOTICE("Hole in seq (seq = " << seq <<", cur_seq = " << tgl_state::instance()->seq() << ")");
             //vlogprintf (E_NOTICE, "lock_diff = %s\n", (TLS->locks & TGL_LOCK_DIFF) ? "true" : "false");
-            tgl_do_get_difference (TLS, 0, 0, 0);
+            tgl_do_get_difference (0, 0, 0);
             return -1;
         }
-        if (TLS->locks & TGL_LOCK_DIFF) {
-            vlogprintf (E_DEBUG, "Update during get_difference. seq = %d\n", seq);
+        if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+            TGL_DEBUG("Update during get_difference. seq = " << seq);
             return -1;
         }
-        vlogprintf (E_DEBUG, "Ok update. seq = %d\n", seq);
+        TGL_DEBUG("Ok update. seq = " << seq);
         return 0;
     } else {
         return -1;
     }
 }
 
-void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_update *DS_U) {
-  if (check_only > 0 || (TLS->locks & TGL_LOCK_DIFF)) {
-    vlogprintf (E_DEBUG, "Update during get_difference. DROP\n");
+void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
+  if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
+    TGL_DEBUG("Update during get_difference. DROP");
     return;
   }
 
-    if (DS_U->pts) {
-        assert (DS_U->pts_count);
+  if (DS_U->pts) {
+    assert (DS_U->pts_count);
 
-        if (!check_only && tgl_check_pts_diff (TLS, DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
-            return;
-        }
+    if (!check_only && tgl_check_pts_diff(DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
+      return;
     }
+  }
 
-    if (DS_U->qts) {
-        if (!check_only && tgl_check_qts_diff (TLS, DS_LVAL (DS_U->qts), 1) <= 0) {
-            return;
-        }
+  if (DS_U->qts) {
+    if (!check_only && tgl_check_qts_diff(DS_LVAL (DS_U->qts), 1) <= 0) {
+      return;
     }
+  }
 
   if (DS_U->channel_pts) {
     assert (DS_U->channel_pts_count);
@@ -171,17 +172,17 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       channel_id = DS_LVAL (DS_U->message->to_id->channel_id);
     }    
 
-    tgl_peer_t *E = tgl_peer_get (TLS, TGL_MK_CHANNEL (channel_id));
+    tgl_peer_t *E = tgl_peer_get (TGL_MK_CHANNEL (channel_id));
     if (!E) {
       return;
     }
 
-    if (!check_only && tgl_check_channel_pts_diff (TLS, E, DS_LVAL (DS_U->channel_pts), DS_LVAL (DS_U->channel_pts_count)) <= 0) {
+    if (!check_only && tgl_check_channel_pts_diff (E, DS_LVAL (DS_U->channel_pts), DS_LVAL (DS_U->channel_pts_count)) <= 0) {
       return;
     }
   }
 
-  vlogprintf (E_NOTICE, "update 0x%08x (check=%d)\n", DS_U->magic, check_only);
+  TGL_NOTICE("update 0x" << std::hex << DS_U->magic << " (check=" << check_only << ")");
   if (check_only > 0 && DS_U->magic != CODE_update_message_i_d) { return; }
   switch (DS_U->magic) {
   case CODE_update_new_message:
@@ -189,57 +190,58 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       //struct tgl_message *N = tgl_message_get (TLS, DS_LVAL (DS_U->id));
       //int new = (!N || !(N->flags & TGLMF_CREATED));
       int new_msg = 0;
-      struct tgl_message *M = tglf_fetch_alloc_message (TLS, DS_U->message, &new_msg);
+      struct tgl_message *M = tglf_fetch_alloc_message (DS_U->message, &new_msg);
       assert (M);
       if (new_msg) {
-        //bl_do_msg_update (TLS, &M->permanent_id);
-        TLS->callback.new_msg(M);
+        //bl_do_msg_update (&M->permanent_id);
+        tgl_state::instance()->callback.new_msg(M);
       }
       break;
     };
-    case CODE_update_message_i_d:
+  case CODE_update_message_i_d:
     {
       tgl_message_id_t msg_id;
       msg_id.peer_type = TGL_PEER_RANDOM_ID;
       msg_id.id = DS_LVAL (DS_U->random_id);
-      struct tgl_message *M = tgl_message_get (TLS, &msg_id);
+      struct tgl_message *M = tgl_message_get (&msg_id);
       if (M && (M->flags & TGLMF_PENDING)) {
         msg_id = M->permanent_id;
         msg_id.id = DS_LVAL (DS_U->id);
-        bl_do_set_msg_id (TLS, &M->permanent_id, &msg_id);
-        bl_do_msg_update (TLS, &msg_id);
+        //bl_do_set_msg_id (&M->permanent_id, &msg_id);
+        //bl_do_msg_update (&msg_id);
+        //TODO update the id of the message
       }
     }
-        break;
-        /*  case CODE_update_read_messages:
+    break;
+/*  case CODE_update_read_messages:
     {
       int n = DS_LVAL (DS_U->messages->cnt);
       
       int i;
       for (i = 0; i < n; i++) {
-        struct tgl_message *M = tgl_message_get (TLS, DS_LVAL (DS_U->messages->data[i]));
+        struct tgl_message *M = tgl_message_get (DS_LVAL (DS_U->messages->data[i]));
         if (M) {
           tgl_peer_t *P;
           if (M->flags & TGLMF_OUT) {
-            P = tgl_peer_get (TLS, M->to_id);
+            P = tgl_peer_get (M->to_id);
             if (P && (P->flags & TGLMF_CREATED)) {
               if (tgl_get_peer_type (P->id) == TGL_PEER_USER) {
-                bl_do_user (TLS, tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, 0, NULL, 0, NULL, NULL, (int *)&M->id, TGL_FLAGS_UNCHANGED);
+                bl_do_user (tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, 0, NULL, 0, NULL, NULL, (int *)&M->id, TGL_FLAGS_UNCHANGED);
               } else {
-                bl_do_chat (TLS, tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (int *)&M->id, TGL_FLAGS_UNCHANGED);
+                bl_do_chat (tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (int *)&M->id, TGL_FLAGS_UNCHANGED);
               }
             }
           } else {
             if (tgl_get_peer_type (M->to_id) == TGL_PEER_USER) {
-              P = tgl_peer_get (TLS, M->from_id);
+              P = tgl_peer_get (M->from_id);
             } else {
-              P = tgl_peer_get (TLS, M->to_id);
+              P = tgl_peer_get (M->to_id);
             }
             if (P && (P->flags & TGLMF_CREATED)) {
               if (tgl_get_peer_type (P->id) == TGL_PEER_USER) {
-                bl_do_user (TLS, tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, 0, NULL, 0, NULL, (int *)&M->id, NULL, TGL_FLAGS_UNCHANGED);
+                bl_do_user (tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, 0, NULL, 0, NULL, (int *)&M->id, NULL, TGL_FLAGS_UNCHANGED);
               } else {
-                bl_do_chat (TLS, tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (int *)&M->id, NULL, TGL_FLAGS_UNCHANGED);
+                bl_do_chat (tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, (int *)&M->id, NULL, TGL_FLAGS_UNCHANGED);
               }
             }
           }
@@ -247,18 +249,18 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       }
     }
     break;*/
-    case CODE_update_user_typing:
+  case CODE_update_user_typing:
     {
       tgl_peer_id_t id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_t *U = tgl_peer_get (TLS, id);
+      tgl_peer_t *U = tgl_peer_get (id);
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
-        if (TLS->callback.type_notification) {
-            TLS->callback.type_notification (DS_LVAL (DS_U->user_id), status);
-        }
-        break;
+      if (tgl_state::instance()->callback.type_notification) {
+        tgl_state::instance()->callback.type_notification (DS_LVAL (DS_U->user_id), status);
+      }
     }
-    case CODE_update_chat_user_typing:
+    break;
+  case CODE_update_chat_user_typing:
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
       tgl_peer_id_t id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
@@ -267,35 +269,37 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);      
       
       if (U && C) {
-        if (TLS->callback.type_in_chat_notification) {
-          TLS->callback.type_in_chat_notification ((void *)U, (void *)C, status);
+        if (tgl_state::instance()->callback.type_in_chat_notification) {
+          tgl_state::instance()->callback.type_in_chat_notification (DS_LVAL(DS_U->user_id), DS_LVAL(DS_U->chat_id), status);
         }
-        break;
+      }
     }
-    case CODE_update_user_status:
+    break;
+  case CODE_update_user_status:
     {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_t *U = tgl_peer_get (TLS, user_id);
+      tgl_peer_t *U = tgl_peer_get (user_id);
       if (U) {
-        tglf_fetch_user_status (TLS, &U->user.status, &U->user, DS_U->status);
+        tglf_fetch_user_status (&U->user.status, &U->user, DS_U->status);
 
-        if (TLS->callback.status_notification) {
-            int expires = 0;
-            enum tgl_user_status_type status = tglf_fetch_user_status_new(DS_U->status, &expires);
-            TLS->callback.status_notification (DS_LVAL(DS_U->user_id), status, expires);
+        if (tgl_state::instance()->callback.status_notification) {
+          int expires = 0;
+          enum tgl_user_status_type status = tglf_fetch_user_status_new(DS_U->status, &expires);
+          tgl_state::instance()->callback.status_notification (DS_LVAL(DS_U->user_id), status, expires);
         }
-        break;
+      }
     }
-    case CODE_update_user_name:
+    break;
+  case CODE_update_user_name:
     {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_t *UC = tgl_peer_get (TLS, user_id);
+      tgl_peer_t *UC = tgl_peer_get (user_id);
       if (UC && (UC->flags & TGLPF_CREATED)) {
-        //bl_do_user (TLS, tgl_get_peer_id (user_id), NULL, DS_STR (DS_U->first_name), DS_STR (DS_U->last_name), NULL, 0, DS_STR (DS_U->username), NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
+        //bl_do_user (tgl_get_peer_id (user_id), NULL, DS_STR (DS_U->first_name), DS_STR (DS_U->last_name), NULL, 0, DS_STR (DS_U->username), NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
         DS_CSTR (firstname, DS_U->first_name);
         DS_CSTR (lastname, DS_U->last_name);
         DS_CSTR (username, DS_U->username);
-        TLS->callback.new_user(tgl_get_peer_id(user_id), "", firstname, lastname, username);
+        tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), "", firstname, lastname, username);
         free(firstname);
         free(lastname);
         free(username);
@@ -305,16 +309,16 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
     case CODE_update_user_photo:
     {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_t *UC = tgl_peer_get (TLS, user_id);
+      tgl_peer_t *UC = tgl_peer_get (user_id);
 
       if (UC && (UC->flags & TGLUF_CREATED)) {
-        //bl_do_user (TLS, tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, DS_U->photo, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-        TLS->callback.new_user(tgl_get_peer_id(user_id), "", "", "", "");
+        //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, DS_U->photo, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
+        tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), "", "", "", "");
         if (DS_U->photo) {
             struct tgl_file_location photo_small, photo_big;
             tglf_fetch_file_location_new(&photo_big, DS_U->photo->photo_big);
             tglf_fetch_file_location_new(&photo_small, DS_U->photo->photo_small);
-            TLS->callback.profile_picture_update(tgl_get_peer_id(user_id), DS_LVAL(DS_U->photo->photo_id), &photo_small, &photo_big);
+            tgl_state::instance()->callback.profile_picture_update(tgl_get_peer_id(user_id), DS_LVAL(DS_U->photo->photo_id), &photo_small, &photo_big);
         }
       }
       break;
@@ -326,12 +330,12 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
     case CODE_update_chat_participants:
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
-      tgl_peer_t *C = tgl_peer_get (TLS, chat_id);
+      tgl_peer_t *C = tgl_peer_get (chat_id);
       if (C && (C->flags & TGLPF_CREATED) && DS_U->participants->magic == CODE_chat_participants) {
-        //bl_do_chat (TLS, tgl_get_peer_id (chat_id), NULL, 0, NULL, NULL, DS_U->participants->version, (struct tl_ds_vector *)DS_U->participants->participants, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
+        //bl_do_chat (tgl_get_peer_id (chat_id), NULL, 0, NULL, NULL, DS_U->participants->version, (struct tl_ds_vector *)DS_U->participants->participants, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
         for (int i=0; i<*DS_U->participants->participants->cnt; ++i) {
           C->chat.users_num = *DS_U->participants->participants->cnt;
-          TLS->callback.chat_add_user(tgl_get_peer_id (chat_id), *DS_U->participants->participants->data[i]->user_id,
+          tgl_state::instance()->callback.chat_add_user(tgl_get_peer_id (chat_id), *DS_U->participants->participants->data[i]->user_id,
               *DS_U->participants->participants->data[i]->inviter_id, *DS_U->participants->participants->data[i]->date);
         }
       }
@@ -339,8 +343,8 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
     }
     case CODE_update_contact_registered:
     {
-        if (TLS->callback.user_registered) {
-            TLS->callback.user_registered(DS_LVAL (DS_U->user_id));
+        if (tgl_state::instance()->callback.user_registered) {
+            tgl_state::instance()->callback.user_registered(DS_LVAL (DS_U->user_id));
         }
         break;
     }
@@ -350,8 +354,8 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
     }
     case CODE_update_new_authorization:
     {
-        if (TLS->callback.new_authorization) {
-            TLS->callback.new_authorization (DS_U->device->data, DS_U->location->data);
+        if (tgl_state::instance()->callback.new_authorization) {
+            tgl_state::instance()->callback.new_authorization (DS_U->device->data, DS_U->location->data);
         }
     }
     break;
@@ -361,205 +365,189 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
     break;*/
   case CODE_update_new_encrypted_message:
     {
+#ifdef ENABLE_SECRET_CHAT
       struct tgl_message *M = tglf_fetch_alloc_encrypted_message (TLS, DS_U->encr_message);
       if (M) {
         //bl_do_msg_update (TLS, &M->permanent_id);
         TLS->callback.new_msg(M);
       }
+#endif
     }
-        break;
-    }
-    case CODE_update_encryption:
+    break;
+  case CODE_update_encryption:
     {
-      struct tgl_secret_chat *E = tglf_fetch_alloc_encrypted_chat (TLS, DS_U->encr_chat);     
-      vlogprintf (E_DEBUG, "Secret chat state = %d\n", E->state);
+#ifdef ENABLE_SECRET_CHAT
+      struct tgl_secret_chat *E = tglf_fetch_alloc_encrypted_chat (DS_U->encr_chat);
+      TGL_DEBUG("Secret chat state = %d\n", E->state);
       if (E->state == sc_ok) {
-        tgl_do_send_encr_chat_layer (TLS, E);
+        tgl_do_send_encr_chat_layer (E);
+      }
+#endif
+    }
+    break;
+  case CODE_update_encrypted_chat_typing:
+    {
+      if (tgl_state::instance()->callback.type_in_secret_chat_notification) {
+        tgl_state::instance()->callback.type_in_secret_chat_notification(DS_LVAL (DS_U->chat_id));
       }
     }
-        break;
-
-    case CODE_update_encrypted_chat_typing:
+    break;
+  case CODE_update_encrypted_messages_read:
     {
-            if (TLS->callback.type_in_secret_chat_notification) {
-                TLS->callback.type_in_secret_chat_notification(DS_LVAL (DS_U->chat_id));
-            }
-
-        break;
-    }
-    case CODE_update_encrypted_messages_read:
-    {
+#ifdef ENABLE_SECRET_CHAT
       tgl_peer_id_t id = TGL_MK_ENCR_CHAT (DS_LVAL (DS_U->chat_id));
-      tgl_peer_t *P = tgl_peer_get (TLS, id);
+      tgl_peer_t *P = tgl_peer_get (id);
       
       if (P && P->last) {
         struct tgl_message *M = P->last;
         while (M && (!(M->flags & TGLMF_OUT) || (M->flags & TGLMF_UNREAD))) {
           if (M->flags & TGLMF_OUT) {
-            bl_do_edit_message_encr (TLS, &M->permanent_id, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, M->flags & ~TGLMF_UNREAD);
+            bl_do_edit_message_encr (&M->permanent_id, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, M->flags & ~TGLMF_UNREAD);
           }
           M = M->next;
         }
+      }
 #endif
-        break;
     }
-    case CODE_update_chat_participant_add:
+    break;
+  case CODE_update_chat_participant_add:
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       tgl_peer_id_t inviter_id = TGL_MK_USER (DS_LVAL (DS_U->inviter_id));
       int version = DS_LVAL (DS_U->version); 
       
-      tgl_peer_t *C = tgl_peer_get (TLS, chat_id);
+      tgl_peer_t *C = tgl_peer_get (chat_id);
       if (C && (C->flags & TGLPF_CREATED)) {
-        //bl_do_chat_add_user (TLS, C->id, version, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
-        if (TLS->callback.chat_add_user) {
-          TLS->callback.chat_add_user(chat_id.id, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
+        //bl_do_chat_add_user (C->id, version, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
+        if (tgl_state::instance()->callback.chat_add_user) {
+          tgl_state::instance()->callback.chat_add_user(chat_id.id, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
         }
       }
     }
-        break;
-    }
-    case CODE_update_chat_participant_delete:
+    break;
+  case CODE_update_chat_participant_delete:
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       int version = DS_LVAL (DS_U->version); 
       
-      tgl_peer_t *C = tgl_peer_get (TLS, chat_id);
+      tgl_peer_t *C = tgl_peer_get (chat_id);
       if (C && (C->flags & TGLPF_CREATED)) {
-        //bl_do_chat_del_user (TLS, C->id, version, tgl_get_peer_id (user_id));
-        if (TLS->callback.chat_delete_user) {
-          TLS->callback.chat_delete_user (C->chat.id.id, tgl_get_peer_id (user_id));
+        //bl_do_chat_del_user (C->id, version, tgl_get_peer_id (user_id));
+        if (tgl_state::instance()->callback.chat_delete_user) {
+          tgl_state::instance()->callback.chat_delete_user (C->chat.id.id, tgl_get_peer_id (user_id));
         }
       }
     }
-        break;
-    }
-    case CODE_update_dc_options:
+    break;
+  case CODE_update_dc_options:
     {
       int i;
       for (i = 0; i < DS_LVAL (DS_U->dc_options->cnt); i++) {
-        fetch_dc_option (TLS, DS_U->dc_options->data[i]);
+        fetch_dc_option (DS_U->dc_options->data[i]);
       }
     }
-        break;
-    }
-    case CODE_update_user_blocked:
+    break;
+  case CODE_update_user_blocked:
     {
-        int blocked = DS_BVAL (DS_U->blocked);
-        tgl_peer_t *P = tgl_peer_get (TLS, TGL_MK_USER (DS_LVAL (DS_U->user_id)));
-        if (P && (P->flags & TGLPF_CREATED)) {
-            int flags = P->flags & 0xffff;
-            if (blocked) {
-                flags |= TGLUF_BLOCKED;
-            } else {
-                flags &= ~TGLUF_BLOCKED;
-            }
-            //bl_do_user (TLS, tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, flags);
-            if (TLS->callback.user_update) {
-              TLS->callback.user_update(tgl_get_peer_id (P->id), &blocked, tgl_update_blocked);
-            }
+      int blocked = DS_BVAL (DS_U->blocked);
+      tgl_peer_t *P = tgl_peer_get (TGL_MK_USER (DS_LVAL (DS_U->user_id)));
+      if (P && (P->flags & TGLPF_CREATED)) {
+        int flags = P->flags & 0xffff;
+        if (blocked) {
+          flags |= TGLUF_BLOCKED;
+        } else {
+          flags &= ~TGLUF_BLOCKED;
         }
-        break;
-    }
-    case CODE_update_notify_settings:
-    {
-        break;
-    }
-    case CODE_update_service_notification:
-    {
-        vlogprintf (E_ERROR, "Notification %.*s: %.*s\n", DS_RSTR (DS_U->type), DS_RSTR (DS_U->message_text));
-        if (TLS->callback.notification) {
-            TLS->callback.notification (DS_U->type->data, DS_U->message_text->data);
+        //bl_do_user (tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, flags);
+        if (tgl_state::instance()->callback.user_update) {
+          tgl_state::instance()->callback.user_update(tgl_get_peer_id (P->id), &blocked, tgl_update_blocked);
         }
+      }
     }
-        break;
-    case CODE_update_privacy:
-        vlogprintf (E_NOTICE, "privacy change update\n");
-        break;
-    case CODE_update_user_phone:
+    break;
+  case CODE_update_notify_settings:
     {
-      tgl_peer_t *U = tgl_peer_get (TLS, TGL_MK_USER (DS_LVAL (DS_U->user_id)));
+    }
+    break;
+  case CODE_update_service_notification:
+    {
+      TGL_ERROR("Notification " << std::string(DS_U->type->data, DS_U->type->len) << ":" << std::string(DS_U->message_text->data, DS_U->message_text->len));
+      if (tgl_state::instance()->callback.notification) {
+        tgl_state::instance()->callback.notification (DS_U->type->data, DS_U->message_text->data);
+      }
+    }
+    break;
+  case CODE_update_privacy:
+    TGL_NOTICE("privacy change update");
+    break;
+  case CODE_update_user_phone:
+    {
+      tgl_peer_t *U = tgl_peer_get (TGL_MK_USER (DS_LVAL (DS_U->user_id)));
       if (U && (U->flags & TGLPF_CREATED)) {
-        //bl_do_user (TLS, tgl_get_peer_id (U->id), NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-        if(TLS->callback.user_update) {
+        //bl_do_user (tgl_get_peer_id (U->id), NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
+        if (tgl_state::instance()->callback.user_update) {
           DS_CSTR (phone, DS_U->phone);
-          TLS->callback.user_update(tgl_get_peer_id (U->id), phone, tgl_update_phone);
+          tgl_state::instance()->callback.user_update(tgl_get_peer_id (U->id), phone, tgl_update_phone);
         }
       }
     }
-        break;
-    }
-    case CODE_update_read_history_inbox:
+    break;
+  case CODE_update_read_history_inbox:
     {
-      tgl_peer_id_t id = tglf_fetch_peer_id (TLS, DS_U->peer);
-      tgl_peer_t *P = tgl_peer_get (TLS, id);
+      tgl_peer_id_t id = tglf_fetch_peer_id (DS_U->peer);
+      tgl_peer_t *P = tgl_peer_get (id);
       if (P && (P->flags & TGLPF_CREATED)) {
         if (tgl_get_peer_type (P->id) == TGL_PEER_USER) {
-          //bl_do_user (TLS, tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, DS_U->max_id, NULL, NULL, TGL_FLAGS_UNCHANGED);
+          //bl_do_user (tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, DS_U->max_id, NULL, NULL, TGL_FLAGS_UNCHANGED);
           // TODO update read history (P->id) DS_U->max_id
         } else {
-          //bl_do_chat (TLS, tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DS_U->max_id, NULL, TGL_FLAGS_UNCHANGED);
+          //bl_do_chat (tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DS_U->max_id, NULL, TGL_FLAGS_UNCHANGED);
           if (DS_U->max_id) {
             P->chat.last_read_in = *DS_U->max_id;
-            tgls_messages_mark_read (TLS, P->chat.last, 0, *DS_U->max_id);
+            tgls_messages_mark_read (P->chat.last, 0, *DS_U->max_id);
           }
         }
       }
     }
-        break;
-    case CODE_update_read_history_outbox:
+    break;
+  case CODE_update_read_history_outbox:
     {
-      tgl_peer_id_t id = tglf_fetch_peer_id (TLS, DS_U->peer);
-      tgl_peer_t *P = tgl_peer_get (TLS, id);
+      tgl_peer_id_t id = tglf_fetch_peer_id (DS_U->peer);
+      tgl_peer_t *P = tgl_peer_get (id);
       if (P && (P->flags & TGLPF_CREATED)) {
         if (tgl_get_peer_type (P->id) == TGL_PEER_USER) {
-          //bl_do_user (TLS, tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, DS_U->max_id, NULL, TGL_FLAGS_UNCHANGED);
+          //bl_do_user (tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, DS_U->max_id, NULL, TGL_FLAGS_UNCHANGED);
           // TODO update read history (P->id) DS_U->max_id
         } else {
-          //bl_do_chat (TLS, tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DS_U->max_id, TGL_FLAGS_UNCHANGED);
+          //bl_do_chat (tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DS_U->max_id, TGL_FLAGS_UNCHANGED);
           if (DS_U->max_id) {
             P->chat.last_read_out = *DS_U->max_id;
-            tgls_messages_mark_read (TLS, P->chat.last, TGLMF_OUT, *DS_U->max_id);
+            tgls_messages_mark_read (P->chat.last, TGLMF_OUT, *DS_U->max_id);
           }
         }
+      }
     }
-        break;
-    case CODE_update_web_page:
+    break;
+  case CODE_update_web_page:
     {
     }
     break;
   /*case CODE_update_msg_update:
     {
-//        struct tgl_message *M = tgl_message_get (TLS, DS_LVAL (DS_U->id));
-//        if (M) {
-//            TLS->callback.new_msg(M);
-//        }
-    }
-        break;
-    case CODE_update_read_messages_contents:
-        break;
-    default:
-        assert (0);
-    }
-
-    if (check_only) { return; }
-
-    if (DS_U->pts) {
-        assert (DS_U->pts_count);
-
-        TLS->set_pts(DS_LVAL (DS_U->pts));
-    }
-    if (DS_U->qts) {
-        TLS->set_qts(DS_LVAL (DS_U->qts));
+      struct tgl_message *M = tgl_message_get (DS_LVAL (DS_U->id));
+      if (M) {
+        //bl_do_msg_update (TLS, M->id);
+        tgl_state::instance()->callback.new_msg(M);
+      }
     }
     break;*/
   case CODE_update_read_messages_contents:
     break;
   case CODE_update_channel_too_long:
     {
-      tgl_do_get_channel_difference (TLS, DS_LVAL (DS_U->channel_id), NULL, NULL);
+      tgl_do_get_channel_difference (DS_LVAL (DS_U->channel_id), NULL, NULL);
     }
     break;
   case CODE_update_channel:
@@ -569,9 +557,9 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
   case CODE_update_new_channel_message:
     {
       int new_msg = 0;
-      struct tgl_message *M = tglf_fetch_alloc_message (TLS, DS_U->message, &new_msg);
+      struct tgl_message *M = tglf_fetch_alloc_message (DS_U->message, &new_msg);
       if (M && new_msg) {
-        bl_do_msg_update (TLS, &M->permanent_id);
+        bl_do_msg_update (&M->permanent_id);
       }
     }
     break;
@@ -598,17 +586,18 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
   default:
     assert (0);
   }
-  
+
   if (check_only) { return; }
 
   if (DS_U->pts) {
     assert (DS_U->pts_count);
 
-    //bl_do_set_pts (TLS, DS_LVAL (DS_U->pts));
-    TLS->set_pts (DS_LVAL (DS_U->pts));
+    //bl_do_set_pts (DS_LVAL (DS_U->pts));
+    tgl_state::instance()->set_pts(DS_LVAL (DS_U->pts));
   }
   if (DS_U->qts) {
-    bl_do_set_qts (TLS, DS_LVAL (DS_U->qts));
+    //bl_do_set_qts (DS_LVAL (DS_U->qts));
+    tgl_state::instance()->set_qts(DS_LVAL (DS_U->qts));
   }
   if (DS_U->channel_pts) {
     assert (DS_U->channel_pts_count);
@@ -623,153 +612,153 @@ void tglu_work_update (struct tgl_state *TLS, int check_only, struct tl_ds_updat
       channel_id = DS_LVAL (DS_U->message->to_id->channel_id);
     }    
 
-    bl_do_set_channel_pts (TLS, channel_id, DS_LVAL (DS_U->channel_pts));
+    bl_do_set_channel_pts (channel_id, DS_LVAL (DS_U->channel_pts));
   }
 }
 
-void tglu_work_updates (struct tgl_state *TLS, int check_only, struct tl_ds_updates *DS_U) {
-  if (check_only > 0 || (TLS->locks & TGL_LOCK_DIFF)) {
+void tglu_work_updates (int check_only, struct tl_ds_updates *DS_U) {
+  if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
 
-  if (!check_only && do_skip_seq (TLS, DS_LVAL (DS_U->seq)) < 0) {
+  if (!check_only && do_skip_seq (DS_LVAL (DS_U->seq)) < 0) {
     return;
   }
   int i;
   if (DS_U->users) {
     for (i = 0; i < DS_LVAL (DS_U->users->cnt); i++) {
-      tglf_fetch_alloc_user (TLS, DS_U->users->data[i]);    
+      tglf_fetch_alloc_user (DS_U->users->data[i]);    
     }
   }
   if (DS_U->chats) {
     for (i = 0; i < DS_LVAL (DS_U->chats->cnt); i++) {
-      tglf_fetch_alloc_chat (TLS, DS_U->chats->data[i]);
+      tglf_fetch_alloc_chat (DS_U->chats->data[i]);
     }
   }
   if (DS_U->updates) {
     for (i = 0; i < DS_LVAL (DS_U->updates->cnt); i++) {
-      tglu_work_update (TLS, check_only, DS_U->updates->data[i]);
+      tglu_work_update (check_only, DS_U->updates->data[i]);
     }
   }
 
   if (check_only) { return; }
   //bl_do_set_date (TLS, DS_LVAL (DS_U->date));
   //bl_do_set_seq (TLS, DS_LVAL (DS_U->seq));
-  TLS->set_date (DS_LVAL (DS_U->date));
-  TLS->set_seq (DS_LVAL (DS_U->seq));
+  tgl_state::instance()->set_date (DS_LVAL (DS_U->date));
+  tgl_state::instance()->set_seq (DS_LVAL (DS_U->seq));
 }
 
-void tglu_work_updates_combined (struct tgl_state *TLS, int check_only, struct tl_ds_updates *DS_U) {
-  if (check_only > 0 || (TLS->locks & TGL_LOCK_DIFF)) {
+void tglu_work_updates_combined (int check_only, struct tl_ds_updates *DS_U) {
+  if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
 
-  if (!check_only && do_skip_seq (TLS, DS_LVAL (DS_U->seq_start)) < 0) {
+  if (!check_only && do_skip_seq (DS_LVAL (DS_U->seq_start)) < 0) {
     return;
   }
   
   int i;
   for (i = 0; i < DS_LVAL (DS_U->users->cnt); i++) {
-    tglf_fetch_alloc_user (TLS, DS_U->users->data[i]);    
+    tglf_fetch_alloc_user (DS_U->users->data[i]);    
   }
   for (i = 0; i < DS_LVAL (DS_U->chats->cnt); i++) {
-    tglf_fetch_alloc_chat (TLS, DS_U->chats->data[i]);
+    tglf_fetch_alloc_chat (DS_U->chats->data[i]);
   }
   for (i = 0; i < DS_LVAL (DS_U->updates->cnt); i++) {
-    tglu_work_update (TLS, check_only, DS_U->updates->data[i]);
+    tglu_work_update (check_only, DS_U->updates->data[i]);
   }
 
   if (check_only) { return; }
   //bl_do_set_date (TLS, DS_LVAL (DS_U->date));
   //bl_do_set_seq (TLS, DS_LVAL (DS_U->seq));
-  TLS->set_date (DS_LVAL (DS_U->date));
-  TLS->set_seq (DS_LVAL (DS_U->seq));
+  tgl_state::instance()->set_date (DS_LVAL (DS_U->date));
+  tgl_state::instance()->set_seq (DS_LVAL (DS_U->seq));
 }
 
-void tglu_work_update_short_message (struct tgl_state *TLS, int check_only, struct tl_ds_updates *DS_U) {
-  if (check_only > 0 || (TLS->locks & TGL_LOCK_DIFF)) {
+void tglu_work_update_short_message (int check_only, struct tl_ds_updates *DS_U) {
+  if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
 
-  if (!check_only && tgl_check_pts_diff (TLS, DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
+  if (!check_only && tgl_check_pts_diff (DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
     return;
   }
   
   if (check_only > 0) { return; }
   
-  //struct tgl_message *N = tgl_message_get (TLS, DS_LVAL (DS_U->id));
+  //struct tgl_message *N = tgl_message_get (DS_LVAL (DS_U->id));
   //int new = (!N || !(N->flags & TGLMF_CREATED));
   
-  struct tgl_message *M = tglf_fetch_alloc_message_short (TLS, DS_U);
+  struct tgl_message *M = tglf_fetch_alloc_message_short (DS_U);
   
-  if (check_only > 0 || (TLS->locks & TGL_LOCK_DIFF)) {
+  if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
   assert (M);
 
   if (1) {
-    //bl_do_msg_update (TLS, &M->permanent_id);
-    TLS->callback.new_msg(M);
+    //bl_do_msg_update (&M->permanent_id);
+    tgl_state::instance()->callback.new_msg(&M->permanent_id);
   }
   
   if (check_only) { return; }
-  //bl_do_set_pts (TLS, DS_LVAL (DS_U->pts));
-  TLS->set_pts (DS_LVAL (DS_U->pts));
+  //bl_do_set_pts (DS_LVAL (DS_U->pts));
+  tgl_state::instance()->set_pts (DS_LVAL (DS_U->pts));
 }
 
-void tglu_work_update_short_chat_message (struct tgl_state *TLS, int check_only, struct tl_ds_updates *DS_U) {
-  if (check_only > 0 || (TLS->locks & TGL_LOCK_DIFF)) {
+void tglu_work_update_short_chat_message (int check_only, struct tl_ds_updates *DS_U) {
+  if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
 
-  if (!check_only && tgl_check_pts_diff (TLS, DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
+  if (!check_only && tgl_check_pts_diff (DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
     return;
   }
   
   if (check_only > 0) { return; }
   
-  //struct tgl_message *N = tgl_message_get (TLS, DS_LVAL (DS_U->id));
+  //struct tgl_message *N = tgl_message_get (DS_LVAL (DS_U->id));
   //int new = (!N || !(N->flags & TGLMF_CREATED));
   
-  struct tgl_message *M = tglf_fetch_alloc_message_short_chat (TLS, DS_U);
+  struct tgl_message *M = tglf_fetch_alloc_message_short_chat (DS_U);
   
-  if (check_only > 0 || (TLS->locks & TGL_LOCK_DIFF)) {
+  if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
   
   assert (M);
 
   if (1) {
-    //bl_do_msg_update (TLS, &M->permanent_id);
-    TLS->callback.new_msg(&M->permanent_id);
+    //bl_do_msg_update (&M->permanent_id);
+    tgl_state::instance()->callback.new_msg(&M->permanent_id);
   }
 
   if (check_only) { return; }
-  //bl_do_set_pts (TLS, DS_LVAL (DS_U->pts));
-  TLS->set_pts (DS_LVAL (DS_U->pts));
+  //bl_do_set_pts (DS_LVAL (DS_U->pts));
+  tgl_state::instance()->set_pts (DS_LVAL (DS_U->pts));
 }
 
-void tglu_work_updates_too_long (struct tgl_state *TLS, int check_only, struct tl_ds_updates *DS_U) {
-  if (check_only > 0 || (TLS->locks & TGL_LOCK_DIFF)) {
+void tglu_work_updates_too_long (int check_only, struct tl_ds_updates *DS_U) {
+  if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
   vlogprintf (E_NOTICE, "updates too long... Getting difference\n");
   if (check_only) { return; }
-  tgl_do_get_difference (TLS, 0, 0, 0);
+  tgl_do_get_difference (0, 0, 0);
 }
 
-void tglu_work_update_short (struct tgl_state *TLS, int check_only, struct tl_ds_updates *DS_U) {
-  if (check_only > 0 || (TLS->locks & TGL_LOCK_DIFF)) {
+void tglu_work_update_short (int check_only, struct tl_ds_updates *DS_U) {
+  if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
-  tglu_work_update (TLS, check_only, DS_U->update);
+  tglu_work_update (check_only, DS_U->update);
 }
 
-void tglu_work_update_short_sent_message (struct tgl_state *TLS, int check_only, struct tl_ds_updates *DS_U, void *extra) {
+void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *DS_U, void *extra) {
   if (DS_U->pts) {
     assert (DS_U->pts_count);
 
-    if (!check_only && tgl_check_pts_diff (TLS, DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
+    if (!check_only && tgl_check_pts_diff (DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
       return;
     }
   }
@@ -780,8 +769,8 @@ void tglu_work_update_short_sent_message (struct tgl_state *TLS, int check_only,
   //long long random_id = M->permanent_id.id;
   tgl_message_id_t msg_id = M->permanent_id;
   msg_id.id = DS_LVAL (DS_U->id);
-  bl_do_set_msg_id (TLS, &M->permanent_id, &msg_id);
-  //tgls_insert_random2local (TLS, random_id, &msg_id);
+  bl_do_set_msg_id (&M->permanent_id, &msg_id);
+  //tgls_insert_random2local (random_id, &msg_id);
 
   int f = DS_LVAL (DS_U->flags);
 
@@ -796,7 +785,7 @@ void tglu_work_update_short_sent_message (struct tgl_state *TLS, int check_only,
     flags |= TGLMF_MENTION;
   }
 
-  bl_do_edit_message (TLS, &M->permanent_id, 
+  bl_do_edit_message (&M->permanent_id, 
     NULL,
     NULL,
     NULL,
@@ -811,51 +800,51 @@ void tglu_work_update_short_sent_message (struct tgl_state *TLS, int check_only,
     flags);
  
   if (check_only) { return; }
-  bl_do_msg_update (TLS, &M->permanent_id);
+  bl_do_msg_update (&M->permanent_id);
   
   if (DS_U->pts) {
-    //bl_do_set_pts (TLS, DS_LVAL (DS_U->pts));
-    TLS->set_pts (DS_LVAL (DS_U->pts));
+    //bl_do_set_pts (DS_LVAL (DS_U->pts));
+    tgl_state::instance()->set_pts (DS_LVAL (DS_U->pts));
   }
 }
 
-void tglu_work_any_updates (struct tgl_state *TLS, int check_only, struct tl_ds_updates *DS_U, void *extra) {
-  if (check_only > 0 || (TLS->locks & TGL_LOCK_DIFF)) {
+void tglu_work_any_updates (int check_only, struct tl_ds_updates *DS_U, void *extra) {
+  if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
   switch (DS_U->magic) {
   case CODE_updates_too_long:
-    tglu_work_updates_too_long (TLS, check_only, DS_U);
+    tglu_work_updates_too_long (check_only, DS_U);
     return;
   case CODE_update_short_message:
-    tglu_work_update_short_message (TLS, check_only, DS_U);
+    tglu_work_update_short_message (check_only, DS_U);
     return;
   case CODE_update_short_chat_message:
-    tglu_work_update_short_chat_message (TLS, check_only, DS_U);
+    tglu_work_update_short_chat_message (check_only, DS_U);
     return;
   case CODE_update_short:
-    tglu_work_update_short (TLS, check_only, DS_U);
+    tglu_work_update_short (check_only, DS_U);
     return;
   case CODE_updates_combined:
-    tglu_work_updates_combined (TLS, check_only, DS_U);
+    tglu_work_updates_combined (check_only, DS_U);
     return;
   case CODE_updates:
-    tglu_work_updates (TLS, check_only, DS_U);    
+    tglu_work_updates (check_only, DS_U);    
     return;
   case CODE_update_short_sent_message:
-    tglu_work_update_short_sent_message (TLS, check_only, DS_U, extra);    
+    tglu_work_update_short_sent_message (check_only, DS_U, extra);    
     return;
   default:
     assert (0);
   }
 }
 
-void tglu_work_any_updates_buf (struct tgl_state *TLS) {
+void tglu_work_any_updates_buf () {
   struct paramed_type type = TYPE_TO_PARAM (updates);
   struct tl_ds_updates *DS_U = fetch_ds_type_updates (&type);
   assert (DS_U);
-  tglu_work_any_updates (TLS, 1, DS_U, NULL);
-  tglu_work_any_updates (TLS, 0, DS_U, NULL);
+  tglu_work_any_updates (1, DS_U, NULL);
+  tglu_work_any_updates (0, DS_U, NULL);
   free_ds_type_updates (DS_U, &type);
 }
 
@@ -863,46 +852,45 @@ void tglu_work_any_updates_buf (struct tgl_state *TLS) {
 DEFINE_TREE(user, struct tgl_user *,user_cmp,0)
 
 static void notify_status (struct tgl_user *U, void *ex) {
-    struct tgl_state *TLS = ex;
-    if (TLS->callback.user_status_update) {
-        TLS->callback.user_status_update (U);
+    if (tgl_state::instance()->callback.user_status_update) {
+        tgl_state::instance()->callback.user_status_update (U);
     }
 }
 
-static void status_notify (struct tgl_state *TLS, void *arg) {
-    tree_act_ex_user (TLS->online_updates, notify_status, TLS);
-    tree_clear_user (TLS->online_updates);
-    TLS->online_updates = NULL;
-    TLS->timer_methods->free (TLS->online_updates_timer);
-    TLS->online_updates_timer = NULL;
+static void status_notify (void *arg) {
+    tree_act_ex_user (tgl_state::instance()->online_updates, notify_status);
+    tree_clear_user (tgl_state::instance()->online_updates);
+    tgl_state::instance()->online_updates = NULL;
+    tgl_state::instance()->timer_methods->free (tgl_state::instance()->online_updates_timer);
+    tgl_state::instance()->online_updates_timer = NULL;
 }
 
-void tgl_insert_status_update (struct tgl_state *TLS, struct tgl_user *U) {
-  if (!tree_lookup_user (TLS->online_updates, U)) {
-    TLS->online_updates = tree_insert_user (TLS->online_updates, U, rand ());
+void tgl_insert_status_update (struct tgl_user *U) {
+  if (!tree_lookup_user (tgl_state::instance()->online_updates, U)) {
+    tgl_state::instance()->online_updates = tree_insert_user (tgl_state::instance()->online_updates, U, rand ());
   }
-  if (!TLS->online_updates_timer) {
-    TLS->online_updates_timer = TLS->timer_methods->alloc (TLS, status_notify, 0);
-    TLS->timer_methods->insert (TLS->online_updates_timer, 0);
+  if (!tgl_state::instance()->online_updates_timer) {
+    tgl_state::instance()->online_updates_timer = tgl_state::instance()->timer_methods->alloc (status_notify, 0);
+    tgl_state::instance()->timer_methods->insert (tgl_state::instance()->online_updates_timer, 0);
   }
 }
 
-static void user_expire (struct tgl_state *TLS, void *arg) {
+static void user_expire (void *arg) {
     struct tgl_user *U = arg;
-    TLS->timer_methods->free (U->status.ev);
+    tgl_state::instance()->timer_methods->free (U->status.ev);
     U->status.ev = 0;
     U->status.online = -1;
     U->status.when = tglt_get_double_time ();
-    tgl_insert_status_update (TLS, U);
+    tgl_insert_status_update (U);
 }
 
-void tgl_insert_status_expire (struct tgl_state *TLS, struct tgl_user *U) {
+void tgl_insert_status_expire (struct tgl_user *U) {
     assert (!U->status.ev);
-    U->status.ev = TLS->timer_methods->alloc (TLS, user_expire, U);
-    TLS->timer_methods->insert (U->status.ev, U->status.when - tglt_get_double_time ());
+    U->status.ev = tgl_state::instance()->timer_methods->alloc (user_expire, U);
+    tgl_state::instance()->timer_methods->insert (U->status.ev, U->status.when - tglt_get_double_time ());
 }
 
-void tgl_remove_status_expire (struct tgl_state *TLS, struct tgl_user *U) {
-    TLS->timer_methods->free (U->status.ev);
+void tgl_remove_status_expire (struct tgl_user *U) {
+    tgl_state::instance()->timer_methods->free (U->status.ev);
     U->status.ev = 0;
 }

@@ -54,7 +54,6 @@ struct connection {
   int last_connect_time;
   int in_fail_timer;
   struct mtproto_methods *methods;
-  struct tgl_state *TLS;
   struct tgl_session *session;
   struct tgl_dc *dc;
   void *extra;
@@ -81,7 +80,7 @@ extern struct tgl_net_methods tgl_conn_methods;
 //struct connection *create_connection (const char *host, int port, struct tgl_session *session, struct connection_methods *methods);
 //struct tgl_dc *tgln_alloc_dc (int id, char *ip, int port);
 //void tgln_dc_create_session (struct tgl_dc *DC, struct mtproto_methods *methods);
-struct connection *tgln_create_connection (struct tgl_state *TLS, const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods);
+struct connection *tgln_create_connection (const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods);
 
 #define GET_DC(c) (c->session->dc)
 #endif

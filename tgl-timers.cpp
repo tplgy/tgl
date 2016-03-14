@@ -27,15 +27,14 @@ static void timer_alarm (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
   void **p = (void**)arg;
-  ((void (*)(struct tgl_state *, void *))p[1]) ((struct tgl_state *)p[0], p[2]);
+  ((void (*)(void *))p[0]) (p[1]);
 }
 
-struct tgl_timer *tgl_timer_alloc (struct tgl_state *TLS, void (*cb)(struct tgl_state *TLS, void *arg), void *arg) {
-  void **p = (void**)malloc (sizeof (void *) * 3);
-  p[0] = TLS;
-  p[1] = (void*)cb;
-  p[2] = arg;
-  return (struct tgl_timer *)evtimer_new ((struct event_base *)TLS->ev_base, timer_alarm, p);
+struct tgl_timer *tgl_timer_alloc (void (*cb)(void *arg), void *arg) {
+  void **p = (void**)malloc (sizeof (void *) * 2);
+  p[0] = (void*)cb;
+  p[1] = arg;
+  return (struct tgl_timer *)evtimer_new ((struct event_base *)tgl_state::instance()->ev_base, timer_alarm, p);
 }
 
 void tgl_timer_insert (struct tgl_timer *t, double p) {

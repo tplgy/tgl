@@ -21,6 +21,7 @@
 #define __TGL_LAYOUT_H__
 
 #include <vector>
+#include "types/tgl_file_location.h"
 
 #define TGLDF_IMAGE 1
 #define TGLDF_STICKER 2
@@ -269,13 +270,6 @@ enum tgl_typing_status {
   tgl_typing_upload_document,
   tgl_typing_geo,
   tgl_typing_choose_contact
-};
-
-struct tgl_file_location {
-  int dc;
-  long long volume;
-  int local_id;
-  long long secret;
 };
 
 struct tgl_photo_size {
