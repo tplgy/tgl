@@ -1252,6 +1252,7 @@ static int tc_becomes_ready (struct connection *c) {
     DC->temp_auth_key_id = DC->auth_key_id;
     memcpy (DC->temp_auth_key, DC->auth_key, 256);
     DC->flags |= TGLDCF_BOUND;
+    tgl_do_help_get_config_dc(DC, mpc_on_get_config, DC);
   }
   switch (o) {
   case st_init:
@@ -1404,7 +1405,6 @@ struct tgl_dc *tglmp_alloc_dc (int flags, int id, char *ip, int port) {
   return DC;
 }
 
-<<<<<<< 7064ea2805712a7e727e45fc2e237ba016b7f8fc
 void tglmp_dc_create_session (struct tgl_dc *DC) {
   struct tgl_session *S = (struct tgl_session *)talloc0(sizeof (struct tgl_session));
   assert (TGLC_rand_pseudo_bytes ((unsigned char *) &S->session_id, 8) >= 0);
