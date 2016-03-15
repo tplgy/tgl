@@ -5063,7 +5063,7 @@ static void set_flag_4 (void *_D, int success) {
 static int send_bind_temp_on_answer (struct query *q, void *D) {
     TGL_UNUSED(D);
     struct tgl_dc *DC = (struct tgl_dc *)q->extra;
-    DC->flags |= 2;
+    DC->flags |= TGLDCF_BOUND;
     tgl_do_help_get_config_dc (DC, set_flag_4, DC);
     TGL_DEBUG("Bind successful in dc " << DC->id);
     return 0;

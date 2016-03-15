@@ -613,20 +613,20 @@ static int process_auth_complete (struct connection *c, char *packet, int len, i
   if (temp_key) {
     bind_temp_auth_key (c);
   } else {
-    DC->flags |= 1;
+    DC->flags |= TGLDCF_AUTHORIZED;
     if (tgl_state::instance()->pfs_enabled()) {
       create_temp_auth_key (c);
     } else {
-        DC->temp_auth_key_id = DC->auth_key_id;
-        memcpy (DC->temp_auth_key, DC->auth_key, 256);
-        DC->flags |= 2;
-        if (!(DC->flags & TGLDCF_CONFIGURED)) {
-          tgl_do_help_get_config_dc(DC, mpc_on_get_config, DC);
-        }
+      DC->temp_auth_key_id = DC->auth_key_id;
+      memcpy (DC->temp_auth_key, DC->auth_key, 256);
+      DC->flags |= TGLDCF_BOUND;
+      if (!(DC->flags & TGLDCF_CONFIGURED)) {
+        tgl_do_help_get_config_dc(DC, mpc_on_get_config, DC);
       }
     }
+  }
 
-    return 1;
+  return 1;
 }
 /* }}} */
 
@@ -733,7 +733,7 @@ long long tglmp_encrypt_send_message (struct connection *c, int *msg, int msg_in
     struct tgl_session *S = tgl_state::instance()->net_methods->get_session (c);
     assert (S);
     if (!(DC->flags & TGLDCF_CONFIGURED) && !(flags & QUERY_FORCE_SEND)) {
-        //vlogprintf(E_NOTICE, "generate next msg ID...request not sent\n");
+        TGL_NOTICE("generate next msg ID...request not sent\n");
         return generate_next_msg_id(DC, S);
     }
 
@@ -1195,7 +1195,7 @@ static int rpc_execute (struct connection *c, int op, int len) {
     //  setsockopt (c->fd, IPPROTO_TCP, TCP_QUICKACK, (int[]){0}, 4);
 #endif
     int o = DC->state;
-    //if (DC->flags & 1) { o = st_authorized;}
+    //if (DC->flags & TGLDCF_AUTHORIZED) { o = st_authorized;}
     if (o != st_authorized) {
         TGL_DEBUG(__func__ << ": state = " << o);
     }
@@ -1246,19 +1246,19 @@ static int tc_becomes_ready (struct connection *c) {
   //tgl_state::instance()->net_methods->flush_out (c);
 
   struct tgl_dc *DC = tgl_state::instance()->net_methods->get_dc (c);
-  if (DC->flags & 1) { DC->state = st_authorized; }
+  if (DC->flags & TGLDCF_AUTHORIZED) { DC->state = st_authorized; }
   int o = DC->state;
   if (o == st_authorized && !tgl_state::instance()->pfs_enabled()) {
     DC->temp_auth_key_id = DC->auth_key_id;
     memcpy (DC->temp_auth_key, DC->auth_key, 256);
-    DC->flags |= 2;
+    DC->flags |= TGLDCF_BOUND;
   }
   switch (o) {
   case st_init:
     send_req_pq_packet (c);
     break;
   case st_authorized:
-    if (!(DC->flags & 2)) {
+    if (!(DC->flags & TGLDCF_BOUND)) {
       assert (tgl_state::instance()->pfs_enabled());
       if (!DC->temp_auth_key_id) {
         assert (!DC->temp_auth_key_id);
@@ -1363,7 +1363,6 @@ void tgln_insert_msg_id (struct tgl_session *S, long long id) {
 //extern struct tgl_dc *DC_list[];
 
 
-<<<<<<< 7064ea2805712a7e727e45fc2e237ba016b7f8fc
 static void regen_temp_key_gw (void *arg) {
   tglmp_regenerate_temp_auth_key((struct tgl_dc *)arg);
 }
