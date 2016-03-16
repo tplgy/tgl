@@ -37,7 +37,13 @@ extern "C" {
 #include <assert.h>
 
 tgl_state::tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
-       DC_working(NULL), temp_key_expire_time(0),net_methods(NULL), ev_base(0), BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
+       DC_working(NULL), temp_key_expire_time(0),net_methods(NULL),
+       #if USING_LIBEVENT
+                  ev_base(NULL),
+       #elif USING_ASIO
+                  io_service(NULL),
+       #endif
+       BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
        m_date(0), m_seq(0), m_test_mode(0), m_our_id(0), m_enable_pfs(false), m_ipv6_enabled(false)
 {
 }
@@ -79,30 +85,23 @@ void tgl_state::set_our_id(int id)
     }
 }
 
-void tgl_state::set_dc_option (int flags, int id, const char *ip, int l2, int port)
+void tgl_state::set_dc_option(int flags, int id, std::string ip, int port)
 {
     if (id >= DC_list.size()) {
-        DC_list.resize(id+1, NULL);
+        DC_list.resize(id+1, nullptr);
     }
-    struct tgl_dc *DC = DC_list[id];
+    std::shared_ptr<tgl_dc> DC = DC_list[id];
 
     if (DC) {
-        struct tgl_dc_option *O = DC->options[flags & 3];
-        while (O) {
-            if (!strncmp (O->ip, ip, l2)) {
+        tgl_dc_option option = DC->options[flags & 3];
+        for (auto op : option.option_list) {
+            if(std::get<0>(op) == ip) {
                 return;
             }
-            O = O->next;
         }
     }
 
-    // make sure ip is 0 terminated
-    int ip_cpy_length = l2 + (ip[l2-1] == '\0' ? 0 : 1);
-    char *ip_cpy = (char*)malloc(ip_cpy_length);
-    memcpy(ip_cpy, ip, l2);
-    ip_cpy[ip_cpy_length-1] = '\0';
-
-    tglmp_alloc_dc (flags, id, ip_cpy, port);
+    tglmp_alloc_dc (flags, id, ip, port);
 }
 
 void tgl_state::set_dc_signed(int num)
@@ -188,12 +187,12 @@ void tgl_state::init(const std::string &&download_dir, int app_id, const std::st
   return 0;
 }
 
-int tgl_authorized_dc(struct tgl_dc *DC) {
+int tgl_authorized_dc(std::shared_ptr<tgl_dc> DC) {
   assert (DC);
   return DC->flags & TGLDCF_AUTHORIZED;
 }
 
-int tgl_signed_dc(struct tgl_dc *DC) {
+int tgl_signed_dc(std::shared_ptr<tgl_dc> DC) {
   assert (DC);
   return (DC->flags & TGLDCF_LOGGED_IN) != 0;
 }

@@ -174,7 +174,7 @@ static struct query_methods msg_send_encr_methods = {
 };
 /* }}} */
 
-void tgl_do_send_encr_msg_action (struct tgl_message *M, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
+void tgl_do_send_encr_msg_action (struct tgl_message *M, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
   tgl_peer_t *P = tgl_peer_get (M->to_id);
   if (!P || P->encr_chat.state != sc_ok) { 
     vlogprintf (E_WARNING, "Unknown encrypted chat\n");
@@ -240,7 +240,7 @@ void tgl_do_send_encr_msg_action (struct tgl_message *M, void (*callback)(void *
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_encr_methods, M, callback, callback_extra);
 }
 
-void tgl_do_send_encr_msg (struct tgl_message *M, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
+void tgl_do_send_encr_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
   if (M->flags & TGLMF_SERVICE) {
     tgl_do_send_encr_msg_action (M, callback, callback_extra);
     return;
@@ -314,7 +314,7 @@ static struct query_methods mark_read_encr_methods = {
   .timeout = 0,
 };
 
-void tgl_do_messages_mark_read_encr (tgl_peer_id id, long long access_hash, int last_time, void (*callback)(void *callback_extra, int), void *callback_extra) {
+void tgl_do_messages_mark_read_encr (tgl_peer_id id, long long access_hash, int last_time, void (*callback)(std::shared_ptr<void> callback_extra, int), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_messages_read_encrypted_history);
     out_int (CODE_input_encrypted_chat);
@@ -350,7 +350,7 @@ static struct query_methods send_encr_file_methods = {
   .timeout = 0,
 };
 
-static void send_file_encrypted_end (struct send_file *f, void *callback, void *callback_extra) {
+static void send_file_encrypted_end (struct send_file *f, void *callback, std::shared_ptr<void> callback_extra) {
   out_int (CODE_messages_send_encrypted_file);
   out_int (CODE_input_encrypted_chat);
   out_int (tgl_get_peer_id (f->to_id));
@@ -463,7 +463,7 @@ static void send_file_encrypted_end (struct send_file *f, void *callback, void *
   tfree (f, sizeof (*f));
 }
 
-void tgl_do_send_location_encr (tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
+void tgl_do_send_location_encr (tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
   struct tl_ds_decrypted_message_media TDSM;
   TDSM.magic = CODE_decrypted_message_media_geo_point;
   TDSM.latitude = (double*)talloc (sizeof (double));
@@ -546,7 +546,7 @@ static struct query_methods send_encr_request_methods  = {
 //int encr_param_version;
 //static TGLC_bn_ctx *ctx;
 
-void tgl_do_send_accept_encr_chat (struct tgl_secret_chat *E, unsigned char *random, void (*callback)(void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra) {
+void tgl_do_send_accept_encr_chat (struct tgl_secret_chat *E, unsigned char *random, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_secret_chat *E), std::shared_ptr<void> callback_extra) {
   int i;
   int ok = 0;
   for (i = 0; i < 64; i++) {
@@ -660,7 +660,7 @@ void tgl_do_create_keys_end (struct tgl_secret_chat *U) {
   TGLC_bn_clear_free (a);
 }
 
-void tgl_do_send_create_encr_chat (void *x, unsigned char *random, void (*callback)(void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra) {
+void tgl_do_send_create_encr_chat (void *x, unsigned char *random, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_secret_chat *E), std::shared_ptr<void> callback_extra) {
   int user_id = (long)x;
   int i;
   unsigned char random_here[256];
@@ -745,7 +745,7 @@ static struct query_methods send_encr_discard_methods  = {
   .timeout = 0,
 };
 
-void tgl_do_discard_secret_chat (struct tgl_secret_chat *E, void (*callback)(void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra) {
+void tgl_do_discard_secret_chat (struct tgl_secret_chat *E, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_secret_chat *E), std::shared_ptr<void> callback_extra) {
   assert (E);
   assert (tgl_get_peer_id (E->id) > 0);
 
@@ -796,7 +796,7 @@ static struct query_methods get_dh_config_methods  = {
   .timeout = 0,
 };
 
-void tgl_do_accept_encr_chat_request (struct tgl_secret_chat *E, void (*callback)(void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra) {
+void tgl_do_accept_encr_chat_request (struct tgl_secret_chat *E, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_secret_chat *E), std::shared_ptr<void> callback_extra) {
     if (E->state != sc_request) {
         if (callback) {
             callback (callback_extra, 0, E);
@@ -815,7 +815,7 @@ void tgl_do_accept_encr_chat_request (struct tgl_secret_chat *E, void (*callback
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dh_config_methods, x, (void*)callback, callback_extra);
 }
 
-void tgl_do_create_encr_chat_request (int user_id, void (*callback)(void *callback_extra, int success, struct tgl_secret_chat *E), void *callback_extra) {
+void tgl_do_create_encr_chat_request (int user_id, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_secret_chat *E), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_messages_get_dh_config);
     out_int (tgl_state::instance()->encr_param_version);

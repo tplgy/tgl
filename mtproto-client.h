@@ -35,16 +35,16 @@ struct tgl_dc;
 struct connection;
 
 long long tglmp_encrypt_send_message (struct connection *c, int *msg, int msg_ints, int flags);
-void tglmp_dc_create_session (struct tgl_dc *DC);
+void tglmp_dc_create_session(std::shared_ptr<tgl_dc> DC);
 //int tglmp_check_g (unsigned char p[256], BIGNUM *g);
 //int tglmp_check_DH_params (BIGNUM *p, int g);
-struct tgl_dc *tglmp_alloc_dc (int flags, int id, char *ip, int port);
-void tglmp_regenerate_temp_auth_key (struct tgl_dc *D);
+std::shared_ptr<tgl_dc> tglmp_alloc_dc(int flags, int id, const std::string &ip, int port);
+void tglmp_regenerate_temp_auth_key(std::shared_ptr<tgl_dc> D);
 
-void tgln_insert_msg_id (struct tgl_session *S, long long id);
+void tgln_insert_msg_id(std::shared_ptr<tgl_session> S, long long id);
 int tglmp_on_start ();
-void tgl_dc_authorize (struct tgl_dc *DC);
-void tgls_free_dc (struct tgl_dc *DC);
+void tgl_dc_authorize(std::shared_ptr<tgl_dc>DC);
+void tgls_free_dc(std::shared_ptr<tgl_dc> DC);
 void tgls_free_pubkey ();
 void tgl_do_send_ping (struct connection *c);
 #endif

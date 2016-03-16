@@ -7,13 +7,9 @@
 #include "types/tgl_peer_id.h"
 #include "types/query_methods.h"
 
-struct file_download {
-    std::string path;
-    tgl_file_location location;
-};
-
 struct tgl_document;
-struct  tgl_encr_document;
+struct tgl_encr_document;
+struct send_file;
 struct download {
     download(int size, tgl_file_location location)
         : location(location), offset(0), size(size), fd(-1), iv(NULL), key(NULL), type(0), refcnt(0)
@@ -29,72 +25,72 @@ struct download {
     int fd;
     std::string name;
     std::string ext;
+    //encrypted documents
     unsigned char *iv;
     unsigned char *key;
+    // ---
     int type;
-    int refcnt;
+    int refcnt; //Probably intended for being able to load multiple file parts simultaniously...however downloading is done sequentially
 };
 
 class tgl_download_manager
 {
 public:
     tgl_download_manager(std::string download_directory);
-    bool download_file(file_download new_download);
     std::string download_directory() { return m_download_directory; }
 
-    int download_error(struct query *q, int error_code, int error_len, const char *error);
+    void download_encr_document(struct tgl_encr_document *V, void (*callback)(std::shared_ptr<void> callback_extra,
+            bool success, const std::string &filename), std::shared_ptr<void> callback_extra);
+    void download_audio(struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+            std::shared_ptr<void> callback_extra);
+    void download_video(struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+            std::shared_ptr<void> callback_extra);
+    void download_document_thumb(struct tgl_document *video, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+            std::shared_ptr<void> callback_extra);
+    void download_photo(struct tgl_photo *photo, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra);
 
-    void download_encr_document(struct tgl_encr_document *V, void (*callback)(void *callback_extra,
-            int success, const char *filename), void *callback_extra);
-    void download_audio(struct tgl_document *V, void (*callback)(void *callback_extra, int success, const char *filename),
-            void *callback_extra);
-    void download_video(struct tgl_document *V, void (*callback)(void *callback_extra, int success, const char *filename),
-            void *callback_extra);
-    void download_document_thumb(struct tgl_document *video, void (*callback)(void *callback_extra, int success, const char *filename),
-            void *callback_extra);
-    void download_photo(struct tgl_photo *photo, void (*callback)(void *callback_extra, int success, const char *filename), void *callback_extra);
+    void download_photo_size(struct tgl_photo_size *P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+            std::shared_ptr<void> callback_extra);
 
-    void send_document(tgl_peer_id to_id, const char *file_name, const char *caption, unsigned long long flags,
-            void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
+    void download_file_location(struct tgl_file_location P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+            std::shared_ptr<void> callback_extra);
+
+    void download_document(struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+            std::shared_ptr<void> callback_extra);
+
+    void send_document(tgl_peer_id to_id, const std::string &file_name, const std::string &caption, unsigned long long flags,
+            void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
     // sets self profile photo
     // server will cut central square from this photo
-    void set_profile_photo(const char *file_name, void (*callback)(void *callback_extra, int success), void *callback_extra);
-    void set_chat_photo(tgl_peer_id chat_id, const char *file_name, void (*callback)(void *callback_extra, int success), void *callback_extra);
+    void set_profile_photo(const std::string &file_name, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
+    void set_chat_photo(tgl_peer_id chat_id, const std::string &file_name, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
 
-    void download_photo_size(struct tgl_photo_size *P, void (*callback)(void *callback_extra, int success, const char *filename),
-            void *callback_extra);
-
-    void download_file_location(struct tgl_file_location *P, void (*callback)(void *callback_extra, int success, const char *filename),
-            void *callback_extra);
-
-    void download_document(struct tgl_document *V, void (*callback)(void *callback_extra, int success, const char *filename),
-            void *callback_extra);
-
-    void tgl_do_reply_document(long long int reply_id, tgl_peer_id peer_id, const char *file_name, const char *caption, unsigned long long flags,
-            void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
-
-    // Callbacks
-    int download_on_answer(struct query *q, void *DD);
-    int download_on_error(struct query *q, int error_code, int error_len, const char *error);
-    int send_file_part_on_answer(struct query *q, void *D);
-    int send_file_part_on_error(struct query *q, int error_code, int error_len, const char *error);
-    int set_photo_on_answer(struct query *q, void *D);
 private:
-    void send_avatar_end(struct send_file *f, void *callback, void *callback_extra);
-    void send_file_end(struct send_file *f, void *callback, void *callback_extra);
-    void send_file_thumb(struct send_file *f, const void *thumb_data, int thumb_len, void *callback, void *callback_extra);
+    // Callbacks
+    int download_on_answer(std::shared_ptr<query> q, void *DD);
+    int download_on_error(std::shared_ptr<query> q, int error_code, const std::string &error);
+    int send_file_part_on_answer(std::shared_ptr<query> q, void *D);
+    int send_file_part_on_error(std::shared_ptr<query> q, int error_code, const std::string &error);
+    int set_photo_on_answer(std::shared_ptr<query> q, void *D);
+    int download_error(std::shared_ptr<query> q, int error_code, const std::string &error);
 
-    void send_part(struct send_file *f, void *callback, void *callback_extra);
+    void send_avatar_end(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void>callback_extra);
+    void send_file_end(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void>callback_extra);
+    void send_file_thumb(std::shared_ptr<send_file> f, const void *thumb_data, int thumb_len, void *callback, std::shared_ptr<void>callback_extra);
 
-    void _tgl_do_send_photo(tgl_peer_id to_id, const char *file_name, int avatar, int w, int h, int duration,
-                                    const void *thumb_data, int thumb_len, const char *caption, unsigned long long flags,
-                                    void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra);
-    void _tgl_do_load_document(struct tgl_document *V, struct download *D, void (*callback)(void *callback_extra,
-                                    int success, const char *filename), void *callback_extra);
-    void load_next_part(struct download *D, void *callback, void *callback_extra);
-    void end_load(struct download *D, void *callback, void *callback_extra);
+    void send_part(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra);
 
-    std::vector<file_download> m_queued_downloads;
+    void _tgl_do_send_photo(tgl_peer_id to_id, const std::string &file_name, int avatar, int w, int h, int duration,
+                                    const void *thumb_data, int thumb_len, const std::string &caption, unsigned long long flags,
+                                    void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+    void _tgl_do_load_document(struct tgl_document *V, std::shared_ptr<download> D, void (*callback)(std::shared_ptr<void> callback_extra,
+                                    bool success, const std::string &filename), std::shared_ptr<void> callback_extra);
+
+    void begin_download(std::shared_ptr<download>);
+    void load_next_part(std::shared_ptr<download>, void *callback, std::shared_ptr<void> callback_extra);
+    void end_load(std::shared_ptr<download>, void *callback, std::shared_ptr<void>callback_extra);
+
+    std::vector<std::shared_ptr<download>> m_downloads;
 
     std::string m_download_directory;
 

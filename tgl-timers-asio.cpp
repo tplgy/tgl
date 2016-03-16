@@ -28,14 +28,13 @@
 #include <stdlib.h>
 
 struct tgl_timer {
-  tgl_timer(boost::asio::io_service& io_service, void (*cb)(void *), void *arg)
+  tgl_timer(boost::asio::io_service& io_service, void (*cb)(std::shared_ptr<void> ), std::shared_ptr<void> arg)
     : timer(io_service)
     , cb(cb)
     , arg(arg)
   {}
 
   ~tgl_timer() {
-    free(arg);
   }
 
   void handler(const boost::system::error_code& error) {
@@ -45,11 +44,11 @@ struct tgl_timer {
   }
 
   boost::asio::deadline_timer timer;
-  void (*cb)(void *);
-  void *arg;
+  void (*cb)(std::shared_ptr<void>);
+  std::shared_ptr<void> arg;
 };
 
-struct tgl_timer *tgl_timer_alloc(void (*cb)(void *arg), void *arg) {
+struct tgl_timer *tgl_timer_alloc(void (*cb)(std::shared_ptr<void> arg), std::shared_ptr<void> arg) {
   return new tgl_timer(*tgl_state::instance()->io_service, cb, arg);
 }
 

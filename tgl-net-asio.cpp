@@ -199,9 +199,9 @@ static int rotate_port(int port) {
     return -1;
 }
 
-struct connection *tgln_create_connection(const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods) {
+struct connection *tgln_create_connection(const std::string &host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods) {
     struct connection* c = new connection(*tgl_state::instance()->io_service);
-    c->ip = tstrdup(host);
+    c->ip = host;
     c->port = port;
 
     if (!c->connect()) {
@@ -320,11 +320,11 @@ static void incr_out_packet_num (struct connection *c) {
     c->out_packet_num++;
 }
 
-static struct tgl_dc *get_dc (struct connection *c) {
+static std::shared_ptr<tgl_dc> get_dc (struct connection *c) {
     return c->dc;
 }
 
-static struct tgl_session *get_session (struct connection *c) {
+static std::shared_ptr<tgl_session> get_session (struct connection *c) {
     return c->session;
 }
 
@@ -333,8 +333,7 @@ static void tgln_free (struct connection *c) {
 }
 
 connection::connection(boost::asio::io_service& io_service)
-    : ip(nullptr)
-    , port(0)
+    : port(0)
     , flags(0)
     , state(conn_none)
     , ipv6{0, 0, 0, 0}
@@ -362,7 +361,6 @@ connection::connection(boost::asio::io_service& io_service)
 
 connection::~connection()
 {
-    if (ip) { tfree_str(ip); }
     ping_timer.cancel();
     fail_timer.cancel();
     socket.close();

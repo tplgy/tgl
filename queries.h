@@ -29,24 +29,25 @@
 #define QUERY_FORCE_SEND 2
 
 struct query {
-  long long msg_id;
-  int data_len;
-  int flags;
-  int seq_no;
-  long long session_id;
-  void *data;
-  struct query_methods *methods;
-  struct tgl_timer *ev;
-  struct tgl_dc *DC;
-  struct tgl_session *session;
-  //struct paramed_type *type;
-  void *extra;
-  void *callback;
-  void *callback_extra;
+    long long msg_id;
+    int data_len;
+    int flags;
+    int seq_no;
+    long long session_id;
+    void *data;
+    struct query_methods *methods;
+    struct tgl_timer *ev;
+    std::shared_ptr<tgl_dc> DC;
+    std::shared_ptr<tgl_session> session;
+    //struct paramed_type *type;
+    //void *extra;
+    std::shared_ptr<void> extra;
+    void *callback;
+    std::shared_ptr<void> callback_extra;
 };
 
 
-struct query *tglq_send_query (struct tgl_dc *DC, int len, void *data, struct query_methods *methods, void *extra, void *callback, void *callback_extra);
+std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int len, void *data, struct query_methods *methods, std::shared_ptr<void> extra, void *callback, std::shared_ptr<void> callback_extra);
 void tglq_query_ack (long long id);
 int tglq_query_error (long long id);
 int tglq_query_result (long long id);
@@ -59,7 +60,7 @@ void tglq_query_restart (long long id);
 
 double get_double_time (void);
 
-void tgl_do_send_bind_temp_key (struct tgl_dc *D, long long nonce, int expires_at, void *data, int len, long long msg_id);
+void tgl_do_send_bind_temp_key (std::shared_ptr<tgl_dc> D, long long nonce, int expires_at, void *data, int len, long long msg_id);
 
 void tgl_do_request_exchange (struct tgl_secret_chat *E);
 void tgl_do_confirm_exchange ( struct tgl_secret_chat *E, int sen_nop);

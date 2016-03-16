@@ -96,7 +96,7 @@ struct tgl_update_callback {
   //void (*logprintf)(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
   void (*log_output)(int verbosity, const std::string &str);
   void (*get_values)(enum tgl_value_type type, const char *prompt, int num_values,
-          void (*callback)(const void *answer, const void *arg), const void *arg);
+          void (*callback)(const void *answer, std::shared_ptr<void> arg), std::shared_ptr<void> arg);
   void (*logged_in)();
   void (*started)();
   void (*type_notification)(int user_id, enum tgl_typing_status status);
@@ -105,11 +105,12 @@ struct tgl_update_callback {
   void (*status_notification)(int user_id, enum tgl_user_status_type, int expires);
   void (*user_registered)(int user_id);
   void (*new_authorization)(const char *device, const char *location);
-  void (*new_user)(int user_id, const char *phone, const char *fistname, const char *lastname, const char *username);
+  void (*new_user)(int user_id, const std::string &phone, const std::string &fistname,
+                   const std::string &lastname, const std::string &username);
   void (*user_update)(int user_id, void *value, enum tgl_user_update_type update_type);
   void (*user_deleted)(int id);
-  void (*profile_picture_update)(int peer_id, long long int photo_id, struct tgl_file_location *photo_small, struct tgl_file_location *photo_big);
-  void (*chat_update)(int chat_id, int peers_num, int admin, struct tgl_photo *photo, int date, const char *title, int tl);
+  void (*profile_picture_update)(int peer_id, long long int photo_id, const tgl_file_location &photo_small, const tgl_file_location &photo_big);
+  void (*chat_update)(int chat_id, int peers_num, int admin, struct tgl_photo *photo, int date, const std::string &title);
   void (*chat_add_user)(int chat_id, int user, int inviter, int date);
   void (*chat_delete_user)(int chat_id, int user);
   void (*secret_chat_update)(struct tgl_secret_chat *C, unsigned flags);
@@ -117,7 +118,7 @@ struct tgl_update_callback {
   void (*msg_receive)(struct tgl_message *M);
   void (*our_id)(int id);
   void (*notification)(const char *type, const char *message);
-  void (*dc_update)(struct tgl_dc *);
+  void (*dc_update)(std::shared_ptr<tgl_dc>);
   void (*change_active_dc)(int new_dc_id);
   char *(*create_print_name) (tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
   void (*on_failed_login) ();
@@ -129,10 +130,10 @@ struct tgl_net_methods {
   void (*flush_out) (struct connection *c);
   void (*incr_out_packet_num) (struct connection *c);
   void (*free) (struct connection *c);
-  struct tgl_dc *(*get_dc) (struct connection *c);
-  struct tgl_session *(*get_session) (struct connection *c);
+  std::shared_ptr<tgl_dc> (*get_dc) (struct connection *c);
+  std::shared_ptr<tgl_session> (*get_session) (struct connection *c);
 
-  struct connection *(*create_connection) (const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods);
+  struct connection *(*create_connection) (const std::string &host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods);
 };
 
 struct mtproto_methods {
@@ -144,7 +145,7 @@ struct mtproto_methods {
 struct tgl_timer;
 
 struct tgl_timer_methods {
-  struct tgl_timer *(*alloc) (void (*cb)(void *arg), void *arg);
+  struct tgl_timer *(*alloc) (void (*cb)(std::shared_ptr<void> arg), std::shared_ptr<void> arg);
   void (*insert) (struct tgl_timer *t, double timeout);
   void (*remove) (struct tgl_timer *t);
   void (*free) (struct tgl_timer *t);
@@ -167,35 +168,18 @@ class tgl_download_manager;
 struct tgl_state {
   static tgl_state *instance();
 
-  tgl_peer_id_t our_id;
   int encr_root;
   unsigned char *encr_prime;
   TGLC_bn *encr_prime_bn;
   int encr_param_version;
-  int pts;
-  int qts;
-  int date;
-  int seq;
-  int test_mode; // Connects to the telegram test servers instead of the regular servers
-  int verbosity;
+
   int active_queries;
-  int max_msg_id;
   int started;
 
   long long locks;
-  std::vector<tgl_dc*> DC_list;
-  struct tgl_dc *DC_working;
-  int max_dc_num;
-  int dc_working_num;
-  int enable_pfs;
+  std::vector<std::shared_ptr<tgl_dc>> DC_list;
+  std::shared_ptr<tgl_dc> DC_working;
   int temp_key_expire_time;
-
-  long long cur_uploading_bytes;
-  long long cur_uploaded_bytes;
-  long long cur_downloading_bytes;
-  long long cur_downloaded_bytes;
-
-  char *downloads_directory;
 
   struct tgl_update_callback callback;
   struct tgl_net_methods *net_methods;
@@ -215,16 +199,17 @@ struct tgl_state {
 
   struct tgl_timer_methods *timer_methods;
 
-  std::vector<query*> queries_tree;
+  std::vector<std::shared_ptr<query>> queries_tree;
 
   void *ev_login;
 
   void init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
   void login();
 
+<<<<<<< 205e5e07320c3877fbe5766ed835ca13a45be1b1
   void set_auth_key(int num, const char *buf);
   void set_our_id(int id);
-  void set_dc_option (int flags, int id, const char *ip, int l2, int port);
+  void set_dc_option (int flags, int id, std::string ip, int port);
   void set_dc_signed(int num);
   void set_working_dc(int num);
   void set_qts(int qts);
@@ -243,7 +228,7 @@ struct tgl_state {
 #elif USING_ASIO
   void set_io_service (boost::asio::io_service* io_service);
 #endif
-  void register_app_id (int app_id, const std::string &app_hash);
+<<<<<<< 205e5e07320c3877fbe5766ed835ca13a45be1b1
   void set_enable_ipv6 (bool val);
   std::string app_version() { return m_app_version; }
   std::string app_hash() { return m_app_hash; }
@@ -277,31 +262,12 @@ private:
   std::string m_app_version;
   bool m_ipv6_enabled;
 
-  tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
-    DC_working(NULL), temp_key_expire_time(0), net_methods(NULL),
-#if USING_LIBEVENT
-    ev_base(NULL),
-#elif USING_ASIO
-    io_service(NULL),
-#endif
-    BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
-    m_date(0), m_seq(0), m_test_mode(0), m_our_id(0), m_enable_pfs(false), m_ipv6_enabled(false)
-  {
-  }
+  tgl_state();
+  std::shared_ptr<tgl_download_manager> m_download_manager;
 };
 
-tgl_peer_t *tgl_peer_get (tgl_peer_id_t id);
-
-struct tgl_message *tgl_message_get (tgl_message_id_t *id);
-void tgl_peer_iterator_ex (void (*it)(tgl_peer_t *P, void *extra), void *extra);
-
-int tgl_complete_user_list (int index, const char *text, int len, char **R);
-int tgl_complete_chat_list (int index, const char *text, int len, char **R);
-int tgl_complete_encr_chat_list (int index, const char *text, int len, char **R);
-int tgl_complete_peer_list (int index, const char *text, int len, char **R);
-int tgl_complete_channel_list (int index, const char *text, int len, char **R);
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);
-int tgl_do_send_bot_auth (const char *code, int code_len, void (*callback)(void *callback_extra, int success, struct tgl_user *Self), void *callback_extra);
+int tgl_do_send_bot_auth (const char *code, int code_len, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_user *Self), std::shared_ptr<void> callback_extra);
 
 #define TGL_PEER_USER 1
 #define TGL_PEER_CHAT 2
@@ -334,14 +300,10 @@ static inline tgl_peer_id_t tgl_set_peer_id (int type, int id) {
   return ID;
 }
 
-static inline int tgl_cmp_peer_id (tgl_peer_id_t a, tgl_peer_id_t b) {
-  return memcmp (&a, &b, 8);
-}
+int tgl_authorized_dc(std::shared_ptr<tgl_dc> DC);
+int tgl_signed_dc(std::shared_ptr<tgl_dc> DC);
 
-int tgl_authorized_dc(struct tgl_dc *DC);
-int tgl_signed_dc(struct tgl_dc *DC);
-
-void tgl_dc_authorize (struct tgl_dc *DC);
+void tgl_dc_authorize (std::shared_ptr<tgl_dc> DC);
 
 #define TGL_SEND_MSG_FLAG_DISABLE_PREVIEW 1
 #define TGL_SEND_MSG_FLAG_ENABLE_PREVIEW 2
@@ -362,7 +324,5 @@ typedef int tgl_secret_chat_id_t;
 typedef int tgl_user_or_chat_id_t;
 
 void tgl_do_lookup_state ();
-
-long long tgl_get_allocated_bytes (void);
 
 #endif

@@ -28,35 +28,29 @@ tgl_download_manager::tgl_download_manager(std::string download_directory)
 {
     m_send_file_part_methods = {
         .on_answer = std::bind(&tgl_download_manager::send_file_part_on_answer, this, std::placeholders::_1, std::placeholders::_2),
-        .on_error = std::bind(&tgl_download_manager::send_file_part_on_error, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4),
+        .on_error = std::bind(&tgl_download_manager::send_file_part_on_error, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
         .on_timeout = NULL,
         .type = (struct paramed_type) {.type = &tl_type_bool, .params=0}
     };
 
     m_download_methods = {
         .on_answer = std::bind(&tgl_download_manager::download_on_answer, this, std::placeholders::_1, std::placeholders::_2),
-        .on_error = std::bind(&tgl_download_manager::download_on_error, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4),
+        .on_error = std::bind(&tgl_download_manager::download_on_error, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
         .on_timeout = NULL,
         .type = TYPE_TO_PARAM(upload_file)
     };
 
     m_set_photo_methods = {
         .on_answer = std::bind(&tgl_download_manager::set_photo_on_answer, this, std::placeholders::_1, std::placeholders::_2),
-        .on_error = std::bind(&tgl_download_manager::download_error, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4),
+        .on_error = std::bind(&tgl_download_manager::download_error, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
         .on_timeout = NULL,
         .type = TYPE_TO_PARAM(photos_photo)
     };
 }
 
-bool tgl_download_manager::download_file(file_download new_download)
+int tgl_download_manager::download_error (std::shared_ptr<query> q, int error_code, const std::string &error)
 {
-    download_file_location(&new_download.location, 0, 0);
-    return true;
-}
-
-int tgl_download_manager::download_error (struct query *q, int error_code, int error_len, const char *error)
-{
-    TGL_ERROR("Download error for query " << q->msg_id << " " << error_code << " " << std::string(error, error_len));
+    TGL_ERROR("Download error for query " << q->msg_id << " " << error_code << " " << std::string(error));
     return 0;
 }
 
@@ -83,41 +77,40 @@ struct send_file {
     std::string caption;
 };
 
-int tgl_download_manager::send_file_part_on_answer (struct query *q, void *D)
+int tgl_download_manager::send_file_part_on_answer (std::shared_ptr<query> q, void *D)
 {
     TGL_UNUSED(D);
-    send_part ((struct send_file *)q->extra, (void*)q->callback, q->callback_extra);
+    send_part(std::static_pointer_cast<send_file>(q->extra), (void*)q->callback, q->callback_extra);
     return 0;
 }
 
-int tgl_download_manager::set_photo_on_answer (struct query *q, void *D)
+int tgl_download_manager::set_photo_on_answer (std::shared_ptr<query> q, void *D)
 {
     TGL_UNUSED(D);
     if (q->callback) {
-        ((void (*)(void *, int))q->callback)(q->callback_extra, 1);
+        ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 1);
     }
     return 0;
 }
 
-int tgl_download_manager::send_file_part_on_error (struct query *q, int error_code, int error_len, const char *error)
+int tgl_download_manager::send_file_part_on_error (std::shared_ptr<query> q, int error_code, const std::string &error)
 {
-    TGL_ERROR("RPC_CALL_FAIL " << error_code << std::string(error, error_len));
+    TGL_ERROR("RPC_CALL_FAIL " << error_code << error);
 
-    struct send_file *f = (struct send_file *)q->extra;
+    std::shared_ptr<send_file> f = std::static_pointer_cast<send_file>(q->extra);
     if (!f->avatar) {
         if (q->callback) {
-            ((void (*)(void *, int, struct tgl_message *))q->callback) (q->callback_extra, 0, 0);
+            ((void (*)(std::shared_ptr<void>, int, struct tgl_message *))q->callback) (q->callback_extra, 0, 0);
         }
     } else {
         if (q->callback) {
-            ((void (*)(void *, int))q->callback) (q->callback_extra, 0);
+            ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 0);
         }
     }
-    free (f);
     return 0;
 }
 
-void tgl_download_manager::send_avatar_end (struct send_file *f, void *callback, void *callback_extra)
+void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra)
 {
     if (f->avatar > 0) {
         out_int (CODE_messages_edit_chat_photo);
@@ -162,7 +155,7 @@ void tgl_download_manager::send_avatar_end (struct send_file *f, void *callback,
 
 
 #ifdef ENABLE_SECRET_CHAT
-static void tgl_download_manager::send_file_unencrypted_end (struct send_file *f, void *callback, void *callback_extra) {
+static void tgl_download_manager::send_file_unencrypted_end (std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra) {
     out_int (CODE_messages_send_media);
     out_int ((f->reply ? 1 : 0));
     out_peer_id(f->to_id);
@@ -257,12 +250,7 @@ static void tgl_download_manager::send_file_unencrypted_end (struct send_file *f
 }
 #endif
 
-void tgl_download_manager::tgl_do_reply_document (long long int reply_id, tgl_peer_id peer_id, const char *file_name, const char *caption, unsigned long long flags, void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra)
-{
-    send_document (peer_id, file_name, caption, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id), callback, callback_extra);
-}
-
-void tgl_download_manager::send_file_end (struct send_file *f, void *callback, void *callback_extra) {
+void tgl_download_manager::send_file_end (std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra) {
     cur_uploaded_bytes -= f->size;
     cur_uploading_bytes -= f->size;
     clear_packet ();
@@ -281,7 +269,7 @@ void tgl_download_manager::send_file_end (struct send_file *f, void *callback, v
     return;
 }
 
-void tgl_download_manager::send_part (struct send_file *f, void *callback, void *callback_extra)
+void tgl_download_manager::send_part(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra)
 {
     if (f->fd >= 0) {
         if (!f->part_num) {
@@ -330,7 +318,7 @@ void tgl_download_manager::send_part (struct send_file *f, void *callback, void 
     }
 }
 
-void tgl_download_manager::send_file_thumb (struct send_file *f, const void *thumb_data, int thumb_len, void *callback, void *callback_extra)
+void tgl_download_manager::send_file_thumb (std::shared_ptr<send_file> f, const void *thumb_data, int thumb_len, void *callback, std::shared_ptr<void> callback_extra)
 {
     clear_packet ();
     f->thumb_id = lrand48 () * (1ll << 32) + lrand48 ();
@@ -342,12 +330,12 @@ void tgl_download_manager::send_file_thumb (struct send_file *f, const void *thu
 }
 
 
-void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id to_id, const char *file_name, int avatar, int w, int h, int duration,
-                                const void *thumb_data, int thumb_len, const char *caption, unsigned long long flags,
-                                void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra) {
+void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id to_id, const std::string &file_name, int avatar, int w, int h, int duration,
+                                const void *thumb_data, int thumb_len, const std::string &caption, unsigned long long flags,
+                                void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
     int fd = -1;
     long long size = boost::filesystem::file_size(file_name);
-    if (size <= 0 && (fd = open (file_name, O_RDONLY)) >= 0) {
+    if (size <= 0 && (fd = open (file_name.c_str(), O_RDONLY)) >= 0) {
         TGL_ERROR("File is empty");
         if (!avatar) {
             if (callback) {
@@ -355,12 +343,12 @@ void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id to_id, const char *fi
             }
         } else {
             if (callback) {
-                ((void (*)(void *, int))callback) (callback_extra, 0);
+                ((void (*)(std::shared_ptr<void>, int))callback) (callback_extra, 0);
             }
         }
         return;
     }
-    struct send_file *f = (struct send_file *)calloc (1,sizeof (*f));
+    std::shared_ptr<send_file> f = std::make_shared<send_file>();
     f->fd = fd;
     f->size = size;
     f->offset = 0;
@@ -377,14 +365,13 @@ void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id to_id, const char *fi
     if (f->part_size > (512 << 10)) {
         close (fd);
         TGL_ERROR("File is too big");
-        free (f);
         if (!avatar) {
             if (callback) {
                 callback (callback_extra, 0, 0);
             }
         } else {
             if (callback) {
-                ((void (*)(void *, int))callback) (callback_extra, 0);
+                ((void (*)(std::shared_ptr<void>, int))callback) (callback_extra, 0);
             }
         }
         return;
@@ -393,11 +380,11 @@ void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id to_id, const char *fi
     tglt_secure_random ((unsigned char*)&f->id, 8);
     f->to_id = to_id;
     f->flags = flags;
-    f->file_name = tstrdup (file_name);
+    f->file_name = file_name;
     f->w = w;
     f->h = h;
     f->duration = duration;
-    f->caption = caption ? tstrdup (caption) : tstrdup ("");
+    f->caption = caption;
 
     if (tgl_get_peer_type (f->to_id) == TGL_PEER_ENCR_CHAT) {
         f->encr = 1;
@@ -416,26 +403,26 @@ void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id to_id, const char *fi
     }
 }
 
-void tgl_download_manager::set_chat_photo (tgl_peer_id chat_id, const char *file_name, void (*callback)(void *callback_extra, int success),
-        void *callback_extra)
+void tgl_download_manager::set_chat_photo (tgl_peer_id chat_id, const std::string &file_name, void (*callback)(std::shared_ptr<void> callback_extra, bool success),
+        std::shared_ptr<void> callback_extra)
 {
     assert (tgl_get_peer_type (chat_id) == TGL_PEER_CHAT);
     _tgl_do_send_photo (chat_id, file_name, tgl_get_peer_id (chat_id), 0, 0, 0, 0, 0, NULL, TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
-                        (void (*)(void *, int , struct tgl_message *))callback, callback_extra);
+                        (void (*)(std::shared_ptr<void>, bool , struct tgl_message *))callback, callback_extra);
 }
 
-void tgl_download_manager::set_profile_photo (const char *file_name, void (*callback)(void *callback_extra, int success), void *callback_extra)
+void tgl_download_manager::set_profile_photo (const std::string &file_name, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra)
 {
     _tgl_do_send_photo (TGL_MK_USER(tgl_state::instance()->our_id()), file_name, -1, 0, 0, 0, 0, 0, NULL, TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
-                        (void (*)(void *, int , struct tgl_message *))callback, callback_extra);
+                        (void (*)(std::shared_ptr<void>, bool , struct tgl_message *))callback, callback_extra);
 }
 
 
-void tgl_download_manager::send_document (tgl_peer_id to_id, const char *file_name, const char *caption, unsigned long long flags,
-        void (*callback)(void *callback_extra, int success, struct tgl_message *M), void *callback_extra)
+void tgl_download_manager::send_document (tgl_peer_id to_id, const std::string &file_name, const std::string &caption, unsigned long long flags,
+        void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra)
 {
     if (flags & TGL_SEND_MSG_FLAG_DOCUMENT_AUTO) {
-        const char *mime_type = tg_mime_by_filename (file_name);
+        const char *mime_type = tg_mime_by_filename (file_name.c_str());
         if (strcmp (mime_type, "image/gif") == 0) {
             flags |= TGL_SEND_MSG_FLAG_DOCUMENT_ANIMATED;
         } else if (!memcmp (mime_type, "image/", 6)) {
@@ -449,8 +436,15 @@ void tgl_download_manager::send_document (tgl_peer_id to_id, const char *file_na
     _tgl_do_send_photo (to_id, file_name, 0, 100, 100, 100, 0, 0, caption, flags, callback, callback_extra);
 }
 
-void tgl_download_manager::end_load (struct download *D, void *callback, void *callback_extra)
+void tgl_download_manager::end_load (std::shared_ptr<download> D, void *callback, std::shared_ptr<void> callback_extra)
 {
+    for (auto it=m_downloads.begin(); it != m_downloads.end(); it++) {
+        if (*it == D) {
+            m_downloads.erase(it);
+            break;
+        }
+    }
+
     cur_downloading_bytes -= D->size;
     cur_downloaded_bytes -= D->size;
 
@@ -459,32 +453,30 @@ void tgl_download_manager::end_load (struct download *D, void *callback, void *c
     }
 
     if (callback) {
-        ((void (*)(void *, int, char *))callback) (callback_extra, 1, (char*)D->name.c_str());
+        ((void (*)(std::shared_ptr<void>, bool, const std::string&))callback) (callback_extra, true, D->name);
     }
 
     if (D->iv) {
         free(D->iv);
     }
-    free (D);
 }
 
-int tgl_download_manager::download_on_answer (struct query *q, void *DD)
+int tgl_download_manager::download_on_answer (std::shared_ptr<query> q, void *DD)
 {
     struct tl_ds_upload_file *DS_UF = (struct tl_ds_upload_file *)DD;
 
-    struct download *D = (struct download *)q->extra;
+    std::shared_ptr<download> D = std::static_pointer_cast<download>(q->extra);
     if (D->fd == -1) {
         D->fd = open (D->name.c_str(), O_CREAT | O_WRONLY, 0640);
         if (D->fd < 0) {
             TGL_ERROR("Can not open file for writing: %m");
             if (q->callback) {
-                ((void (*)(void *, int, char *))q->callback) (q->callback_extra, 0, NULL);
+                ((void (*)(std::shared_ptr<void>, bool, const std::string&))q->callback) (q->callback_extra, false, NULL);
             }
 
             if (D->iv) {
                 free(D->iv);
             }
-            delete D;
             return 0;
         }
     }
@@ -521,31 +513,34 @@ int tgl_download_manager::download_on_answer (struct query *q, void *DD)
     }
 }
 
-int tgl_download_manager::download_on_error (struct query *q, int error_code, int error_len, const char *error)
+int tgl_download_manager::download_on_error (std::shared_ptr<query> q, int error_code, const std::string &error)
 {
-    TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << std::string(error, error_len));
+    TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << std::string(error));
 
-    struct download *D = (struct download *)q->extra;
+    std::shared_ptr<download> D = std::static_pointer_cast<download>(q->extra);
     if (D->fd >= 0) {
         close (D->fd);
     }
 
     if (q->callback) {
-        ((void (*)(void *, int, char *))q->callback) (q->callback_extra, 0, NULL);
+        ((void (*)(std::shared_ptr<void>, bool, const std::string&))q->callback)(q->callback_extra, false, D->name);
     }
 
     if (D->iv) {
         free (D->iv);
     }
-    delete D;
     return 0;
 }
 
-void tgl_download_manager::load_next_part (struct download *D, void *callback, void *callback_extra)
+void tgl_download_manager::begin_download(std::shared_ptr<download> new_download)
+{
+    m_downloads.push_back(new_download);
+}
+
+void tgl_download_manager::load_next_part (std::shared_ptr<download> D, void *callback, std::shared_ptr<void> callback_extra)
 {
     if (!D->offset) {
-        std::string path = download_directory() + "/download_" + std::to_string(D->location.document_id()) + "_"
-                + std::to_string(D->location.local_id());
+        std::string path = download_directory() + "/download_" + std::to_string(D->location.access_hash());
 
         if (!D->ext.empty()) {
             path += std::string(".") + D->ext;
@@ -589,8 +584,8 @@ void tgl_download_manager::load_next_part (struct download *D, void *callback, v
     tglq_send_query (tgl_state::instance()->DC_list[D->location.dc()], packet_ptr - packet_buffer, packet_buffer, &m_download_methods, D, callback, callback_extra);
 }
 
-void tgl_download_manager::download_photo_size (struct tgl_photo_size *P, void (*callback)(void *callback_extra, int success, const char *filename),
-        void *callback_extra)
+void tgl_download_manager::download_photo_size (struct tgl_photo_size *P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+        std::shared_ptr<void> callback_extra)
 {
     if (!P->loc.dc()) {
         TGL_WARNING("Bad video thumb\n");
@@ -601,14 +596,14 @@ void tgl_download_manager::download_photo_size (struct tgl_photo_size *P, void (
     }
 
     assert (P);
-    struct download *D = new download(P->size, P->loc);
+    std::shared_ptr<download> D = std::make_shared<download>(P->size, P->loc);
     load_next_part (D, (void*)callback, callback_extra);
 }
 
-void tgl_download_manager::download_file_location (struct tgl_file_location *P, void (*callback)(void *callback_extra, int success, const char *filename),
-        void *callback_extra)
+void tgl_download_manager::download_file_location (struct tgl_file_location file_location, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+        std::shared_ptr<void> callback_extra)
 {
-    if (!P->dc()) {
+    if (!file_location.dc()) {
         TGL_ERROR("Bad file location");
         if (callback) {
             callback (callback_extra, 0, 0);
@@ -616,12 +611,11 @@ void tgl_download_manager::download_file_location (struct tgl_file_location *P, 
         return;
     }
 
-    assert (P);
-    download *D = new download(0, *P);
+    std::shared_ptr<download> D = std::make_shared<download>(0, file_location);
     load_next_part (D, (void*)callback, callback_extra);
 }
 
-void tgl_download_manager::download_photo(struct tgl_photo *photo, void (*callback)(void *callback_extra, int success, const char *filename), void *callback_extra)
+void tgl_download_manager::download_photo(struct tgl_photo *photo, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
 {
     if (!photo->sizes_num) {
         TGL_ERROR("Bad photo (no photo sizes");
@@ -642,12 +636,12 @@ void tgl_download_manager::download_photo(struct tgl_photo *photo, void (*callba
     download_photo_size(&photo->sizes[maxi], callback, callback_extra);
 }
 
-void tgl_download_manager::download_document_thumb (struct tgl_document *video, void (*callback)(void *callback_extra, int success, const char *filename), void *callback_extra)
+void tgl_download_manager::download_document_thumb (struct tgl_document *video, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
 {
     download_photo_size(&video->thumb, callback, callback_extra);
 }
 
-void tgl_download_manager::_tgl_do_load_document (struct tgl_document *V, struct download *D, void (*callback)(void *callback_extra, int success, const char *filename), void *callback_extra)
+void tgl_download_manager::_tgl_do_load_document (struct tgl_document *V, std::shared_ptr<download> D, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
 {
     assert (V);
 
@@ -660,35 +654,35 @@ void tgl_download_manager::_tgl_do_load_document (struct tgl_document *V, struct
     load_next_part(D, (void*)callback, callback_extra);
 }
 
-void tgl_download_manager::download_document (struct tgl_document *V, void (*callback)(void *callback_extra, int success, const char *filename),
-        void *callback_extra)
+void tgl_download_manager::download_document (struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+        std::shared_ptr<void> callback_extra)
 {
 
-    download *D = new download(CODE_input_document_file_location, V);
+    std::shared_ptr<download> D = std::make_shared<download>(CODE_input_document_file_location, V);
 
     _tgl_do_load_document (V, D, callback, callback_extra);
 }
 
-void tgl_download_manager::download_video (struct tgl_document *V, void (*callback)(void *callback_extra, int success, const char *filename),
-        void *callback_extra)
+void tgl_download_manager::download_video (struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+        std::shared_ptr<void> callback_extra)
 {
-    struct download *D = new download(CODE_input_video_file_location, V);
+    std::shared_ptr<download> D = std::make_shared<download>(CODE_input_video_file_location, V);
 
     _tgl_do_load_document (V, D, callback, callback_extra);
 }
 
-void tgl_download_manager::download_audio (struct tgl_document *V, void (*callback)(void *callback_extra, int success, const char *filename),
-        void *callback_extra)
+void tgl_download_manager::download_audio (struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+        std::shared_ptr<void> callback_extra)
 {
-    struct download *D = new download(CODE_input_audio_file_location, V);
+    std::shared_ptr<download> D = std::make_shared<download>(CODE_input_audio_file_location, V);
 
     _tgl_do_load_document (V, D, callback, callback_extra);
 }
 
-void tgl_download_manager::download_encr_document (struct tgl_encr_document *V, void (*callback)(void *callback_extra, int success, const char *filename), void *callback_extra)
+void tgl_download_manager::download_encr_document (struct tgl_encr_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
 {
     assert (V);
-    struct download *D = new download(V->size, V);
+    std::shared_ptr<download> D = std::make_shared<download>(V->size, V);
     D->key = V->key;
     D->iv = (unsigned char *)malloc (32);
     memcpy (D->iv, V->iv, 32);

@@ -21,6 +21,8 @@
 #define __TGL_LAYOUT_H__
 
 #include <vector>
+#include <array>
+#include <string>
 #include "types/tgl_file_location.h"
 #include "types/tgl_peer_id.h"
 
@@ -148,49 +150,46 @@ enum tgl_dc_state {
 
 #define MAX_DC_SESSIONS 3
 
+struct tgl_dc;
+
 struct tgl_session {
-  struct tgl_dc *dc;
-  long long session_id;
-  long long last_msg_id;
-  int seq_no;
-  int received_messages;
-  struct connection *c;
+  std::shared_ptr<tgl_dc> dc;
+  long long session_id = 0;
+  long long last_msg_id = 0;
+  int seq_no = 0;
+  int received_messages = 0;
+  struct connection *c = NULL;
   std::vector<long> ack_tree;
-  struct tgl_timer *ev;
+  struct tgl_timer *ev = NULL;
 };
 
 struct tgl_dc_option {
-  struct tgl_dc_option *next;
-  char *ip;
-  int port;
+    std::vector<std::pair<std::string, int>> option_list;
 };
 
 struct tgl_dc {
-  int id;
-  //int port;
-  int flags;
-  int rsa_key_idx;
-  enum tgl_dc_state state;
-  //char *ip;
-  //char *user;
-  struct tgl_session *sessions[MAX_DC_SESSIONS];
-  unsigned char auth_key[256];
-  unsigned char temp_auth_key[256];
-  unsigned char nonce[256];
-  unsigned char new_nonce[256];
-  unsigned char server_nonce[256];
-  long long auth_key_id;
-  long long temp_auth_key_id;
-  long long temp_auth_key_bind_query_id;
+    int id;
+    int flags = 0;
+    int rsa_key_idx = 0;
+    enum tgl_dc_state state = st_init;
+    std::array<std::shared_ptr<tgl_session> , MAX_DC_SESSIONS> sessions;
+    unsigned char auth_key[256];
+    unsigned char temp_auth_key[256];
+    unsigned char nonce[256];
+    unsigned char new_nonce[256];
+    unsigned char server_nonce[256];
+    long long auth_key_id = 0;
+    long long temp_auth_key_id = 0;
+    long long temp_auth_key_bind_query_id = 0;
 
-  long long server_salt;
-  struct tgl_timer *ev;
+    long long server_salt = 0;
+    struct tgl_timer *ev = NULL;
 
-  int server_time_delta;
-  double server_time_udelta;
+    int server_time_delta = 0;
+    double server_time_udelta = 0;
 
-  // ipv4, ipv6, ipv4_media, ipv6_media
-  struct tgl_dc_option *options[4];
+    // ipv4, ipv6, ipv4_media, ipv6_media
+    std::array<tgl_dc_option, 4> options;
 };
 
 enum tgl_message_entity_type {

@@ -41,7 +41,7 @@ static void fetch_dc_option (struct tl_ds_dc_option *DS_DO) {
   TGL_DEBUG("id = " << DS_LVAL (DS_DO->id) << ", ip = " << std::string(DS_DO->ip_address->data, DS_DO->ip_address->len) << ", port = " << DS_LVAL (DS_DO->port));
 
   //bl_do_dc_option (TLS, DS_LVAL (DS_DO->flags), DS_LVAL (DS_DO->id), NULL, 0, DS_STR (DS_DO->ip_address), DS_LVAL (DS_DO->port));
-  tgl_state::instance()->set_dc_option (0, DS_LVAL (DS_DO->id), DS_STR (DS_DO->ip_address), DS_LVAL (DS_DO->port));
+  tgl_state::instance()->set_dc_option (0, DS_LVAL (DS_DO->id), std::string(DS_DO->ip_address->data, DS_DO->ip_address->len), DS_LVAL (DS_DO->port));
 }
 
 int tgl_check_pts_diff (int pts, int pts_count) {
@@ -317,7 +317,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
         if (DS_U->photo) {
           tgl_file_location photo_big = tglf_fetch_file_location_new(DS_U->photo->photo_big);
           tgl_file_location photo_small = tglf_fetch_file_location_new(DS_U->photo->photo_small);
-          tgl_state::instance()->callback.profile_picture_update(tgl_get_peer_id(user_id), DS_LVAL(DS_U->photo->photo_id), &photo_small, &photo_big);
+          tgl_state::instance()->callback.profile_picture_update(DS_LVAL (DS_U->user_id), DS_LVAL(DS_U->photo->photo_id), photo_small, photo_big);
         }
       }
       break;

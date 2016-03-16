@@ -40,9 +40,12 @@ enum conn_state {
     conn_stopped
 };
 
+struct tgl_dc;
+struct tgl_session;
+
 struct connection
 {
-    char *ip;
+    std::string ip;
     int port;
     int flags;
     enum conn_state state;
@@ -57,8 +60,8 @@ struct connection
     int out_packet_num;
     int last_connect_time;
     struct mtproto_methods *methods;
-    struct tgl_session *session;
-    struct tgl_dc *dc;
+    std::shared_ptr<tgl_session> session;
+    std::shared_ptr<tgl_dc> dc;
     void *extra;
     double last_receive_time;
 
@@ -109,7 +112,7 @@ extern struct tgl_net_methods tgl_asio_net;
 //struct connection *create_connection (const char *host, int port, struct tgl_session *session, struct connection_methods *methods);
 //struct tgl_dc *tgln_alloc_dc (int id, char *ip, int port);
 //void tgln_dc_create_session (struct tgl_dc *DC, struct mtproto_methods *methods);
-struct connection *tgln_create_connection (struct tgl_state *TLS, const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods);
+struct connection *tgln_create_connection (struct tgl_state *TLS, const std::string &host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods);
 
 #define GET_DC(c) (c->session->dc)
 #endif
