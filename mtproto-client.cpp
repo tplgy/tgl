@@ -1202,36 +1202,28 @@ static int rpc_execute (struct connection *c, int op, int len) {
     }
     switch (o) {
     case st_reqpq_sent:
-        process_respq_answer(c, Response/* + 8*/, Response_len/* - 12*/, 0);
-        return 0;
+        return process_respq_answer(c, Response/* + 8*/, Response_len/* - 12*/, 0);
     case st_reqdh_sent:
-        process_dh_answer(c, Response/* + 8*/, Response_len/* - 12*/, 0);
-        return 0;
+        return process_dh_answer(c, Response/* + 8*/, Response_len/* - 12*/, 0);
     case st_client_dh_sent:
-        process_auth_complete(c, Response/* + 8*/, Response_len/* - 12*/, 0);
-        return 0;
+        return process_auth_complete(c, Response/* + 8*/, Response_len/* - 12*/, 0);
     case st_reqpq_sent_temp:
-        process_respq_answer(c, Response/* + 8*/, Response_len/* - 12*/, 1);
-        return 0;
+        return process_respq_answer(c, Response/* + 8*/, Response_len/* - 12*/, 1);
     case st_reqdh_sent_temp:
-        process_dh_answer(c, Response/* + 8*/, Response_len/* - 12*/, 1);
-        return 0;
+        return process_dh_answer(c, Response/* + 8*/, Response_len/* - 12*/, 1);
     case st_client_dh_sent_temp:
-        process_auth_complete(c, Response/* + 8*/, Response_len/* - 12*/, 1);
-        return 0;
+        return process_auth_complete(c, Response/* + 8*/, Response_len/* - 12*/, 1);
     case st_authorized:
         if (op < 0 && op >= -999) {
-            //TGL_WARNING("Server error %d\n", op);
+            TGL_WARNING("Server error " << op << "\n");
+            return -1;
         } else {
             return process_rpc_message(c, (struct encrypted_message *)(Response/* + 8*/), Response_len/* - 12*/);
         }
-        return 0;
     default:
-        TGL_ERROR("fatal: cannot receive answer in state " << DC->state);
-        exit (2);
+        TGL_ERROR("cannot receive answer in state " << DC->state);
+        return -2;
     }
-
-    return 0;
 }
 
 static void mpc_on_get_config(std::shared_ptr<void> extra, bool success) {

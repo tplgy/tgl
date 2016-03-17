@@ -311,6 +311,7 @@ static void try_rpc_read(struct connection *c) {
         int op;
         assert(tgln_read_in_lookup(c, &op, 4) == 4);
         if (c->methods->execute(c, op, len) < 0) {
+            c->fail();
             return;
         }
     }
