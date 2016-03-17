@@ -206,7 +206,7 @@ struct connection *tgln_create_connection(const std::string &host, int port, std
 
     if (!c->connect()) {
         TGL_ERROR("Can not connect to " << host << ":" << port << "\n");
-        c = nullptr;
+        delete c;
         return 0;
     }
 
