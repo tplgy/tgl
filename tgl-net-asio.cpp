@@ -37,6 +37,9 @@ void connection::ping_alarm(const boost::system::error_code& error) {
     if (error == boost::asio::error::operation_aborted) {
         return;
     }
+    if (state == conn_failed) {
+        return;
+    }
     //TGL_DEBUG("ping alarm\n");
     assert(state == conn_ready || state == conn_connecting);
     if (tglt_get_double_time() - last_receive_time > 6 * PING_TIMEOUT) {
