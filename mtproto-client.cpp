@@ -1413,11 +1413,7 @@ void tgl_dc_iterator_ex (void (*iterator)(struct tgl_dc *DC, void *extra), void 
 }
 
 void tglmp_regenerate_temp_auth_key(std::shared_ptr<tgl_dc> DC) {
-//  if (!tgl_state::instance()->pfs_enabled()) {
-//    return;
-//  }
-
-  DC->flags &= ~6;
+  DC->flags &= ~(TGLDCF_BOUND);
   DC->temp_auth_key_id = 0;
   memset (DC->temp_auth_key, 0, 256);
 
