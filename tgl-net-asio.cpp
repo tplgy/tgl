@@ -37,7 +37,7 @@ void connection::ping_alarm(const boost::system::error_code& error) {
     if (error == boost::asio::error::operation_aborted) {
         return;
     }
-    TGL_DEBUG("ping alarm\n");
+    //TGL_DEBUG("ping alarm\n");
     assert(state == conn_ready || state == conn_connecting);
     if (tglt_get_double_time() - last_receive_time > 6 * PING_TIMEOUT) {
         TGL_WARNING("fail connection: reason: ping timeout\n");
@@ -236,7 +236,7 @@ void connection::restart() {
 
     last_connect_time = time(0);
     if (!connect()) {
-        TGL_WARNING("Can not connect to " << ip << ":" << port << "\n");
+        TGL_WARNING("Can not reconnect to " << ip << ":" << port << "\n");
         start_fail_timer();
         return;
     }
@@ -317,19 +317,19 @@ static void try_rpc_read(struct connection *c) {
     }
 }
 
-static void incr_out_packet_num (struct connection *c) {
+static void incr_out_packet_num(struct connection *c) {
     c->out_packet_num++;
 }
 
-static std::shared_ptr<tgl_dc> get_dc (struct connection *c) {
+static std::shared_ptr<tgl_dc> get_dc(struct connection *c) {
     return c->dc;
 }
 
-static std::shared_ptr<tgl_session> get_session (struct connection *c) {
+static std::shared_ptr<tgl_session> get_session(struct connection *c) {
     return c->session;
 }
 
-static void tgln_free (struct connection *c) {
+static void tgln_free(struct connection *c) {
     delete c;
 }
 
@@ -439,8 +439,10 @@ void connection::flush() {
 
 void connection::handle_read(const boost::system::error_code& ec, size_t bytes_transferred) {
     if (ec) {
-        TGL_WARNING("read error: " << ec << " (" << ec.message() << ")" << std::endl);
-        fail();
+        if (ec != boost::asio::error::operation_aborted) {
+            TGL_WARNING("read error: " << ec << " (" << ec.message() << ")" << std::endl);
+            fail();
+        }
         return;
     }
 
