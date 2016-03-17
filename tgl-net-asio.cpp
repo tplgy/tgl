@@ -237,6 +237,7 @@ void connection::restart() {
         return;
     }
 
+    socket.close();
     last_connect_time = time(0);
     if (!connect()) {
         TGL_WARNING("Can not reconnect to " << ip << ":" << port << "\n");
@@ -403,7 +404,7 @@ bool connection::connect() {
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(ip), port);
     socket.connect(endpoint, ec);
     if (ec) {
-        TGL_WARNING("error connection to " << endpoint << ": " << ec.message() << "\n");
+        TGL_WARNING("error connecting to " << endpoint << ": " << ec.message() << "\n");
         return false;
     }
     TGL_NOTICE("connected to " << endpoint << "\n");
