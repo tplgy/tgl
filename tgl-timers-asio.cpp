@@ -27,50 +27,78 @@
 #include "auto.h"
 #include <stdlib.h>
 
-struct tgl_timer {
-  tgl_timer(boost::asio::io_service& io_service, void (*cb)(std::shared_ptr<void> ), std::shared_ptr<void> arg)
-    : timer(io_service)
-    , cb(cb)
-    , arg(arg)
-  {}
+class tgl_asio_timer : public std::enable_shared_from_this<tgl_asio_timer> {
+public:
+    tgl_asio_timer(boost::asio::io_service& io_service, void (*cb)(std::shared_ptr<void> ), std::shared_ptr<void> arg)
+        : std::enable_shared_from_this<tgl_asio_timer>()
+        , timer(io_service)
+        , cb(cb)
+        , arg(arg)
+    {}
 
-  ~tgl_timer() {
-  }
-
-  void handler(const boost::system::error_code& error) {
-    if (error != boost::asio::error::operation_aborted) {
-      cb(arg);
+    ~tgl_asio_timer() {
     }
-  }
 
-  boost::asio::deadline_timer timer;
-  void (*cb)(std::shared_ptr<void>);
-  std::shared_ptr<void> arg;
+    void schedule(double seconds_from_now) {
+        if (seconds_from_now < 0) { seconds_from_now = 0; }
+        double us = seconds_from_now - (int)seconds_from_now;
+        if (us < 0) { us = 0; }
+        timer.expires_from_now(boost::posix_time::seconds(int(seconds_from_now)) + boost::posix_time::microseconds(int(us * 1e6)));
+        timer.async_wait(boost::bind(&tgl_asio_timer::handler, shared_from_this(), boost::asio::placeholders::error));
+    }
+
+    void cancel() {
+        timer.cancel();
+    }
+
+private:
+    void handler(const boost::system::error_code& error) {
+        if (error != boost::asio::error::operation_aborted) {
+            cb(arg);
+        }
+    }
+
+    boost::asio::deadline_timer timer;
+    void (*cb)(std::shared_ptr<void>);
+    std::shared_ptr<void> arg;
+};
+
+struct tgl_timer {
+    tgl_timer(boost::asio::io_service& io_service, void (*cb)(std::shared_ptr<void>), std::shared_ptr<void> arg)
+        : timer(std::make_shared<tgl_asio_timer>(io_service, cb, arg))
+    {}
+
+    void schedule(double seconds_from_now) {
+        timer->schedule(seconds_from_now);
+    }
+
+    void cancel() {
+        timer->cancel();
+    }
+
+private:
+    std::shared_ptr<tgl_asio_timer> timer;
 };
 
 struct tgl_timer *tgl_timer_alloc(void (*cb)(std::shared_ptr<void> arg), std::shared_ptr<void> arg) {
-  return new tgl_timer(*tgl_state::instance()->io_service, cb, arg);
+    return new tgl_timer(*tgl_state::instance()->io_service, cb, arg);
 }
 
 void tgl_timer_insert(struct tgl_timer *t, double p) {
-  if (p < 0) { p = 0; }
-  double e = p - (int)p;
-  if (e < 0) { e = 0; }
-  t->timer.expires_from_now(boost::posix_time::seconds(int(p)) + boost::posix_time::microseconds(int(e * 1e6)));
-  t->timer.async_wait(boost::bind(&tgl_timer::handler, t, boost::asio::placeholders::error));
+    t->schedule(p);
 }
 
 void tgl_timer_delete(struct tgl_timer *t) {
-  t->timer.cancel();
+    t->cancel();
 }
 
 void tgl_timer_free(struct tgl_timer *t) {
-  delete t;
+    delete t;
 }
 
 struct tgl_timer_methods tgl_asio_timer = {
-  .alloc = tgl_timer_alloc,
-  .insert = tgl_timer_insert,
-  .remove = tgl_timer_delete,
-  .free = tgl_timer_free
+    .alloc = tgl_timer_alloc,
+    .insert = tgl_timer_insert,
+    .remove = tgl_timer_delete,
+    .free = tgl_timer_free
 };
