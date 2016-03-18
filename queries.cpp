@@ -272,6 +272,7 @@ void tglq_query_delete(long long id) {
 
     free (q->data);
     tgl_state::instance()->timer_methods->free (q->ev);
+    q->ev = nullptr;
     tglq_query_remove(q);
     tgl_state::instance()->active_queries --;
 }
@@ -284,6 +285,7 @@ void tglq_free_query (std::shared_ptr<query> q) {
     }
     free (q->data);
     tgl_state::instance()->timer_methods->free (q->ev);
+    q->ev = nullptr;
 }
 
 void tglq_query_free_all () {
@@ -416,6 +418,7 @@ int tglq_query_error (long long id) {
     if (res <= 0) {
       free (q->data);
       tgl_state::instance()->timer_methods->free (q->ev);
+      q->ev = nullptr;
     }
 
     if (res == -11) {
@@ -478,6 +481,7 @@ int tglq_query_result (long long id) {
     }
     free (q->data);
     tgl_state::instance()->timer_methods->free(q->ev);
+    q->ev = nullptr;
     tglq_query_remove(q);
 
   }
@@ -2579,6 +2583,7 @@ static void resend_query_cb(std::shared_ptr<void> _q, bool success) {
 
     free (q->data);
     tgl_state::instance()->timer_methods->free (q->ev);
+    q->ev = nullptr;
 }
 /* }}} */
 

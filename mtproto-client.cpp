@@ -1444,11 +1444,10 @@ void tglmp_regenerate_temp_auth_key(std::shared_ptr<tgl_dc> DC) {
 
 void tgls_free_session(std::shared_ptr<tgl_session> S) {
   S->ack_tree.clear();
-  if (S->ev) { tgl_state::instance()->timer_methods->free (S->ev); }
+  if (S->ev) { tgl_state::instance()->timer_methods->free (S->ev); S->ev = nullptr; }
   if (S->c) {
     tgl_state::instance()->net_methods->free (S->c);
   }
-  tfree (S);
 }
 
 void tgls_free_dc (std::shared_ptr<tgl_dc> DC) {
@@ -1457,7 +1456,7 @@ void tgls_free_dc (std::shared_ptr<tgl_dc> DC) {
   std::shared_ptr<tgl_session> S = DC->sessions[0];
   if (S) { tgls_free_session (S); }
 
-  if (DC->ev) { tgl_state::instance()->timer_methods->free (DC->ev); }
+  if (DC->ev) { tgl_state::instance()->timer_methods->free (DC->ev); DC->ev = nullptr; }
 }
 
 void tgls_free_pubkey () {
