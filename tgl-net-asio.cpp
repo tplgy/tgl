@@ -261,7 +261,10 @@ void connection::fail() {
     if (state == conn_ready || state == conn_connecting) {
         stop_ping_timer();
     }
-    socket.close();
+
+    if (socket.is_open()) {
+        socket.close();
+    }
 
     port = rotate_port(port);
     struct connection_buffer *b = out_head;
