@@ -4529,12 +4529,10 @@ void tgl_export_auth_callback (std::shared_ptr<void> arg, bool success) {
 
 void tgl_export_all_auth () {
     TGL_WARNING("exporting all auth\n");
-    int ok = 1;
     for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
         tgl_do_export_auth (i, tgl_export_auth_callback, tgl_state::instance()->DC_list[i]);
-        ok = 0;
     }
-    if (ok) {
+    if (tgl_state::instance()->DC_working && tgl_signed_dc(tgl_state::instance()->DC_working)) {
         if (tgl_state::instance()->callback.logged_in) {
             tgl_state::instance()->callback.logged_in ();
         }
