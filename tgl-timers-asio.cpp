@@ -34,6 +34,7 @@ public:
         , timer(io_service)
         , cb(cb)
         , arg(arg)
+        , cancelled(false)
     {}
 
     ~tgl_asio_timer() {
@@ -43,17 +44,19 @@ public:
         if (seconds_from_now < 0) { seconds_from_now = 0; }
         double us = seconds_from_now - (int)seconds_from_now;
         if (us < 0) { us = 0; }
+        cancelled = false;
         timer.expires_from_now(boost::posix_time::seconds(int(seconds_from_now)) + boost::posix_time::microseconds(int(us * 1e6)));
         timer.async_wait(boost::bind(&tgl_asio_timer::handler, shared_from_this(), boost::asio::placeholders::error));
     }
 
     void cancel() {
+        cancelled = true;
         timer.cancel();
     }
 
 private:
     void handler(const boost::system::error_code& error) {
-        if (error != boost::asio::error::operation_aborted) {
+        if (!cancelled && error != boost::asio::error::operation_aborted) {
             cb(arg);
         }
     }
@@ -61,6 +64,7 @@ private:
     boost::asio::deadline_timer timer;
     void (*cb)(std::shared_ptr<void>);
     std::shared_ptr<void> arg;
+    bool cancelled;
 };
 
 struct tgl_timer {
