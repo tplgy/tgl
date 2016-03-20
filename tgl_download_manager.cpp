@@ -48,6 +48,18 @@ tgl_download_manager::tgl_download_manager(std::string download_directory)
     };
 }
 
+bool tgl_download_manager::file_exists(const tgl_file_location &location)
+{
+    std::string path = get_file_path(location.access_hash());
+
+    return boost::filesystem::exists(path);
+}
+
+std::string tgl_download_manager::get_file_path(long long int secret)
+{
+    return download_directory() + "/download_" + std::to_string(secret);
+}
+
 int tgl_download_manager::download_error (std::shared_ptr<query> q, int error_code, const std::string &error)
 {
     TGL_ERROR("Download error for query " << q->msg_id << " " << error_code << " " << std::string(error));
@@ -540,7 +552,7 @@ void tgl_download_manager::begin_download(std::shared_ptr<download> new_download
 void tgl_download_manager::load_next_part (std::shared_ptr<download> D, void *callback, std::shared_ptr<void> callback_extra)
 {
     if (!D->offset) {
-        std::string path = download_directory() + "/download_" + std::to_string(D->location.access_hash());
+        std::string path = get_file_path(D->location.access_hash());
 
         if (!D->ext.empty()) {
             path += std::string(".") + D->ext;
@@ -606,7 +618,7 @@ void tgl_download_manager::download_file_location (struct tgl_file_location file
     if (!file_location.dc()) {
         TGL_ERROR("Bad file location");
         if (callback) {
-            callback (callback_extra, 0, 0);
+            callback (callback_extra, false, std::string());
         }
         return;
     }

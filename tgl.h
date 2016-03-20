@@ -109,8 +109,8 @@ struct tgl_update_callback {
                    const std::string &lastname, const std::string &username);
   void (*user_update)(int user_id, void *value, enum tgl_user_update_type update_type);
   void (*user_deleted)(int id);
-  void (*profile_picture_update)(int peer_id, long long int photo_id, const tgl_file_location &photo_small, const tgl_file_location &photo_big);
-  void (*chat_update)(int chat_id, int peers_num, int admin, struct tgl_photo *photo, int date, const std::string &title);
+  void (*avatar_update)(int peer_id, const tgl_file_location &photo_small, const tgl_file_location &photo_big);
+  void (*chat_update)(int chat_id, int peers_num, int admin, int date, const std::string &title);
   void (*chat_add_user)(int chat_id, int user, int inviter, int date);
   void (*chat_delete_user)(int chat_id, int user);
   void (*secret_chat_update)(struct tgl_secret_chat *C, unsigned flags);

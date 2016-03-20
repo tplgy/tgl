@@ -39,6 +39,10 @@ public:
     tgl_download_manager(std::string download_directory);
     std::string download_directory() { return m_download_directory; }
 
+    bool file_exists(const tgl_file_location &location);
+
+    std::string get_file_path(long long int secret);  // parameter is either secret or access hash depending on file type
+
     void download_encr_document(struct tgl_encr_document *V, void (*callback)(std::shared_ptr<void> callback_extra,
             bool success, const std::string &filename), std::shared_ptr<void> callback_extra);
     void download_audio(struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),

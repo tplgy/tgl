@@ -325,7 +325,7 @@ struct tgl_user *tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_UF) {
     if (DS_UF->user->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location_new(DS_UF->user->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location_new(DS_UF->user->photo->photo_small);
-        tgl_state::instance()->callback.profile_picture_update(user_id, DS_LVAL(DS_UF->user->photo->photo_id), photo_small, photo_big);
+        tgl_state::instance()->callback.avatar_update(user_id, photo_small, photo_big);
     }
 
   return U;
@@ -533,7 +533,8 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
   C->photo_big = tglf_fetch_file_location_new(DS_C->photo->photo_big);
   C->photo_small = tglf_fetch_file_location_new(DS_C->photo->photo_small);
 
-  tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_C->participants_count, -1, C->photo, time(0), std::string(DS_C->title->data, DS_C->title->len));
+  tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_C->participants_count, -1, time(0), std::string(DS_C->title->data, DS_C->title->len));
+  tgl_state::instance()->callback.avatar_update(tgl_get_peer_id (C->id), C->photo_big, C->photo_small);
 
   return C;
 }
@@ -611,7 +612,7 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
   }
 
   tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, *DS_CF->participants->admin_id,
-      C->photo, *DS_CF->chat_photo->date, std::string());
+      *DS_CF->chat_photo->date, std::string());
   //TODO update users
 
   return C;
