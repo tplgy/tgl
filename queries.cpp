@@ -999,14 +999,13 @@ static int msg_send_on_answer (std::shared_ptr<query> q, void *D) {
   tgl_message_id_t id;
   id.peer_type = TGL_PEER_RANDOM_ID;
   id.id = *(long long *)q->extra;
-  tfree (q->extra, 8);
 
 #if 0
   struct tl_ds_messages_sent_message *DS_MSM = (struct tl_ds_messages_sent_message *)D;
 
   std::shared_ptr<msg_callback_extra> old_msg_id = std::static_pointer_cast<msg_callback_extra>(q->extra);
 
-  if (tgl_state::instance()->callback.msg_sent) {
+  if (tgl_state::instance()->callback.msg_sent && old_msg_id) {
     tgl_state::instance()->callback.msg_sent(old_msg_id->old_msg_id, DS_LVAL(DS_MSM->id), old_msg_id->to_id);
   }
 
