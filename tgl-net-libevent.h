@@ -17,8 +17,8 @@
 
     Copyright Vitaly Valtman 2013-2015
 */
-#ifndef __NET_H__
-#define __NET_H__
+#ifndef __TGL_NET_LIBEVENT_H__
+#define __TGL_NET_LIBEVENT_H__
 
 #include <memory>
 

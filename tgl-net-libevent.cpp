@@ -41,7 +41,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "tgl-net-inner.h"
+#include "tgl-net-libevent.h"
 #include "tgl-net.h"
 #include "tgl.h"
 #include "tgl-log.h"
