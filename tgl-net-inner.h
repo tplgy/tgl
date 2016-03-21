@@ -20,6 +20,8 @@
 #ifndef __NET_H__
 #define __NET_H__
 
+#include <memory>
+
 struct connection_buffer {
   unsigned char *start;
   unsigned char *end;
@@ -54,8 +56,8 @@ struct connection {
   int last_connect_time;
   int in_fail_timer;
   struct mtproto_methods *methods;
-  struct tgl_session *session;
-  struct tgl_dc *dc;
+  std::shared_ptr<struct tgl_session> session;
+  std::shared_ptr<struct tgl_dc> dc;
   void *extra;
   struct event *ping_ev;
   struct event *fail_ev;
@@ -80,7 +82,6 @@ extern struct tgl_net_methods tgl_conn_methods;
 //struct connection *create_connection (const char *host, int port, struct tgl_session *session, struct connection_methods *methods);
 //struct tgl_dc *tgln_alloc_dc (int id, char *ip, int port);
 //void tgln_dc_create_session (struct tgl_dc *DC, struct mtproto_methods *methods);
-struct connection *tgln_create_connection (const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods);
 
 #define GET_DC(c) (c->session->dc)
 #endif

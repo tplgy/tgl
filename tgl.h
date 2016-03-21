@@ -24,6 +24,7 @@
 #include "crypto/bn.h"
 #include "tgl-layout.h"
 #include "tgl-log.h"
+#include <memory>
 #include <stdlib.h>
 #include <vector>
 

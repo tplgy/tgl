@@ -306,9 +306,9 @@ static int my_connect (struct connection *c, const char *host) {
   return fd;
 }
 
-struct connection *tgln_create_connection (const char *host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods) {
+static struct connection *tgln_create_connection (const std::string& host, int port, std::shared_ptr<struct tgl_session> session, std::shared_ptr<struct tgl_dc> dc, struct mtproto_methods *methods) {
   struct connection *c = (struct connection *) talloc0 (sizeof (struct connection));
-  c->ip = tstrdup (host);
+  c->ip = tstrdup (host.c_str());
   c->port = port;
   
   int fd = my_connect (c, c->ip);
@@ -521,11 +521,11 @@ static void incr_out_packet_num (struct connection *c) {
   c->out_packet_num ++;
 }
 
-static struct tgl_dc *get_dc (struct connection *c) {
+static std::shared_ptr<struct tgl_dc> get_dc (struct connection *c) {
   return c->dc;
 }
 
-static struct tgl_session *get_session (struct connection *c) {
+static std::shared_ptr<struct tgl_session> get_session (struct connection *c) {
   return c->session;
 }
 

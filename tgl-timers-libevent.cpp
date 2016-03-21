@@ -23,17 +23,22 @@
 #include "auto.h"
 #include <stdlib.h>
 
+struct tgl_timer_callback_libevent {
+    void (*cb)(std::shared_ptr<void> arg);
+    std::shared_ptr<void> arg;
+};
+
 static void timer_alarm (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
-  void **p = (void**)arg;
-  ((void (*)(void *))p[0]) (p[1]);
+  tgl_timer_callback_libevent* p = static_cast<tgl_timer_callback_libevent*>(arg);
+  p->cb(p->arg);
 }
 
-struct tgl_timer *tgl_timer_alloc (void (*cb)(void *arg), void *arg) {
-  void **p = (void**)malloc (sizeof (void *) * 2);
-  p[0] = (void*)cb;
-  p[1] = arg;
+struct tgl_timer *tgl_timer_alloc (void (*cb)(std::shared_ptr<void> arg), std::shared_ptr<void> arg) {
+  tgl_timer_callback_libevent* p = new tgl_timer_callback_libevent();
+  p->cb = cb;
+  p->arg = arg;
   return (struct tgl_timer *)evtimer_new ((struct event_base *)tgl_state::instance()->ev_base, timer_alarm, p);
 }
 
@@ -51,7 +56,7 @@ void tgl_timer_delete (struct tgl_timer *t) {
 
 void tgl_timer_free (struct tgl_timer *t) {
   void *arg = event_get_callback_arg ((struct event *)t);
-  free (arg);
+  delete static_cast<tgl_timer_callback_libevent*>(arg);
   event_free ((struct event *)t);
 }
 
