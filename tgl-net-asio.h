@@ -113,6 +113,7 @@ struct connection
     connection(boost::asio::io_service& io_service, const std::string& host, int port,
             std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc,
             struct mtproto_methods *methods);
+    ~connection();
 
     bool connect();
     void restart();

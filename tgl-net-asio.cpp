@@ -272,44 +272,73 @@ connection::connection(boost::asio::io_service& io_service, const std::string& h
 {
 }
 
+connection::~connection() {
+    asio = nullptr;
+}
+
 bool connection::connect() {
+    if (!asio) {
+        return false;
+    }
     return asio->connect();
 }
 
 void connection::restart() {
-    asio->restart();
+    if (asio) {
+        asio->restart();
+    }
 }
 
 void connection::fail() {
-    asio->fail();
+    if (asio) {
+        asio->fail();
+    }
 }
 
 int connection::read(void *buffer, int len) {
+    if (!asio) {
+        return -1;
+    }
     return asio->read(buffer, len);
 }
 
 int connection::write(const void *data, int len) {
+    if (!asio) {
+        return -1;
+    }
     return asio->write(data, len);
 }
 
 void connection::flush() {
-    asio->flush();
+    if (asio) {
+        asio->flush();
+    }
 }
 
 void connection::start_ping_timer()
 {
-    asio->start_ping_timer();
+    if (asio) {
+        asio->start_ping_timer();
+    }
 }
 
 void connection::incr_out_packet_num() {
-    asio->incr_out_packet_num();
+    if (asio) {
+        asio->incr_out_packet_num();
+    }
 }
 
 std::shared_ptr<tgl_dc> connection::dc() {
+    if (!asio) {
+        return nullptr;
+    }
     return asio->dc();
 }
 
 std::shared_ptr<tgl_session> connection::session() {
+    if (!asio) {
+        return nullptr;
+    }
     return asio->session();
 }
 
