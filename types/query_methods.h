@@ -1,6 +1,7 @@
 #ifndef QUERY_METHODS
 #define QUERY_METHODS
 #include "auto.h"
+#include <memory>
 #include <functional>
 struct query;
 struct query_methods {

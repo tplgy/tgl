@@ -206,7 +206,6 @@ struct tgl_state {
   void init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
   void login();
 
-<<<<<<< 205e5e07320c3877fbe5766ed835ca13a45be1b1
   void set_auth_key(int num, const char *buf);
   void set_our_id(int id);
   void set_dc_option (int flags, int id, std::string ip, int port);
@@ -228,7 +227,6 @@ struct tgl_state {
 #elif USING_ASIO
   void set_io_service (boost::asio::io_service* io_service);
 #endif
-<<<<<<< 205e5e07320c3877fbe5766ed835ca13a45be1b1
   void set_enable_ipv6 (bool val);
   std::string app_version() { return m_app_version; }
   std::string app_hash() { return m_app_hash; }

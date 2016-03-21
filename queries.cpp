@@ -1894,6 +1894,7 @@ static int send_msgs_on_error (std::shared_ptr<query> q, int error_code, const s
 static struct query_methods send_msgs_methods = {
   .on_answer = send_msgs_on_answer,
   .on_error = send_msgs_on_error,
+  .on_timeout = NULL,
   .type = TYPE_TO_PARAM(updates),
   .name = "forward messages"
 };

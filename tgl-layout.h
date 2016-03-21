@@ -20,9 +20,10 @@
 #ifndef __TGL_LAYOUT_H__
 #define __TGL_LAYOUT_H__
 
-#include <vector>
 #include <array>
+#include <memory>
 #include <string>
+#include <vector>
 #include "types/tgl_file_location.h"
 #include "types/tgl_peer_id.h"
 
@@ -482,7 +483,7 @@ typedef union tgl_peer {
     int last_read_out;
     long long photo_id;
     void *extra;
-  };
+  } s;
   struct tgl_user user;
   struct tgl_chat chat;
   struct tgl_channel channel;

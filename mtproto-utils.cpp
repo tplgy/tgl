@@ -1,6 +1,7 @@
 #include "config.h"
 #include "crypto/bn.h"
 #include "tl-parser/portable_endian.h"
+#include <string.h>
 #include "tgl.h"
 extern "C" {
 #include "tools.h"
