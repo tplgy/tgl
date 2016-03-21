@@ -1850,7 +1850,7 @@ static int send_msgs_on_answer (std::shared_ptr<query> q, void *D) {
     } else if (E->multi) {
         struct tgl_message **ML = 0;//(struct tgl_message **)malloc (sizeof (void *) * E->count);
         int count = E->count;
-        int i;
+        //int i;
 //        for (i = 0; i < count; i++) {
 //            int y = tgls_get_local_by_random (E->list[i]);
 //            ML[i] = tgl_message_get (y);
@@ -1879,7 +1879,6 @@ static int send_msgs_on_error (std::shared_ptr<query> q, int error_code, const s
             ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 0);
         }
     } else if (E->multi) {
-        int count = E->count;
         free (E->list);
         if (q->callback) {
             ((void (*)(std::shared_ptr<void>, int, int, struct tgl_message **))q->callback) (q->callback_extra, 0, 0, NULL);
@@ -4518,8 +4517,7 @@ void tgl_export_auth_callback (std::shared_ptr<void> arg, bool success) {
     }
     return;
   }
-  int i;
-  for (i = 0; i < tgl_state::instance()->DC_list.size(); i++) if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
+  for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
     return;
   }
   if (tgl_state::instance()->callback.logged_in) {
@@ -4532,9 +4530,8 @@ void tgl_export_auth_callback (std::shared_ptr<void> arg, bool success) {
 
 void tgl_export_all_auth () {
     TGL_WARNING("exporting all auth\n");
-    int i;
     int ok = 1;
-    for (i = 0; i < tgl_state::instance()->DC_list.size(); i++) if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
+    for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
         tgl_do_export_auth (i, tgl_export_auth_callback, tgl_state::instance()->DC_list[i]);
         ok = 0;
     }
@@ -4708,14 +4705,13 @@ void tgl_sign_in () {
 
 static void check_authorized (std::shared_ptr<void> arg) {
   TGL_UNUSED(arg);
-  int i;
   int ok = 1;
-  for (i = 0; i < tgl_state::instance()->DC_list.size(); i++) {
+  for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) {
     if (tgl_state::instance()->DC_list[i]) {
       tgl_dc_authorize (tgl_state::instance()->DC_list[i]);
     }
   }
-  for (i = 0; i < tgl_state::instance()->DC_list.size(); i++) {
+  for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) {
     if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i]) && !tgl_authorized_dc(tgl_state::instance()->DC_list[i])) {
       ok = 0;
       break;
@@ -4733,9 +4729,8 @@ static void check_authorized (std::shared_ptr<void> arg) {
 
 void tgl_state::login () {
     //TGL_DEBUG2("login\n");
-    int i;
     int ok = 1;
-    for (i = 0; i < DC_list.size(); i++) {
+    for (size_t i = 0; i < DC_list.size(); i++) {
         if (DC_list[i] && !tgl_signed_dc(DC_list[i]) && !tgl_authorized_dc(DC_list[i])) {
             ok = 0;
             break;

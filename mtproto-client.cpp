@@ -404,9 +404,8 @@ static int process_respq_answer (struct connection *c, char *packet, int len, in
 
   int i;
   for (i = 0; i < fingerprints_num; i++) {
-    int j;
     long long fprint = fetch_long ();
-    for (j = 0; j < tgl_state::instance()->rsa_key_loaded.size(); j++) {
+    for (size_t j = 0; j < tgl_state::instance()->rsa_key_loaded.size(); j++) {
       if (tgl_state::instance()->rsa_key_loaded[j]) {
         if (fprint == tgl_state::instance()->rsa_key_fingerprint[j]) {
           DC->rsa_key_idx = j;
@@ -1282,9 +1281,8 @@ static int rpc_close (struct connection *c) {
 int tglmp_on_start () {
   tgl_prng_seed (RANDSEED_PASSWORD_FILENAME, RANDSEED_PASSWORD_LENGTH);
 
-  int i;
   int ok = 0;
-  for (i = 0; i < tgl_state::instance()->rsa_key_list.size(); i++) {
+  for (size_t i = 0; i < tgl_state::instance()->rsa_key_list.size(); i++) {
     char *key = tgl_state::instance()->rsa_key_list[i];
     if (!key) {
       /* This key was provided using 'tgl_set_rsa_key_direct'. */
@@ -1460,8 +1458,7 @@ void tgls_free_dc (std::shared_ptr<tgl_dc> DC) {
 }
 
 void tgls_free_pubkey () {
-  int i;
-  for (i = 0; i < tgl_state::instance()->rsa_key_loaded.size(); i++) {
+  for (size_t i = 0; i < tgl_state::instance()->rsa_key_loaded.size(); i++) {
     if (tgl_state::instance()->rsa_key_loaded[i]) {
       TGLC_rsa_free ((TGLC_rsa *)tgl_state::instance()->rsa_key_loaded[i]);
       tgl_state::instance()->rsa_key_loaded[i] = NULL;

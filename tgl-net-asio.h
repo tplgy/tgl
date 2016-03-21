@@ -107,12 +107,4 @@ int tgln_read_in_lookup (struct connection *c, void *data, int len);
 
 extern struct tgl_net_methods tgl_asio_net;
 
-//void create_all_outbound_connections (void);
-
-//struct connection *create_connection (const char *host, int port, struct tgl_session *session, struct connection_methods *methods);
-//struct tgl_dc *tgln_alloc_dc (int id, char *ip, int port);
-//void tgln_dc_create_session (struct tgl_dc *DC, struct mtproto_methods *methods);
-struct connection *tgln_create_connection (struct tgl_state *TLS, const std::string &host, int port, struct tgl_session *session, struct tgl_dc *dc, struct mtproto_methods *methods);
-
-#define GET_DC(c) (c->session->dc)
 #endif

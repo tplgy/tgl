@@ -87,7 +87,11 @@ void tgl_state::set_our_id(int id)
 
 void tgl_state::set_dc_option(int flags, int id, std::string ip, int port)
 {
-    if (id >= DC_list.size()) {
+    if (id < 0) {
+        return;
+    }
+
+    if (static_cast<size_t>(id) >= DC_list.size()) {
         DC_list.resize(id+1, nullptr);
     }
     std::shared_ptr<tgl_dc> DC = DC_list[id];
