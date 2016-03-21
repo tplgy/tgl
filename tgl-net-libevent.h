@@ -66,12 +66,12 @@ struct connection {
   double last_receive_time;
 };
 
-//extern struct connection *Connections[];
+//extern std::shared_ptr<connection> Connections[];
 
-int tgln_write_out (struct connection *c, const void *data, int len);
-void tgln_flush_out (struct connection *c);
-int tgln_read_in (struct connection *c, void *data, int len);
-int tgln_read_in_lookup (struct connection *c, void *data, int len);
+int tgln_write_out (std::shared_ptr<connection> c, const void *data, int len);
+void tgln_flush_out (std::shared_ptr<connection> c);
+int tgln_read_in (std::shared_ptr<connection> c, void *data, int len);
+int tgln_read_in_lookup (std::shared_ptr<connection> c, void *data, int len);
 
 //void tgln_insert_msg_id (struct tgl_session *S, long long id);
 
@@ -79,7 +79,7 @@ extern struct tgl_net_methods tgl_conn_methods;
 
 //void create_all_outbound_connections (void);
 
-//struct connection *create_connection (const char *host, int port, struct tgl_session *session, struct connection_methods *methods);
+//std::shared_ptr<connection> create_connection (const char *host, int port, struct tgl_session *session, struct connection_methods *methods);
 //struct tgl_dc *tgln_alloc_dc (int id, char *ip, int port);
 //void tgln_dc_create_session (struct tgl_dc *DC, struct mtproto_methods *methods);
 

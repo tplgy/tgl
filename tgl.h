@@ -126,21 +126,21 @@ struct tgl_update_callback {
 };
 
 struct tgl_net_methods {
-  int (*write_out) (struct connection *c, const void *data, int len);
-  int (*read_in) (struct connection *c, void *data, int len);
-  void (*flush_out) (struct connection *c);
-  void (*incr_out_packet_num) (struct connection *c);
-  void (*free) (struct connection *c);
-  std::shared_ptr<tgl_dc> (*get_dc) (struct connection *c);
-  std::shared_ptr<tgl_session> (*get_session) (struct connection *c);
+  int (*write_out) (std::shared_ptr<connection> c, const void *data, int len);
+  int (*read_in) (std::shared_ptr<connection> c, void *data, int len);
+  void (*flush_out) (std::shared_ptr<connection> c);
+  void (*incr_out_packet_num) (std::shared_ptr<connection> c);
+  void (*free) (std::shared_ptr<connection> c);
+  std::shared_ptr<tgl_dc> (*get_dc) (std::shared_ptr<connection> c);
+  std::shared_ptr<tgl_session> (*get_session) (std::shared_ptr<connection> c);
 
-  struct connection *(*create_connection) (const std::string &host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods);
+  std::shared_ptr<connection> (*create_connection) (const std::string &host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods);
 };
 
 struct mtproto_methods {
-  int (*ready) (struct connection *c);
-  int (*close) (struct connection *c);
-  int (*execute) (struct connection *c, int op, int len);
+  int (*ready) (std::shared_ptr<connection> c);
+  int (*close) (std::shared_ptr<connection> c);
+  int (*execute) (std::shared_ptr<connection> c, int op, int len);
 };
 
 struct tgl_timer;

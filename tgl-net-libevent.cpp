@@ -61,15 +61,15 @@ extern "C" {
 
 //extern struct mtproto_methods auth_methods;
 
-static void fail_connection (struct connection *c);
+static void fail_connection (std::shared_ptr<connection> c);
 
 #define PING_TIMEOUT 10
 
-static void start_ping_timer (struct connection *c);
+static void start_ping_timer (std::shared_ptr<connection> c);
 static void ping_alarm (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
-  struct connection *c = (struct connection *)arg;
+  std::shared_ptr<connection> c = std::shared_ptr<connection>((struct connection *)arg);
   TGL_DEBUG2("ping alarm");
   assert (c->state == conn_ready || c->state == conn_connecting);
   if (tglt_get_double_time () - c->last_receive_time > 6 * PING_TIMEOUT) {
@@ -84,26 +84,26 @@ static void ping_alarm (evutil_socket_t fd, short what, void *arg) {
   }
 }
 
-static void stop_ping_timer (struct connection *c) {
+static void stop_ping_timer (std::shared_ptr<connection> c) {
   event_del (c->ping_ev);
 }
 
-static void start_ping_timer (struct connection *c) {
+static void start_ping_timer (std::shared_ptr<connection> c) {
   static struct timeval ptimeout = { PING_TIMEOUT, 0};
   event_add (c->ping_ev, &ptimeout);
 }
 
-static void restart_connection (struct connection *c);
+static void restart_connection (std::shared_ptr<connection> c);
 
 static void fail_alarm (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
-  struct connection *c = (struct connection *)arg;
+  std::shared_ptr<connection> c = std::shared_ptr<connection>((struct connection *)arg);
   c->in_fail_timer = 0;
   restart_connection (c);
 }
 
-static void start_fail_timer (struct connection *c) {
+static void start_fail_timer (std::shared_ptr<connection> c) {
   if (c->in_fail_timer) { return; }
   c->in_fail_timer = 1;  
 
@@ -124,7 +124,7 @@ static void delete_connection_buffer (struct connection_buffer *b) {
   tfree (b);
 }
 
-int tgln_write_out (struct connection *c, const void *_data, int len) {
+int tgln_write_out (std::shared_ptr<connection> c, const void *_data, int len) {
   TGL_DEBUG("write_out: " << len << " bytes");
   const unsigned char *data = (const unsigned char *)_data;
   if (!len) { return 0; }
@@ -160,7 +160,7 @@ int tgln_write_out (struct connection *c, const void *_data, int len) {
   return x;
 }
 
-int tgln_read_in (struct connection *c, void *_data, int len) {
+int tgln_read_in (std::shared_ptr<connection> c, void *_data, int len) {
   unsigned char *data = (unsigned char *)_data;
   if (!len) { return 0; }
   assert (len > 0);
@@ -192,7 +192,7 @@ int tgln_read_in (struct connection *c, void *_data, int len) {
   return x;
 }
 
-int tgln_read_in_lookup (struct connection *c, void *_data, int len) {
+int tgln_read_in_lookup (std::shared_ptr<connection> c, void *_data, int len) {
   unsigned char *data = (unsigned char *)_data;
   if (!len || !c->in_bytes) { return 0; }
   assert (len > 0);
@@ -217,11 +217,11 @@ int tgln_read_in_lookup (struct connection *c, void *_data, int len) {
   return x;
 }
 
-void tgln_flush_out (struct connection *c) {
+void tgln_flush_out (std::shared_ptr<connection> c) {
     TGL_UNUSED(c);
 }
 
-static void rotate_port (struct connection *c) {
+static void rotate_port (std::shared_ptr<connection> c) {
   switch (c->port) {
   case 443:
     c->port = 80;
@@ -235,20 +235,20 @@ static void rotate_port (struct connection *c) {
   }
 }
 
-static void try_read (struct connection *c);
-static void try_write (struct connection *c);
+static void try_read (std::shared_ptr<connection> c);
+static void try_write (std::shared_ptr<connection> c);
 
 static void conn_try_read (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
-  struct connection *c = (struct connection *)arg;
+  std::shared_ptr<connection> c = std::shared_ptr<connection>((struct connection *)arg);
   TGL_DEBUG2("Try read. Fd = " <<c->fd);
   try_read (c);
 }
 static void conn_try_write (evutil_socket_t fd, short what, void *arg) {
   TGL_UNUSED(fd);
   TGL_UNUSED(what);
-  struct connection *c = (struct connection *)arg;
+  std::shared_ptr<connection> c = std::shared_ptr<connection>((struct connection *)arg);
   if (c->state == conn_connecting) {
     c->state = conn_ready;
     c->methods->ready(c);
@@ -259,7 +259,7 @@ static void conn_try_write (evutil_socket_t fd, short what, void *arg) {
   }
 }
   
-static int my_connect (struct connection *c, const char *host) {
+static int my_connect (std::shared_ptr<connection> c, const char *host) {
   bool v6 = tgl_state::instance()->ipv6_enabled();
   int fd = socket (v6 ? AF_INET6 : AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
@@ -306,15 +306,15 @@ static int my_connect (struct connection *c, const char *host) {
   return fd;
 }
 
-static struct connection *tgln_create_connection (const std::string& host, int port, std::shared_ptr<struct tgl_session> session, std::shared_ptr<struct tgl_dc> dc, struct mtproto_methods *methods) {
-  struct connection *c = (struct connection *) talloc0 (sizeof (struct connection));
+static std::shared_ptr<connection> tgln_create_connection (const std::string& host, int port, std::shared_ptr<struct tgl_session> session, std::shared_ptr<struct tgl_dc> dc, struct mtproto_methods *methods) {
+  std::shared_ptr<connection> c = std::make_shared<struct connection>();
   c->ip = tstrdup (host.c_str());
   c->port = port;
   
   int fd = my_connect (c, c->ip);
   if (fd < 0) {
     TGL_ERROR("Can not connect to " << host << ":" << port << " " << strerror(errno));
-    tfree (c);
+    c = nullptr;
     return 0;
   }
 
@@ -323,12 +323,12 @@ static struct connection *tgln_create_connection (const std::string& host, int p
   c->last_receive_time = tglt_get_double_time ();
   c->flags = 0;
  
-  c->ping_ev = evtimer_new (tgl_state::instance()->ev_base, ping_alarm, c);
-  c->fail_ev = evtimer_new (tgl_state::instance()->ev_base, fail_alarm, c);
-  c->write_ev = event_new (tgl_state::instance()->ev_base, c->fd, EV_WRITE, conn_try_write, c);
+  c->ping_ev = evtimer_new (tgl_state::instance()->ev_base, ping_alarm, c.get());
+  c->fail_ev = evtimer_new (tgl_state::instance()->ev_base, fail_alarm, c.get());
+  c->write_ev = event_new (tgl_state::instance()->ev_base, c->fd, EV_WRITE, conn_try_write, c.get());
 
   struct timeval tv = {5, 0};
-  c->read_ev = event_new (tgl_state::instance()->ev_base, c->fd, EV_READ | EV_PERSIST, conn_try_read, c);
+  c->read_ev = event_new (tgl_state::instance()->ev_base, c->fd, EV_READ | EV_PERSIST, conn_try_read, c.get());
   event_add (c->read_ev, &tv);
 
   start_ping_timer (c);
@@ -344,7 +344,7 @@ static struct connection *tgln_create_connection (const std::string& host, int p
   return c;
 }
 
-static void restart_connection (struct connection *c) {
+static void restart_connection (std::shared_ptr<connection> c) {
   if (c->last_connect_time == time (0)) {
     start_fail_timer (c);
     return;
@@ -367,10 +367,10 @@ static void restart_connection (struct connection *c) {
   c->last_receive_time = tglt_get_double_time ();
   start_ping_timer (c);
   
-  c->write_ev = event_new ((struct event_base *)tgl_state::instance()->ev_base, c->fd, EV_WRITE, conn_try_write, c);
+  c->write_ev = event_new ((struct event_base *)tgl_state::instance()->ev_base, c->fd, EV_WRITE, conn_try_write, c.get());
 
   struct timeval tv = {5, 0};
-  c->read_ev = event_new ((struct event_base *)tgl_state::instance()->ev_base, c->fd, EV_READ | EV_PERSIST, conn_try_read, c);
+  c->read_ev = event_new ((struct event_base *)tgl_state::instance()->ev_base, c->fd, EV_READ | EV_PERSIST, conn_try_read, c.get());
   event_add (c->read_ev, &tv);
   
   char byte = 0xef;
@@ -378,7 +378,7 @@ static void restart_connection (struct connection *c) {
   tgln_flush_out (c);
 }
 
-static void fail_connection (struct connection *c) {
+static void fail_connection (std::shared_ptr<connection> c) {
   if (c->state == conn_ready || c->state == conn_connecting) {
     stop_ping_timer (c);
   }
@@ -407,7 +407,7 @@ static void fail_connection (struct connection *c) {
 }
 
 //extern FILE *log_net_f;
-static void try_write (struct connection *c) {
+static void try_write (std::shared_ptr<connection> c) {
   int x = 0;
   while (c->out_head) {
     int r = write (c->fd, c->out_head->rptr, c->out_head->wptr - c->out_head->rptr);
@@ -437,7 +437,7 @@ static void try_write (struct connection *c) {
   c->out_bytes -= x;
 }
 
-static void try_rpc_read (struct connection *c) {
+static void try_rpc_read (std::shared_ptr<connection> c) {
   assert (c->in_head);
 
   while (1) {
@@ -474,7 +474,7 @@ static void try_rpc_read (struct connection *c) {
   }
 }
 
-static void try_read (struct connection *c) {
+static void try_read (std::shared_ptr<connection> c) {
   TGL_DEBUG("try read: fd = " << c->fd);
   if (!c->in_tail) {
     c->in_head = c->in_tail = new_connection_buffer (1 << 20);
@@ -517,19 +517,19 @@ static void try_read (struct connection *c) {
   }
 }
 
-static void incr_out_packet_num (struct connection *c) {
+static void incr_out_packet_num (std::shared_ptr<connection> c) {
   c->out_packet_num ++;
 }
 
-static std::shared_ptr<struct tgl_dc> get_dc (struct connection *c) {
+static std::shared_ptr<struct tgl_dc> get_dc (std::shared_ptr<connection> c) {
   return c->dc;
 }
 
-static std::shared_ptr<struct tgl_session> get_session (struct connection *c) {
+static std::shared_ptr<struct tgl_session> get_session (std::shared_ptr<connection> c) {
   return c->session;
 }
 
-static void tgln_free (struct connection *c) {
+static void tgln_free (std::shared_ptr<connection> c) {
   if (c->ip) { tfree_str (c->ip); }
   if (c->ping_ev) { event_free (c->ping_ev); }
   if (c->fail_ev) { event_free (c->fail_ev); }
@@ -550,7 +550,6 @@ static void tgln_free (struct connection *c) {
   }
 
   if (c->fd >= 0) { close (c->fd); }
-  tfree (c);
 }
 
 struct tgl_net_methods tgl_conn_methods = {

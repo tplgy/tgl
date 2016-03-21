@@ -47,7 +47,7 @@ void asio_connection::ping_alarm(const boost::system::error_code& error) {
         state = conn_failed;
         fail();
     } else if (tglt_get_double_time() - last_receive_time > 3 * PING_TIMEOUT && state == conn_ready) {
-        tgl_do_send_ping(c);
+        tgl_do_send_ping(c.lock());
         start_ping_timer();
     } else {
         start_ping_timer();
@@ -92,11 +92,11 @@ static void delete_connection_buffer(struct connection_buffer *b) {
     tfree(b);
 }
 
-int tgln_write_out(struct connection *c, const void *data, int len) {
+int tgln_write_out(std::shared_ptr<connection> c, const void *data, int len) {
     return c->write(data, len);
 }
 
-int tgln_read_in(struct connection *c, void *buffer, int len) {
+int tgln_read_in(std::shared_ptr<connection> c, void *buffer, int len) {
     return c->read(buffer, len);
 }
 
@@ -125,7 +125,7 @@ int asio_connection::read_in_lookup(void *_data, int len) {
     return x;
 }
 
-void tgln_flush_out(struct connection *c) {
+void tgln_flush_out(std::shared_ptr<connection> c) {
     c->flush();
 }
 
@@ -141,12 +141,12 @@ static int rotate_port(int port) {
     return -1;
 }
 
-struct connection *tgln_create_connection(const std::string &host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods) {
-    struct connection* c = new connection(*tgl_state::instance()->io_service, host, port, session, dc, methods);
+std::shared_ptr<connection> tgln_create_connection(const std::string &host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods) {
+    std::shared_ptr<connection> c = std::make_shared<connection>(*tgl_state::instance()->io_service, host, port, session, dc, methods);
 
     if (!c->connect()) {
         TGL_ERROR("Can not connect to " << host << ":" << port << "\n");
-        delete c;
+        c = nullptr;
         return 0;
     }
 
@@ -179,9 +179,11 @@ void asio_connection::restart() {
     last_receive_time = tglt_get_double_time();
     start_ping_timer();
 
-    char byte = 0xef; // use abridged protocol
-    assert(tgln_write_out(c, &byte, 1) == 1);
-    tgln_flush_out(c);
+    if (std::shared_ptr<connection> conn = c.lock()) {
+        char byte = 0xef; // use abridged protocol
+        assert(tgln_write_out(conn, &byte, 1) == 1);
+        tgln_flush_out(conn);
+    }
 }
 
 void asio_connection::fail() {
@@ -216,6 +218,11 @@ void asio_connection::fail() {
 void asio_connection::try_rpc_read() {
     assert(in_head);
 
+    std::shared_ptr<connection> conn = c.lock();
+    if (!conn) {
+        return;
+    }
+
     while (1) {
         if (in_bytes < 1) { return; }
         unsigned len = 0;
@@ -232,53 +239,60 @@ void asio_connection::try_rpc_read() {
         }
 
         if (len >= 1 && len <= 0x7e) {
-            assert(tgln_read_in(c, &t, 1) == 1);
+            assert(tgln_read_in(conn, &t, 1) == 1);
             assert(t == len);
             assert(len >= 1);
         } else {
             assert(len == 0x7f);
-            assert(tgln_read_in(c, &len, 4) == 4);
+            assert(tgln_read_in(conn, &len, 4) == 4);
             len = (len >> 8);
             assert(len >= 1);
         }
         len *= 4;
         int op;
         assert(read_in_lookup(&op, 4) == 4);
-        if (methods->execute(c, op, len) < 0) {
+        if (methods->execute(conn, op, len) < 0) {
             fail();
             return;
         }
     }
 }
 
-static void incr_out_packet_num(struct connection *c) {
+static void incr_out_packet_num(std::shared_ptr<connection> c) {
     c->incr_out_packet_num();
 }
 
-static std::shared_ptr<tgl_dc> get_dc(struct connection *c) {
+static std::shared_ptr<tgl_dc> get_dc(std::shared_ptr<connection> c) {
     return c->dc();
 }
 
-static std::shared_ptr<tgl_session> get_session(struct connection *c) {
+static std::shared_ptr<tgl_session> get_session(std::shared_ptr<connection> c) {
     return c->session();
 }
 
-static void tgln_free(struct connection *c) {
-    delete c;
+static void tgln_free(std::shared_ptr<connection> c) {
+    c->free();
 }
 
 connection::connection(boost::asio::io_service& io_service, const std::string& host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods)
-    : asio(std::make_shared<asio_connection>(this, io_service, host, port, session, dc, methods))
+    : std::enable_shared_from_this<struct connection>()
+    , asio(nullptr)
+    , io_service(io_service)
+    , host(host)
+    , port(port)
+    , _session(session)
+    , _dc(dc)
+    , methods(methods)
 {
 }
 
-connection::~connection() {
+void connection::free() {
     asio = nullptr;
 }
 
 bool connection::connect() {
     if (!asio) {
-        return false;
+        asio = std::make_shared<asio_connection>(shared_from_this(), io_service, host, port, _session, _dc, methods);
     }
     return asio->connect();
 }
@@ -347,7 +361,7 @@ std::shared_ptr<asio_connection> connection::impl()
     return asio;
 }
 
-asio_connection::asio_connection(struct connection *conn, boost::asio::io_service& io_service, const std::string& host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods)
+asio_connection::asio_connection(std::shared_ptr<connection> conn, boost::asio::io_service& io_service, const std::string& host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods)
     : c(conn)
     , ip(host)
     , port(port)
@@ -505,7 +519,7 @@ int asio_connection::write(const void *_data, int len) {
 void asio_connection::start_write() {
     if (state == conn_connecting) {
         state = conn_ready;
-        methods->ready(c);
+        methods->ready(c.lock());
     }
 
     if (!write_pending && bytes_to_write > 0) {

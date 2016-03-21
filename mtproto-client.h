@@ -34,7 +34,7 @@ struct tgl_dc;
 
 struct connection;
 
-long long tglmp_encrypt_send_message (struct connection *c, int *msg, int msg_ints, int flags);
+long long tglmp_encrypt_send_message(std::shared_ptr<connection> c, int *msg, int msg_ints, int flags);
 void tglmp_dc_create_session(std::shared_ptr<tgl_dc> DC);
 //int tglmp_check_g (unsigned char p[256], BIGNUM *g);
 //int tglmp_check_DH_params (BIGNUM *p, int g);
@@ -45,6 +45,6 @@ void tgln_insert_msg_id(std::shared_ptr<tgl_session> S, long long id);
 int tglmp_on_start ();
 void tgl_dc_authorize(std::shared_ptr<tgl_dc>DC);
 void tgls_free_dc(std::shared_ptr<tgl_dc> DC);
-void tgls_free_pubkey ();
-void tgl_do_send_ping (struct connection *c);
+void tgls_free_pubkey();
+void tgl_do_send_ping(std::shared_ptr<connection> c);
 #endif

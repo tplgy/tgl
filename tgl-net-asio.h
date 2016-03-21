@@ -47,7 +47,7 @@ struct connection;
 class asio_connection : public std::enable_shared_from_this<asio_connection>
 {
 public:
-    asio_connection(connection *c, boost::asio::io_service& io_service, const std::string& host, int port,
+    asio_connection(std::shared_ptr<connection> c, boost::asio::io_service& io_service, const std::string& host, int port,
             std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods);
     ~asio_connection();
 
@@ -81,7 +81,7 @@ private:
     int read_in_lookup(void *data, int len);
     void try_rpc_read();
 
-    connection *c;
+    std::weak_ptr<connection> c;
 
     std::string ip;
     int port;
@@ -108,12 +108,13 @@ private:
     bool write_pending;
 };
 
-struct connection
+struct connection : public std::enable_shared_from_this<struct connection>
 {
     connection(boost::asio::io_service& io_service, const std::string& host, int port,
             std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc,
             struct mtproto_methods *methods);
-    ~connection();
+
+    void free();
 
     bool connect();
     void restart();
@@ -134,12 +135,19 @@ struct connection
 
 private:
     std::shared_ptr<asio_connection> asio;
+
+    boost::asio::io_service& io_service;
+    const std::string& host;
+    int port;
+    std::shared_ptr<tgl_session> _session;
+    std::shared_ptr<tgl_dc> _dc;
+    struct mtproto_methods *methods;
 };
 
-int tgln_write_out(struct connection *c, const void *data, int len);
-void tgln_flush_out(struct connection *c);
-int tgln_read_in(struct connection *c, void *data, int len);
-int tgln_read_in_lookup(struct connection *c, void *data, int len);
+int tgln_write_out(std::shared_ptr<connection> c, const void *data, int len);
+void tgln_flush_out(std::shared_ptr<connection> c);
+int tgln_read_in(std::shared_ptr<connection> c, void *data, int len);
+int tgln_read_in_lookup(std::shared_ptr<connection> c, void *data, int len);
 
 //void tgln_insert_msg_id (struct tgl_session *S, long long id);
 
