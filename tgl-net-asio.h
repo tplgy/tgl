@@ -42,14 +42,14 @@ enum conn_state {
 
 struct tgl_dc;
 struct tgl_session;
-struct connection;
 
-class asio_connection : public std::enable_shared_from_this<asio_connection>
+struct connection : public std::enable_shared_from_this<connection>
 {
 public:
-    asio_connection(std::shared_ptr<connection> c, boost::asio::io_service& io_service, const std::string& host, int port,
+    connection(boost::asio::io_service& io_service, const std::string& host, int port,
             std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods);
-    ~asio_connection();
+
+    void destroy();
 
     bool connect();
     void restart();
@@ -81,7 +81,7 @@ private:
     int read_in_lookup(void *data, int len);
     void try_rpc_read();
 
-    std::weak_ptr<connection> c;
+    bool destroyed;
 
     std::string ip;
     int port;
@@ -106,42 +106,6 @@ private:
 
     bool in_fail_timer;
     bool write_pending;
-};
-
-struct connection : public std::enable_shared_from_this<struct connection>
-{
-    connection(boost::asio::io_service& io_service, const std::string& host, int port,
-            std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc,
-            struct mtproto_methods *methods);
-
-    void free();
-
-    bool connect();
-    void restart();
-    void fail();
-
-    int read(void *buffer, int len);
-    int write(const void *data, int len);
-    void flush();
-
-    void start_ping_timer();
-
-    void incr_out_packet_num();
-
-    std::shared_ptr<tgl_dc> dc();
-    std::shared_ptr<tgl_session> session();
-
-    std::shared_ptr<asio_connection> impl();
-
-private:
-    std::shared_ptr<asio_connection> asio;
-
-    boost::asio::io_service& io_service;
-    const std::string& host;
-    int port;
-    std::shared_ptr<tgl_session> _session;
-    std::shared_ptr<tgl_dc> _dc;
-    struct mtproto_methods *methods;
 };
 
 int tgln_write_out(std::shared_ptr<connection> c, const void *data, int len);
