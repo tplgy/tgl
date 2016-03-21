@@ -47,7 +47,7 @@ void asio_connection::ping_alarm(const boost::system::error_code& error) {
         state = conn_failed;
         fail();
     } else if (tglt_get_double_time() - last_receive_time > 3 * PING_TIMEOUT && state == conn_ready) {
-        tgl_do_send_ping(connection);
+        tgl_do_send_ping(c);
         start_ping_timer();
     } else {
         start_ping_timer();
@@ -180,8 +180,8 @@ void asio_connection::restart() {
     start_ping_timer();
 
     char byte = 0xef; // use abridged protocol
-    assert(tgln_write_out(connection, &byte, 1) == 1);
-    tgln_flush_out(connection);
+    assert(tgln_write_out(c, &byte, 1) == 1);
+    tgln_flush_out(c);
 }
 
 void asio_connection::fail() {
@@ -232,19 +232,19 @@ void asio_connection::try_rpc_read() {
         }
 
         if (len >= 1 && len <= 0x7e) {
-            assert(tgln_read_in(connection, &t, 1) == 1);
+            assert(tgln_read_in(c, &t, 1) == 1);
             assert(t == len);
             assert(len >= 1);
         } else {
             assert(len == 0x7f);
-            assert(tgln_read_in(connection, &len, 4) == 4);
+            assert(tgln_read_in(c, &len, 4) == 4);
             len = (len >> 8);
             assert(len >= 1);
         }
         len *= 4;
         int op;
         assert(read_in_lookup(&op, 4) == 4);
-        if (methods->execute(connection, op, len) < 0) {
+        if (methods->execute(c, op, len) < 0) {
             fail();
             return;
         }
@@ -318,8 +318,8 @@ std::shared_ptr<asio_connection> connection::impl()
     return asio;
 }
 
-asio_connection::asio_connection(struct connection *c, boost::asio::io_service& io_service, const std::string& host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods)
-    : connection(c)
+asio_connection::asio_connection(struct connection *conn, boost::asio::io_service& io_service, const std::string& host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods)
+    : c(conn)
     , ip(host)
     , port(port)
     , state(conn_none)
@@ -476,7 +476,7 @@ int asio_connection::write(const void *_data, int len) {
 void asio_connection::start_write() {
     if (state == conn_connecting) {
         state = conn_ready;
-        methods->ready(connection);
+        methods->ready(c);
     }
 
     if (!write_pending && bytes_to_write > 0) {

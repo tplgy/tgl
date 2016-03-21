@@ -47,7 +47,7 @@ struct connection;
 class asio_connection : public std::enable_shared_from_this<asio_connection>
 {
 public:
-    asio_connection(connection *connection, boost::asio::io_service& io_service, const std::string& host, int port,
+    asio_connection(connection *c, boost::asio::io_service& io_service, const std::string& host, int port,
             std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods);
     ~asio_connection();
 
@@ -81,7 +81,7 @@ private:
     int read_in_lookup(void *data, int len);
     void try_rpc_read();
 
-    connection *connection;
+    connection *c;
 
     std::string ip;
     int port;
