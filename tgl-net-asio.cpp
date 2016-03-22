@@ -41,7 +41,7 @@ void connection::ping_alarm(const boost::system::error_code& error) {
         return;
     }
     //TGL_DEBUG("ping alarm\n");
-    assert(state == conn_ready || state == conn_connecting);
+    TGL_ASSERT(state == conn_ready || state == conn_connecting);
     if (tglt_get_double_time() - last_receive_time > 6 * PING_TIMEOUT) {
         TGL_WARNING("fail connection: reason: ping timeout\n");
         state = conn_failed;
@@ -153,7 +153,8 @@ std::shared_ptr<connection> tgln_create_connection(const std::string &host, int 
     c->start_ping_timer();
 
     char byte = 0xef; // use abridged protocol
-    assert(tgln_write_out(c, &byte, 1) == 1);
+    int result = tgln_write_out(c, &byte, 1);
+    TGL_ASSERT_UNUSED(result, result == 1);
     tgln_flush_out(c);
 
     return c;
@@ -183,7 +184,8 @@ void connection::restart() {
     start_ping_timer();
 
     char byte = 0xef; // use abridged protocol
-    assert(tgln_write_out(shared_from_this(), &byte, 1) == 1);
+    int result = tgln_write_out(shared_from_this(), &byte, 1);
+    TGL_ASSERT_UNUSED(result, result == 1);
     tgln_flush_out(shared_from_this());
 }
 
@@ -221,36 +223,41 @@ void connection::try_rpc_read() {
         return;
     }
 
-    assert(in_head);
+    TGL_ASSERT(in_head);
 
     while (1) {
         if (in_bytes < 1) { return; }
         unsigned len = 0;
         unsigned t = 0;
-        assert(read_in_lookup(&len, 1) == 1);
+        int result = read_in_lookup(&len, 1);
+        TGL_ASSERT_UNUSED(result, result == 1);
         if (len >= 1 && len <= 0x7e) {
             if (in_bytes < (int)(1 + 4 * len)) { return; }
         } else {
             if (in_bytes < 4) { return; }
-            assert(read_in_lookup(&len, 4) == 4);
+            result = read_in_lookup(&len, 4);
+            TGL_ASSERT_UNUSED(result, result == 4);
             len = (len >> 8);
             if (in_bytes < (int)(4 + 4 * len)) { return; }
             len = 0x7f;
         }
 
         if (len >= 1 && len <= 0x7e) {
-            assert(tgln_read_in(shared_from_this(), &t, 1) == 1);
-            assert(t == len);
-            assert(len >= 1);
+            result = tgln_read_in(shared_from_this(), &t, 1);
+            TGL_ASSERT_UNUSED(result, result == 1);
+            TGL_ASSERT(t == len);
+            TGL_ASSERT(len >= 1);
         } else {
-            assert(len == 0x7f);
-            assert(tgln_read_in(shared_from_this(), &len, 4) == 4);
+            TGL_ASSERT(len == 0x7f);
+            result = tgln_read_in(shared_from_this(), &len, 4);
+            TGL_ASSERT_UNUSED(result, result == 4);
             len = (len >> 8);
-            assert(len >= 1);
+            TGL_ASSERT(len >= 1);
         }
         len *= 4;
         int op;
-        assert(read_in_lookup(&op, 4) == 4);
+        result = read_in_lookup(&op, 4);
+        TGL_ASSERT_UNUSED(result, result == 4);
         if (methods->execute(shared_from_this(), op, len) < 0) {
             fail();
             return;
@@ -435,7 +442,7 @@ int connection::write(const void *_data, int len) {
             break;
         } else {
             int y = out_tail->end - out_tail->wptr;
-            assert(y < len);
+            TGL_ASSERT(y < len);
             memcpy(out_tail->wptr, data, y);
             x += y;
             len -= y;
@@ -465,7 +472,7 @@ void connection::start_write() {
 
     if (!write_pending && bytes_to_write > 0) {
         write_pending = true;
-        assert(out_head);
+        TGL_ASSERT(out_head);
         socket.async_send(boost::asio::buffer(out_head->rptr, out_head->wptr - out_head->rptr),
                 boost::bind(&connection::handle_write, shared_from_this(),
                     boost::asio::placeholders::error,

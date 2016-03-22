@@ -17,6 +17,7 @@
 
     Copyright Vitaly Valtman 2014-2015
 */
+#include <cassert>
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -54,3 +55,6 @@ void tgl_log(std::string str, int severity);
                     str_stream << __FILE__ <<  "(" << __LINE__ << "): " << X; \
                     tgl_log(str_stream.str(), E_ERROR);};
 
+
+#define TGL_ASSERT(x) assert(x)
+#define TGL_ASSERT_UNUSED(u, x) { static_cast<void>(u); assert(x); }
