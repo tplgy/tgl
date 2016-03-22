@@ -110,13 +110,6 @@ private:
     bool write_pending;
 };
 
-int tgln_write_out(std::shared_ptr<connection> c, const void *data, int len);
-void tgln_flush_out(std::shared_ptr<connection> c);
-int tgln_read_in(std::shared_ptr<connection> c, void *data, int len);
-int tgln_read_in_lookup(std::shared_ptr<connection> c, void *data, int len);
-
-//void tgln_insert_msg_id (struct tgl_session *S, long long id);
-
 extern struct tgl_net_methods tgl_asio_net;
 
 #endif
