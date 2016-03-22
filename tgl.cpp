@@ -37,12 +37,7 @@ extern "C" {
 #include <assert.h>
 
 tgl_state::tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
-       DC_working(NULL), temp_key_expire_time(0),net_methods(NULL),
-       #if USING_LIBEVENT
-                  ev_base(NULL),
-       #elif USING_ASIO
-                  io_service(NULL),
-       #endif
+       DC_working(NULL), temp_key_expire_time(0),net_methods(NULL), io_service(NULL),
        BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
        m_date(0), m_seq(0), m_test_mode(0), m_our_id(0), m_enable_pfs(false), m_ipv6_enabled(false)
 {
@@ -217,15 +212,9 @@ void tgl_state::set_timer_methods (struct tgl_timer_methods *methods) {
   this->timer_methods = methods;
 }
 
-#if USING_LIBEVENT
-void tgl_state::set_ev_base (void *ev_base) {
-  this->ev_base = (struct event_base *)ev_base;
-}
-#elif USING_ASIO
 void tgl_state::set_io_service (boost::asio::io_service *io_service) {
   this->io_service = io_service;
 }
-#endif
 
 void tgl_state::set_enable_ipv6 (bool val) {
   m_ipv6_enabled = val;

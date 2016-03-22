@@ -24,10 +24,6 @@
 
 #include "tgl.h"
 
-#if USING_LIBEVENT
-extern struct tgl_timer_methods tgl_libevent_timers;
-#elif USING_ASIO
 extern struct tgl_timer_methods tgl_asio_timer;
-#endif
 
 #endif

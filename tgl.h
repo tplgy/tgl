@@ -155,15 +155,12 @@ struct tgl_timer_methods {
 #define TGL_LOCK_DIFF 1
 #define TGL_LOCK_PASSWORD 2
 
-#if USING_LIBEVENT
-struct event_base;
-#elif USING_ASIO
 namespace boost {
 namespace asio {
   class io_service;
 }
 }
-#endif
+
 class tgl_download_manager;
 
 struct tgl_state {
@@ -184,11 +181,7 @@ struct tgl_state {
 
   struct tgl_update_callback callback;
   struct tgl_net_methods *net_methods;
-#if USING_LIBEVENT
-  struct event_base *ev_base;
-#elif USING_ASIO
   boost::asio::io_service *io_service;
-#endif
 
   std::vector<char*> rsa_key_list;
   std::vector<void*> rsa_key_loaded;
@@ -207,6 +200,7 @@ struct tgl_state {
   void init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
   void login();
 
+<<<<<<< ef1fca1d7d40082ef56c3e7896b203c35057a962
   void set_auth_key(int num, const char *buf);
   void set_our_id(int id);
   void set_dc_option (int flags, int id, std::string ip, int port);
@@ -223,11 +217,7 @@ struct tgl_state {
   void set_test_mode (bool);
   void set_net_methods (struct tgl_net_methods *methods);
   void set_timer_methods (struct tgl_timer_methods *methods);
-#if USING_LIBEVENT
-  void set_ev_base (void *ev_base);
-#elif USING_ASIO
   void set_io_service (boost::asio::io_service* io_service);
-#endif
   void set_enable_ipv6 (bool val);
   std::string app_version() { return m_app_version; }
   std::string app_hash() { return m_app_hash; }
