@@ -988,6 +988,7 @@ void tgl_do_update_contact_list () {
 
 struct msg_callback_extra
 {
+    msg_callback_extra(long long old_msg_id, int to_id) : old_msg_id(old_msg_id), to_id(to_id) {}
     long long old_msg_id;
     int to_id;
 };
@@ -1084,6 +1085,8 @@ void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<vo
   //*x = M->id;
   //*(int*)(x+1) = M->to_id.id;
 
+  std::shared_ptr<msg_callback_extra> extra = std::make_shared<msg_callback_extra>(M->id, M->to_id.id);
+
   if (M->reply_markup) {
     if (M->reply_markup->rows) {
       out_int (CODE_reply_keyboard_markup);
@@ -1100,7 +1103,11 @@ void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<vo
           out_int (CODE_keyboard_button);
           out_string (M->reply_markup->buttons[j + M->reply_markup->row_start[i]]);
         }
+      }
+    } else {
+      out_int (CODE_reply_keyboard_hide);
     }
+  }
 
   if (M->entities_num > 0) {
     out_int (CODE_vector);
@@ -1136,7 +1143,7 @@ void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<vo
     }
   }
 
-  tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_methods, nullptr, (void*)callback, callback_extra);
+  tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_methods, extra, (void*)callback, callback_extra);
 }
 
 void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
