@@ -81,6 +81,8 @@ private:
     int read_in_lookup(void *data, int len);
     void try_rpc_read();
 
+    void handle_connect(const boost::system::error_code&);
+
     bool destroyed;
 
     std::string ip;

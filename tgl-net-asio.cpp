@@ -180,8 +180,6 @@ void connection::restart() {
 
     TGL_DEBUG("restarting connection to " << ip << ":" << port << "\n");
 
-    //state = conn_connecting;
-    last_receive_time = tglt_get_double_time();
     start_ping_timer();
 
     char byte = 0xef; // use abridged protocol
@@ -351,16 +349,24 @@ bool connection::connect() {
     }
 
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(ip), port);
-    socket.connect(endpoint, ec);
-    if (ec) {
-        TGL_WARNING("error connecting to " << endpoint << ": " << ec.message() << "\n");
-        return false;
-    }
-    TGL_NOTICE("connected to " << endpoint << "\n");
+    socket.async_connect(endpoint, std::bind(&connection::handle_connect, shared_from_this(), std::placeholders::_1));
     state = conn_connecting;
     last_receive_time = tglt_get_double_time();
-    tgl_state::instance()->io_service->post(boost::bind(&connection::start_read, shared_from_this()));
     return true;
+}
+
+void connection::handle_connect(const boost::system::error_code& ec)
+{
+    if (ec) {
+        TGL_WARNING("error connecting to " << ip << ":" << port << ": " << ec.message() << "\n");
+        fail();
+        return;
+    }
+
+    TGL_NOTICE("connected to " << ip << ":" << port << "\n");
+
+    last_receive_time = tglt_get_double_time();
+    tgl_state::instance()->io_service->post(boost::bind(&connection::start_read, shared_from_this()));
 }
 
 int connection::read(void *buffer, int len) {
