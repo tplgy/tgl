@@ -39,10 +39,10 @@ void tgl_connection_asio::ping_alarm(const boost::system::error_code& error) {
     if (m_state == conn_failed) {
         return;
     }
-    //TGL_DEBUG("ping alarm\n");
+    //TGL_DEBUG("ping alarm");
     TGL_ASSERT(m_state == conn_ready || m_state == conn_connecting);
     if (tglt_get_double_time() - m_last_receive_time > 6 * PING_TIMEOUT) {
-        TGL_WARNING("fail connection: reason: ping timeout\n");
+        TGL_WARNING("fail connection: reason: ping timeout");
         m_state = conn_failed;
         fail();
     } else if (tglt_get_double_time() - m_last_receive_time > 3 * PING_TIMEOUT && m_state == conn_ready) {
@@ -133,7 +133,7 @@ static int rotate_port(int port) {
 bool tgl_connection_asio::open()
 {
     if (!connect()) {
-        TGL_ERROR("Can not connect to " << m_ip << ":" << m_port << "\n");
+        TGL_ERROR("Can not connect to " << m_ip << ":" << m_port);
         return false;
     }
 
@@ -149,7 +149,7 @@ bool tgl_connection_asio::open()
 
 void tgl_connection_asio::restart() {
     if (m_closed) {
-        TGL_WARNING("Can't restart a closed connection" << std::endl);
+        TGL_WARNING("Can't restart a closed connection");
         return;
     }
 
@@ -161,12 +161,12 @@ void tgl_connection_asio::restart() {
     m_socket.close();
     m_last_connect_time = time(0);
     if (!connect()) {
-        TGL_WARNING("Can not reconnect to " << m_ip << ":" << m_port << "\n");
+        TGL_WARNING("Can not reconnect to " << m_ip << ":" << m_port);
         start_fail_timer();
         return;
     }
 
-    TGL_DEBUG("restarting connection to " << m_ip << ":" << m_port << "\n");
+    TGL_DEBUG("restarting connection to " << m_ip << ":" << m_port);
 
     start_ping_timer();
 
@@ -201,7 +201,7 @@ void tgl_connection_asio::fail() {
     m_out_head = m_out_tail = m_in_head = m_in_tail = nullptr;
     m_state = conn_failed;
     m_bytes_to_write = m_in_bytes = 0;
-    TGL_NOTICE("Lost connection to server... " << m_ip << ":" << m_port << "\n");
+    TGL_NOTICE("Lost connection to server... " << m_ip << ":" << m_port);
     restart();
 }
 
@@ -321,7 +321,7 @@ bool tgl_connection_asio::connect() {
     boost::system::error_code ec;
     m_socket.open(tgl_state::instance()->ipv6_enabled() ? boost::asio::ip::tcp::v6() : boost::asio::ip::tcp::v4(), ec);
     if (ec) {
-        TGL_WARNING("error opening socket: " << ec.message() << "\n");
+        TGL_WARNING("error opening socket: " << ec.message());
         return false;
     }
 
@@ -330,7 +330,7 @@ bool tgl_connection_asio::connect() {
     m_socket.set_option(boost::asio::ip::tcp::no_delay(true));
     m_socket.non_blocking(true, ec);
     if (ec) {
-        TGL_WARNING("error making socket non-blocking: " << ec.message() << "\n");
+        TGL_WARNING("error making socket non-blocking: " << ec.message());
         return false;
     }
 
@@ -344,12 +344,12 @@ bool tgl_connection_asio::connect() {
 void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
 {
     if (ec) {
-        TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message() << "\n");
+        TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message());
         fail();
         return;
     }
 
-    TGL_NOTICE("connected to " << m_ip << ":" << m_port << "\n");
+    TGL_NOTICE("connected to " << m_ip << ":" << m_port);
 
     m_last_receive_time = tglt_get_double_time();
     tgl_state::instance()->io_service->post(boost::bind(&tgl_connection_asio::start_read, shared_from_this()));
@@ -406,7 +406,7 @@ void tgl_connection_asio::start_read() {
 }
 
 ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
-    //TGL_DEBUG("write: " << len << " bytes\n");
+    //TGL_DEBUG("write: " << len << " bytes");
     const unsigned char* data = static_cast<const unsigned char*>(data_in);
     if (!len) {
         return 0;
@@ -470,18 +470,18 @@ void tgl_connection_asio::flush() {
 void tgl_connection_asio::handle_read(const boost::system::error_code& ec, size_t bytes_transferred) {
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
-            TGL_WARNING("read error: " << ec << " (" << ec.message() << ")" << std::endl);
+            TGL_WARNING("read error: " << ec << " (" << ec.message() << ")");
             fail();
         }
         return;
     }
 
     if (m_closed) {
-        TGL_WARNING("invalid read from closed connection" << std::endl);
+        TGL_WARNING("invalid read from closed connection");
         return;
     }
 
-    TGL_DEBUG("received " << bytes_transferred << " bytes" << std::endl);
+    TGL_DEBUG("received " << bytes_transferred << " bytes");
 
     if (bytes_transferred > 0) {
         m_last_receive_time = tglt_get_double_time();
@@ -507,17 +507,17 @@ void tgl_connection_asio::handle_read(const boost::system::error_code& ec, size_
 void tgl_connection_asio::handle_write(const boost::system::error_code& ec, size_t bytes_transferred) {
     m_write_pending = false;
     if (ec) {
-        TGL_WARNING("write error: " << ec << " (" << ec.message() << ")" << std::endl);
+        TGL_WARNING("write error: " << ec << " (" << ec.message() << ")");
         fail();
         return;
     }
 
     if (m_closed) {
-        TGL_WARNING("invalid write to closed connection" << std::endl);
+        TGL_WARNING("invalid write to closed connection");
         return;
     }
 
-    TGL_DEBUG("wrote " << bytes_transferred << " bytes" << std::endl);
+    TGL_DEBUG("wrote " << bytes_transferred << " bytes");
 
     if (m_out_head) {
         m_out_head->rptr += bytes_transferred;
