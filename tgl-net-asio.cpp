@@ -24,7 +24,6 @@
 #include "tgl-net-asio.h"
 
 #include "tgl-log.h"
-#include "tgl-timers.h"
 #include "mtproto-client.h"
 
 extern "C" {

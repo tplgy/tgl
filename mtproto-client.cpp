@@ -52,6 +52,7 @@
 #include "tgl-structures.h"
 #include "tgl-binlog.h"
 #include "tgl.h"
+#include "tgl-timer.h"
 #include "tgl-net.h"
 #include "mtproto-client.h"
 #include "updates.h"
@@ -1335,14 +1336,14 @@ static int send_all_acks(const std::shared_ptr<tgl_session>& S) {
   return 0;
 }
 
-static void send_all_acks_gateway (std::shared_ptr<void> arg) {
-  send_all_acks(std::static_pointer_cast<tgl_session>(arg));
+static void send_all_acks_gateway (std::shared_ptr<tgl_session> session) {
+  send_all_acks(session);
 }
 
 
 void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& S, long long id) {
   if (S->ack_tree.empty()) {
-    tgl_state::instance()->timer_methods->insert(S->ev, ACK_TIMEOUT);
+    S->ev->start(ACK_TIMEOUT);
   }
   for (auto it = S->ack_tree.begin(); it!=S->ack_tree.end(); it++) {
     if (*it == id) {
@@ -1355,8 +1356,8 @@ void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& S, long long id) {
 //extern struct tgl_dc *DC_list[];
 
 
-static void regen_temp_key_gw (std::shared_ptr<void> arg) {
-  tglmp_regenerate_temp_auth_key(std::static_pointer_cast<tgl_dc>(arg)); // TODO this is horrible
+static void regen_temp_key_gw (std::shared_ptr<tgl_dc> dc) {
+  tglmp_regenerate_temp_auth_key(dc);
 }
 
 std::shared_ptr<tgl_dc> tglmp_alloc_dc (int flags, int id, const std::string &ip, int port) {
@@ -1366,8 +1367,8 @@ std::shared_ptr<tgl_dc> tglmp_alloc_dc (int flags, int id, const std::string &ip
     DC->id = id;
     DC->sessions[0] = NULL;
     tgl_state::instance()->DC_list[id] = DC;
-    DC->ev = tgl_state::instance()->timer_methods->alloc (regen_temp_key_gw, DC);
-    tgl_state::instance()->timer_methods->insert (DC->ev, 0);
+    DC->ev = tgl_state::instance()->timer_factory->create_timer(std::bind(&regen_temp_key_gw, DC));
+    DC->ev->start(0);
   }
 
   std::shared_ptr<tgl_dc> DC = tgl_state::instance()->DC_list[id];
@@ -1384,7 +1385,7 @@ void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC) {
   //S->c = tgl_state::instance()->connection_factory->create_connection (DC->ip, DC->port, S, DC, &mtproto_methods);
 
   create_session_connect (S);
-  S->ev = tgl_state::instance()->timer_methods->alloc (send_all_acks_gateway, S);
+  S->ev = tgl_state::instance()->timer_factory->create_timer(std::bind(&send_all_acks_gateway, S));
   assert (!DC->sessions[0]);
   DC->sessions[0] = S;
 }
@@ -1424,7 +1425,7 @@ void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& DC) {
   tglt_secure_random ((unsigned char*)&S->session_id, 8);
   S->seq_no = 0;
 
-  tgl_state::instance()->timer_methods->remove (S->ev);
+  S->ev->cancel();
   S->ack_tree.clear();
 
   if (DC->state != st_authorized) {
@@ -1442,7 +1443,7 @@ void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& DC) {
 
 void tgls_free_session(std::shared_ptr<tgl_session> S) {
   S->ack_tree.clear();
-  if (S->ev) { tgl_state::instance()->timer_methods->free (S->ev); S->ev = nullptr; }
+  if (S->ev) { S->ev = nullptr; }
   if (S->c) {
     S->c->close();
   }
@@ -1454,7 +1455,7 @@ void tgls_free_dc (std::shared_ptr<tgl_dc> DC) {
   std::shared_ptr<tgl_session> S = DC->sessions[0];
   if (S) { tgls_free_session (S); }
 
-  if (DC->ev) { tgl_state::instance()->timer_methods->free (DC->ev); DC->ev = nullptr; }
+  if (DC->ev) { DC->ev = nullptr; }
 }
 
 void tgls_free_pubkey () {

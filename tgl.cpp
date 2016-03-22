@@ -171,7 +171,7 @@ void tgl_state::init(const std::string &&download_dir, int app_id, const std::st
   m_app_id = app_id;
   m_app_hash = app_hash;
   m_app_version = app_version;
-  assert (timer_methods);
+  assert(timer_factory);
   assert (connection_factory);
   if (!temp_key_expire_time) {
     temp_key_expire_time = 100000;
@@ -208,8 +208,8 @@ void tgl_state::set_connection_factory(const std::shared_ptr<tgl_connection_fact
   this->connection_factory = factory;
 }
 
-void tgl_state::set_timer_methods (struct tgl_timer_methods *methods) {
-  this->timer_methods = methods;
+void tgl_state::set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory) {
+  this->timer_factory = factory;
 }
 
 void tgl_state::set_io_service (boost::asio::io_service *io_service) {

@@ -153,6 +153,7 @@ enum tgl_dc_state {
 
 struct tgl_dc;
 class tgl_connection;
+class tgl_timer;
 
 struct tgl_session {
   std::shared_ptr<tgl_dc> dc;
@@ -162,7 +163,7 @@ struct tgl_session {
   int received_messages = 0;
   std::shared_ptr<tgl_connection> c = nullptr;
   std::vector<long> ack_tree;
-  struct tgl_timer *ev = NULL;
+  std::shared_ptr<tgl_timer> ev = nullptr;
 };
 
 struct tgl_dc_option {
@@ -185,7 +186,7 @@ struct tgl_dc {
     long long temp_auth_key_bind_query_id = 0;
 
     long long server_salt = 0;
-    struct tgl_timer *ev = NULL;
+    std::shared_ptr<tgl_timer> ev = nullptr;
 
     int server_time_delta = 0;
     double server_time_udelta = 0;

@@ -131,15 +131,6 @@ struct mtproto_methods {
   int (*execute) (const std::shared_ptr<tgl_connection>& c, int op, int len);
 };
 
-struct tgl_timer;
-
-struct tgl_timer_methods {
-  struct tgl_timer *(*alloc) (void (*cb)(std::shared_ptr<void> arg), std::shared_ptr<void> arg);
-  void (*insert) (struct tgl_timer *t, double timeout);
-  void (*remove) (struct tgl_timer *t);
-  void (*free) (struct tgl_timer *t);
-};
-
 #define TGL_LOCK_DIFF 1
 #define TGL_LOCK_PASSWORD 2
 
@@ -151,6 +142,8 @@ namespace asio {
 
 class tgl_download_manager;
 class tgl_connection_factory;
+class tgl_timer;
+class tgl_timer_factory;
 
 struct tgl_state {
   static tgl_state *instance();
@@ -180,11 +173,11 @@ struct tgl_state {
 
   std::vector<tgl_message*> unsent_messages;
 
-  struct tgl_timer_methods *timer_methods;
+  std::shared_ptr<tgl_timer_factory> timer_factory;
 
   std::vector<std::shared_ptr<query>> queries_tree;
 
-  void *ev_login;
+  std::shared_ptr<tgl_timer> ev_login;
 
   void init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
   void login();
@@ -204,7 +197,7 @@ struct tgl_state {
   void set_enable_pfs (bool); // enable perfect forward secrecy (does not work properly right now)
   void set_test_mode (bool);
   void set_connection_factory(const std::shared_ptr<tgl_connection_factory>& factory);
-  void set_timer_methods (struct tgl_timer_methods *methods);
+  void set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory);
   void set_io_service (boost::asio::io_service* io_service);
   void set_enable_ipv6 (bool val);
   std::string app_version() { return m_app_version; }

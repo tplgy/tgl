@@ -28,6 +28,8 @@
 #define QUERY_ACK_RECEIVED 1
 #define QUERY_FORCE_SEND 2
 
+class tgl_timer;
+
 struct query {
     long long msg_id;
     int data_len;
@@ -36,7 +38,7 @@ struct query {
     long long session_id;
     void *data;
     struct query_methods *methods;
-    struct tgl_timer *ev;
+    std::shared_ptr<tgl_timer> ev;
     std::shared_ptr<tgl_dc> DC;
     std::shared_ptr<tgl_session> session;
     //struct paramed_type *type;

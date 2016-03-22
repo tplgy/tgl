@@ -36,6 +36,7 @@
 #include "tgl-log.h"
 #include "tgl-structures.h"
 #include "tgl_download_manager.h"
+#include "tgl-timer.h"
 
 #include "crypto/bn.h"
 #include "crypto/rand.h"
@@ -122,7 +123,7 @@ static int alarm_query (std::shared_ptr<query> q) {
   assert (q);
   TGL_DEBUG("Alarm query " << q->msg_id << " (type '" << q->methods->name << "')\n");
 
-  tgl_state::instance()->timer_methods->insert (q->ev, q->methods->timeout ? q->methods->timeout : QUERY_TIMEOUT);
+  q->ev->start(q->methods->timeout ? q->methods->timeout : QUERY_TIMEOUT);
 
   if (q->session && q->session_id && q->DC && q->DC->sessions[0] == q->session && q->session->session_id == q->session_id) {
     clear_packet ();
@@ -164,7 +165,7 @@ void tglq_regen_query (long long id) {
     }
   }
   TGL_NOTICE("regen query " << id);
-  tgl_state::instance()->timer_methods->insert (q->ev, 0.001);
+  q->ev->start(0.001);
 }
 
 #if 0
@@ -179,7 +180,7 @@ void tglq_regen_query_from_old_session (struct query *q, void *ex) {
     if (!q->session || q->session_id != T->S->session_id || q->session != T->S) {
       q->session_id = 0;
       TGL_NOTICE("regen query from old session " << q->msg_id << "\n");
-      tgl_state::instance()->timer_methods->insert (q->ev, q->methods->timeout ? 0.001 : 0.1);
+      q->ev->start(q->methods->timeout ? 0.001 : 0.1);
     }
   }
 }
@@ -196,13 +197,13 @@ void tglq_query_restart (long long id) {
   std::shared_ptr<query> q = tglq_query_get(id);
   if (q) {
     TGL_NOTICE("restarting query " << id);
-    tgl_state::instance()->timer_methods->remove (q->ev);
+    q->ev->cancel();
     alarm_query (q);
   }
 }
 
-static void alarm_query_gateway(std::shared_ptr<void> arg) {
-    alarm_query(std::static_pointer_cast<query>(arg));
+static void alarm_query_gateway(std::shared_ptr<query> q) {
+    alarm_query(q);
 }
 
 std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, void *data, struct query_methods *methods, std::shared_ptr<void> extra, void *callback, std::shared_ptr<void> callback_extra, int flags) {
@@ -231,8 +232,8 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
   q->flags = flags & QUERY_FORCE_SEND;
   tgl_state::instance()->queries_tree.push_back(q);
 
-  q->ev = tgl_state::instance()->timer_methods->alloc (alarm_query_gateway, q);
-  tgl_state::instance()->timer_methods->insert (q->ev, q->methods->timeout ? q->methods->timeout : QUERY_TIMEOUT);
+  q->ev = tgl_state::instance()->timer_factory->create_timer(std::bind(&alarm_query_gateway, q));
+  q->ev->start(q->methods->timeout ? q->methods->timeout : QUERY_TIMEOUT);
 
   q->extra = extra;
   q->callback = callback;
@@ -257,7 +258,7 @@ void tglq_query_ack (long long id) {
     if (q && !(q->flags & QUERY_ACK_RECEIVED)) {
         assert (q->msg_id == id);
         q->flags |= QUERY_ACK_RECEIVED;
-        tgl_state::instance()->timer_methods->remove (q->ev);
+        q->ev->cancel();
     }
 }
 
@@ -267,11 +268,10 @@ void tglq_query_delete(long long id) {
         return;
     }
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
-        tgl_state::instance()->timer_methods->remove (q->ev);
+        q->ev->cancel();
     }
 
     free (q->data);
-    tgl_state::instance()->timer_methods->free (q->ev);
     q->ev = nullptr;
     tglq_query_remove(q);
     tgl_state::instance()->active_queries --;
@@ -281,10 +281,9 @@ static void resend_query_cb (std::shared_ptr<void> _q, bool success);
 
 void tglq_free_query (std::shared_ptr<query> q) {
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
-        tgl_state::instance()->timer_methods->remove (q->ev);
+        q->ev->cancel();
     }
     free (q->data);
-    tgl_state::instance()->timer_methods->free (q->ev);
     q->ev = nullptr;
 }
 
@@ -306,7 +305,7 @@ int tglq_query_error (long long id) {
     TGL_WARNING("No such query");
   } else {
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
-      tgl_state::instance()->timer_methods->remove (q->ev);
+      q->ev->cancel();
     }
 
     tglq_query_remove(q);
@@ -346,7 +345,7 @@ int tglq_query_error (long long id) {
             q->session_id = 0;
             //}
             q->DC = tgl_state::instance()->DC_working;
-            tgl_state::instance()->timer_methods->insert (q->ev, 0);
+            q->ev->start(0);
             error_handled = 1;
             res = 1;
             TGL_WARNING("handled\n");
@@ -396,7 +395,7 @@ int tglq_query_error (long long id) {
             wait = atoll (error.data() + 11);
           }
           q->flags &= ~QUERY_ACK_RECEIVED;
-          tgl_state::instance()->timer_methods->insert (q->ev, wait);
+          q->ev->start(wait);
           std::shared_ptr<tgl_dc> DC = q->DC;
           if (!(DC->flags & 4) && !(q->flags & QUERY_FORCE_SEND)) {
             q->session_id = 0;
@@ -417,7 +416,6 @@ int tglq_query_error (long long id) {
 
     if (res <= 0) {
       free (q->data);
-      tgl_state::instance()->timer_methods->free (q->ev);
       q->ev = nullptr;
     }
 
@@ -456,7 +454,7 @@ int tglq_query_result (long long id) {
     in_ptr = in_end;
   } else {
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
-      tgl_state::instance()->timer_methods->remove (q->ev);
+      q->ev->cancel();
     }
     if (q->methods && q->methods->on_answer) {
       //assert (q->type);
@@ -480,7 +478,6 @@ int tglq_query_result (long long id) {
       assert (in_ptr == in_end);
     }
     free (q->data);
-    tgl_state::instance()->timer_methods->free(q->ev);
     q->ev = nullptr;
     tglq_query_remove(q);
 
@@ -2588,7 +2585,6 @@ static void resend_query_cb(std::shared_ptr<void> _q, bool success) {
     tglq_send_query (q->DC, packet_ptr - packet_buffer, packet_buffer, &user_info_methods, 0, q->callback, q->callback_extra);
 
     free (q->data);
-    tgl_state::instance()->timer_methods->free (q->ev);
     q->ev = nullptr;
 }
 /* }}} */
@@ -4407,7 +4403,7 @@ static void set_flag_4 (std::shared_ptr<void> _D, bool success) {
     assert (success);
     D->flags |= TGLDCF_CONFIGURED;
 
-    tgl_state::instance()->timer_methods->insert (D->ev, tgl_state::instance()->temp_key_expire_time * 0.9);
+    D->ev->start(tgl_state::instance()->temp_key_expire_time * 0.9);
 }
 
 static int send_bind_temp_on_answer(std::shared_ptr<query> q, void *D) {
@@ -4722,11 +4718,10 @@ static void check_authorized (std::shared_ptr<void> arg) {
     }
 
     if (ok) {
-      tgl_state::instance()->timer_methods->free ((struct tgl_timer *)tgl_state::instance()->ev_login);
-      tgl_state::instance()->ev_login = NULL;
+      tgl_state::instance()->ev_login = nullptr;
       tgl_sign_in();
     } else {
-      tgl_state::instance()->timer_methods->insert ((struct tgl_timer *)tgl_state::instance()->ev_login, 0.1);
+      tgl_state::instance()->ev_login->start(0.1);
     }
   }
 }
@@ -4743,8 +4738,8 @@ void tgl_state::login () {
 
     if (!ok) {
         //TGL_DEBUG("not authorized...waiting\n");
-        ev_login = timer_methods->alloc (check_authorized, nullptr);
-        timer_methods->insert ((struct tgl_timer *)ev_login, 0.1);
+        tgl_state::instance()->ev_login = tgl_state::instance()->timer_factory->create_timer(std::bind(&check_authorized, nullptr));
+        tgl_state::instance()->ev_login->start(0.1);
     } else {
         tgl_sign_in();
     }

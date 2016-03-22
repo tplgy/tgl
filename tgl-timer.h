@@ -19,11 +19,23 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_TIMERS_H__
-#define __TGL_TIMERS_H__
+#ifndef __TGL_TIMER_H__
+#define __TGL_TIMER_H__
 
-#include "tgl.h"
+#include <memory>
+#include <functional>
 
-extern struct tgl_timer_methods tgl_asio_timer;
+class tgl_timer {
+public:
+    virtual void start(double timeout) = 0;
+    virtual void cancel() = 0;
+    virtual ~tgl_timer() { }
+};
+
+class tgl_timer_factory {
+public:
+    virtual std::shared_ptr<tgl_timer> create_timer(const std::function<void()>& cb) = 0;
+    virtual ~tgl_timer_factory() { }
+};
 
 #endif
