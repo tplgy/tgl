@@ -219,6 +219,10 @@ void connection::fail() {
 }
 
 void connection::try_rpc_read() {
+    if (destroyed) {
+        return;
+    }
+
     assert(in_head);
 
     while (1) {
@@ -310,16 +314,21 @@ void connection::destroy()
         b = b->next;
         delete_connection_buffer(d);
     }
+    out_head = nullptr;
+
     b = in_head;
     while (b) {
         struct connection_buffer *d = b;
         b = b->next;
         delete_connection_buffer(d);
     }
+    in_head = nullptr;
 }
 
 bool connection::connect() {
-    assert(!destroyed);
+    if (destroyed) {
+        return false;
+    }
 
     boost::system::error_code ec;
     socket.open(tgl_state::instance()->ipv6_enabled() ? boost::asio::ip::tcp::v6() : boost::asio::ip::tcp::v4(), ec);
@@ -351,8 +360,6 @@ bool connection::connect() {
 }
 
 int connection::read(void *buffer, int len) {
-    assert(!destroyed);
-
     unsigned char *data = (unsigned char *)buffer;
     if (!len) { return 0; }
     assert (len > 0);
@@ -385,7 +392,9 @@ int connection::read(void *buffer, int len) {
 }
 
 void connection::start_read() {
-    assert(!destroyed);
+    if (destroyed) {
+        return;
+    }
 
     if (!in_tail) {
         in_head = in_tail = new_connection_buffer(1 << 20);
@@ -398,8 +407,6 @@ void connection::start_read() {
 }
 
 int connection::write(const void *_data, int len) {
-    assert(!destroyed);
-
     //TGL_DEBUG("write: " << len << " bytes\n");
     const unsigned char *data = (const unsigned char *)_data;
     if (!len) { return 0; }
@@ -437,7 +444,9 @@ int connection::write(const void *_data, int len) {
 }
 
 void connection::start_write() {
-    assert(!destroyed);
+    if (destroyed) {
+        return;
+    }
 
     if (state == conn_connecting) {
         state = conn_ready;
@@ -455,7 +464,6 @@ void connection::start_write() {
 }
 
 void connection::flush() {
-    assert(!destroyed);
 }
 
 void connection::handle_read(const boost::system::error_code& ec, size_t bytes_transferred) {
@@ -530,17 +538,14 @@ void connection::handle_write(const boost::system::error_code& ec, size_t bytes_
 }
 
 void connection::incr_out_packet_num() {
-    assert(!destroyed);
     out_packet_num++;
 }
 
 std::shared_ptr<tgl_dc> connection::dc() {
-    assert(!destroyed);
     return _dc;
 }
 
 std::shared_ptr<tgl_session> connection::session() {
-    assert(!destroyed);
     return _session;
 }
 
