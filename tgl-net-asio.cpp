@@ -315,6 +315,8 @@ void connection::destroy()
         delete_connection_buffer(d);
     }
     out_head = nullptr;
+    out_tail = nullptr;
+    bytes_to_write = 0;
 
     b = in_head;
     while (b) {
@@ -323,6 +325,8 @@ void connection::destroy()
         delete_connection_buffer(d);
     }
     in_head = nullptr;
+    in_tail = nullptr;
+    in_bytes = 0;
 }
 
 bool connection::connect() {
