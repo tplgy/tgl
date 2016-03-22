@@ -79,15 +79,15 @@ void connection::start_fail_timer() {
     fail_timer.async_wait(boost::bind(&connection::fail_alarm, shared_from_this(), boost::asio::placeholders::error));
 }
 
-static struct connection_buffer *new_connection_buffer(int size) {
-    struct connection_buffer *b = (struct connection_buffer *)talloc0(sizeof(struct connection_buffer));
+static connection_buffer *new_connection_buffer(int size) {
+    connection_buffer *b = (connection_buffer *)talloc0(sizeof(connection_buffer));
     b->start = (unsigned char*)malloc(size);
     b->end = b->start + size;
     b->rptr = b->wptr = b->start;
     return b;
 }
 
-static void delete_connection_buffer(struct connection_buffer *b) {
+static void delete_connection_buffer(connection_buffer *b) {
     tfree(b->start);
     tfree(b);
 }
@@ -108,7 +108,7 @@ int connection::read_in_lookup(void *_data, int len) {
         len = in_bytes;
     }
     int x = 0;
-    struct connection_buffer *b = in_head;
+    connection_buffer *b = in_head;
     while (len) {
         int y = b->wptr - b->rptr;
         if (y >= len) {
@@ -199,15 +199,15 @@ void connection::fail() {
     }
 
     port = rotate_port(port);
-    struct connection_buffer *b = out_head;
+    connection_buffer *b = out_head;
     while (b) {
-        struct connection_buffer *d = b;
+        connection_buffer *d = b;
         b = b->next;
         delete_connection_buffer(d);
     }
     b = in_head;
     while (b) {
-        struct connection_buffer *d = b;
+        connection_buffer *d = b;
         b = b->next;
         delete_connection_buffer(d);
     }
@@ -313,9 +313,9 @@ void connection::destroy()
     fail_timer.cancel();
     socket.close();
 
-    struct connection_buffer *b = out_head;
+    connection_buffer *b = out_head;
     while (b) {
-        struct connection_buffer *d = b;
+        connection_buffer *d = b;
         b = b->next;
         delete_connection_buffer(d);
     }
@@ -325,7 +325,7 @@ void connection::destroy()
 
     b = in_head;
     while (b) {
-        struct connection_buffer *d = b;
+        connection_buffer *d = b;
         b = b->next;
         delete_connection_buffer(d);
     }
@@ -397,7 +397,7 @@ int connection::read(void *buffer, int len) {
             x += y;
             data += y;
             len -= y;
-            struct connection_buffer *old = in_head;
+            connection_buffer *old = in_head;
             in_head = in_head->next;
             if (!in_head) {
                 in_tail = 0;
@@ -430,7 +430,7 @@ int connection::write(const void *_data, int len) {
     assert (len > 0);
     int x = 0;
     if (!out_head) {
-        struct connection_buffer *b = new_connection_buffer(1 << 20);
+        connection_buffer *b = new_connection_buffer(1 << 20);
         out_head = out_tail = b;
     }
     while (len) {
@@ -447,7 +447,7 @@ int connection::write(const void *_data, int len) {
             x += y;
             len -= y;
             data += y;
-            struct connection_buffer *b = new_connection_buffer (1 << 20);
+            connection_buffer *b = new_connection_buffer (1 << 20);
             out_tail->next = b;
             b->next = 0;
             out_tail = b;
@@ -507,7 +507,7 @@ void connection::handle_read(const boost::system::error_code& ec, size_t bytes_t
 
     in_tail->wptr += bytes_transferred;
     if (in_tail->wptr == in_tail->end) {
-        struct connection_buffer *b = new_connection_buffer(1 << 20);
+        connection_buffer *b = new_connection_buffer(1 << 20);
         in_tail->next = b;
         in_tail = b;
     }
@@ -539,7 +539,7 @@ void connection::handle_write(const boost::system::error_code& ec, size_t bytes_
     if (out_head) {
         out_head->rptr += bytes_transferred;
         if (out_head->rptr == out_head->wptr) {
-            struct connection_buffer *b = out_head;
+            connection_buffer *b = out_head;
             out_head = b->next;
             if (!out_head) {
                 out_tail = 0;

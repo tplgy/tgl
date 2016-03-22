@@ -43,7 +43,7 @@ enum conn_state {
 struct tgl_dc;
 struct tgl_session;
 
-struct connection : public std::enable_shared_from_this<connection>
+class connection : public std::enable_shared_from_this<connection>
 {
 public:
     connection(boost::asio::io_service& io_service, const std::string& host, int port,
@@ -93,10 +93,10 @@ private:
     boost::asio::deadline_timer fail_timer;
 
     int out_packet_num;
-    struct connection_buffer *in_head;
-    struct connection_buffer *in_tail;
-    struct connection_buffer *out_head;
-    struct connection_buffer *out_tail;
+    connection_buffer *in_head;
+    connection_buffer *in_tail;
+    connection_buffer *out_head;
+    connection_buffer *out_tail;
     int in_bytes;
     int bytes_to_write;
     std::shared_ptr<tgl_dc> _dc;

@@ -56,7 +56,7 @@
 #define TGL_ENCRYPTED_LAYER 17
 #define TGL_SCHEME_LAYER 45
 
-struct connection;
+class connection;
 struct mtproto_methods;
 struct tgl_session;
 struct tgl_dc;

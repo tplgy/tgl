@@ -152,7 +152,7 @@ enum tgl_dc_state {
 #define MAX_DC_SESSIONS 3
 
 struct tgl_dc;
-struct connection;
+class connection;
 
 struct tgl_session {
   std::shared_ptr<tgl_dc> dc;
