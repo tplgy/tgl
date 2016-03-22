@@ -21,5 +21,35 @@
 #ifndef __TGL_NET_H__
 #define __TGL_NET_H__
 
-extern struct tgl_net_methods tgl_asio_net;
+#include <memory>
+
+class tgl_dc;
+class tgl_session;
+
+class tgl_connection {
+public:
+    virtual bool open() = 0;
+    virtual void close() = 0;
+    virtual ssize_t write(const void* data, size_t len) = 0;
+    virtual ssize_t read(void* data, size_t len) = 0;
+    virtual void flush() = 0;
+    virtual void incr_out_packet_num() = 0;
+    virtual std::shared_ptr<tgl_dc> get_dc() = 0;
+    virtual std::shared_ptr<tgl_session> get_session() = 0;
+
+    virtual ~tgl_connection() { }
+};
+
+class tgl_connection_factory {
+public:
+    virtual std::shared_ptr<tgl_connection> create_connection(
+            const std::string& host,
+            int port,
+            const std::shared_ptr<tgl_session>& session,
+            const std::shared_ptr<tgl_dc>& dc,
+            struct mtproto_methods* methods) = 0;
+
+    virtual ~tgl_connection_factory() { }
+};
+
 #endif

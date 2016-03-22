@@ -56,7 +56,7 @@
 #define TGL_ENCRYPTED_LAYER 17
 #define TGL_SCHEME_LAYER 45
 
-class connection;
+class tgl_connection;
 struct mtproto_methods;
 struct tgl_session;
 struct tgl_dc;
@@ -125,22 +125,10 @@ struct tgl_update_callback {
   void (*on_failed_login) ();
 };
 
-struct tgl_net_methods {
-  int (*write_out) (std::shared_ptr<connection> c, const void *data, int len);
-  int (*read_in) (std::shared_ptr<connection> c, void *data, int len);
-  void (*flush_out) (std::shared_ptr<connection> c);
-  void (*incr_out_packet_num) (std::shared_ptr<connection> c);
-  void (*free) (std::shared_ptr<connection> c);
-  std::shared_ptr<tgl_dc> (*get_dc) (std::shared_ptr<connection> c);
-  std::shared_ptr<tgl_session> (*get_session) (std::shared_ptr<connection> c);
-
-  std::shared_ptr<connection> (*create_connection) (const std::string &host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods);
-};
-
 struct mtproto_methods {
-  int (*ready) (std::shared_ptr<connection> c);
-  int (*close) (std::shared_ptr<connection> c);
-  int (*execute) (std::shared_ptr<connection> c, int op, int len);
+  int (*ready) (const std::shared_ptr<tgl_connection>& c);
+  int (*close) (const std::shared_ptr<tgl_connection>& c);
+  int (*execute) (const std::shared_ptr<tgl_connection>& c, int op, int len);
 };
 
 struct tgl_timer;
@@ -162,6 +150,7 @@ namespace asio {
 }
 
 class tgl_download_manager;
+class tgl_connection_factory;
 
 struct tgl_state {
   static tgl_state *instance();
@@ -180,7 +169,7 @@ struct tgl_state {
   int temp_key_expire_time;
 
   struct tgl_update_callback callback;
-  struct tgl_net_methods *net_methods;
+  std::shared_ptr<tgl_connection_factory> connection_factory;
   boost::asio::io_service *io_service;
 
   std::vector<char*> rsa_key_list;
@@ -200,7 +189,6 @@ struct tgl_state {
   void init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
   void login();
 
-<<<<<<< ef1fca1d7d40082ef56c3e7896b203c35057a962
   void set_auth_key(int num, const char *buf);
   void set_our_id(int id);
   void set_dc_option (int flags, int id, std::string ip, int port);
@@ -215,7 +203,7 @@ struct tgl_state {
   void set_rsa_key (const char *key);
   void set_enable_pfs (bool); // enable perfect forward secrecy (does not work properly right now)
   void set_test_mode (bool);
-  void set_net_methods (struct tgl_net_methods *methods);
+  void set_connection_factory(const std::shared_ptr<tgl_connection_factory>& factory);
   void set_timer_methods (struct tgl_timer_methods *methods);
   void set_io_service (boost::asio::io_service* io_service);
   void set_enable_ipv6 (bool val);
@@ -289,10 +277,10 @@ static inline tgl_peer_id_t tgl_set_peer_id (int type, int id) {
   return ID;
 }
 
-int tgl_authorized_dc(std::shared_ptr<tgl_dc> DC);
-int tgl_signed_dc(std::shared_ptr<tgl_dc> DC);
+int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& DC);
+int tgl_signed_dc(const std::shared_ptr<tgl_dc>& DC);
 
-void tgl_dc_authorize (std::shared_ptr<tgl_dc> DC);
+void tgl_dc_authorize (const std::shared_ptr<tgl_dc>& DC);
 
 #define TGL_SEND_MSG_FLAG_DISABLE_PREVIEW 1
 #define TGL_SEND_MSG_FLAG_ENABLE_PREVIEW 2

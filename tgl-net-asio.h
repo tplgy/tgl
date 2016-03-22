@@ -22,6 +22,8 @@
 #ifndef __TGL_NET_ASIO_H__
 #define __TGL_NET_ASIO_H__
 
+#include "tgl-net.h"
+
 #include <boost/asio.hpp>
 
 struct connection_buffer {
@@ -43,27 +45,31 @@ enum conn_state {
 struct tgl_dc;
 struct tgl_session;
 
-class connection : public std::enable_shared_from_this<connection>
+class tgl_connection_asio : public std::enable_shared_from_this<tgl_connection_asio>
+        , public tgl_connection
 {
 public:
-    connection(boost::asio::io_service& io_service, const std::string& host, int port,
-            std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods);
+    tgl_connection_asio(boost::asio::io_service& io_service,
+            const std::string& host,
+            int port,
+            const std::shared_ptr<tgl_session>& session,
+            const std::shared_ptr<tgl_dc>& dc,
+            mtproto_methods* methods);
 
-    void destroy();
+    virtual bool open() override;
+    virtual void close() override;
+    virtual ssize_t read(void* buffer, size_t len) override;
+    virtual ssize_t write(const void* data, size_t len) override;
+    virtual void flush() override;
+    virtual std::shared_ptr<tgl_dc> get_dc() override { return m_dc; }
+    virtual std::shared_ptr<tgl_session> get_session() override { return m_session; }
+    virtual void incr_out_packet_num() override { m_out_packet_num++; }
 
     bool connect();
     void restart();
     void fail();
 
-    int read(void *buffer, int len);
-    int write(const void *data, int len);
-    void flush();
-
     void start_ping_timer();
-
-    void incr_out_packet_num();
-    std::shared_ptr<tgl_dc> dc();
-    std::shared_ptr<tgl_session> session();
 
 private:
     void start_read();
@@ -78,38 +84,58 @@ private:
     void start_fail_timer();
     void fail_alarm(const boost::system::error_code&);
 
-    int read_in_lookup(void *data, int len);
+    ssize_t read_in_lookup(void *data, size_t len);
     void try_rpc_read();
 
     void handle_connect(const boost::system::error_code&);
 
-    bool destroyed;
+    bool m_closed;
 
-    std::string ip;
-    int port;
-    enum conn_state state;
-    boost::asio::ip::tcp::socket socket;
-    boost::asio::deadline_timer ping_timer;
-    boost::asio::deadline_timer fail_timer;
+    std::string m_ip;
+    int m_port;
+    enum conn_state m_state;
+    boost::asio::ip::tcp::socket m_socket;
+    boost::asio::deadline_timer m_ping_timer;
+    boost::asio::deadline_timer m_fail_timer;
 
-    int out_packet_num;
-    connection_buffer *in_head;
-    connection_buffer *in_tail;
-    connection_buffer *out_head;
-    connection_buffer *out_tail;
-    int in_bytes;
-    int bytes_to_write;
-    std::shared_ptr<tgl_dc> _dc;
-    struct mtproto_methods *methods;
-    std::shared_ptr<tgl_session> _session;
+    size_t m_out_packet_num;
+    connection_buffer* m_in_head;
+    connection_buffer* m_in_tail;
+    connection_buffer* m_out_head;
+    connection_buffer* m_out_tail;
+    size_t m_in_bytes;
+    size_t m_bytes_to_write;
+    std::shared_ptr<tgl_dc> m_dc;
+    struct mtproto_methods* m_methods;
+    std::shared_ptr<tgl_session> m_session;
 
-    int last_connect_time;
-    double last_receive_time;
+    double m_last_connect_time;
+    double m_last_receive_time;
 
-    bool in_fail_timer;
-    bool write_pending;
+    bool m_in_fail_timer;
+    bool m_write_pending;
 };
 
-extern struct tgl_net_methods tgl_asio_net;
+class tgl_connection_factory_asio : public tgl_connection_factory
+{
+public:
+    explicit tgl_connection_factory_asio(boost::asio::io_service& io_service)
+        : m_io_service(io_service)
+    { }
+
+    virtual std::shared_ptr<tgl_connection> create_connection(
+            const std::string& host,
+            int port,
+            const std::shared_ptr<tgl_session>& session,
+            const std::shared_ptr<tgl_dc>& dc,
+            mtproto_methods* methods) override
+    {
+        return std::make_shared<tgl_connection_asio>(m_io_service,
+            host, port, session, dc, methods);
+    }
+
+private:
+    boost::asio::io_service& m_io_service;
+};
 
 #endif

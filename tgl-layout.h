@@ -152,7 +152,7 @@ enum tgl_dc_state {
 #define MAX_DC_SESSIONS 3
 
 struct tgl_dc;
-class connection;
+class tgl_connection;
 
 struct tgl_session {
   std::shared_ptr<tgl_dc> dc;
@@ -160,7 +160,7 @@ struct tgl_session {
   long long last_msg_id = 0;
   int seq_no = 0;
   int received_messages = 0;
-  std::shared_ptr<connection> c = nullptr;
+  std::shared_ptr<tgl_connection> c = nullptr;
   std::vector<long> ack_tree;
   struct tgl_timer *ev = NULL;
 };

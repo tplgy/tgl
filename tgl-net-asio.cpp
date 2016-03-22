@@ -33,20 +33,20 @@ extern "C" {
 
 #define PING_TIMEOUT 10
 
-void connection::ping_alarm(const boost::system::error_code& error) {
+void tgl_connection_asio::ping_alarm(const boost::system::error_code& error) {
     if (error == boost::asio::error::operation_aborted) {
         return;
     }
-    if (state == conn_failed) {
+    if (m_state == conn_failed) {
         return;
     }
     //TGL_DEBUG("ping alarm\n");
-    TGL_ASSERT(state == conn_ready || state == conn_connecting);
-    if (tglt_get_double_time() - last_receive_time > 6 * PING_TIMEOUT) {
+    TGL_ASSERT(m_state == conn_ready || m_state == conn_connecting);
+    if (tglt_get_double_time() - m_last_receive_time > 6 * PING_TIMEOUT) {
         TGL_WARNING("fail connection: reason: ping timeout\n");
-        state = conn_failed;
+        m_state = conn_failed;
         fail();
-    } else if (tglt_get_double_time() - last_receive_time > 3 * PING_TIMEOUT && state == conn_ready) {
+    } else if (tglt_get_double_time() - m_last_receive_time > 3 * PING_TIMEOUT && m_state == conn_ready) {
         tgl_do_send_ping(shared_from_this());
         start_ping_timer();
     } else {
@@ -54,29 +54,31 @@ void connection::ping_alarm(const boost::system::error_code& error) {
     }
 }
 
-void connection::stop_ping_timer() {
-    ping_timer.cancel();
+void tgl_connection_asio::stop_ping_timer() {
+    m_ping_timer.cancel();
 }
 
-void connection::start_ping_timer() {
-    ping_timer.expires_from_now(boost::posix_time::seconds(PING_TIMEOUT));
-    ping_timer.async_wait(boost::bind(&connection::ping_alarm, shared_from_this(), boost::asio::placeholders::error));
+void tgl_connection_asio::start_ping_timer() {
+    m_ping_timer.expires_from_now(boost::posix_time::seconds(PING_TIMEOUT));
+    m_ping_timer.async_wait(boost::bind(&tgl_connection_asio::ping_alarm, shared_from_this(), boost::asio::placeholders::error));
 }
 
-void connection::fail_alarm(const boost::system::error_code& error) {
-    in_fail_timer = false;
+void tgl_connection_asio::fail_alarm(const boost::system::error_code& error) {
+    m_in_fail_timer = false;
     if (error == boost::asio::error::operation_aborted) {
         return;
     }
     restart();
 }
 
-void connection::start_fail_timer() {
-    if (in_fail_timer) { return; }
-    in_fail_timer = true;
+void tgl_connection_asio::start_fail_timer() {
+    if (m_in_fail_timer) {
+        return;
+    }
+    m_in_fail_timer = true;
 
-    fail_timer.expires_from_now(boost::posix_time::seconds(10));
-    fail_timer.async_wait(boost::bind(&connection::fail_alarm, shared_from_this(), boost::asio::placeholders::error));
+    m_fail_timer.expires_from_now(boost::posix_time::seconds(10));
+    m_fail_timer.async_wait(boost::bind(&tgl_connection_asio::fail_alarm, shared_from_this(), boost::asio::placeholders::error));
 }
 
 static connection_buffer *new_connection_buffer(int size) {
@@ -92,25 +94,17 @@ static void delete_connection_buffer(connection_buffer *b) {
     tfree(b);
 }
 
-int tgln_write_out(std::shared_ptr<connection> c, const void *data, int len) {
-    return c->write(data, len);
-}
-
-int tgln_read_in(std::shared_ptr<connection> c, void *buffer, int len) {
-    return c->read(buffer, len);
-}
-
-int connection::read_in_lookup(void *_data, int len) {
+ssize_t tgl_connection_asio::read_in_lookup(void *_data, size_t len) {
     unsigned char *data = (unsigned char *)_data;
-    if (!len || !in_bytes) { return 0; }
+    if (!len || !m_in_bytes) { return 0; }
     assert (len > 0);
-    if (len > in_bytes) {
-        len = in_bytes;
+    if (len > m_in_bytes) {
+        len = m_in_bytes;
     }
     int x = 0;
-    connection_buffer *b = in_head;
+    connection_buffer *b = m_in_head;
     while (len) {
-        int y = b->wptr - b->rptr;
+        size_t y = b->wptr - b->rptr;
         if (y >= len) {
             memcpy(data, b->rptr, len);
             return x + len;
@@ -125,10 +119,6 @@ int connection::read_in_lookup(void *_data, int len) {
     return x;
 }
 
-void tgln_flush_out(std::shared_ptr<connection> c) {
-    c->flush();
-}
-
 static int rotate_port(int port) {
     switch (port) {
         case 443:
@@ -141,115 +131,117 @@ static int rotate_port(int port) {
     return -1;
 }
 
-std::shared_ptr<connection> tgln_create_connection(const std::string &host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods) {
-    std::shared_ptr<connection> c = std::make_shared<connection>(*tgl_state::instance()->io_service, host, port, session, dc, methods);
-
-    if (!c->connect()) {
-        TGL_ERROR("Can not connect to " << host << ":" << port << "\n");
-        c = nullptr;
-        return 0;
-    }
-
-    c->start_ping_timer();
-
-    char byte = 0xef; // use abridged protocol
-    int result = tgln_write_out(c, &byte, 1);
-    TGL_ASSERT_UNUSED(result, result == 1);
-    tgln_flush_out(c);
-
-    return c;
-}
-
-void connection::restart() {
-    if (destroyed) {
-        TGL_WARNING("Can't restart a destroyed connection" << std::endl);
-        return;
-    }
-
-    if (last_connect_time == time(0)) {
-        start_fail_timer();
-        return;
-    }
-
-    socket.close();
-    last_connect_time = time(0);
+bool tgl_connection_asio::open()
+{
     if (!connect()) {
-        TGL_WARNING("Can not reconnect to " << ip << ":" << port << "\n");
-        start_fail_timer();
-        return;
+        TGL_ERROR("Can not connect to " << m_ip << ":" << m_port << "\n");
+        return false;
     }
-
-    TGL_DEBUG("restarting connection to " << ip << ":" << port << "\n");
 
     start_ping_timer();
 
     char byte = 0xef; // use abridged protocol
-    int result = tgln_write_out(shared_from_this(), &byte, 1);
+    ssize_t result = write(&byte, 1);
     TGL_ASSERT_UNUSED(result, result == 1);
-    tgln_flush_out(shared_from_this());
+    flush();
+
+    return true;
 }
 
-void connection::fail() {
-    if (state == conn_ready || state == conn_connecting) {
-        stop_ping_timer();
-    }
-
-    if (socket.is_open()) {
-        socket.close();
-    }
-
-    port = rotate_port(port);
-    connection_buffer *b = out_head;
-    while (b) {
-        connection_buffer *d = b;
-        b = b->next;
-        delete_connection_buffer(d);
-    }
-    b = in_head;
-    while (b) {
-        connection_buffer *d = b;
-        b = b->next;
-        delete_connection_buffer(d);
-    }
-    out_head = out_tail = in_head = in_tail = 0;
-    state = conn_failed;
-    bytes_to_write = in_bytes = 0;
-    TGL_NOTICE("Lost connection to server... " << ip << ":" << port << "\n");
-    restart();
-}
-
-void connection::try_rpc_read() {
-    if (destroyed) {
+void tgl_connection_asio::restart() {
+    if (m_closed) {
+        TGL_WARNING("Can't restart a closed connection" << std::endl);
         return;
     }
 
-    TGL_ASSERT(in_head);
+    if (m_last_connect_time == time(0)) {
+        start_fail_timer();
+        return;
+    }
+
+    m_socket.close();
+    m_last_connect_time = time(0);
+    if (!connect()) {
+        TGL_WARNING("Can not reconnect to " << m_ip << ":" << m_port << "\n");
+        start_fail_timer();
+        return;
+    }
+
+    TGL_DEBUG("restarting connection to " << m_ip << ":" << m_port << "\n");
+
+    start_ping_timer();
+
+    char byte = 0xef; // use abridged protocol
+    ssize_t result = write(&byte, 1);
+    TGL_ASSERT_UNUSED(result, result == 1);
+    flush();
+}
+
+void tgl_connection_asio::fail() {
+    if (m_state == conn_ready || m_state == conn_connecting) {
+        stop_ping_timer();
+    }
+
+    if (m_socket.is_open()) {
+        m_socket.close();
+    }
+
+    m_port = rotate_port(m_port);
+    connection_buffer* b = m_out_head;
+    while (b) {
+        connection_buffer *d = b;
+        b = b->next;
+        delete_connection_buffer(d);
+    }
+    b = m_in_head;
+    while (b) {
+        connection_buffer *d = b;
+        b = b->next;
+        delete_connection_buffer(d);
+    }
+    m_out_head = m_out_tail = m_in_head = m_in_tail = nullptr;
+    m_state = conn_failed;
+    m_bytes_to_write = m_in_bytes = 0;
+    TGL_NOTICE("Lost connection to server... " << m_ip << ":" << m_port << "\n");
+    restart();
+}
+
+void tgl_connection_asio::try_rpc_read() {
+    if (m_closed) {
+        return;
+    }
+
+    TGL_ASSERT(m_in_head);
 
     while (1) {
-        if (in_bytes < 1) { return; }
+        if (m_in_bytes < 1) { return; }
         unsigned len = 0;
         unsigned t = 0;
-        int result = read_in_lookup(&len, 1);
+        ssize_t result = read_in_lookup(&len, 1);
         TGL_ASSERT_UNUSED(result, result == 1);
         if (len >= 1 && len <= 0x7e) {
-            if (in_bytes < (int)(1 + 4 * len)) { return; }
+            if (m_in_bytes < 1 + 4 * len) {
+                return;
+            }
         } else {
-            if (in_bytes < 4) { return; }
+            if (m_in_bytes < 4) { return; }
             result = read_in_lookup(&len, 4);
             TGL_ASSERT_UNUSED(result, result == 4);
             len = (len >> 8);
-            if (in_bytes < (int)(4 + 4 * len)) { return; }
+            if (m_in_bytes < 4 + 4 * len) {
+                return;
+            }
             len = 0x7f;
         }
 
         if (len >= 1 && len <= 0x7e) {
-            result = tgln_read_in(shared_from_this(), &t, 1);
+            result = read(&t, 1);
             TGL_ASSERT_UNUSED(result, result == 1);
             TGL_ASSERT(t == len);
             TGL_ASSERT(len >= 1);
         } else {
             TGL_ASSERT(len == 0x7f);
-            result = tgln_read_in(shared_from_this(), &len, 4);
+            result = read(&len, 4);
             TGL_ASSERT_UNUSED(result, result == 4);
             len = (len >> 8);
             TGL_ASSERT(len >= 1);
@@ -258,149 +250,140 @@ void connection::try_rpc_read() {
         int op;
         result = read_in_lookup(&op, 4);
         TGL_ASSERT_UNUSED(result, result == 4);
-        if (methods->execute(shared_from_this(), op, len) < 0) {
+        if (m_methods->execute(shared_from_this(), op, len) < 0) {
             fail();
             return;
         }
     }
 }
 
-static void incr_out_packet_num(std::shared_ptr<connection> c) {
-    c->incr_out_packet_num();
-}
-
-static std::shared_ptr<tgl_dc> get_dc(std::shared_ptr<connection> c) {
-    return c->dc();
-}
-
-static std::shared_ptr<tgl_session> get_session(std::shared_ptr<connection> c) {
-    return c->session();
-}
-
-static void tgln_free(std::shared_ptr<connection> c) {
-    c->destroy();
-}
-
-connection::connection(boost::asio::io_service& io_service, const std::string& host, int port, std::shared_ptr<tgl_session> session, std::shared_ptr<tgl_dc> dc, struct mtproto_methods *methods)
-    : destroyed(false)
-    , ip(host)
-    , port(port)
-    , state(conn_none)
-    , socket(io_service)
-    , ping_timer(io_service)
-    , fail_timer(io_service)
-    , out_packet_num(0)
-    , in_head(nullptr)
-    , in_tail(nullptr)
-    , out_head(nullptr)
-    , out_tail(nullptr)
-    , in_bytes(0)
-    , bytes_to_write(0)
-    , _dc(dc)
-    , methods(methods)
-    , _session(session)
-    , last_connect_time(0)
-    , last_receive_time(0)
-    , in_fail_timer(false)
-    , write_pending(false)
+tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
+        const std::string& host, int port,
+        const std::shared_ptr<tgl_session>& session,
+        const std::shared_ptr<tgl_dc>& dc,
+        struct mtproto_methods* methods)
+    : m_closed(false)
+    , m_ip(host)
+    , m_port(port)
+    , m_state(conn_none)
+    , m_socket(io_service)
+    , m_ping_timer(io_service)
+    , m_fail_timer(io_service)
+    , m_out_packet_num(0)
+    , m_in_head(nullptr)
+    , m_in_tail(nullptr)
+    , m_out_head(nullptr)
+    , m_out_tail(nullptr)
+    , m_in_bytes(0)
+    , m_bytes_to_write(0)
+    , m_dc(dc)
+    , m_methods(methods)
+    , m_session(session)
+    , m_last_connect_time(0)
+    , m_last_receive_time(0)
+    , m_in_fail_timer(false)
+    , m_write_pending(false)
 {
 }
 
-void connection::destroy()
+void tgl_connection_asio::close()
 {
-    destroyed = true;
-    ping_timer.cancel();
-    fail_timer.cancel();
-    socket.close();
+    m_closed = true;
+    m_ping_timer.cancel();
+    m_fail_timer.cancel();
+    m_socket.close();
 
-    connection_buffer *b = out_head;
+    connection_buffer* b = m_out_head;
     while (b) {
         connection_buffer *d = b;
         b = b->next;
         delete_connection_buffer(d);
     }
-    out_head = nullptr;
-    out_tail = nullptr;
-    bytes_to_write = 0;
+    m_out_head = nullptr;
+    m_out_tail = nullptr;
+    m_bytes_to_write = 0;
 
-    b = in_head;
+    b = m_in_head;
     while (b) {
         connection_buffer *d = b;
         b = b->next;
         delete_connection_buffer(d);
     }
-    in_head = nullptr;
-    in_tail = nullptr;
-    in_bytes = 0;
+    m_in_head = nullptr;
+    m_in_tail = nullptr;
+    m_in_bytes = 0;
 }
 
-bool connection::connect() {
-    if (destroyed) {
+bool tgl_connection_asio::connect() {
+    if (m_closed) {
         return false;
     }
 
     boost::system::error_code ec;
-    socket.open(tgl_state::instance()->ipv6_enabled() ? boost::asio::ip::tcp::v6() : boost::asio::ip::tcp::v4(), ec);
+    m_socket.open(tgl_state::instance()->ipv6_enabled() ? boost::asio::ip::tcp::v6() : boost::asio::ip::tcp::v4(), ec);
     if (ec) {
         TGL_WARNING("error opening socket: " << ec.message() << "\n");
         return false;
     }
 
-    socket.set_option(boost::asio::socket_base::reuse_address(true));
-    socket.set_option(boost::asio::socket_base::keep_alive(true));
-    socket.set_option(boost::asio::ip::tcp::no_delay(true));
-    socket.non_blocking(true, ec);
+    m_socket.set_option(boost::asio::socket_base::reuse_address(true));
+    m_socket.set_option(boost::asio::socket_base::keep_alive(true));
+    m_socket.set_option(boost::asio::ip::tcp::no_delay(true));
+    m_socket.non_blocking(true, ec);
     if (ec) {
         TGL_WARNING("error making socket non-blocking: " << ec.message() << "\n");
         return false;
     }
 
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(ip), port);
-    socket.async_connect(endpoint, std::bind(&connection::handle_connect, shared_from_this(), std::placeholders::_1));
-    state = conn_connecting;
-    last_receive_time = tglt_get_double_time();
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_ip), m_port);
+    m_socket.async_connect(endpoint, std::bind(&tgl_connection_asio::handle_connect, shared_from_this(), std::placeholders::_1));
+    m_state = conn_connecting;
+    m_last_receive_time = tglt_get_double_time();
     return true;
 }
 
-void connection::handle_connect(const boost::system::error_code& ec)
+void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
 {
     if (ec) {
-        TGL_WARNING("error connecting to " << ip << ":" << port << ": " << ec.message() << "\n");
+        TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message() << "\n");
         fail();
         return;
     }
 
-    TGL_NOTICE("connected to " << ip << ":" << port << "\n");
+    TGL_NOTICE("connected to " << m_ip << ":" << m_port << "\n");
 
-    last_receive_time = tglt_get_double_time();
-    tgl_state::instance()->io_service->post(boost::bind(&connection::start_read, shared_from_this()));
+    m_last_receive_time = tglt_get_double_time();
+    tgl_state::instance()->io_service->post(boost::bind(&tgl_connection_asio::start_read, shared_from_this()));
 }
 
-int connection::read(void *buffer, int len) {
-    unsigned char *data = (unsigned char *)buffer;
-    if (!len) { return 0; }
-    assert (len > 0);
-    if (len > in_bytes) {
-        len = in_bytes;
+ssize_t tgl_connection_asio::read(void* buffer, size_t len) {
+    unsigned char* data = static_cast<unsigned char*>(buffer);
+    if (!len) {
+        return 0;
     }
-    int x = 0;
+
+    assert (len > 0);
+    if (len > m_in_bytes) {
+        len = m_in_bytes;
+    }
+    size_t x = 0;
     while (len) {
-        int y = in_head->wptr - in_head->rptr;
+        size_t y = m_in_head->wptr - m_in_head->rptr;
         if (y > len) {
-            memcpy (data, in_head->rptr, len);
-            in_head->rptr += len;
-            in_bytes -= len;
+            memcpy (data, m_in_head->rptr, len);
+            m_in_head->rptr += len;
+            m_in_bytes -= len;
             return x + len;
         } else {
-            memcpy(data, in_head->rptr, y);
-            in_bytes -= y;
+            memcpy(data, m_in_head->rptr, y);
+            m_in_bytes -= y;
             x += y;
             data += y;
             len -= y;
-            connection_buffer *old = in_head;
-            in_head = in_head->next;
-            if (!in_head) {
-                in_tail = 0;
+            connection_buffer *old = m_in_head;
+            m_in_head = m_in_head->next;
+            if (!m_in_head) {
+                m_in_tail = nullptr;
             }
             delete_connection_buffer(old);
         }
@@ -408,82 +391,84 @@ int connection::read(void *buffer, int len) {
     return x;
 }
 
-void connection::start_read() {
-    if (destroyed) {
+void tgl_connection_asio::start_read() {
+    if (m_closed) {
         return;
     }
 
-    if (!in_tail) {
-        in_head = in_tail = new_connection_buffer(1 << 20);
+    if (!m_in_tail) {
+        m_in_head = m_in_tail = new_connection_buffer(1 << 20);
     }
 
-    socket.async_receive(boost::asio::buffer(in_tail->wptr, in_tail->end - in_tail->wptr),
-            boost::bind(&connection::handle_read, shared_from_this(),
+    m_socket.async_receive(boost::asio::buffer(m_in_tail->wptr, m_in_tail->end - m_in_tail->wptr),
+            boost::bind(&tgl_connection_asio::handle_read, shared_from_this(),
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
 }
 
-int connection::write(const void *_data, int len) {
+ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
     //TGL_DEBUG("write: " << len << " bytes\n");
-    const unsigned char *data = (const unsigned char *)_data;
-    if (!len) { return 0; }
+    const unsigned char* data = static_cast<const unsigned char*>(data_in);
+    if (!len) {
+        return 0;
+    }
     assert (len > 0);
-    int x = 0;
-    if (!out_head) {
+    size_t x = 0;
+    if (!m_out_head) {
         connection_buffer *b = new_connection_buffer(1 << 20);
-        out_head = out_tail = b;
+        m_out_head = m_out_tail = b;
     }
     while (len) {
-        if (out_tail->end - out_tail->wptr >= len) {
-            memcpy(out_tail->wptr, data, len);
-            out_tail->wptr += len;
-            bytes_to_write += len;
+        if (static_cast<size_t>(m_out_tail->end - m_out_tail->wptr) >= len) {
+            memcpy(m_out_tail->wptr, data, len);
+            m_out_tail->wptr += len;
+            m_bytes_to_write += len;
             x += len;
             break;
         } else {
-            int y = out_tail->end - out_tail->wptr;
+            size_t y = m_out_tail->end - m_out_tail->wptr;
             TGL_ASSERT(y < len);
-            memcpy(out_tail->wptr, data, y);
+            memcpy(m_out_tail->wptr, data, y);
             x += y;
             len -= y;
             data += y;
             connection_buffer *b = new_connection_buffer (1 << 20);
-            out_tail->next = b;
-            b->next = 0;
-            out_tail = b;
-            bytes_to_write += y;
+            m_out_tail->next = b;
+            b->next = nullptr;
+            m_out_tail = b;
+            m_bytes_to_write += y;
         }
     }
-    if (bytes_to_write) {
-        tgl_state::instance()->io_service->post(boost::bind(&connection::start_write, shared_from_this()));
+    if (m_bytes_to_write) {
+        tgl_state::instance()->io_service->post(boost::bind(&tgl_connection_asio::start_write, shared_from_this()));
     }
     return x;
 }
 
-void connection::start_write() {
-    if (destroyed) {
+void tgl_connection_asio::start_write() {
+    if (m_closed) {
         return;
     }
 
-    if (state == conn_connecting) {
-        state = conn_ready;
-        methods->ready(shared_from_this());
+    if (m_state == conn_connecting) {
+        m_state = conn_ready;
+        m_methods->ready(shared_from_this());
     }
 
-    if (!write_pending && bytes_to_write > 0) {
-        write_pending = true;
-        TGL_ASSERT(out_head);
-        socket.async_send(boost::asio::buffer(out_head->rptr, out_head->wptr - out_head->rptr),
-                boost::bind(&connection::handle_write, shared_from_this(),
+    if (!m_write_pending && m_bytes_to_write > 0) {
+        m_write_pending = true;
+        TGL_ASSERT(m_out_head);
+        m_socket.async_send(boost::asio::buffer(m_out_head->rptr, m_out_head->wptr - m_out_head->rptr),
+                boost::bind(&tgl_connection_asio::handle_write, shared_from_this(),
                     boost::asio::placeholders::error,
                     boost::asio::placeholders::bytes_transferred));
     }
 }
 
-void connection::flush() {
+void tgl_connection_asio::flush() {
 }
 
-void connection::handle_read(const boost::system::error_code& ec, size_t bytes_transferred) {
+void tgl_connection_asio::handle_read(const boost::system::error_code& ec, size_t bytes_transferred) {
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
             TGL_WARNING("read error: " << ec << " (" << ec.message() << ")" << std::endl);
@@ -492,27 +477,27 @@ void connection::handle_read(const boost::system::error_code& ec, size_t bytes_t
         return;
     }
 
-    if (destroyed) {
-        TGL_WARNING("invalid read from destroyed connection" << std::endl);
+    if (m_closed) {
+        TGL_WARNING("invalid read from closed connection" << std::endl);
         return;
     }
 
     TGL_DEBUG("received " << bytes_transferred << " bytes" << std::endl);
 
     if (bytes_transferred > 0) {
-        last_receive_time = tglt_get_double_time();
+        m_last_receive_time = tglt_get_double_time();
         stop_ping_timer();
         start_ping_timer();
     }
 
-    in_tail->wptr += bytes_transferred;
-    if (in_tail->wptr == in_tail->end) {
+    m_in_tail->wptr += bytes_transferred;
+    if (m_in_tail->wptr == m_in_tail->end) {
         connection_buffer *b = new_connection_buffer(1 << 20);
-        in_tail->next = b;
-        in_tail = b;
+        m_in_tail->next = b;
+        m_in_tail = b;
     }
 
-    in_bytes += bytes_transferred;
+    m_in_bytes += bytes_transferred;
     if (bytes_transferred) {
         try_rpc_read();
     }
@@ -520,59 +505,35 @@ void connection::handle_read(const boost::system::error_code& ec, size_t bytes_t
     start_read();
 }
 
-void connection::handle_write(const boost::system::error_code& ec, size_t bytes_transferred) {
-    write_pending = false;
+void tgl_connection_asio::handle_write(const boost::system::error_code& ec, size_t bytes_transferred) {
+    m_write_pending = false;
     if (ec) {
         TGL_WARNING("write error: " << ec << " (" << ec.message() << ")" << std::endl);
         fail();
         return;
     }
 
-    if (destroyed) {
-        TGL_WARNING("invalid write to detroyed connection" << std::endl);
+    if (m_closed) {
+        TGL_WARNING("invalid write to closed connection" << std::endl);
         return;
     }
 
-
     TGL_DEBUG("wrote " << bytes_transferred << " bytes" << std::endl);
 
-    if (out_head) {
-        out_head->rptr += bytes_transferred;
-        if (out_head->rptr == out_head->wptr) {
-            connection_buffer *b = out_head;
-            out_head = b->next;
-            if (!out_head) {
-                out_tail = 0;
+    if (m_out_head) {
+        m_out_head->rptr += bytes_transferred;
+        if (m_out_head->rptr == m_out_head->wptr) {
+            connection_buffer* b = m_out_head;
+            m_out_head = b->next;
+            if (!m_out_head) {
+                m_out_tail = nullptr;
             }
             delete_connection_buffer(b);
         }
     }
 
-    bytes_to_write -= bytes_transferred;
-    if (bytes_to_write > 0) {
-        tgl_state::instance()->io_service->post(boost::bind(&connection::start_write, shared_from_this()));
+    m_bytes_to_write -= bytes_transferred;
+    if (m_bytes_to_write > 0) {
+        tgl_state::instance()->io_service->post(boost::bind(&tgl_connection_asio::start_write, shared_from_this()));
     }
 }
-
-void connection::incr_out_packet_num() {
-    out_packet_num++;
-}
-
-std::shared_ptr<tgl_dc> connection::dc() {
-    return _dc;
-}
-
-std::shared_ptr<tgl_session> connection::session() {
-    return _session;
-}
-
-struct tgl_net_methods tgl_asio_net = {
-    .write_out = tgln_write_out,
-    .read_in = tgln_read_in,
-    .flush_out = tgln_flush_out,
-    .incr_out_packet_num = incr_out_packet_num,
-    .free = tgln_free,
-    .get_dc = get_dc,
-    .get_session = get_session,
-    .create_connection = tgln_create_connection,
-};
