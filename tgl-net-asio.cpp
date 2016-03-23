@@ -32,6 +32,40 @@ extern "C" {
 
 #define PING_TIMEOUT 10
 
+tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
+        const std::string& host, int port,
+        const std::weak_ptr<tgl_session>& session,
+        const std::weak_ptr<tgl_dc>& dc,
+        const std::shared_ptr<mtproto_client>& client)
+    : m_closed(false)
+    , m_ip(host)
+    , m_port(port)
+    , m_state(conn_none)
+    , m_socket(io_service)
+    , m_ping_timer(io_service)
+    , m_fail_timer(io_service)
+    , m_out_packet_num(0)
+    , m_in_head(nullptr)
+    , m_in_tail(nullptr)
+    , m_out_head(nullptr)
+    , m_out_tail(nullptr)
+    , m_in_bytes(0)
+    , m_bytes_to_write(0)
+    , m_dc(dc)
+    , m_session(session)
+    , m_mtproto_client(client)
+    , m_last_connect_time(0)
+    , m_last_receive_time(0)
+    , m_in_fail_timer(false)
+    , m_write_pending(false)
+{
+}
+
+tgl_connection_asio::~tgl_connection_asio()
+{
+    free_buffers();
+}
+
 void tgl_connection_asio::ping_alarm(const boost::system::error_code& error) {
     if (error == boost::asio::error::operation_aborted) {
         return;
@@ -256,42 +290,21 @@ void tgl_connection_asio::try_rpc_read() {
     }
 }
 
-tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
-        const std::string& host, int port,
-        const std::weak_ptr<tgl_session>& session,
-        const std::weak_ptr<tgl_dc>& dc,
-        const std::shared_ptr<mtproto_client>& client)
-    : m_closed(false)
-    , m_ip(host)
-    , m_port(port)
-    , m_state(conn_none)
-    , m_socket(io_service)
-    , m_ping_timer(io_service)
-    , m_fail_timer(io_service)
-    , m_out_packet_num(0)
-    , m_in_head(nullptr)
-    , m_in_tail(nullptr)
-    , m_out_head(nullptr)
-    , m_out_tail(nullptr)
-    , m_in_bytes(0)
-    , m_bytes_to_write(0)
-    , m_dc(dc)
-    , m_session(session)
-    , m_mtproto_client(client)
-    , m_last_connect_time(0)
-    , m_last_receive_time(0)
-    , m_in_fail_timer(false)
-    , m_write_pending(false)
-{
-}
-
 void tgl_connection_asio::close()
 {
+    if (m_closed) {
+        return;
+    }
+
     m_closed = true;
     m_ping_timer.cancel();
     m_fail_timer.cancel();
     m_socket.close();
+    free_buffers();
+}
 
+void tgl_connection_asio::free_buffers()
+{
     connection_buffer* b = m_out_head;
     while (b) {
         connection_buffer *d = b;

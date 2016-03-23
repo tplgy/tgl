@@ -55,6 +55,7 @@ public:
             const std::weak_ptr<tgl_session>& session,
             const std::weak_ptr<tgl_dc>& dc,
             const std::shared_ptr<mtproto_client>& client);
+    virtual ~tgl_connection_asio();
 
     virtual bool open() override;
     virtual void close() override;
@@ -88,6 +89,7 @@ private:
     void try_rpc_read();
 
     void handle_connect(const boost::system::error_code&);
+    void free_buffers();
 
     bool m_closed;
 
