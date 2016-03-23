@@ -37,7 +37,7 @@ extern "C" {
 #include <assert.h>
 
 tgl_state::tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
-       DC_working(NULL), temp_key_expire_time(0), connection_factory(), io_service(NULL),
+       DC_working(NULL), temp_key_expire_time(0), io_service(NULL),
        BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
        m_date(0), m_seq(0), m_test_mode(0), m_our_id(0), m_enable_pfs(false), m_ipv6_enabled(false)
 {
@@ -171,8 +171,8 @@ void tgl_state::init(const std::string &&download_dir, int app_id, const std::st
   m_app_id = app_id;
   m_app_hash = app_hash;
   m_app_version = app_version;
-  assert(timer_factory);
-  assert (connection_factory);
+  assert(m_timer_factory);
+  assert(m_connection_factory);
   if (!temp_key_expire_time) {
     temp_key_expire_time = 100000;
   }
@@ -202,14 +202,6 @@ void tgl_state::set_enable_pfs (bool val) {
 
 void tgl_state::set_test_mode (bool val) {
   this->m_test_mode = val;
-}
-
-void tgl_state::set_connection_factory(const std::shared_ptr<tgl_connection_factory>& factory) {
-  this->connection_factory = factory;
-}
-
-void tgl_state::set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory) {
-  this->timer_factory = factory;
 }
 
 void tgl_state::set_io_service (boost::asio::io_service *io_service) {

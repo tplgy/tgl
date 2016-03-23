@@ -232,7 +232,7 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
   q->flags = flags & QUERY_FORCE_SEND;
   tgl_state::instance()->queries_tree.push_back(q);
 
-  q->ev = tgl_state::instance()->timer_factory->create_timer(std::bind(&alarm_query_gateway, q));
+  q->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&alarm_query_gateway, q));
   q->ev->start(q->methods->timeout ? q->methods->timeout : QUERY_TIMEOUT);
 
   q->extra = extra;
@@ -4738,7 +4738,7 @@ void tgl_state::login () {
 
     if (!ok) {
         //TGL_DEBUG("not authorized...waiting\n");
-        tgl_state::instance()->ev_login = tgl_state::instance()->timer_factory->create_timer(std::bind(&check_authorized, nullptr));
+        tgl_state::instance()->ev_login = tgl_state::instance()->timer_factory()->create_timer(std::bind(&check_authorized, nullptr));
         tgl_state::instance()->ev_login->start(0.1);
     } else {
         tgl_sign_in();

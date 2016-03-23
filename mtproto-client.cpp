@@ -1058,12 +1058,12 @@ static void create_session_connect(const std::shared_ptr<tgl_session>& S) {
     static auto client = std::make_shared<mtproto_client>();
 
     if (tgl_state::instance()->ipv6_enabled()) {
-        S->c = tgl_state::instance()->connection_factory->create_connection(
+        S->c = tgl_state::instance()->connection_factory()->create_connection(
                 std::get<0>(DC->options[1].option_list[0]),
                 std::get<1>(DC->options[1].option_list[0]),
                 S, DC, client);
     } else {
-        S->c = tgl_state::instance()->connection_factory->create_connection(
+        S->c = tgl_state::instance()->connection_factory()->create_connection(
                 std::get<0>(DC->options[0].option_list[0]),
                 std::get<1>(DC->options[0].option_list[0]),
                 S, DC, client);
@@ -1376,7 +1376,7 @@ std::shared_ptr<tgl_dc> tglmp_alloc_dc (int flags, int id, const std::string &ip
     DC->id = id;
     DC->sessions[0] = NULL;
     tgl_state::instance()->DC_list[id] = DC;
-    DC->ev = tgl_state::instance()->timer_factory->create_timer(std::bind(&regen_temp_key_gw, DC));
+    DC->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
     DC->ev->start(0);
   }
 
@@ -1391,10 +1391,10 @@ void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC) {
   std::shared_ptr<tgl_session> S = std::make_shared<tgl_session>();
   assert (TGLC_rand_pseudo_bytes ((unsigned char *) &S->session_id, 8) >= 0);
   S->dc = DC;
-  //S->c = tgl_state::instance()->connection_factory->create_connection (DC->ip, DC->port, S, DC, &mtproto_methods);
+  //S->c = tgl_state::instance()->connection_factory()->create_connection (DC->ip, DC->port, S, DC, &mtproto_methods);
 
   create_session_connect (S);
-  S->ev = tgl_state::instance()->timer_factory->create_timer(std::bind(&send_all_acks_gateway, S));
+  S->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&send_all_acks_gateway, S));
   assert (!DC->sessions[0]);
   DC->sessions[0] = S;
 }

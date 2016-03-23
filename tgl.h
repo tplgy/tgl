@@ -155,7 +155,6 @@ struct tgl_state {
   int temp_key_expire_time;
 
   struct tgl_update_callback callback;
-  std::shared_ptr<tgl_connection_factory> connection_factory;
   boost::asio::io_service *io_service;
 
   std::vector<char*> rsa_key_list;
@@ -165,8 +164,6 @@ struct tgl_state {
   TGLC_bn_ctx *TGLC_bn_ctx;
 
   std::vector<tgl_message*> unsent_messages;
-
-  std::shared_ptr<tgl_timer_factory> timer_factory;
 
   std::vector<std::shared_ptr<query>> queries_tree;
 
@@ -189,14 +186,17 @@ struct tgl_state {
   void set_rsa_key (const char *key);
   void set_enable_pfs (bool); // enable perfect forward secrecy (does not work properly right now)
   void set_test_mode (bool);
-  void set_connection_factory(const std::shared_ptr<tgl_connection_factory>& factory);
-  void set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory);
+  void set_connection_factory(const std::shared_ptr<tgl_connection_factory>& factory) { m_connection_factory = factory; }
+  void set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory) { m_timer_factory = factory; }
   void set_io_service (boost::asio::io_service* io_service);
   void set_enable_ipv6 (bool val);
   std::string app_version() { return m_app_version; }
   std::string app_hash() { return m_app_hash; }
   int app_id() { return m_app_id; }
-  std::shared_ptr<tgl_download_manager> download_manager() { return m_download_manager; }
+
+  const std::shared_ptr<tgl_download_manager>& download_manager() const { return m_download_manager; }
+  const std::shared_ptr<tgl_connection_factory>& connection_factory() const { return m_connection_factory; }
+  const std::shared_ptr<tgl_timer_factory>& timer_factory() const { return m_timer_factory; }
 
   void set_error(std::string error, int error_code);
 
@@ -226,7 +226,10 @@ private:
   bool m_ipv6_enabled;
 
   tgl_state();
+
   std::shared_ptr<tgl_download_manager> m_download_manager;
+  std::shared_ptr<tgl_timer_factory> m_timer_factory;
+  std::shared_ptr<tgl_connection_factory> m_connection_factory;
 };
 
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);
