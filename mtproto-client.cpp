@@ -69,8 +69,8 @@ extern "C" {
 #define MAX_NET_RES        (1L << 16)
 //extern int log_level;
 
-static long long generate_next_msg_id(std::shared_ptr<tgl_dc> DC, std::shared_ptr<tgl_session> S);
-static double get_server_time (std::shared_ptr<tgl_dc>DC);
+static long long generate_next_msg_id(const std::shared_ptr<tgl_dc>& DC, const std::shared_ptr<tgl_session>& S);
+static double get_server_time(const std::shared_ptr<tgl_dc>& DC);
 
 // for statistic only
 static int total_packets_sent;
@@ -178,10 +178,13 @@ static int rpc_send_packet (const std::shared_ptr<tgl_connection>& c) {
     int len = (packet_ptr - packet_buffer) * 4;
     c->incr_out_packet_num();
 
-    std::shared_ptr<tgl_dc> DC = c->get_dc();
-    std::shared_ptr<tgl_session> S = c->get_session();
+    std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+    std::shared_ptr<tgl_session> S = c->get_session().lock();
+    if (!DC || !S) {
+        return -1;
+    }
 
-    unenc_msg_header.out_msg_id = generate_next_msg_id (DC, S);
+    unenc_msg_header.out_msg_id = generate_next_msg_id(DC, S);
     unenc_msg_header.msg_len = len;
 
     int total_len = len + 20;
@@ -252,7 +255,11 @@ static int check_unauthorized_header () {
 /* {{{ REQ_PQ */
 // req_pq#60469778 nonce:int128 = ResPQ
 static int send_req_pq_packet (const std::shared_ptr<tgl_connection>& c) {
-    std::shared_ptr<tgl_dc> DC = c->get_dc();
+    std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+    if (!DC) {
+        return -1;
+    }
+
     assert (DC->state == st_init);
 
     tglt_secure_random (DC->nonce, 16);
@@ -267,7 +274,11 @@ static int send_req_pq_packet (const std::shared_ptr<tgl_connection>& c) {
 
 // req_pq#60469778 nonce:int128 = ResPQ
 static int send_req_pq_temp_packet (const std::shared_ptr<tgl_connection>& c) {
-    std::shared_ptr<tgl_dc> DC = c->get_dc();
+    std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+    if (!DC) {
+        return -1;
+    }
+
     assert (DC->state == st_authorized);
 
     tglt_secure_random (DC->nonce, 16);
@@ -286,7 +297,10 @@ static int send_req_pq_temp_packet (const std::shared_ptr<tgl_connection>& c) {
 // p_q_inner_data#83c95aec pq:string p:string q:string nonce:int128 server_nonce:int128 new_nonce:int256 = P_Q_inner_data;
 // p_q_inner_data_temp#3c6a84d4 pq:string p:string q:string nonce:int128 server_nonce:int128 new_nonce:int256 expires_in:int = P_Q_inner_data;
 static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_bn *pq, int temp_key) {
-  std::shared_ptr<tgl_dc> DC = c->get_dc();
+  std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+  if (!DC) {
+    return;
+  }
 
   TGLC_bn *p = TGLC_bn_new ();
   TGLC_bn *q = TGLC_bn_new ();
@@ -332,7 +346,10 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
 // set_client_DH_params#f5045f1f nonce:int128 server_nonce:int128 encrypted_data:string = Set_client_DH_params_answer;
 // client_DH_inner_data#6643b654 nonce:int128 server_nonce:int128 retry_id:long g_b:string = Client_DH_Inner_Data
 static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *dh_prime, TGLC_bn *g_a, int g, int temp_key) {
-  std::shared_ptr<tgl_dc> DC = c->get_dc();
+  std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+  if (!DC) {
+    return;
+  }
 
   clear_packet ();
   packet_ptr += 5;
@@ -403,7 +420,10 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
   }
   in_ptr = in_save;
 
-  std::shared_ptr<tgl_dc> DC = c->get_dc();
+  std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+  if (!DC) {
+    return -1;
+  }
 
   assert (fetch_int() == CODE_res_p_q);
 
@@ -466,7 +486,10 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   }
   in_ptr = in_save;
 
-  std::shared_ptr<tgl_dc> DC = c->get_dc();
+  std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+  if (!DC) {
+    return -1;
+  }
 
   unsigned op = fetch_int ();
   assert (op == CODE_server__d_h_params_ok || op == CODE_server__d_h_params_fail);
@@ -563,7 +586,10 @@ static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c);
 // dh_gen_retry#46dc1fb9 nonce:int128 server_nonce:int128 new_nonce_hash2:int128 = Set_client_DH_params_answer;
 // dh_gen_fail#a69dae02 nonce:int128 server_nonce:int128 new_nonce_hash3:int128 = Set_client_DH_params_answer;
 static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char *packet, int len, int temp_key) {
-  std::shared_ptr<tgl_dc> DC = c->get_dc();
+  std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+  if (!DC) {
+    return -1;
+  }
 
   assert (!(len & 3));
   in_ptr = (int *)packet;
@@ -651,11 +677,15 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
 /* }}} */
 
 static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c) {
-    std::shared_ptr<tgl_dc> DC = c->get_dc();
+    std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+    std::shared_ptr<tgl_session> S = c->get_session().lock();
+    if (!DC || !S) {
+        return;
+    }
+
     if (DC->temp_auth_key_bind_query_id) {
         tglq_query_delete(DC->temp_auth_key_bind_query_id);
     }
-    std::shared_ptr<tgl_session> S = c->get_session();
     long long msg_id = generate_next_msg_id(DC, S);
 
     clear_packet ();
@@ -689,14 +719,14 @@ static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c) {
 
 static struct encrypted_message enc_msg;
 
-static double get_server_time (std::shared_ptr<tgl_dc>DC) {
+static double get_server_time(const std::shared_ptr<tgl_dc>& DC) {
     //if (!DC->server_time_udelta) {
     //  DC->server_time_udelta = get_utime (CLOCK_REALTIME) - get_utime (CLOCK_MONOTONIC);
     //}
     return get_utime (CLOCK_MONOTONIC) + DC->server_time_udelta;
 }
 
-static long long generate_next_msg_id (std::shared_ptr<tgl_dc> DC, std::shared_ptr<tgl_session> S) {
+static long long generate_next_msg_id (const std::shared_ptr<tgl_dc>& DC, const std::shared_ptr<tgl_session>& S) {
     long long next_id = (long long) (get_server_time (DC) * (1LL << 32)) & -4;
     if (next_id <= S->last_msg_id) {
         next_id = S->last_msg_id  += 4;
@@ -707,7 +737,12 @@ static long long generate_next_msg_id (std::shared_ptr<tgl_dc> DC, std::shared_p
 }
 
 static void init_enc_msg(std::shared_ptr<tgl_session> S, int useful) {
-  struct tgl_dc *DC = S->dc;
+  std::shared_ptr<tgl_dc> DC = S->dc.lock();
+  if (!DC) {
+    TGL_WARNING("no dc found for session");
+    return;
+  }
+
   assert (DC->state == st_authorized);
   assert (DC->temp_auth_key_id);
   TGL_DEBUG("temp_auth_key_id = " << std::hex << DC->temp_auth_key_id << ", auth_key_id = " << DC->auth_key_id);
@@ -749,9 +784,12 @@ static int aes_encrypt_message (unsigned char *key, struct encrypted_message *en
 }
 
 long long tglmp_encrypt_send_message (const std::shared_ptr<tgl_connection>& c, int *msg, int msg_ints, int flags) {
-    std::shared_ptr<tgl_dc> DC = c->get_dc();
-    std::shared_ptr<tgl_session> S = c->get_session();
-    assert (S);
+    std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+    std::shared_ptr<tgl_session> S = c->get_session().lock();
+    if (!DC || !S) {
+        return -1;
+    }
+
     if (!(DC->flags & TGLDCF_CONFIGURED) && !(flags & QUERY_FORCE_SEND)) {
         TGL_NOTICE("generate next msg ID...request not sent\n");
         return generate_next_msg_id(DC, S);
@@ -782,9 +820,11 @@ long long tglmp_encrypt_send_message (const std::shared_ptr<tgl_connection>& c, 
 
 int tglmp_encrypt_inner_temp (const std::shared_ptr<tgl_connection>& c, int *msg, int msg_ints, int useful, void *data, long long msg_id) {
     TGL_UNUSED(useful);
-    std::shared_ptr<tgl_dc> DC = c->get_dc();
-    std::shared_ptr<tgl_session> S = c->get_session();
-    assert (S);
+    std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+    std::shared_ptr<tgl_session> S = c->get_session().lock();
+    if (!DC || !S) {
+        return -1;
+    }
 
     const int UNENCSZ = offsetof (struct encrypted_message, server_salt);
     if (msg_ints <= 0 || msg_ints > MAX_MESSAGE_INTS - 4) {
@@ -810,12 +850,17 @@ static int work_container (const std::shared_ptr<tgl_connection>& c, long long m
   assert (fetch_int () == CODE_msg_container);
   int n = fetch_int ();
   int i;
+  std::shared_ptr<tgl_session> S = c->get_session().lock();
+  if (!S) {
+    return -1;
+  }
+
   for (i = 0; i < n; i++) {
     long long id = fetch_long ();
     //int seqno = fetch_int ();
     fetch_int (); // seq_no
     if (id & 1) {
-      tgln_insert_msg_id(c->get_session(), id);
+      tgln_insert_msg_id(S, id);
     }
     int bytes = fetch_int ();
     int *t = in_end;
@@ -836,7 +881,11 @@ static int work_new_session_created (const std::shared_ptr<tgl_connection>& c, l
   assert (fetch_int () == (int)CODE_new_session_created);
   fetch_long (); // first message id
   fetch_long (); // unique_id
-  c->get_dc()->server_salt = fetch_long ();
+  std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+  if (!DC) {
+    return -1;
+  }
+  DC->server_salt = fetch_long ();
 
   tglq_regen_queries_from_old_session (DC, S);
 
@@ -905,7 +954,11 @@ static int work_bad_server_salt (const std::shared_ptr<tgl_connection>& c, long 
   fetch_int (); // seq_no
   fetch_int (); // error_code
   long long new_server_salt = fetch_long ();
-  c->get_dc()->server_salt = new_server_salt;
+  std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+  if (!DC) {
+    return -1;
+  }
+  DC->server_salt = new_server_salt;
   tglq_query_restart (id);
   return 0;
 }
@@ -1048,12 +1101,21 @@ static int rpc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
 }
 
 static int tc_close (const std::shared_ptr<tgl_connection>& c, int who) {
-    TGL_DEBUG("outbound rpc connection from dc #" << c->get_dc()->id << " : closing by " << who);
+    std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+    if (!DC) {
+        return -1;
+    }
+
+    TGL_DEBUG("outbound rpc connection from dc #" << DC->id << " : closing by " << who);
     return 0;
 }
 
 static void create_session_connect(const std::shared_ptr<tgl_session>& S) {
-    std::shared_ptr<tgl_dc> DC = S->dc;
+    std::shared_ptr<tgl_dc> DC = S->dc.lock();
+    if (!DC) {
+        TGL_WARNING("no dc found for session");
+        return;
+    }
 
     static auto client = std::make_shared<mtproto_client>();
 
@@ -1061,26 +1123,35 @@ static void create_session_connect(const std::shared_ptr<tgl_session>& S) {
         S->c = tgl_state::instance()->connection_factory()->create_connection(
                 std::get<0>(DC->options[1].option_list[0]),
                 std::get<1>(DC->options[1].option_list[0]),
-                S, DC, client);
+                std::weak_ptr<tgl_session>(S), std::weak_ptr<tgl_dc>(DC), client);
     } else {
         S->c = tgl_state::instance()->connection_factory()->create_connection(
                 std::get<0>(DC->options[0].option_list[0]),
                 std::get<1>(DC->options[0].option_list[0]),
-                S, DC, client);
+                std::weak_ptr<tgl_session>(S), std::weak_ptr<tgl_dc>(DC), client);
     }
     S->c->open();
 }
 
 static void fail_connection (const std::shared_ptr<tgl_connection>& c) {
-    std::shared_ptr<tgl_session> S = c->get_session();
     c->close();
+    std::shared_ptr<tgl_session> S = c->get_session().lock();
+    if (!S) {
+        return;
+    }
     create_session_connect(S);
 }
 
 static void fail_session(std::shared_ptr<tgl_session> S) {
   TGL_NOTICE("failing session " << S->session_id);
-  std::shared_ptr<tgl_dc> DC = S->dc;
+  std::shared_ptr<tgl_dc> DC = S->dc.lock();
   tgls_free_session(S);
+
+  if (!DC) {
+    TGL_WARNING("no dc found for session");
+    return;
+  }
+
   DC->sessions[0] = NULL;
   tglmp_dc_create_session(DC);
 }
@@ -1095,7 +1166,11 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
     return -1;
   }
   assert (len >= MINSZ && (len & 15) == (UNENCSZ & 15));
-  std::shared_ptr<tgl_dc> DC = c->get_dc();
+  std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+  if (!DC) {
+    return -1;
+  }
+
   if (enc->auth_key_id != DC->temp_auth_key_id && enc->auth_key_id != DC->auth_key_id) {
     TGL_WARNING("received msg from dc " << DC->id << " with auth_key_id " << enc->auth_key_id <<
         " (perm_auth_key_id " << DC->auth_key_id << " temp_auth_key_id "<< DC->temp_auth_key_id << "). Dropping");
@@ -1121,7 +1196,7 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
   }
   assert (!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12);
 
-  std::shared_ptr<tgl_session> S = c->get_session();
+  std::shared_ptr<tgl_session> S = c->get_session().lock();
   if (!S || S->session_id != enc->session_id) {
       TGL_WARNING("Message to bad session. Drop.\n");
       return 0;
@@ -1187,7 +1262,10 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
 }
 
 static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int len) {
-    std::shared_ptr<tgl_dc> DC = c->get_dc();
+    std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+    if (!DC) {
+        return -1;
+    }
 
     if (len >= MAX_RESPONSE_SIZE/* - 12*/ || len < 0/*12*/) {
         TGL_WARNING("answer too long, skipping. lengeth:" << len);
@@ -1242,12 +1320,16 @@ static void mpc_on_get_config(std::shared_ptr<void> extra, bool success) {
 }
 
 static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
-  TGL_NOTICE("outbound rpc connection from dc #" << c->get_dc()->id << " became ready");
+  std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
+  if (!DC) {
+    return -1;
+  }
+
+  TGL_NOTICE("outbound rpc connection from dc #" << DC->id << " became ready");
   //char byte = 0xef;
   //assert(c->write_out(&byte, 1) == 1);
   //c->flush();
 
-  std::shared_ptr<tgl_dc> DC = c->get_dc();
   if (DC->flags & TGLDCF_AUTHORIZED) { DC->state = st_authorized; }
   int o = DC->state;
   if (o == st_authorized && !tgl_state::instance()->pfs_enabled()) {

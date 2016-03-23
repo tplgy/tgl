@@ -258,8 +258,8 @@ void tgl_connection_asio::try_rpc_read() {
 
 tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
         const std::string& host, int port,
-        const std::shared_ptr<tgl_session>& session,
-        const std::shared_ptr<tgl_dc>& dc,
+        const std::weak_ptr<tgl_session>& session,
+        const std::weak_ptr<tgl_dc>& dc,
         const std::shared_ptr<mtproto_client>& client)
     : m_closed(false)
     , m_ip(host)
@@ -276,8 +276,8 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     , m_in_bytes(0)
     , m_bytes_to_write(0)
     , m_dc(dc)
-    , m_mtproto_client(client)
     , m_session(session)
+    , m_mtproto_client(client)
     , m_last_connect_time(0)
     , m_last_receive_time(0)
     , m_in_fail_timer(false)

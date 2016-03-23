@@ -52,8 +52,8 @@ public:
     tgl_connection_asio(boost::asio::io_service& io_service,
             const std::string& host,
             int port,
-            const std::shared_ptr<tgl_session>& session,
-            const std::shared_ptr<tgl_dc>& dc,
+            const std::weak_ptr<tgl_session>& session,
+            const std::weak_ptr<tgl_dc>& dc,
             const std::shared_ptr<mtproto_client>& client);
 
     virtual bool open() override;
@@ -61,8 +61,8 @@ public:
     virtual ssize_t read(void* buffer, size_t len) override;
     virtual ssize_t write(const void* data, size_t len) override;
     virtual void flush() override;
-    virtual std::shared_ptr<tgl_dc> get_dc() override { return m_dc; }
-    virtual std::shared_ptr<tgl_session> get_session() override { return m_session; }
+    virtual const std::weak_ptr<tgl_dc>& get_dc() const override { return m_dc; }
+    virtual const std::weak_ptr<tgl_session>& get_session() const override { return m_session; }
     virtual void incr_out_packet_num() override { m_out_packet_num++; }
 
     bool connect();
@@ -105,9 +105,9 @@ private:
     connection_buffer* m_out_tail;
     size_t m_in_bytes;
     size_t m_bytes_to_write;
-    std::shared_ptr<tgl_dc> m_dc;
+    std::weak_ptr<tgl_dc> m_dc;
+    std::weak_ptr<tgl_session> m_session;
     std::shared_ptr<mtproto_client> m_mtproto_client;
-    std::shared_ptr<tgl_session> m_session;
 
     double m_last_connect_time;
     double m_last_receive_time;
@@ -126,8 +126,8 @@ public:
     virtual std::shared_ptr<tgl_connection> create_connection(
             const std::string& host,
             int port,
-            const std::shared_ptr<tgl_session>& session,
-            const std::shared_ptr<tgl_dc>& dc,
+            const std::weak_ptr<tgl_session>& session,
+            const std::weak_ptr<tgl_dc>& dc,
             const std::shared_ptr<mtproto_client>& client) override
     {
         return std::make_shared<tgl_connection_asio>(m_io_service,

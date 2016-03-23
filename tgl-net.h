@@ -34,8 +34,8 @@ public:
     virtual ssize_t read(void* data, size_t len) = 0;
     virtual void flush() = 0;
     virtual void incr_out_packet_num() = 0;
-    virtual std::shared_ptr<tgl_dc> get_dc() = 0;
-    virtual std::shared_ptr<tgl_session> get_session() = 0;
+    virtual const std::weak_ptr<tgl_dc>& get_dc() const = 0;
+    virtual const std::weak_ptr<tgl_session>& get_session() const = 0;
 
     virtual ~tgl_connection() { }
 };
@@ -47,8 +47,8 @@ public:
     virtual std::shared_ptr<tgl_connection> create_connection(
             const std::string& host,
             int port,
-            const std::shared_ptr<tgl_session>& session,
-            const std::shared_ptr<tgl_dc>& dc,
+            const std::weak_ptr<tgl_session>& session,
+            const std::weak_ptr<tgl_dc>& dc,
             const std::shared_ptr<mtproto_client>& client) = 0;
 
     virtual ~tgl_connection_factory() { }

@@ -156,7 +156,7 @@ class tgl_connection;
 class tgl_timer;
 
 struct tgl_session {
-  std::shared_ptr<tgl_dc> dc;
+  std::weak_ptr<tgl_dc> dc;
   long long session_id = 0;
   long long last_msg_id = 0;
   int seq_no = 0;

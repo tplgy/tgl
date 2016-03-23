@@ -144,7 +144,8 @@ static int alarm_query (std::shared_ptr<query> q) {
     TGL_NOTICE("Resent query #" << old_id << " as #" << q->msg_id << " of size " << 4 * q->data_len << " to DC " << q->DC->id << "\n");
     tgl_state::instance()->queries_tree.push_back(q);
     q->session_id = q->session->session_id;
-    if (!(q->session->dc->flags & TGLDCF_CONFIGURED) && !(q->flags & QUERY_FORCE_SEND)) {
+    auto dc = q->session->dc.lock();
+    if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !(q->flags & QUERY_FORCE_SEND)) {
       q->session_id = 0;
     }
   }
@@ -159,7 +160,8 @@ void tglq_regen_query (long long id) {
     if (!(q->session && q->session_id && q->DC && q->DC->sessions[0] == q->session && q->session->session_id == q->session_id)) {
         q->session_id = 0;
     } else {
-        if (!(q->session->dc->flags & TGLDCF_CONFIGURED) && !(q->flags & QUERY_FORCE_SEND)) {
+        auto dc = q->session->dc.lock();
+        if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !(q->flags & QUERY_FORCE_SEND)) {
             q->session_id = 0;
         }
     }
