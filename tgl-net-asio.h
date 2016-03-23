@@ -54,7 +54,7 @@ public:
             int port,
             const std::shared_ptr<tgl_session>& session,
             const std::shared_ptr<tgl_dc>& dc,
-            mtproto_methods* methods);
+            const std::shared_ptr<mtproto_client>& client);
 
     virtual bool open() override;
     virtual void close() override;
@@ -106,7 +106,7 @@ private:
     size_t m_in_bytes;
     size_t m_bytes_to_write;
     std::shared_ptr<tgl_dc> m_dc;
-    struct mtproto_methods* m_methods;
+    std::shared_ptr<mtproto_client> m_mtproto_client;
     std::shared_ptr<tgl_session> m_session;
 
     double m_last_connect_time;
@@ -128,10 +128,10 @@ public:
             int port,
             const std::shared_ptr<tgl_session>& session,
             const std::shared_ptr<tgl_dc>& dc,
-            mtproto_methods* methods) override
+            const std::shared_ptr<mtproto_client>& client) override
     {
         return std::make_shared<tgl_connection_asio>(m_io_service,
-            host, port, session, dc, methods);
+                host, port, session, dc, client);
     }
 
 private:

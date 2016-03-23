@@ -57,7 +57,6 @@
 #define TGL_SCHEME_LAYER 45
 
 class tgl_connection;
-struct mtproto_methods;
 struct tgl_session;
 struct tgl_dc;
 struct query;
@@ -123,12 +122,6 @@ struct tgl_update_callback {
   void (*change_active_dc)(int new_dc_id);
   char *(*create_print_name) (tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
   void (*on_failed_login) ();
-};
-
-struct mtproto_methods {
-  int (*ready) (const std::shared_ptr<tgl_connection>& c);
-  int (*close) (const std::shared_ptr<tgl_connection>& c);
-  int (*execute) (const std::shared_ptr<tgl_connection>& c, int op, int len);
 };
 
 #define TGL_LOCK_DIFF 1

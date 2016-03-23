@@ -24,13 +24,22 @@
 
 #include "tgl.h"
 
-class tgl_connection;
-struct tgl_dc;
 #define TG_APP_HASH "844584f2b1fd2daecee726166dcc1ef8"
 #define TG_APP_ID 10534
 
 #define ACK_TIMEOUT 1
 #define MAX_DC_ID 10
+
+class tgl_connection;
+struct tgl_dc;
+
+class mtproto_client
+{
+public:
+    int ready(const std::shared_ptr<tgl_connection>& c);
+    int close(const std::shared_ptr<tgl_connection>& c);
+    int execute(const std::shared_ptr<tgl_connection>& c, int op, int len);
+};
 
 long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c, int *msg, int msg_ints, int flags);
 void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC);

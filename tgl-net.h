@@ -40,6 +40,8 @@ public:
     virtual ~tgl_connection() { }
 };
 
+class mtproto_client;
+
 class tgl_connection_factory {
 public:
     virtual std::shared_ptr<tgl_connection> create_connection(
@@ -47,7 +49,7 @@ public:
             int port,
             const std::shared_ptr<tgl_session>& session,
             const std::shared_ptr<tgl_dc>& dc,
-            struct mtproto_methods* methods) = 0;
+            const std::shared_ptr<mtproto_client>& client) = 0;
 
     virtual ~tgl_connection_factory() { }
 };

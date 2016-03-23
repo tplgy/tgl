@@ -81,12 +81,26 @@ static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int le
 static int rpc_becomes_ready (const std::shared_ptr<tgl_connection>& c);
 static int rpc_close (const std::shared_ptr<tgl_connection>& c);
 
+int mtproto_client::ready(const std::shared_ptr<tgl_connection>& c)
+{
+   return rpc_becomes_ready(c);
+}
+
+int mtproto_client::close(const std::shared_ptr<tgl_connection>& c)
+{
+    return rpc_close(c);
+}
+
+int mtproto_client::execute(const std::shared_ptr<tgl_connection>& c, int op, int len)
+{
+    return rpc_execute(c, op, len);
+}
+
 static double get_utime (int clock_id) {
     struct timespec T;
     tgl_my_clock_gettime (clock_id, &T);
     return T.tv_sec + (double) T.tv_nsec * 1e-9;
 }
-
 
 #define MAX_RESPONSE_SIZE        (1L << 24)
 
@@ -986,7 +1000,6 @@ static int rpc_execute_answer (const std::shared_ptr<tgl_connection>& c, long lo
   return 0;
 }
 
-//static struct mtproto_methods mtproto_methods;
 void tgls_free_session(std::shared_ptr<tgl_session> S);
 /*
 static char *get_ipv6 (int num) {
@@ -1039,25 +1052,21 @@ static int tc_close (const std::shared_ptr<tgl_connection>& c, int who) {
     return 0;
 }
 
-static struct mtproto_methods mtproto_methods = {
-    .ready = rpc_becomes_ready,
-    .close = rpc_close,
-    .execute = rpc_execute,
-};
-
 static void create_session_connect(const std::shared_ptr<tgl_session>& S) {
     std::shared_ptr<tgl_dc> DC = S->dc;
+
+    static auto client = std::make_shared<mtproto_client>();
 
     if (tgl_state::instance()->ipv6_enabled()) {
         S->c = tgl_state::instance()->connection_factory->create_connection(
                 std::get<0>(DC->options[1].option_list[0]),
                 std::get<1>(DC->options[1].option_list[0]),
-                S, DC, &mtproto_methods);
+                S, DC, client);
     } else {
         S->c = tgl_state::instance()->connection_factory->create_connection(
                 std::get<0>(DC->options[0].option_list[0]),
                 std::get<1>(DC->options[0].option_list[0]),
-                S, DC, &mtproto_methods);
+                S, DC, client);
     }
     S->c->open();
 }

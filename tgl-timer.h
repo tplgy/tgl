@@ -27,7 +27,7 @@
 
 class tgl_timer {
 public:
-    virtual void start(double timeout) = 0;
+    virtual void start(double seconds_from_now) = 0;
     virtual void cancel() = 0;
     virtual ~tgl_timer() { }
 };
