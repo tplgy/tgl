@@ -23,8 +23,8 @@
 
 #include <memory>
 
-class tgl_dc;
-class tgl_session;
+struct tgl_dc;
+struct tgl_session;
 
 class tgl_connection {
 public:
