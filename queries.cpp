@@ -4506,9 +4506,11 @@ void tgl_started_cb(std::shared_ptr<void> arg, bool success) {
     }
     return;
   }
-  tgl_state::instance()->started = 1;
-  if (tgl_state::instance()->callback.started) {
-    tgl_state::instance()->callback.started ();
+  if (!tgl_state::instance()->started) {
+    tgl_state::instance()->started = 1;
+    if (tgl_state::instance()->callback.started) {
+      tgl_state::instance()->callback.started ();
+    }
   }
 }
 
