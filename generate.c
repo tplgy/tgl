@@ -23,7 +23,7 @@
 
 #define _GNU_SOURCE
 
-#include "config.h"
+//#include "config.h"
 #include <stdio.h>
 #include <signal.h>
 #ifdef HAVE_EXECINFO_H
@@ -792,10 +792,10 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
       assert (t == NAME_VAR_NUM);
       printf ("%sassert (in_remaining () >= 4);\n", offset);
       if (arg->id && strlen (arg->id)) {
-        printf ("%sresult->%s = talloc (4);", offset, arg->id);
+        printf ("%sresult->%s = malloc (4);", offset, arg->id);
         printf ("%s*result->%s = prefetch_int ();", offset, arg->id);
       } else {
-        printf ("%sresult->f%d = talloc (4);", offset, num - 1);
+        printf ("%sresult->f%d = malloc (4);", offset, num - 1);
         printf ("%s*result->f%d = prefetch_int ();", offset, num - 1);
       }
       if (vars[arg->var_num] == 0) {
@@ -888,7 +888,7 @@ int gen_field_free_ds (struct arg *arg, int *vars, int num, int empty) {
         } else if (vars[arg->var_num] == 2) {
           printf ("%sassert (vars%d == INT2PTR (*D->%s));\n", offset, arg->var_num, arg->id);
         }
-        printf ("%stfree (D->%s, sizeof (*D->%s));\n", offset, arg->id, arg->id);
+        printf ("%sfree (D->%s);\n", offset, arg->id);
       } else {
         if (vars[arg->var_num] == 0) {
           printf ("%sstruct paramed_type *var%d = INT2PTR (*D->f%d);\n", offset, arg->var_num, num - 1);
@@ -896,7 +896,7 @@ int gen_field_free_ds (struct arg *arg, int *vars, int num, int empty) {
         } else if (vars[arg->var_num] == 2) {
           printf ("%sassert (vars%d == *D->f%d);\n", offset, arg->var_num, num - 1);
         }
-        printf ("%stfree (D->f%d, sizeof (*D->f%d));\n", offset, num - 1, num - 1);
+        printf ("%sfree (D->f%d);\n", offset, num - 1);
       }
     }
   } else {
@@ -930,9 +930,9 @@ int gen_field_free_ds (struct arg *arg, int *vars, int num, int empty) {
       printf ("%s  }\n", offset);
       printf ("%s}\n", offset);
       if (arg->id && strlen (arg->id)) {
-        printf ("%stfree (D->%s, sizeof (void *) * multiplicity%d);\n", offset, arg->id, num);
+        printf ("%sfree (D->%s);\n", offset, arg->id);
       } else {
-        printf ("%stfree (D->f%d, sizeof (void *) * multiplicity%d);\n", offset, num - 1, num);
+        printf ("%sfree (D->f%d);\n", offset, num - 1);
       }
     }
   }
@@ -1455,7 +1455,7 @@ void gen_constructor_fetch_ds (struct tl_combinator *c) {
     printf ("  int l = prefetch_strlen ();\n");
     printf ("  assert (l >= 0);\n");
     printf ("  result->len = l;\n");
-    printf ("  result->data = talloc (l + 1);\n");
+    printf ("  result->data = malloc (l + 1);\n");
     printf ("  result->data[l] = 0;\n");
     printf ("  memcpy (result->data, fetch_str (l), l);\n");
     printf ("  return result;\n");
@@ -1483,7 +1483,7 @@ void gen_constructor_fetch_ds (struct tl_combinator *c) {
 void gen_constructor_free_ds (struct tl_combinator *c) {
   printf ("void free_ds_constructor_%s (", c->print_id);
   print_c_type_name (c->result, "", 0);
-  printf ("D, struct paramed_type *T) {\n");
+  printf ("D, struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
   int i;
   for (i = 0; i < c->args_num; i++) if (c->args[i]->flags & FLAG_EXCL) {
     printf (" assert (0);\n");
@@ -1504,20 +1504,20 @@ void gen_constructor_free_ds (struct tl_combinator *c) {
   //struct tl_type *T = ((struct tl_tree_type *)c->result)->type;
 
   if (c->name == NAME_INT) {
-    printf ("  tfree (D, sizeof (*D));\n");
+    printf ("  free (D);\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_LONG) {
-    printf ("  tfree (D, sizeof (*D));\n");
+    printf ("  free (D);\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_STRING || c->name == NAME_BYTES) {
-    printf ("  tfree (D->data, D->len + 1);\n");
-    printf ("  tfree (D, sizeof (*D));\n");
+    printf ("  free (D->data);\n");
+    printf ("  free (D);\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_DOUBLE) {
-    printf ("  tfree (D, sizeof (*D));\n");
+    printf ("  free (D);\n");
     printf ("}\n");
     return;
   }
@@ -1528,7 +1528,7 @@ void gen_constructor_free_ds (struct tl_combinator *c) {
   for (i = 0; i < c->args_num; i++) if (!(c->args[i]->flags & FLAG_OPT_VAR)) {
     assert (gen_field_free_ds (c->args[i], vars, i + 1, empty) >= 0);
   }
-  printf ("  tfree (D, sizeof (*D));\n");
+  printf ("  free (D);\n");
   free (vars);
   printf ("}\n"); 
 }
@@ -1536,7 +1536,7 @@ void gen_constructor_free_ds (struct tl_combinator *c) {
 void gen_constructor_store_ds (struct tl_combinator *c) {
   printf ("void store_ds_constructor_%s (", c->print_id);
   print_c_type_name (c->result, "", 0);
-  printf ("D, struct paramed_type *T) {\n");
+  printf ("D, struct paramed_type *T) {\n  TGL_UNUSED(D); \n");
   int i;
   for (i = 0; i < c->args_num; i++) if (c->args[i]->flags & FLAG_EXCL) {
     printf (" assert (0);\n");
@@ -1587,7 +1587,7 @@ void gen_constructor_store_ds (struct tl_combinator *c) {
 void gen_constructor_print_ds (struct tl_combinator *c) {
   printf ("int print_ds_constructor_%s (", c->print_id);
   print_c_type_name (c->result, "", 0);
-  printf ("DS, struct paramed_type *T) {\n");
+  printf ("DS, struct paramed_type *T) {\n  TGL_UNUSED(DS);\n");
   int i;
   for (i = 0; i < c->args_num; i++) if (c->args[i]->flags & FLAG_EXCL) {
     printf (" return -1;\n");
@@ -1829,7 +1829,7 @@ void gen_type_fetch_ds (struct tl_type *t) {
 void gen_type_free_ds (struct tl_type *t) {
   printf ("void free_ds_type_%s (", t->print_id);
   print_c_type_name (t->constructors[0]->result, "", 0);
-  printf ("D, struct paramed_type *T) {\n");
+  printf ("D, struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
   
   if (t->constructors_num > 1) {
     printf ("  switch (D->magic) {\n");
@@ -1854,7 +1854,7 @@ void gen_type_store_ds (struct tl_type *t) {
       printf ("void store_ds_type_bare_%s (", t->print_id);
     }
     print_c_type_name (t->constructors[0]->result, "", 0);
-    printf ("D, struct paramed_type *T) {\n");
+    printf ("D, struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
 
     if (t->constructors_num > 1) {
       if (k == 0) {
@@ -1883,7 +1883,7 @@ void gen_type_print_ds (struct tl_type *t) {
   for (k = 0; k < 2; k++) {
     printf ("int print_ds_type_%s%s (", k ? "bare_" : "", t->print_id);
     print_c_type_name (t->constructors[0]->result, "", 0);
-    printf ("DS, struct paramed_type *T) {\n");
+    printf ("DS, struct paramed_type *T) {\n  TGL_UNUSED(DS);\n");
     printf ("  int res;\n");
     if (!empty) {
       printf ("  if (multiline_output >= 2) { multiline_offset += multiline_offset_size; }\n");
@@ -2382,8 +2382,8 @@ void gen_store_header (void) {
   printf ("#include <assert.h>\n");
 
 
-  printf ("struct paramed_type *tglf_extf_store (struct tgl_state *TLS, const char *data, int data_len);\n");
-  printf ("int tglf_store_type (struct tgl_state *TLS, const char *work, int work_len, struct paramed_type *P);\n");
+  printf ("struct paramed_type *tglf_extf_store (const char *data, int data_len);\n");
+  printf ("int tglf_store_type (const char *work, int work_len, struct paramed_type *P);\n");
 
   int i, j;
   for (i = 0; i < tn; i++) {
@@ -2458,7 +2458,7 @@ void gen_autocomplete_header (void) {
   printf ("#include \"auto.h\"\n");
   printf ("#include <assert.h>\n");
 
-  printf ("int tglf_extf_autocomplete (struct tgl_state *TLS, const char *text, int text_len, int index, char **R, char *data, int data_len);\n");
+  printf ("int tglf_extf_autocomplete (const char *text, int text_len, int index, char **R, char *data, int data_len);\n");
 
   int i, j;
   for (i = 0; i < tn; i++) {
@@ -2674,7 +2674,7 @@ void gen_free_ds_source (void) {
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     gen_type_free_ds (tps[i]);
   }
-  printf ("void free_ds_type_any (void *D, struct paramed_type *T) {\n");
+  printf ("void free_ds_type_any (void *D, struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
   printf ("  switch (T->type->name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
     printf ("  case 0x%08x: free_ds_type_%s (D, T); return;\n", tps[i]->name, tps[i]->print_id);
@@ -2726,7 +2726,7 @@ void gen_store_ds_source (void) {
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     gen_type_store_ds (tps[i]);
   }
-  printf ("void store_ds_type_any (void *D, struct paramed_type *T) {\n");
+  printf ("void store_ds_type_any (void *D, struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
   printf ("  switch (T->type->name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
     printf ("  case 0x%08x: store_ds_type_%s (D, T); return;\n", tps[i]->name, tps[i]->print_id);
@@ -2765,7 +2765,7 @@ void gen_store_ds_header (void) {
 }
 
 void gen_print_ds_header (void) {
-  printf ("#include \"config.h\"\n");
+  //printf ("#include \"config.h\"\n");
   printf ("#ifndef DISABLE_EXTF\n");
   printf ("\n");
   printf ("#include \"auto.h\"\n");
@@ -2774,7 +2774,7 @@ void gen_print_ds_header (void) {
   printf ("#include <stdio.h>\n");
 
   printf ("struct tgl_state;\n");
-  printf ("char *tglf_extf_print_ds (struct tgl_state *TLS, void *DS, struct paramed_type *T);\n");
+  printf ("char *tglf_extf_print_ds (void *DS, struct paramed_type *T);\n");
 
   int i, j;
   for (i = 0; i < tn; i++) {
@@ -2797,7 +2797,7 @@ void gen_print_ds_header (void) {
 }
 
 void gen_print_ds_source (void) {
-  printf ("#include \"config.h\"\n");
+  //printf ("#include \"config.h\"\n");
   printf ("#ifndef DISABLE_EXTF\n");
   printf ("\n");
   printf ("#include \"auto.h\"\n");
@@ -2816,7 +2816,7 @@ void gen_print_ds_source (void) {
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     gen_type_print_ds (tps[i]);
   }
-  printf ("int print_ds_type_any (void *DS, struct paramed_type *T) {\n");
+  printf ("int print_ds_type_any (void *DS, struct paramed_type *T) {\n  TGL_UNUSED(DS);\n");
   printf ("  switch (T->type->name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
     printf ("  case 0x%08x: return print_ds_type_%s (DS, T);\n", tps[i]->name, tps[i]->print_id);
