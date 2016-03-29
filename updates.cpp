@@ -31,6 +31,7 @@ extern "C" {
 #include "tgl-log.h"
 #include "tgl-structures.h"
 #include "tgl-methods-in.h"
+#include "tgl-timer-asio.h"
 //#include "tree.h"
 
 #include <assert.h>
@@ -203,14 +204,14 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       tgl_message_id_t msg_id;
       msg_id.peer_type = TGL_PEER_RANDOM_ID;
       msg_id.id = DS_LVAL (DS_U->random_id);
-      struct tgl_message *M = tgl_message_get (&msg_id);
-      if (M && (M->flags & TGLMF_PENDING)) {
-        msg_id = M->permanent_id;
-        msg_id.id = DS_LVAL (DS_U->id);
+      //struct tgl_message *M = tgl_message_get (&msg_id);
+      //if (M && (M->flags & TGLMF_PENDING)) {
+        //msg_id = M->permanent_id;
+        //msg_id.id = DS_LVAL (DS_U->id);
         //bl_do_set_msg_id (&M->permanent_id, &msg_id);
         //bl_do_msg_update (&msg_id);
         //TODO update the id of the message
-      }
+      //}
     }
     break;
 /*  case CODE_update_read_messages:
@@ -251,8 +252,8 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     break;*/
   case CODE_update_user_typing:
     {
-      tgl_peer_id_t id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_t *U = tgl_peer_get (id);
+      //tgl_peer_id_t id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+      //tgl_peer_t *U = tgl_peer_get (id);
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
       if (tgl_state::instance()->callback.type_notification) {
@@ -264,8 +265,8 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
       tgl_peer_id_t id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_t *C = tgl_peer_get (TLS, chat_id);
-      tgl_peer_t *U = tgl_peer_get (TLS, id);
+      tgl_peer_t *C = tgl_peer_get (chat_id);
+      tgl_peer_t *U = tgl_peer_get (id);
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);      
       
       if (U && C) {
@@ -283,9 +284,9 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
         tglf_fetch_user_status (&U->user.status, &U->user, DS_U->status);
 
         if (tgl_state::instance()->callback.status_notification) {
-          int expires = 0;
-          enum tgl_user_status_type status = tglf_fetch_user_status_new(DS_U->status, &expires);
-          tgl_state::instance()->callback.status_notification (DS_LVAL(DS_U->user_id), status, expires);
+          //int expires = 0;
+          //enum tgl_user_status_type status = tglf_fetch_user_status(DS_U->status, &expires);
+          //tgl_state::instance()->callback.status_notification (DS_LVAL(DS_U->user_id), status, expires);
         }
       }
     }
@@ -315,8 +316,8 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
         //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, DS_U->photo, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
         tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), "", "", "", "");
         if (DS_U->photo) {
-          tgl_file_location photo_big = tglf_fetch_file_location_new(DS_U->photo->photo_big);
-          tgl_file_location photo_small = tglf_fetch_file_location_new(DS_U->photo->photo_small);
+          tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
+          tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
           tgl_state::instance()->callback.avatar_update(DS_LVAL (DS_U->user_id), photo_small, photo_big);
         }
       }
@@ -414,13 +415,13 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       tgl_peer_id_t inviter_id = TGL_MK_USER (DS_LVAL (DS_U->inviter_id));
-      int version = DS_LVAL (DS_U->version); 
+      //int version = DS_LVAL (DS_U->version); 
       
       tgl_peer_t *C = tgl_peer_get (chat_id);
       if (C && (C->flags & TGLPF_CREATED)) {
         //bl_do_chat_add_user (C->id, version, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
         if (tgl_state::instance()->callback.chat_add_user) {
-          tgl_state::instance()->callback.chat_add_user(chat_id.id, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
+          tgl_state::instance()->callback.chat_add_user(chat_id.peer_id, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
         }
       }
     }
@@ -429,13 +430,13 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      int version = DS_LVAL (DS_U->version); 
+      //int version = DS_LVAL (DS_U->version); 
       
       tgl_peer_t *C = tgl_peer_get (chat_id);
       if (C && (C->flags & TGLPF_CREATED)) {
         //bl_do_chat_del_user (C->id, version, tgl_get_peer_id (user_id));
         if (tgl_state::instance()->callback.chat_delete_user) {
-          tgl_state::instance()->callback.chat_delete_user (C->chat.id.id, tgl_get_peer_id (user_id));
+          tgl_state::instance()->callback.chat_delete_user (C->chat.id.peer_id, tgl_get_peer_id (user_id));
         }
       }
     }
@@ -505,7 +506,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
           //bl_do_chat (tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DS_U->max_id, NULL, TGL_FLAGS_UNCHANGED);
           if (DS_U->max_id) {
             P->chat.last_read_in = *DS_U->max_id;
-            tgls_messages_mark_read (P->chat.last, 0, *DS_U->max_id);
+            //tgls_messages_mark_read (P->chat.last, 0, *DS_U->max_id);
           }
         }
       }
@@ -523,7 +524,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
           //bl_do_chat (tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DS_U->max_id, TGL_FLAGS_UNCHANGED);
           if (DS_U->max_id) {
             P->chat.last_read_out = *DS_U->max_id;
-            tgls_messages_mark_read (P->chat.last, TGLMF_OUT, *DS_U->max_id);
+            //tgls_messages_mark_read (P->chat.last, TGLMF_OUT, *DS_U->max_id);
           }
         }
       }
@@ -558,7 +559,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       int new_msg = 0;
       struct tgl_message *M = tglf_fetch_alloc_message (DS_U->message, &new_msg);
       if (M && new_msg) {
-        bl_do_msg_update (&M->permanent_id);
+        //bl_do_msg_update (&M->permanent_id);
       }
     }
     break;
@@ -611,7 +612,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       channel_id = DS_LVAL (DS_U->message->to_id->channel_id);
     }    
 
-    bl_do_set_channel_pts (channel_id, DS_LVAL (DS_U->channel_pts));
+    //bl_do_set_channel_pts (channel_id, DS_LVAL (DS_U->channel_pts));
   }
 }
 
@@ -697,7 +698,7 @@ void tglu_work_update_short_message (int check_only, struct tl_ds_updates *DS_U)
 
   if (1) {
     //bl_do_msg_update (&M->permanent_id);
-    tgl_state::instance()->callback.new_msg(&M->permanent_id);
+    tgl_state::instance()->callback.new_msg(M);
   }
   
   if (check_only) { return; }
@@ -729,7 +730,7 @@ void tglu_work_update_short_chat_message (int check_only, struct tl_ds_updates *
 
   if (1) {
     //bl_do_msg_update (&M->permanent_id);
-    tgl_state::instance()->callback.new_msg(&M->permanent_id);
+    tgl_state::instance()->callback.new_msg(M);
   }
 
   if (check_only) { return; }
@@ -741,7 +742,7 @@ void tglu_work_updates_too_long (int check_only, struct tl_ds_updates *DS_U) {
   if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
-  vlogprintf (E_NOTICE, "updates too long... Getting difference\n");
+  TGL_NOTICE("updates too long... Getting difference");
   if (check_only) { return; }
   tgl_do_get_difference (0, 0, 0);
 }
@@ -761,14 +762,14 @@ void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *
       return;
     }
   }
-  struct tgl_message *M = extra;
+  struct tgl_message *M = (struct tgl_message *)extra;
 
   if (!M) { return; }
   
   //long long random_id = M->permanent_id.id;
   tgl_message_id_t msg_id = M->permanent_id;
   msg_id.id = DS_LVAL (DS_U->id);
-  bl_do_set_msg_id (&M->permanent_id, &msg_id);
+  //bl_do_set_msg_id (&M->permanent_id, &msg_id);
   //tgls_insert_random2local (random_id, &msg_id);
 
   int f = DS_LVAL (DS_U->flags);
@@ -784,6 +785,7 @@ void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *
     flags |= TGLMF_MENTION;
   }
 
+#if 0
   bl_do_edit_message (&M->permanent_id, 
     NULL,
     NULL,
@@ -797,9 +799,10 @@ void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *
     NULL, 
     NULL,
     flags);
+#endif
  
   if (check_only) { return; }
-  bl_do_msg_update (&M->permanent_id);
+  //bl_do_msg_update (&M->permanent_id);
   
   if (DS_U->pts) {
     //bl_do_set_pts (DS_LVAL (DS_U->pts));
@@ -847,9 +850,10 @@ void tglu_work_any_updates_buf () {
   free_ds_type_updates (DS_U, &type);
 }
 
-#define user_cmp(a,b) (tgl_get_peer_id ((a)->id) - tgl_get_peer_id ((b)->id))
-DEFINE_TREE(user, struct tgl_user *,user_cmp,0)
+//#define user_cmp(a,b) (tgl_get_peer_id ((a)->id) - tgl_get_peer_id ((b)->id))
+//DEFINE_TREE(user, struct tgl_user *,user_cmp,0)
 
+#if 0
 static void notify_status (struct tgl_user *U, void *ex) {
     if (tgl_state::instance()->callback.user_status_update) {
         tgl_state::instance()->callback.user_status_update (U);
@@ -863,21 +867,22 @@ static void status_notify (void *arg) {
     tgl_state::instance()->timer_methods->free (tgl_state::instance()->online_updates_timer);
     tgl_state::instance()->online_updates_timer = NULL;
 }
+#endif
 
 void tgl_insert_status_update (struct tgl_user *U) {
-  if (!tree_lookup_user (tgl_state::instance()->online_updates, U)) {
-    tgl_state::instance()->online_updates = tree_insert_user (tgl_state::instance()->online_updates, U, rand ());
-  }
-  if (!tgl_state::instance()->online_updates_timer) {
-    tgl_state::instance()->online_updates_timer = tgl_state::instance()->timer_methods->alloc (status_notify, 0);
-    tgl_state::instance()->timer_methods->insert (tgl_state::instance()->online_updates_timer, 0);
-  }
+  //if (!tree_lookup_user (tgl_state::instance()->online_updates, U)) {
+    //tgl_state::instance()->online_updates = tree_insert_user (tgl_state::instance()->online_updates, U, rand ());
+  //}
+  //if (!tgl_state::instance()->online_updates_timer) {
+    //tgl_state::instance()->online_updates_timer = tgl_state::instance()->timer_methods->alloc (status_notify, 0);
+    //tgl_state::instance()->timer_methods->insert (tgl_state::instance()->online_updates_timer, 0);
+  //}
 }
 
 static void user_expire (void *arg) {
-    struct tgl_user *U = arg;
-    tgl_state::instance()->timer_methods->free (U->status.ev);
-    U->status.ev = 0;
+    struct tgl_user *U = (struct tgl_user *)arg;
+    U->status.ev->cancel();
+    U->status.ev = nullptr;
     U->status.online = -1;
     U->status.when = tglt_get_double_time ();
     tgl_insert_status_update (U);
@@ -885,11 +890,12 @@ static void user_expire (void *arg) {
 
 void tgl_insert_status_expire (struct tgl_user *U) {
     assert (!U->status.ev);
-    U->status.ev = tgl_state::instance()->timer_methods->alloc (user_expire, U);
-    tgl_state::instance()->timer_methods->insert (U->status.ev, U->status.when - tglt_get_double_time ());
+    U->status.ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&user_expire, U));
+
+    U->status.ev->start(U->status.when - tglt_get_double_time ());
 }
 
 void tgl_remove_status_expire (struct tgl_user *U) {
-    tgl_state::instance()->timer_methods->free (U->status.ev);
-    U->status.ev = 0;
+    U->status.ev->cancel();
+    U->status.ev = nullptr;
 }

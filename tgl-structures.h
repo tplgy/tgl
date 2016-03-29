@@ -27,8 +27,8 @@
 
 void tgls_free_bot_info (struct tgl_bot_info *B);
 
-struct tgl_message *tglm_message_create(long long id, int *from_id,
-                                        int *to_type, int *to_id, int *fwd_from_id, int *fwd_date,
+struct tgl_message *tglm_message_create(long long id, tgl_peer_id_t *from_id,
+                                        tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const char *message,
                                         struct tl_ds_message_media *media, struct tl_ds_message_action *action,
                                         int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags);
@@ -56,24 +56,24 @@ void tglp_insert_channel (tgl_peer_t *P);
 void tgls_messages_mark_read (struct tgl_message *M, int out, int seq);
 #endif
 
-//void tgls_insert_random2local (struct tgl_state *TLS, long long random_id, tgl_message_id_t *local_id);
-//void tgls_insert_temp2local (struct tgl_state *TLS, int temp_id, tgl_message_id_t *local_id);
-tgl_message_id_t *tgls_get_local_by_random (struct tgl_state *TLS, long long random_id);
-tgl_message_id_t *tgls_get_local_by_temp (struct tgl_state *TLS, int temp_id);
+//void tgls_insert_random2local (long long random_id, tgl_message_id_t *local_id);
+//void tgls_insert_temp2local (int temp_id, tgl_message_id_t *local_id);
+tgl_message_id_t *tgls_get_local_by_random (long long random_id);
+tgl_message_id_t *tgls_get_local_by_temp (int temp_id);
 
 
-void tgls_message_change_temp_id (struct tgl_state *TLS, struct tgl_message *M, int temp_id);
-void tgls_message_change_random_id (struct tgl_state *TLS, struct tgl_message *M, long long random_id);
+void tgls_message_change_temp_id (struct tgl_message *M, int temp_id);
+void tgls_message_change_random_id (struct tgl_message *M, long long random_id);
 
 
-void tgl_photo_insert (struct tgl_state *TLS, struct tgl_photo *P);
-struct tgl_photo *tgl_photo_get (struct tgl_state *TLS, long long id);
-struct tgl_document *tgl_document_get (struct tgl_state *TLS, long long id);
-void tgl_document_insert (struct tgl_state *TLS, struct tgl_document *P);
-struct tgl_webpage *tgl_webpage_get (struct tgl_state *TLS, long long id);
-void tgl_webpage_insert (struct tgl_state *TLS, struct tgl_webpage *P);
+void tgl_photo_insert (struct tgl_photo *P);
+struct tgl_photo *tgl_photo_get (long long id);
+struct tgl_document *tgl_document_get (long long id);
+void tgl_document_insert (struct tgl_document *P);
+struct tgl_webpage *tgl_webpage_get (long long id);
+void tgl_webpage_insert (struct tgl_webpage *P);
 
-tgl_message_id_t tgl_convert_temp_msg_id (struct tgl_state *TLS, tgl_message_id_t msg_id);
+tgl_message_id_t tgl_convert_temp_msg_id (tgl_message_id_t msg_id);
 
 static inline tgl_peer_id_t tgl_msg_id_to_peer_id (tgl_message_id_t msg_id) {
   tgl_peer_id_t id;
@@ -94,7 +94,7 @@ static inline tgl_message_id_t tgl_peer_id_to_msg_id (tgl_peer_id_t peer_id, lon
 
 static inline tgl_message_id_t tgl_peer_id_to_random_msg_id (tgl_peer_id_t peer_id) {
   long long id;
-  tglt_secure_random (&id, 8);
+  tglt_secure_random ((unsigned char*)&id, 8);
   return tgl_peer_id_to_msg_id (peer_id, id);
 }
 #endif

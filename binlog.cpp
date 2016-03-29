@@ -1040,3 +1040,4 @@ void bl_do_peer_delete (struct tgl_state *TLS, tgl_peer_id_t id) /* {{{ */ {
   }
 }
 /* }}} */
+#endif

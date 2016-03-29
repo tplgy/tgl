@@ -314,7 +314,7 @@ static struct query_methods mark_read_encr_methods = {
   .timeout = 0,
 };
 
-void tgl_do_messages_mark_read_encr (tgl_peer_id id, long long access_hash, int last_time, void (*callback)(std::shared_ptr<void> callback_extra, int), std::shared_ptr<void> callback_extra) {
+void tgl_do_messages_mark_read_encr (tgl_peer_id id, long long access_hash, int last_time, void (*callback)(std::shared_ptr<void> callback_extra, bool), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_messages_read_encrypted_history);
     out_int (CODE_input_encrypted_chat);

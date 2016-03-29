@@ -110,7 +110,7 @@ int tgl_asprintf (char **res, const char *format, ...) {
   int r = vasprintf (res, format, ap);
   assert (r >= 0);
   va_end (ap);
-  void *rs = talloc (strlen (*res) + 1);
+  char *rs = (char *)talloc (strlen (*res) + 1);
   memcpy (rs, *res, strlen (*res) + 1);
   free (*res);
   *res = rs;

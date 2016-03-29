@@ -9,6 +9,8 @@ struct query_methods {
     std::function<int(std::shared_ptr<query> q, int error_code, const std::string &error)> on_error;
     std::function<int(std::shared_ptr<query> q)> on_timeout;
     struct paramed_type type;
+    const char *name;
+    double timeout;
 };
 #endif // QUERY_METHODS
 

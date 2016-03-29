@@ -38,8 +38,8 @@ extern "C" {
 
 tgl_state::tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
        DC_working(NULL), temp_key_expire_time(0), io_service(NULL),
-       BN_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
-       m_date(0), m_seq(0), m_test_mode(0), m_our_id(0), m_enable_pfs(false), m_ipv6_enabled(false)
+       TGLC_bn_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
+       m_date(0), m_seq(0), m_test_mode(0), m_our_id(tgl_peer_id_t()), m_enable_pfs(false), m_ipv6_enabled(false)
 {
 }
 
@@ -70,13 +70,13 @@ void tgl_state::set_auth_key(int num, const char *buf)
 
 void tgl_state::set_our_id(int id)
 {
-    if (m_our_id == id) {
+    if (m_our_id.peer_id == id) {
         return;
     }
-    m_our_id = id;
-    assert (our_id() > 0);
+    m_our_id.peer_id = id;
+    assert (our_id().peer_id > 0);
     if (callback.our_id) {
-        callback.our_id (our_id());
+        callback.our_id (our_id().peer_id);
     }
 }
 
@@ -165,7 +165,7 @@ void tgl_state::set_rsa_key(const char *key) {
   rsa_key_loaded.push_back(NULL);
 }
 
-void tgl_state::init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version)
+int tgl_state::init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version)
 {
   m_download_manager = std::make_shared<tgl_download_manager>(download_dir);
   m_app_id = app_id;
@@ -177,7 +177,9 @@ void tgl_state::init(const std::string &&download_dir, int app_id, const std::st
     temp_key_expire_time = 100000;
   }
 
-  tglmp_on_start();
+  if (tglmp_on_start () < 0) {
+    return -1;
+  }
 
   if (!m_app_id) {
     m_app_id = TG_APP_ID;

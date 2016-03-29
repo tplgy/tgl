@@ -18,11 +18,12 @@
     Copyright Ben Wiederhake 2015
 */
 
-#include "../config.h"
+#include "config.h"
 
 #ifndef TGL_AVOID_OPENSSL
 
 //#include <stddef.h> /* NULL */
+#include <string.h>
 
 #include <openssl/rsa.h>
 #include <openssl/pem.h>

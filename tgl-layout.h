@@ -130,12 +130,6 @@
 #define TGL_PERMANENT_ID_SIZE 24
 #pragma pack(push,4)
 
-typedef struct { 
-  int peer_type; 
-  int peer_id; 
-  long long access_hash;
-} tgl_peer_id_t;
-
 enum tgl_dc_state {
   st_init,
   st_reqpq_sent,
@@ -321,6 +315,12 @@ struct tgl_encr_document {
   int duration;
 };
 
+struct tgl_user_status {
+  int online;
+  int when;
+  std::shared_ptr<tgl_timer> ev;
+};
+
 struct tgl_bot_command {
   char *command;
   char *description;
@@ -335,7 +335,7 @@ struct tgl_bot_info {
 };
 
 struct tgl_user {
-  tgl_peer_id id;
+  tgl_peer_id_t id;
   int flags;
   struct tgl_message *last;
   char *print_name;
@@ -352,7 +352,7 @@ struct tgl_user {
   char *last_name;
   char *phone;
   long long access_hash;
-//  /struct tgl_user_status status;
+  struct tgl_user_status status;
   int blocked;
   char *real_first_name;
   char *real_last_name;
@@ -394,7 +394,7 @@ struct tgl_chat_user {
 };
 
 struct tgl_chat {
-  tgl_peer_id id;
+  tgl_peer_id_t id;
   int flags;
   struct tgl_message *last;
   char *print_title;
@@ -435,7 +435,7 @@ enum tgl_secret_chat_exchange_state {
 };
 
 struct tgl_secret_chat {
-  tgl_peer_id id;
+  tgl_peer_id_t id;
   int flags;
   struct tgl_message *last;
   char *print_name;
@@ -472,7 +472,7 @@ struct tgl_secret_chat {
 
 typedef union tgl_peer {
   struct {
-    tgl_peer_id id;
+    tgl_peer_id_t id;
     int flags;
     struct tgl_message *last;
     char *print_name;
@@ -485,7 +485,7 @@ typedef union tgl_peer {
     int last_read_out;
     long long photo_id;
     void *extra;
-  } s;
+  };
   struct tgl_user user;
   struct tgl_chat chat;
   struct tgl_channel channel;
@@ -617,11 +617,11 @@ struct tgl_message {
   long long random_id;
   struct tgl_message_id permanent_id;
   int flags;
-  tgl_peer_id fwd_from_id;
+  tgl_peer_id_t fwd_from_id;
   int fwd_date;
   int reply_id;
-  tgl_peer_id from_id;
-  tgl_peer_id to_id;
+  tgl_peer_id_t from_id;
+  tgl_peer_id_t to_id;
   int date;
   struct tgl_message_reply_markup *reply_markup;
   int entities_num;

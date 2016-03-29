@@ -121,7 +121,7 @@ struct encrypted_message {
 
 //TGLC_bn_ctx *bn_ctx;
 
-void tgl_prng_seed (struct tgl_state *TLS, const char *password_filename, int password_length);
+void tgl_prng_seed (const char *password_filename, int password_length);
 int tgl_serialize_bignum (TGLC_bn *b, char *buffer, int maxlen);
 long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key);
 
@@ -339,13 +339,21 @@ static inline int in_remaining (void) {
 
 //int get_random_bytes (unsigned char *buf, int n);
 
-int tgl_pad_rsa_encrypt (struct tgl_state *TLS, char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *E);
-int tgl_pad_rsa_decrypt (struct tgl_state *TLS, char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *D);
+int tgl_pad_rsa_encrypt (char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *E);
+int tgl_pad_rsa_decrypt (char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *D);
 
 //extern long long rsa_encrypted_chunks, rsa_decrypted_chunks;
 
 //extern unsigned char aes_key_raw[32], aes_iv[32];
 //extern TGLC_aes_key aes_key;
+
+#define AES_DECRYPT 0
+#define AES_ENCRYPT 1
+
+void tgl_init_aes_unauth (const unsigned char server_nonce[16], const unsigned char hidden_client_nonce[32], int encrypt);
+void tgl_init_aes_auth (unsigned char auth_key[192], unsigned char msg_key[16], int encrypt);
+int tgl_pad_aes_encrypt (unsigned char *from, int from_len, unsigned char *to, int size);
+int tgl_pad_aes_decrypt (unsigned char *from, int from_len, unsigned char *to, int size);
 
 void tgl_my_clock_gettime (int clock_id, struct timespec *T);
 

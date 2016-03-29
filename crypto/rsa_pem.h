@@ -34,6 +34,6 @@ TGLC_bn *TGLC_rsa_e (TGLC_rsa *);
 
 void TGLC_rsa_free (TGLC_rsa *);
 
-TGLC_rsa *TGLC_pem_read_RSAPublicKey (const char *pem) {
+TGLC_rsa *TGLC_pem_read_RSAPublicKey (const char *pem);
 
 #endif

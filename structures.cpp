@@ -42,20 +42,19 @@ extern "C" {
 #include "mtproto-common.h"
 }
 
-static void increase_peer_size ();
+//static void increase_peer_size ();
 
 char *tgls_default_create_print_name (tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4) {
-    const char *d[4];
-    d[0] = a1; d[1] = a2; d[2] = a3; d[3] = a4;
-    static char buf[10000];
-    buf[0] = 0;
-    int i;
-    int p = 0;
-    for (i = 0; i < 4; i++) {
-        if (d[i] && strlen (d[i])) {
-            p += tsnprintf (buf + p, 9999 - p, "%s%s", p ? "_" : "", d[i]);
-            assert (p < 9990);
-        }
+  const char *d[4];
+  d[0] = a1; d[1] = a2; d[2] = a3; d[3] = a4;
+  static char buf[10000];
+  buf[0] = 0;
+  int i;
+  int p = 0;
+  for (i = 0; i < 4; i++) {
+    if (d[i] && strlen (d[i])) {
+      p += tsnprintf (buf + p, 9999 - p, "%s%s", p ? "_" : "", d[i]);
+      assert (p < 9990);
     }
   }
   char *s = buf;
@@ -135,13 +134,14 @@ tgl_peer_id_t tglf_fetch_peer_id (struct tl_ds_peer *DS_P) {
 
 }
 
-tgl_file_location tglf_fetch_file_location (struct tgl_file_location *loc, struct tl_ds_file_location *DS_FL) {
+tgl_file_location tglf_fetch_file_location (struct tl_ds_file_location *DS_FL) {
   if (!DS_FL) { return tgl_file_location(); }
   return tgl_file_location(DS_LVAL (DS_FL->dc_id), DS_LVAL (DS_FL->volume_id), DS_LVAL (DS_FL->local_id), DS_LVAL (DS_FL->secret));
 }
 
 int tglf_fetch_user_status (struct tgl_user_status *S, struct tgl_user *U, struct tl_ds_user_status *DS_US) {
   if (!DS_US) { return 0; }
+#if 0
   switch (DS_US->magic) {
   case CODE_user_status_empty:
     if (S->online) {
@@ -158,28 +158,69 @@ int tglf_fetch_user_status (struct tgl_user_status *S, struct tgl_user *U, struc
       if (S->online != 1) {
         S->when = DS_LVAL (DS_US->expires);
         if (S->online) {
-            tgl_insert_status_update (U);
-            if (S->online == 1) {
-                tgl_remove_status_expire (U);
-            }
+          tgl_insert_status_update (U);
         }
-        S->online = 0;
-        S->when = 0;
-        break;
-    case CODE_user_status_online:
-        *expires = DS_LVAL (DS_US->expires);
-        return tgl_user_status_online;
-    case CODE_user_status_offline:
-        return tgl_user_status_offline;
-    case CODE_user_status_recently:
-        return tgl_user_status_recently;
-    case CODE_user_status_last_week:
-        return tgl_user_status_last_week;
-    case CODE_user_status_last_month:
-        return tgl_user_status_offline;
-    default: break;
+        tgl_insert_status_expire (U);
+        S->online = 1;
+      } else {
+        if (DS_LVAL (DS_US->expires) != S->when) {
+          S->when = DS_LVAL (DS_US->expires);
+          tgl_remove_status_expire (U);
+          tgl_insert_status_expire (U);
+        }
+      }
     }
-    return tgl_user_status_offline;
+    break;
+  case CODE_user_status_offline:
+    if (S->online != -1) {
+      if (S->online) {
+        tgl_insert_status_update (TLS, U);
+      }
+      if (S->online == 1) {
+        tgl_remove_status_expire (TLS, U);
+      }
+    }
+    S->online = -1;
+    S->when = DS_LVAL (DS_US->was_online);
+    break;
+  case CODE_user_status_recently:
+    if (S->online != -2) {
+      if (S->online) {
+        tgl_insert_status_update (TLS, U);
+      }
+      if (S->online == 1) {
+        tgl_remove_status_expire (TLS, U);
+      }
+    }
+    S->online = -2;
+    break;
+  case CODE_user_status_last_week:
+    if (S->online != -3) {
+      if (S->online) {
+        tgl_insert_status_update (TLS, U);
+      }
+      if (S->online == 1) {
+        tgl_remove_status_expire (TLS, U);
+      }
+    }
+    S->online = -3;
+    break;
+  case CODE_user_status_last_month:
+    if (S->online != -4) {
+      if (S->online) {
+        tgl_insert_status_update (TLS, U);
+      }
+      if (S->online == 1) {
+        tgl_remove_status_expire (TLS, U);
+      }
+    }
+    S->online = -4;
+    break;
+  default:
+    assert (0);
+  }
+#endif
+  return 0;
 }
 
 struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
@@ -187,30 +228,30 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
   if (DS_U->magic == CODE_user_empty) {
     return 0;
   } 
-  
+
   tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->id));  
   user_id.access_hash = DS_LVAL (DS_U->access_hash);
-  
+
   struct tgl_user *U = (struct tgl_user *)tgl_peer_get (user_id);
   if (!U) {
-    tgl_state::instance()->users_allocated ++;
-    U = talloc0 (sizeof (tgl_peer_t));
+    //tgl_state::instance()->users_allocated ++;
+    U = (struct tgl_user *)talloc0 (sizeof (tgl_peer_t));
     U->id = user_id;
-    tgl_state::instance()->peer_tree = tree_insert_peer (tgl_state::instance()->peer_tree, (tgl_peer_t *)U, rand ());
-    increase_peer_size ();
-    tgl_state::instance()->Peers[tgl_state::instance()->peer_num ++] = (tgl_peer_t *)U;
+    //tgl_state::instance()->peer_tree = tree_insert_peer (tgl_state::instance()->peer_tree, (tgl_peer_t *)U, rand ());
+    //increase_peer_size ();
+    //tgl_state::instance()->Peers[tgl_state::instance()->peer_num ++] = (tgl_peer_t *)U;
   }
 
   int flags = U->flags;
 
   if (DS_LVAL (DS_U->flags) & (1 << 10)) {
     //bl_do_set_our_id (U->id);
-    tgl_state::instance()->set_our_id (user_id);
+    tgl_state::instance()->set_our_id (tgl_get_peer_id(user_id));
     flags |= TGLUF_SELF;
   } else {
     flags &= ~TGLUF_SELF;
   }
-  
+
   if (DS_LVAL (DS_U->flags) & (1 << 11)) {
     flags |= TGLUF_CONTACT;
   } else {
@@ -265,7 +306,7 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
 
   if (DS_LVAL (DS_U->flags) & (1 << 13)) {
     if (tgl_state::instance()->callback.user_deleted) {
-      tgl_state::instance()->callback.user_deleted (user_id);
+      tgl_state::instance()->callback.user_deleted (user_id.peer_id);
     }
     return U;
   } else {
@@ -274,7 +315,7 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
     DS_CSTR(phone, DS_U->phone);
     DS_CSTR(username, DS_U->username);
 
-    tgl_state::instance()->callback.new_user(user_id, phone, firstname, lastname, username);
+    tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username);
 
     free(firstname);
     free(lastname);
@@ -282,10 +323,10 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
     free(username);
 
     if (DS_U->photo) {
-      tgl_file_location photo_big = tglf_fetch_file_location_new(DS_U->photo->photo_big);
-      tgl_file_location photo_small = tglf_fetch_file_location_new(DS_U->photo->photo_small);
+      tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
+      tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
 
-      tgl_state::instance()->callback.avatar_update(user_id, photo_small, photo_big);
+      tgl_state::instance()->callback.avatar_update(tgl_get_peer_id(user_id), photo_small, photo_big);
     }
     return U;
   }
@@ -320,12 +361,12 @@ struct tgl_user *tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_UF) {
   );
 #endif
 
-    tgl_state::instance()->callback.new_user(user_id, "", "", "", "");
+    tgl_state::instance()->callback.new_user(tgl_get_peer_id(U->id), "", "", "", "");
 
     if (DS_UF->user->photo) {
-        tgl_file_location photo_big = tglf_fetch_file_location_new(DS_UF->user->photo->photo_big);
-        tgl_file_location photo_small = tglf_fetch_file_location_new(DS_UF->user->photo->photo_small);
-        tgl_state::instance()->callback.avatar_update(user_id, photo_small, photo_big);
+        tgl_file_location photo_big = tglf_fetch_file_location(DS_UF->user->photo->photo_big);
+        tgl_file_location photo_small = tglf_fetch_file_location(DS_UF->user->photo->photo_small);
+        tgl_state::instance()->callback.avatar_update(tgl_get_peer_id(U->id), photo_small, photo_big);
     }
 
   return U;
@@ -457,19 +498,19 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
     return NULL;
   }
   if (DS_C->magic == CODE_channel || DS_C->magic == CODE_channel_forbidden) {
-    return (void *)tglf_fetch_alloc_channel (DS_C);
+    return reinterpret_cast<struct tgl_chat *>(tglf_fetch_alloc_channel (DS_C));
   }
   tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_C->id));  
   chat_id.access_hash = 0; // chats don't have access hash
   
-  struct tgl_chat *C = (void *)tgl_peer_get (chat_id);
+  struct tgl_chat *C = reinterpret_cast<struct tgl_chat *>(tgl_peer_get (chat_id));
   if (!C) {
-    tgl_state::instance()->chats_allocated ++;
+    //tgl_state::instance()->chats_allocated ++;
     C = (struct tgl_chat *)talloc0 (sizeof (tgl_peer_t));
     C->id = chat_id;
-    tgl_state::instance()->peer_tree = tree_insert_peer (tgl_state::instance()->peer_tree, (tgl_peer_t *)C, rand ());
-    increase_peer_size ();
-    tgl_state::instance()->Peers[tgl_state::instance()->peer_num ++] = (tgl_peer_t *)C;
+    //tgl_state::instance()->peer_tree = tree_insert_peer (tgl_state::instance()->peer_tree, (tgl_peer_t *)C, rand ());
+    //increase_peer_size ();
+    //tgl_state::instance()->Peers[tgl_state::instance()->peer_num ++] = (tgl_peer_t *)C;
   }
   
   C->id = chat_id;
@@ -530,8 +571,8 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
   );
 #endif
 
-  C->photo_big = tglf_fetch_file_location_new(DS_C->photo->photo_big);
-  C->photo_small = tglf_fetch_file_location_new(DS_C->photo->photo_small);
+  C->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
+  C->photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
 
   tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_C->participants_count, -1, time(0), std::string(DS_C->title->data, DS_C->title->len));
   tgl_state::instance()->callback.avatar_update(tgl_get_peer_id (C->id), C->photo_big, C->photo_small);
@@ -542,7 +583,7 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
 struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS_MCF) {
   if (!DS_MCF) { return NULL; }
   if (DS_MCF->full_chat->magic == CODE_channel_full) {
-    return (void *)tglf_fetch_alloc_channel_full (DS_MCF);
+    return reinterpret_cast<struct tgl_chat *>(tglf_fetch_alloc_channel_full (DS_MCF));
   }
  
   if (DS_MCF->users) {
@@ -550,6 +591,7 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
     for (i = 0; i < DS_LVAL (DS_MCF->users->cnt); i++) {
       tglf_fetch_alloc_user (DS_MCF->users->data[i]);
     }
+  }
 
   if (DS_MCF->chats) {
     int i;
@@ -557,7 +599,7 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
       tglf_fetch_alloc_chat (DS_MCF->chats->data[i]);
     }
   }
-  
+
   struct tl_ds_chat_full *DS_CF = DS_MCF->full_chat;
 
   if (DS_CF->bot_info) {
@@ -568,6 +610,7 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
 
       tgl_peer_t *P = tgl_peer_get (TGL_MK_USER (DS_LVAL (DS_BI->user_id)));
       if (P && (P->flags & TGLCF_CREATED)) {
+#if 0
         bl_do_user (tgl_get_peer_id (P->id), 
             NULL,
             NULL, 0, 
@@ -580,38 +623,40 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
             DS_BI,
             TGL_FLAGS_UNCHANGED
             );
+#endif
       }
     }
   }
 
   tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_CF->id));  
-  struct tgl_chat *C = (void *)tgl_peer_get (chat_id);
+  struct tgl_chat *C = (struct tgl_chat *)tgl_peer_get (chat_id);
   assert (C);
 
 #if 0
   bl_do_chat (tgl_get_peer_id (C->id),
-    NULL, 0,
-    NULL, 
-    NULL,
-    DS_CF->participants->version,
-    (struct tl_ds_vector *)DS_CF->participants->participants,
-    NULL,
-    DS_CF->chat_photo,
-    NULL,
-    //DS_CF->participants->admin_id,
-    NULL, NULL,
-    C->flags & 0xffff
-  );
+      NULL, 0,
+      NULL, 
+      NULL,
+      DS_CF->participants->version,
+      (struct tl_ds_vector *)DS_CF->participants->participants,
+      NULL,
+      DS_CF->chat_photo,
+      NULL,
+      //DS_CF->participants->admin_id,
+      NULL, NULL,
+      C->flags & 0xffff
+      );
 #endif
 
   if (*DS_CF->chat_photo->sizes->cnt > 1) {
-    C->photo_big = tglf_fetch_file_location_new(DS_CF->chat_photo->sizes->data[1]->location);
+    C->photo_big = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[1]->location);
   }
   if (*DS_CF->chat_photo->sizes->cnt > 0) {
-    C->photo_small = tglf_fetch_file_location_new(DS_CF->chat_photo->sizes->data[0]->location);
+    C->photo_small = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[0]->location);
   }
 
-  tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, *DS_CF->participants->admin_id,
+  //tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, *DS_CF->participants->admin_id,
+  tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, 0,
       *DS_CF->chat_photo->date, std::string());
   //TODO update users
 
@@ -624,14 +669,14 @@ struct tgl_channel *tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C) {
   tgl_peer_id_t chat_id = TGL_MK_CHANNEL (DS_LVAL (DS_C->id));  
   chat_id.access_hash = DS_LVAL (DS_C->access_hash); 
 
-  struct tgl_channel *C = (void *)tgl_peer_get (chat_id);
+  struct tgl_channel *C = (struct tgl_channel *)tgl_peer_get (chat_id);
   if (!C) {
-    tgl_state::instance()->channels_allocated ++;
-    C = talloc0 (sizeof (tgl_peer_t));
+    //tgl_state::instance()->channels_allocated ++;
+    C = (struct tgl_channel *)talloc0 (sizeof (tgl_peer_t));
     C->id = chat_id;
-    tgl_state::instance()->peer_tree = tree_insert_peer (tgl_state::instance()->peer_tree, (tgl_peer_t *)C, rand ());
-    increase_peer_size ();
-    tgl_state::instance()->Peers[tgl_state::instance()->peer_num ++] = (tgl_peer_t *)C;
+    //tgl_state::instance()->peer_tree = tree_insert_peer (tgl_state::instance()->peer_tree, (tgl_peer_t *)C, rand ());
+    //increase_peer_size ();
+    //tgl_state::instance()->Peers[tgl_state::instance()->peer_num ++] = (tgl_peer_t *)C;
   }
   
   C->id = chat_id;
@@ -689,21 +734,20 @@ struct tgl_channel *tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C) {
     flags &= ~TGLCHF_MEGAGROUP;
   }
 
+#if 0
   bl_do_channel (tgl_get_peer_id (C->id),
+    DS_C->access_hash,
+    DS_C->date,
+    DS_STR (DS_C->title),
+    DS_STR (DS_C->username),
+    DS_C->photo,
     NULL,
     NULL,
     NULL, 0,
-    NULL, 0,
-    NULL,
-    DS_CF->chat_photo,
-    NULL,
-    DS_STR (DS_CF->about),
-    DS_CF->participants_count,
-    DS_CF->admins_count,
-    DS_CF->kicked_count,
-    DS_CF->read_inbox_max_id,
-    TGL_FLAGS_UNCHANGED
+    NULL, NULL, NULL, NULL,
+    flags
   );
+#endif
 
   return C;
 }
@@ -728,9 +772,10 @@ struct tgl_channel *tglf_fetch_alloc_channel_full (struct tl_ds_messages_chat_fu
 
   tgl_peer_id_t chat_id = TGL_MK_CHANNEL (DS_LVAL (DS_CF->id));
 
-  struct tgl_channel *C = (void *)tgl_peer_get (chat_id);
+  struct tgl_channel *C = (struct tgl_channel *)tgl_peer_get (chat_id);
   assert (C);
 
+#if 0
   bl_do_channel (tgl_get_peer_id (C->id),
     NULL,
     NULL,
@@ -746,6 +791,7 @@ struct tgl_channel *tglf_fetch_alloc_channel_full (struct tl_ds_messages_chat_fu
     DS_CF->read_inbox_max_id,
     TGL_FLAGS_UNCHANGED
   );
+#endif
 
   return C;
 }
@@ -761,7 +807,7 @@ void tglf_fetch_photo_size (struct tgl_photo_size *S, struct tl_ds_photo_size *D
     S->size = DS_PS->bytes->len;
   }
 
-  tglf_fetch_file_location (&S->loc, DS_PS->location); 
+  S->loc = tglf_fetch_file_location (DS_PS->location); 
 }
 
 void tglf_fetch_geo (struct tgl_geo *G, struct tl_ds_geo_point *DS_GP) {
@@ -786,12 +832,12 @@ struct tgl_photo *tglf_fetch_alloc_photo (struct tl_ds_photo *DS_P) {
   tgl_photo_insert (P);
 
   P->access_hash = DS_LVAL (DS_P->access_hash);
-  P->user_id = DS_LVAL (DS_P->user_id);
+  //P->user_id = DS_LVAL (DS_P->user_id);
   P->date = DS_LVAL (DS_P->date);
   P->caption = NULL;//DS_STR_DUP (DS_P->caption);
-  if (DS_P->geo) {
+  /*if (DS_P->geo) {
     tglf_fetch_geo (&P->geo, DS_P->geo);
-  }
+  }*/
 
   P->sizes_num = DS_LVAL (DS_P->sizes->cnt);
   P->sizes = (struct tgl_photo_size *)talloc (sizeof (struct tgl_photo_size) * P->sizes_num);
@@ -820,7 +866,7 @@ struct tgl_document *tglf_fetch_alloc_video (struct tl_ds_video *DS_V) {
   D->flags = TGLDF_VIDEO;
 
   D->access_hash = DS_LVAL (DS_V->access_hash);
-  D->user_id = DS_LVAL (DS_V->user_id);
+  //D->user_id = DS_LVAL (DS_V->user_id);
   D->date = DS_LVAL (DS_V->date);
   D->caption = NULL;//DS_STR_DUP (DS_V->caption);
   D->duration = DS_LVAL (DS_V->duration);
@@ -845,12 +891,12 @@ struct tgl_document *tglf_fetch_alloc_audio (struct tl_ds_audio *DS_A) {
     return D;
   }
 
-  D = (struct tgl_document *)talloc0(sizeof struct tgl_document);
+  D = (struct tgl_document *)talloc0(sizeof (struct tgl_document));
   D->id = DS_LVAL (DS_A->id);
   D->flags = TGLDF_AUDIO;
 
   D->access_hash = DS_LVAL (DS_A->access_hash);
-  D->user_id = DS_LVAL (DS_A->user_id);
+  //D->user_id = DS_LVAL (DS_A->user_id);
   D->date = DS_LVAL (DS_A->date);
   D->duration = DS_LVAL (DS_A->duration);
   D->mime_type = DS_STR_DUP (DS_A->mime_type);
@@ -905,9 +951,9 @@ struct tgl_document *tglf_fetch_alloc_document (struct tl_ds_document *DS_D) {
   D = (struct tgl_document *)talloc0 (sizeof (struct tgl_document));
   D->id = DS_LVAL (DS_D->id);
   D->access_hash = DS_LVAL (DS_D->access_hash);
-  D->user_id = DS_LVAL (DS_D->user_id);
+  //D->user_id = DS_LVAL (DS_D->user_id);
   D->date = DS_LVAL (DS_D->date);
-  D->caption = DS_STR_DUP (DS_D->file_name);
+  //D->caption = DS_STR_DUP (DS_D->file_name);
   D->mime_type = DS_STR_DUP (DS_D->mime_type);
   D->size = DS_LVAL (DS_D->size);
   D->dc_id = DS_LVAL (DS_D->dc_id);
@@ -955,7 +1001,7 @@ struct tgl_webpage *tglf_fetch_alloc_webpage (struct tl_ds_web_page *DS_W) {
   }
 
   if (!W->photo) {
-    W->photo = tglf_fetch_alloc_photo_new (DS_W->photo);
+    W->photo = tglf_fetch_alloc_photo (DS_W->photo);
   }
 
   if (!W->description) {
@@ -1026,7 +1072,7 @@ void tglf_fetch_message_action (struct tgl_message_action *M, struct tl_ds_messa
   case CODE_message_action_chat_add_user:
     M->type = tgl_message_action_chat_add_users;
     M->user_num = DS_LVAL (DS_MA->users->cnt);
-    M->users = talloc (4 * M->user_num);
+    M->users = (int *)talloc (4 * M->user_num);
     {
       int i;
       for (i = 0; i < M->user_num; i++) {
@@ -1068,10 +1114,10 @@ struct tgl_message *tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) 
   tgl_message_id_t msg_id = tgl_peer_id_to_msg_id (P->id, DS_LVAL (DS_U->id));
   struct tgl_message *M = tgl_message_get (&msg_id);
   if (!M) {
-    M = talloc0 (sizeof (*M));
+    M = (struct tgl_message *)talloc0 (sizeof (*M));
     M->permanent_id = msg_id;
-    tglm_message_insert_tree (M);
-    tgl_state::instance()->messages_allocated ++;
+    //tglm_message_insert_tree (M);
+    //tgl_state::instance()->messages_allocated ++;
 
     assert (tgl_message_get (&msg_id) == M);
   }
@@ -1100,7 +1146,6 @@ struct tgl_message *tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) 
 
   struct tl_ds_message_media A;
   A.magic = CODE_message_media_empty;
-  int type = TGL_PEER_USER;
 
   tgl_peer_id_t our_id = tgl_state::instance()->our_id();
   tgl_peer_id_t peer_id = P->id;
@@ -1132,7 +1177,7 @@ struct tgl_message *tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) 
   DS_CSTR (msg_text, DS_U->message);
   tglm_message_create (DS_LVAL (DS_U->id),
           (f & 2) ? &our_id : &peer_id,
-          &type, (f & 2) ? &peer_id : &our_id,
+          (f & 2) ? &peer_id : &our_id,
           DS_U->fwd_from_id ? &fwd_from_id : NULL,
           DS_U->fwd_date,
           DS_U->date,
@@ -1163,10 +1208,10 @@ struct tgl_message *tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *D
   tgl_message_id_t msg_id = tgl_peer_id_to_msg_id (T->id, DS_LVAL (DS_U->id));
   struct tgl_message *M = tgl_message_get (&msg_id);
   if (!M) {
-    M = talloc0 (sizeof (*M));
+    M = (struct tgl_message *)talloc0 (sizeof (*M));
     M->permanent_id = msg_id;
-    tglm_message_insert_tree (M);
-    tgl_state::instance()->messages_allocated ++;
+    //tglm_message_insert_tree (M);
+    //tgl_state::instance()->messages_allocated ++;
   }
 
   int flags = M->flags & 0xffff;
@@ -1220,12 +1265,11 @@ struct tgl_message *tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *D
   );
 #endif
 
-  int type = TGL_PEER_CHAT;
   DS_CSTR (msg_text, DS_U->message);
   tglm_message_create (DS_LVAL (DS_U->id),
-      DS_U->from_id,
-      &type, DS_U->chat_id,
-      DS_U->fwd_from_id,
+      &from_id,
+      &to_id,
+      DS_U->fwd_from_id ? &fwd_from_id : NULL,
       DS_U->fwd_date,
       DS_U->date,
       msg_text,
@@ -1317,7 +1361,7 @@ void tglf_fetch_message_media_encrypted (struct tgl_message_media *M, struct tl_
     //M->type = CODE_decrypted_message_media_video;
     M->type = tgl_message_media_document_encr;
     
-    M->encr_document = talloc0 (sizeof (*M->encr_document));
+    M->encr_document = (struct tgl_encr_document *)talloc0 (sizeof (*M->encr_document));
   
     switch (DS_DMM->magic) {
     case CODE_decrypted_message_media_empty:
@@ -1332,7 +1376,7 @@ void tglf_fetch_message_media_encrypted (struct tgl_message_media *M, struct tl_
         //M->type = CODE_decrypted_message_media_video;
         M->type = tgl_message_media_document_encr;
 
-        M->encr_document = talloc0 (sizeof (*M->encr_document));
+        M->encr_document = (struct tgl_encr_document *)talloc0 (sizeof (*M->encr_document));
 
         switch (DS_DMM->magic) {
         case CODE_decrypted_message_media_photo:
@@ -1356,9 +1400,9 @@ void tglf_fetch_message_media_encrypted (struct tgl_message_media *M, struct tl_
         M->encr_document->duration = DS_LVAL (DS_DMM->duration);
         M->encr_document->mime_type = DS_STR_DUP (DS_DMM->mime_type);
 
-        M->encr_document->key = talloc (32);
+        M->encr_document->key = (unsigned char*)talloc (32);
         str_to_32 (M->encr_document->key, DS_STR (DS_DMM->key));
-        M->encr_document->iv = talloc (32);
+        M->encr_document->iv = (unsigned char*)talloc (32);
         str_to_32 (M->encr_document->iv, DS_STR (DS_DMM->iv));
         break;
     case CODE_decrypted_message_media_geo_point:
@@ -1376,6 +1420,7 @@ void tglf_fetch_message_media_encrypted (struct tgl_message_media *M, struct tl_
     default:
         assert (0);
     }
+  }
 }
 
 void tglf_fetch_message_action_encrypted (struct tgl_message_action *M, struct tl_ds_decrypted_message_action *DS_DMA) {
@@ -1435,14 +1480,14 @@ void tglf_fetch_message_action_encrypted (struct tgl_message_action *M, struct t
     M->type = tgl_message_action_request_key;
     
     M->exchange_id = DS_LVAL (DS_DMA->exchange_id);
-    M->g_a = talloc (256);
+    M->g_a = (unsigned char*)talloc (256);
     str_to_256 (M->g_a, DS_STR (DS_DMA->g_a));
     break;
   case CODE_decrypted_message_action_accept_key:
     M->type = tgl_message_action_accept_key;
     
     M->exchange_id = DS_LVAL (DS_DMA->exchange_id);
-    M->g_a = talloc (256);
+    M->g_a = (unsigned char*)talloc (256);
     str_to_256 (M->g_a, DS_STR (DS_DMA->g_b));
     M->key_fingerprint = DS_LVAL (DS_DMA->key_fingerprint);
     break;
@@ -1507,10 +1552,10 @@ void tglf_fetch_message_entity (struct tgl_message_entity *E, struct tl_ds_messa
 
 void tglf_fetch_message_entities (struct tgl_message *M, struct tl_ds_vector *DS) {
   M->entities_num = DS_LVAL (DS->f1);
-  M->entities = talloc0 (M->entities_num * sizeof (struct tgl_message_entity));
+  M->entities = (struct tgl_message_entity *)talloc0 (M->entities_num * sizeof (struct tgl_message_entity));
   int i;
   for (i = 0; i < M->entities_num; i++) {
-    struct tl_ds_message_entity *D = DS->f2[i];
+    struct tl_ds_message_entity *D = (struct tl_ds_message_entity *)DS->f2[i];
     tglf_fetch_message_entity (&M->entities[i], D);
   }
 }
@@ -1563,19 +1608,19 @@ struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *n
   struct tgl_message *M = tgl_message_get (&msg_id);
 
   if (!M) {
-    M = talloc0 (sizeof (*M));
+    M = (struct tgl_message *)talloc0 (sizeof (*M));
     M->permanent_id = msg_id;
-    tglm_message_insert_tree (M);
-    tgl_state::instance()->messages_allocated ++;
+    //tglm_message_insert_tree (M);
+    //tgl_state::instance()->messages_allocated ++;
 
     assert (tgl_message_get (&msg_id) == M);
   }
-  int new = !(M->flags & TGLMF_CREATED);
+  int newm = !(M->flags & TGLMF_CREATED);
 
   if (new_msg) {
-    *new_msg = new;
+    *new_msg = newm;
   }
-  if (new) {
+  if (newm) {
     int flags = 0;
     if (DS_LVAL (DS_M->flags) & 1) {
       flags |= TGLMF_UNREAD;
@@ -1586,14 +1631,14 @@ struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *n
     if (DS_LVAL (DS_M->flags) & 16) {
       flags |= TGLMF_MENTION;
     }
-  
+
     tgl_peer_id_t from_id;
     if (DS_M->from_id) {
       from_id = F->id;
     } else {
       from_id = TGL_MK_USER (0);
     }
-  
+
     tgl_peer_id_t to_id = T->id;
 
     tgl_peer_id_t fwd_from_id;
@@ -1605,22 +1650,7 @@ struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *n
 
 #if 0
     bl_do_edit_message (&msg_id,
-      DS_M->from_id ? &from_id : NULL,
-      &to_id,
-      DS_M->fwd_from_id ? &fwd_from_id : NULL,
-      DS_M->fwd_date,
-      DS_M->date,
-      DS_STR (DS_M->message),
-      DS_M->media,
-      DS_M->action,
-      DS_M->reply_to_msg_id,
-      DS_M->reply_markup,
-      (void *)DS_M->entities,
-      flags | TGLMF_CREATE | TGLMF_CREATED
-    );
-#endif
-    tglm_message_create (DS_LVAL (DS_M->id),
-        DS_M->from_id,
+        DS_M->from_id ? &from_id : NULL,
         &to_id,
         DS_M->fwd_from_id ? &fwd_from_id : NULL,
         DS_M->fwd_date,
@@ -1630,8 +1660,25 @@ struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *n
         DS_M->action,
         DS_M->reply_to_msg_id,
         DS_M->reply_markup,
+        (void *)DS_M->entities,
         flags | TGLMF_CREATE | TGLMF_CREATED
         );
+#endif
+    DS_CSTR (msg_text, DS_M->message);
+    tglm_message_create (DS_LVAL (DS_M->id),
+        DS_M->from_id ? &from_id : NULL,
+        &to_id,
+        DS_M->fwd_from_id ? &fwd_from_id : NULL,
+        DS_M->fwd_date,
+        DS_M->date,
+        msg_text,
+        DS_M->media,
+        DS_M->action,
+        DS_M->reply_to_msg_id,
+        DS_M->reply_markup,
+        flags | TGLMF_CREATE | TGLMF_CREATED
+        );
+    free(msg_text);
   }
   return M;
 }
@@ -1844,6 +1891,7 @@ void tglf_fetch_encrypted_message_file (struct tgl_message_media *M, struct tl_d
     M->encr_document->key_fingerprint = DS_LVAL (DS_EF->key_fingerprint);
   }
 }
+#endif
 
 static int id_cmp (struct tgl_message *M1, struct tgl_message *M2) {
   if (M1->permanent_id.peer_type < M2->permanent_id.peer_type) { return -1; }
@@ -1855,6 +1903,7 @@ static int id_cmp (struct tgl_message *M1, struct tgl_message *M2) {
   else { return 0; }
 }
 
+#if 0
 static void increase_peer_size () {
     if (tgl_state::instance()->peer_num == tgl_state::instance()->peer_size) {
         int new_size = tgl_state::instance()->peer_size ? 2 * tgl_state::instance()->peer_size : 10;
@@ -1867,7 +1916,9 @@ static void increase_peer_size () {
         tgl_state::instance()->peer_size = new_size;
     }
 }
+#endif
 
+#ifdef ENABLE_SECRET_CHAT
 struct tgl_message *tglf_fetch_alloc_encrypted_message (struct tl_ds_encrypted_message *DS_EM) {
   struct tgl_message *M = tglf_fetch_encrypted_message (DS_EM);
   if (!M) { return M; }
@@ -1978,6 +2029,7 @@ struct tgl_message_reply_markup *tglf_fetch_alloc_reply_markup (struct tgl_messa
 }
 /* }}} */
 
+#if 0
 void tglp_insert_encrypted_chat (tgl_peer_t *P) {
   tgl_state::instance()->encr_chats_allocated ++;
   tgl_state::instance()->peer_tree = tree_insert_peer (tgl_state::instance()->peer_tree, P, rand ());
@@ -2009,25 +2061,25 @@ void tglp_insert_channel (tgl_peer_t *P) {
 void tgl_insert_empty_user (int uid) {
     tgl_peer_id_t id = TGL_MK_USER (uid);
     if (tgl_peer_get (id)) { return; }
-    tgl_peer_t *P = talloc0 (sizeof (*P));
+    tgl_peer_t *P = (tgl_peer_t *)talloc0 (sizeof (*P));
     P->id = id;
-    tglp_insert_user (P);
 }
 
 void tgl_insert_empty_chat (int cid) {
     tgl_peer_id_t id = TGL_MK_CHAT (cid);
     if (tgl_peer_get (id)) { return; }
-    tgl_peer_t *P = talloc0 (sizeof (*P));
+    tgl_peer_t *P = (tgl_peer_t *)talloc0 (sizeof (*P));
     P->id = id;
     tglp_insert_chat (P);
 }
+#endif
 
 /* {{{ Free */
 
 void tgls_free_photo_size (struct tgl_photo_size *S) {
     tfree_str (S->type);
     if (S->data) {
-        tfree (S->data);
+        free (S->data);
     }
 }
 
@@ -2067,7 +2119,7 @@ void tgls_free_webpage (struct tgl_webpage *W) {
     if (W->embed_type) { tfree_str (W->embed_type); }
     if (W->author) { tfree_str (W->author); }
 
-    tfree (W);
+    free (W);
 }
 
 void tgls_free_message_media (struct tgl_message_media *M) {
@@ -2160,6 +2212,7 @@ void tgls_free_message_action (struct tgl_message_action *M) {
   default:
     TGL_ERROR("type = 0x" << std::hex << M->type);
     assert (0);
+  }
 }
 
 void tgls_free_message_entity (struct tgl_message_entity *E) {
@@ -2201,7 +2254,7 @@ void tgls_free_message (struct tgl_message *M) {
     if (M->reply_markup) {
         tgls_free_reply_markup (M->reply_markup);
     }
-    tfree (M);
+    free (M);
 }
 
 void tgls_free_chat (struct tgl_chat *U) {
@@ -2222,7 +2275,7 @@ void tgls_free_user (struct tgl_user *U) {
   if (U->username) { tfree_str (U->username); }
   if (U->real_first_name) { tfree_str (U->real_first_name); }
   if (U->real_last_name) { tfree_str (U->real_last_name); }
-  if (U->status.ev) { tgl_remove_status_expire (U); }
+  //if (U->status.ev) { tgl_remove_status_expire (U); }
   if (U->photo) { tgls_free_photo (U->photo); }
   if (U->bot_info) { tgls_free_bot_info (U->bot_info); }
   tfree (U, sizeof (tgl_peer_t));
@@ -2247,13 +2300,15 @@ void tgls_free_channel (struct tgl_channel *U) {
 
 void tgls_free_peer (tgl_peer_t *P) {
   if (tgl_get_peer_type (P->id) == TGL_PEER_USER) {
-    tgls_free_user ((void *)P);
+    tgls_free_user ((tgl_user *)P);
   } else if (tgl_get_peer_type (P->id) == TGL_PEER_CHAT) {
-    tgls_free_chat ((void *)P);
+    tgls_free_chat ((tgl_chat *)P);
+#ifdef ENABLE_SECRET_CHAT
   } else if (tgl_get_peer_type (P->id) == TGL_PEER_ENCR_CHAT) {
-    tgls_free_encr_chat ((void *)P);
+    tgls_free_encr_chat ((tgl_chat *)P);
+#endif
   } else if (tgl_get_peer_type (P->id) == TGL_PEER_CHANNEL) {
-    tgls_free_channel ((void *)P);
+    tgls_free_channel ((tgl_channel *)P);
   } else {
     assert (0);
   }
@@ -2266,10 +2321,10 @@ void tgls_free_bot_info (struct tgl_bot_info *B) {
         tfree_str (B->commands[i].command);
         tfree_str (B->commands[i].description);
     }
-    tfree (B->commands);
+    free (B->commands);
     tfree_str (B->share_text);
     tfree_str (B->description);
-    tfree (B);
+    free (B);
 }
 /* }}} */
 
@@ -2284,25 +2339,25 @@ void tglm_message_add_peer ( struct tgl_message *M) {
   }
   tgl_peer_t *P = tgl_peer_get (id);
   if (!P) {
-    P = talloc0 (sizeof (*P));
+    P = (tgl_peer_t *)talloc0 (sizeof (*P));
     P->id = id;
     switch (tgl_get_peer_type (id)) {
     case TGL_PEER_USER:
-      tgl_state::instance()->users_allocated ++;
+      //tgl_state::instance()->users_allocated ++;
       break;
     case TGL_PEER_CHAT:
-      tgl_state::instance()->chats_allocated ++;
+      //tgl_state::instance()->chats_allocated ++;
       break;
     case TGL_PEER_GEO_CHAT:
-      tgl_state::instance()->geo_chats_allocated ++;
+      //tgl_state::instance()->geo_chats_allocated ++;
       break;
     case TGL_PEER_ENCR_CHAT:
-      tgl_state::instance()->encr_chats_allocated ++;
+      //tgl_state::instance()->encr_chats_allocated ++;
       break;
     }
-    tgl_state::instance()->peer_tree = tree_insert_peer (tgl_state::instance()->peer_tree, P, rand ());
-    increase_peer_size ();
-    tgl_state::instance()->Peers[tgl_state::instance()->peer_num ++] = P;
+    //tgl_state::instance()->peer_tree = tree_insert_peer (tgl_state::instance()->peer_tree, P, rand ());
+    //increase_peer_size ();
+    //tgl_state::instance()->Peers[tgl_state::instance()->peer_num ++] = P;
   }
   if (!P->last) {
     P->last = M;
@@ -2324,31 +2379,15 @@ void tglm_message_add_peer ( struct tgl_message *M) {
       if (NP) { NP->next = M; }
       else { P->last = M; }
     } else {
-        if (tgl_get_peer_type (P->id) != TGL_PEER_ENCR_CHAT) {
-            struct tgl_message *N = P->last;
-            struct tgl_message *NP = 0;
-            while (N && N->id > M->id) {
-                NP = N;
-                N = N->next;
-            }
-            if (N) {
-                assert (N->id < M->id);
-            }
-            M->next = N;
-            M->prev = NP;
-            if (N) { N->prev = M; }
-            if (NP) { NP->next = M; }
-            else { P->last = M; }
-        } else {
-            struct tgl_message *N = P->last;
-            struct tgl_message *NP = 0;
-            M->next = N;
-            M->prev = NP;
-            if (N) { N->prev = M; }
-            if (NP) { NP->next = M; }
-            else { P->last = M; }
-        }
+      struct tgl_message *N = P->last;
+      struct tgl_message *NP = 0;
+      M->next = N;
+      M->prev = NP;
+      if (N) { N->prev = M; }
+      if (NP) { NP->next = M; }
+      else { P->last = M; }
     }
+  }
 }
 
 void tglm_message_del_peer (struct tgl_message *M) {
@@ -2373,19 +2412,19 @@ void tglm_message_del_peer (struct tgl_message *M) {
 struct tgl_message *tglm_message_alloc (tgl_message_id_t *id) {
   struct tgl_message *M = (struct tgl_message *)calloc(1, sizeof (struct tgl_message));
   M->permanent_id = *id;
-  tglm_message_insert_tree (M);
-  tgl_state::instance()->messages_allocated ++;
+  //tglm_message_insert_tree (M);
+  //tgl_state::instance()->messages_allocated ++;
   return M;
 }
 
 void tglm_message_insert_tree (struct tgl_message *M) {
   assert (M->permanent_id.id);
-  tgl_state::instance()->message_tree = tree_insert_message (tgl_state::instance()->message_tree, M, rand ());
+  //tgl_state::instance()->message_tree = tree_insert_message (tgl_state::instance()->message_tree, M, rand ());
 }
 
 void tglm_message_remove_tree (struct tgl_message *M) {
   assert (M->permanent_id.id);
-  tgl_state::instance()->message_tree = tree_delete_message (tgl_state::instance()->message_tree, M);
+  //tgl_state::instance()->message_tree = tree_delete_message (tgl_state::instance()->message_tree, M);
 }
 
 void tglm_message_insert (struct tgl_message *M) {
@@ -2399,7 +2438,7 @@ void tglm_message_insert_unsent (struct tgl_message *M) {
 
 void tglm_message_remove_unsent (struct tgl_message *M) {
   for (auto it = tgl_state::instance()->unsent_messages.begin(); it != tgl_state::instance()->unsent_messages.end(); it++) {
-    if (M->id == (*it)->id) {
+    if (id_cmp(M, *it) == 0) {
       tgl_state::instance()->unsent_messages.erase(it);
       return;
     }
@@ -2407,13 +2446,13 @@ void tglm_message_remove_unsent (struct tgl_message *M) {
 }
 
 static void __send_msg (struct tgl_message *M) {
-  vlogprintf (E_NOTICE, "Resending message...\n");
+  TGL_NOTICE("Resending message...");
   //print_message (M);
 
   if (M->media.type != tgl_message_media_none) {
     assert (M->flags & TGLMF_ENCRYPTED);
     //bl_do_message_delete (&M->permanent_id);
-    tgl_state::instance()->callback.msg_deleted(&M->permanent_id);
+    tgl_state::instance()->callback.msg_deleted(M->permanent_id.id);
   } else {
     tgl_do_send_msg (M, 0, 0);
   }
@@ -2426,6 +2465,7 @@ void tglm_send_all_unsent () {
 }
 /* }}} */
 
+#if 0
 struct tgl_photo *tgl_photo_get (long long id) {
     struct tgl_photo P;
     P.id = id;
@@ -2626,6 +2666,7 @@ void tgl_free_all () {
 
   tfree (tgl_state::instance()->Peers, tgl_state::instance()->peer_size * sizeof (void *));
 }
+#endif
 
 void tglf_fetch_int_array (int *dst, struct tl_ds_vector *src, int len) {
     int i;
@@ -2660,6 +2701,7 @@ void tgls_messages_mark_read (struct tgl_message *M, int out, int seq) {
         }
         M = M->next;
     }
+  }
 }
  
 /*
@@ -2696,7 +2738,6 @@ void tgls_insert_temp2local (int temp_id, tgl_message_id_t *msg_id) {
   
   tgl_state::instance()->temp_id_tree = tree_insert_random_id (tgl_state::instance()->temp_id_tree, X, rand ());
 }
-}*/
 
 tgl_message_id_t *tgls_get_local_by_random (long long random_id) {
   struct tgl_message M;
@@ -2755,4 +2796,4 @@ void tglm_message_del_random_id (struct tgl_message *M) {
   if (M->random_id) {
     tgl_state::instance()->random_id_tree = tree_delete_random_id (tgl_state::instance()->random_id_tree, M);
   }
-}
+}*/

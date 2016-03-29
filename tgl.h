@@ -21,7 +21,9 @@
 #ifndef __TGL_H__
 #define __TGL_H__
 
+extern "C" {
 #include "crypto/bn.h"
+}
 #include "tgl-layout.h"
 #include "tgl-log.h"
 #include <memory>
@@ -118,6 +120,7 @@ struct tgl_update_callback {
   void (*msg_receive)(struct tgl_message *M);
   void (*our_id)(int id);
   void (*notification)(const char *type, const char *message);
+  void (*user_status_update)(struct tgl_user *U);
   void (*dc_update)(std::shared_ptr<tgl_dc>);
   void (*change_active_dc)(int new_dc_id);
   char *(*create_print_name) (tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
@@ -169,7 +172,7 @@ struct tgl_state {
 
   std::shared_ptr<tgl_timer> ev_login;
 
-  void init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
+  int init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
   void login();
 
   void set_auth_key(int num, const char *buf);
@@ -205,7 +208,7 @@ struct tgl_state {
   int seq() { return m_seq; }
   int date() { return m_date; }
   bool test_mode() { return m_test_mode; }
-  int our_id() { return m_our_id; }
+  tgl_peer_id_t our_id() { return m_our_id; }
   bool ipv6_enabled() { return m_ipv6_enabled; }
   bool pfs_enabled() { return m_enable_pfs; }
 private:
@@ -220,7 +223,7 @@ private:
   int m_date;
   int m_seq;
   bool m_test_mode; // Connects to the telegram test servers instead of the regular servers
-  int m_our_id; // ID of logged in user
+  tgl_peer_id_t m_our_id; // ID of logged in user
   bool m_enable_pfs;
   std::string m_app_version;
   bool m_ipv6_enabled;
@@ -231,6 +234,11 @@ private:
   std::shared_ptr<tgl_timer_factory> m_timer_factory;
   std::shared_ptr<tgl_connection_factory> m_connection_factory;
 };
+
+tgl_peer_t *tgl_peer_get (tgl_peer_id_t id);
+tgl_peer_t *tgl_peer_get_by_name (const char *s);
+
+struct tgl_message *tgl_message_get (tgl_message_id_t *id);
 
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);
 int tgl_do_send_bot_auth (const char *code, int code_len, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_user *Self), std::shared_ptr<void> callback_extra);
@@ -264,6 +272,10 @@ static inline tgl_peer_id_t tgl_set_peer_id (int type, int id) {
   ID.peer_type = type;
   ID.access_hash = 0;
   return ID;
+}
+
+static inline int tgl_cmp_peer_id (tgl_peer_id_t a, tgl_peer_id_t b) {
+  return memcmp (&a, &b, 8);
 }
 
 int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& DC);

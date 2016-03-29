@@ -298,7 +298,7 @@ static void free_vars_to_be_freed (void) {
   fvars_pos = 0;
 }
 
-int tglf_extf_autocomplete (struct tgl_state *TLS, const char *text, int text_len, int index, char **R, char *data, int data_len) {
+int tglf_extf_autocomplete (const char *text, int text_len, int index, char **R, char *data, int data_len) {
   if (index == -1) {
     buffer_pos = data;
     buffer_end = data + data_len;

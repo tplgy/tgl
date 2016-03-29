@@ -41,8 +41,7 @@ struct query {
     std::shared_ptr<tgl_timer> ev;
     std::shared_ptr<tgl_dc> DC;
     std::shared_ptr<tgl_session> session;
-    //struct paramed_type *type;
-    //void *extra;
+    struct paramed_type *type;
     std::shared_ptr<void> extra;
     void *callback;
     std::shared_ptr<void> callback_extra;

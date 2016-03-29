@@ -44,9 +44,6 @@
 #include <netinet/tcp.h>
 //#include <poll.h>
 #endif
-#include "crypto/rand.h"
-#include "crypto/rsa_pem.h"
-#include "crypto/sha.h"
 
 #include "queries.h"
 #include "tgl-structures.h"
@@ -56,13 +53,16 @@
 #include "tgl-net.h"
 #include "mtproto-client.h"
 #include "updates.h"
-#include "mtproto-utils.h"
 extern "C" {
-#include "tools.h"
 #include "auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-skip.h"
+#include "crypto/rand.h"
+#include "crypto/rsa_pem.h"
+#include "crypto/sha.h"
 #include "mtproto-common.h"
+#include "mtproto-utils.h"
+#include "tools.h"
 }
 #include "tgl-methods-in.h"
 
@@ -129,39 +129,13 @@ static int encrypt_buffer[ENCRYPT_BUFFER_INTS];
 #define DECRYPT_BUFFER_INTS        16384
 static int decrypt_buffer[ENCRYPT_BUFFER_INTS];
 
-int tgl_pad_rsa_encrypt (char *from, int from_len, char *to, int size, BIGNUM *N, BIGNUM *E) {
-    int pad = (255000 - from_len - 32) % 255 + 32;
-    int chunks = (from_len + pad) / 255;
-    int bits = BN_num_bits (N);
-    assert (bits >= 2041 && bits <= 2048);
-    assert (from_len > 0 && from_len <= 2550);
-    assert (size >= chunks * 256);
-    assert (RAND_pseudo_bytes ((unsigned char *) from + from_len, pad) >= 0);
-    int i;
-    BIGNUM x, y;
-    BN_init (&x);
-    BN_init (&y);
-    for (i = 0; i < chunks; i++) {
-        BN_bin2bn ((unsigned char *) from, 255, &x);
-        assert (BN_mod_exp (&y, &x, E, N, tgl_state::instance()->BN_ctx) == 1);
-        unsigned l = 256 - BN_num_bytes (&y);
-        assert (l <= 256);
-        memset (to, 0, l);
-        BN_bn2bin (&y, (unsigned char *) to + l);
-        to += 256;
-    }
-    BN_free (&x);
-    BN_free (&y);
-    return chunks * 256;
-}
-
 static int encrypt_packet_buffer (std::shared_ptr<tgl_dc> DC) {
   TGLC_rsa *key = (TGLC_rsa *)tgl_state::instance()->rsa_key_loaded[DC->rsa_key_idx];
   return tgl_pad_rsa_encrypt ((char *) packet_buffer, (packet_ptr - packet_buffer) * 4, (char *) encrypt_buffer, ENCRYPT_BUFFER_INTS * 4, TGLC_rsa_n (key), TGLC_rsa_e (key));
 }
 
 static int encrypt_packet_buffer_aes_unauth (const unsigned char server_nonce[16], const unsigned char hidden_client_nonce[32]) {
-  tgl_init_aes_unauth (server_nonce, hidden_client_nonce, AES_ENCRYPT);
+  tgl_init_aes_unauth (server_nonce, hidden_client_nonce, 1);
   return tgl_pad_aes_encrypt ((unsigned char *) packet_buffer, (packet_ptr - packet_buffer) * 4, (unsigned char *) encrypt_buffer, ENCRYPT_BUFFER_INTS * 4);
 }
 
@@ -452,14 +426,16 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
           DC->rsa_key_idx = j;
           break;
         }
+      }
     }
-    assert (in_ptr == in_end);
-    if (DC->rsa_key_idx == -1) {
-        TGL_ERROR("fatal: don't have any matching keys\n");
-        return -1;
-    }
+  }
+  assert (in_ptr == in_end);
+  if (DC->rsa_key_idx == -1) {
+    TGL_ERROR("fatal: don't have any matching keys\n");
+    return -1;
+  }
 
-    send_req_dh_packet(c, pq, temp_key);
+  send_req_dh_packet(c, pq, temp_key);
 
   TGLC_bn_free (pq);
   return 1;
@@ -513,12 +489,12 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
     return -1;
   }
 
-  tgl_init_aes_unauth (DC->server_nonce, DC->new_nonce, AES_DECRYPT);
+  tgl_init_aes_unauth (DC->server_nonce, DC->new_nonce, 0);
 
   int l = prefetch_strlen ();
   assert (l >= 0);
   if (!l) {
-    vlogprintf (E_ERROR, "non-empty encrypted part expected\n");
+    TGL_ERROR("non-empty encrypted part expected");
     return -1;
   }
   l = tgl_pad_aes_decrypt((unsigned char *)fetch_str (l), l, (unsigned char *) decrypt_buffer, DECRYPT_BUFFER_INTS * 4 - 16);
@@ -533,12 +509,27 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   }
   in_ptr = decrypt_buffer + 5;
 
+  assert (fetch_int ()  == (int)CODE_server_DH_inner_data);
+  fetch_ints (tmp, 4);
+  if (memcmp (tmp, DC->nonce, 16)) {
+    TGL_ERROR("nonce mismatch");
+    return -1;
+  }
+  assert (!memcmp (tmp, DC->nonce, 16));
+  fetch_ints (tmp, 4);
+  if (memcmp (tmp, DC->server_nonce, 16)) {
+    TGL_ERROR("nonce mismatch");
+    return -1;
+  }
+  assert (!memcmp (tmp, DC->server_nonce, 16));
+  int g = fetch_int ();
+
   TGLC_bn *dh_prime = TGLC_bn_new ();
   TGLC_bn *g_a = TGLC_bn_new ();
   assert (fetch_bignum (dh_prime) > 0);
   assert (fetch_bignum (g_a) > 0);
 
-  if (tglmp_check_DH_params (tgl_state::instance()->BN_ctx, dh_prime, g) < 0) {
+  if (tglmp_check_DH_params (dh_prime, g) < 0) {
     TGL_ERROR("bad DH params");
     return -1;
   }
@@ -546,6 +537,9 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
     TGL_ERROR("bad dh_prime");
     return -1;
   }
+
+  int server_time = fetch_int ();
+  assert (in_ptr <= in_end);
 
   static char sha1_buffer[20];
   TGLC_sha1 ((unsigned char *) decrypt_buffer + 20, (in_ptr - decrypt_buffer - 5) * 4, (unsigned char *) sha1_buffer);
@@ -561,7 +555,7 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   DC->server_time_delta = server_time - get_utime (CLOCK_REALTIME);
   DC->server_time_udelta = server_time - get_utime (CLOCK_MONOTONIC);
 
-  send_dh_params(c, dh_prime, g_a, g, temp_key);
+  send_dh_params (c, dh_prime, g_a, g, temp_key);
 
   TGLC_bn_free (dh_prime);
   TGLC_bn_free (g_a);
@@ -874,20 +868,21 @@ static int work_container (const std::shared_ptr<tgl_connection>& c, long long m
 }
 
 static int work_new_session_created (const std::shared_ptr<tgl_connection>& c, long long msg_id) {
-  struct tgl_session *S = tgl_state::instance()->net_methods->get_session (c);
-  struct tgl_dc *DC = tgl_state::instance()->net_methods->get_dc (c);
-
-  TGL_DEBUG("work_new_session_created: msg_id = " << msg_id << ", dc = " << DC->id);
-  assert (fetch_int () == (int)CODE_new_session_created);
-  fetch_long (); // first message id
-  fetch_long (); // unique_id
+  std::shared_ptr<tgl_session> S = c->get_session().lock();
+  if (!S) {
+    return -1;
+  }
   std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
   if (!DC) {
     return -1;
   }
+  TGL_DEBUG("work_new_session_created: msg_id = " << msg_id << ", dc = " << DC->id);
+  assert (fetch_int () == (int)CODE_new_session_created);
+  fetch_long (); // first message id
+  fetch_long (); // unique_id
   DC->server_salt = fetch_long ();
 
-  tglq_regen_queries_from_old_session (DC, S);
+  //tglq_regen_queries_from_old_session (DC, S);
 
   if (tgl_state::instance()->started && !(tgl_state::instance()->locks & TGL_LOCK_DIFF) && (tgl_state::instance()->DC_working->flags & TGLDCF_LOGGED_IN)) {
     tgl_do_get_difference (0, 0, 0);
@@ -1095,10 +1090,6 @@ static char *get_ipv6 (int num) {
   return res;
 }
 */
-
-static int rpc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
-    return tc_becomes_ready(c);
-}
 
 static int tc_close (const std::shared_ptr<tgl_connection>& c, int who) {
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
@@ -1364,6 +1355,10 @@ static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
   return 0;
 }
 
+static int rpc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
+    return tc_becomes_ready(c);
+}
+
 static int rpc_close (const std::shared_ptr<tgl_connection>& c) {
   return tc_close (c, 0);
 }
@@ -1378,7 +1373,7 @@ int tglmp_on_start () {
     char *key = tgl_state::instance()->rsa_key_list[i];
     if (!key) {
       /* This key was provided using 'tgl_set_rsa_key_direct'. */
-      TGLC_rsa *rsa = tgl_state::instance()->rsa_key_loaded[i];
+      TGLC_rsa *rsa = (TGLC_rsa *)tgl_state::instance()->rsa_key_loaded[i];
       assert (rsa);
       tgl_state::instance()->rsa_key_fingerprint[i] = tgl_do_compute_rsa_key_fingerprint (rsa);
       TGL_NOTICE("'direct' public key loaded successfully\n");
@@ -1394,11 +1389,11 @@ int tglmp_on_start () {
         tgl_state::instance()->rsa_key_fingerprint[i] = tgl_do_compute_rsa_key_fingerprint (res);
       }
     }
+  }
 
   if (!ok) {
     TGL_ERROR("No public keys found\n");
-    tgl_state::instance()->error = tstrdup ("No public keys found");
-    tgl_state::instance()->error_code = ENOTCONN;
+    tgl_state::instance()->set_error(tstrdup ("No public keys found"), ENOTCONN);
     return -1;
   }
   return 0;
@@ -1488,6 +1483,7 @@ void tgl_do_send_ping (const std::shared_ptr<tgl_connection>& c) {
   tglmp_encrypt_send_message (c, x, 3, 0);
 }
 
+#if 0
 void tgl_dc_iterator (void (*iterator)(struct tgl_dc *DC)) {
   int i;
   for (i = 0; i <= tgl_state::instance()->max_dc_num; i++) {
@@ -1501,6 +1497,7 @@ void tgl_dc_iterator_ex (void (*iterator)(struct tgl_dc *DC, void *extra), void 
     iterator (tgl_state::instance()->DC_list[i], extra);
   }
 }
+#endif
 
 void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& DC) {
   DC->flags &= ~(TGLDCF_BOUND);

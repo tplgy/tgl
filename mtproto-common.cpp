@@ -33,13 +33,17 @@
 #include <netdb.h>
 #endif
 
+extern "C" {
 #include "crypto/aes.h"
 #include "crypto/rand.h"
 #include "crypto/sha.h"
-
 #include "mtproto-common.h"
 #include "tools.h"
+}
+
 #include "auto.h"
+#include "tgl.h"
+#include "tgl-log.h"
 
 #ifdef __MACH__
 #include <mach/clock.h>
@@ -61,12 +65,12 @@ static long long rsa_encrypted_chunks, rsa_decrypted_chunks;
 //int verbosity;
 
 #ifndef WIN32
-static int get_random_bytes (struct tgl_state *TLS, unsigned char *buf, int n) {
+static int get_random_bytes (unsigned char *buf, int n) {
   int r = 0, h = open ("/dev/random", O_RDONLY | O_NONBLOCK);
   if (h >= 0) {
     r = read (h, buf, n);
     if (r > 0) {
-      vlogprintf (E_DEBUG, "added %d bytes of real entropy to secure random numbers seed\n", r);
+      TGL_DEBUG("added " << r << " bytes of real entropy to secure random numbers seed");
     } else {
       r = 0;
     }
@@ -94,7 +98,7 @@ static int get_random_bytes (struct tgl_state *TLS, unsigned char *buf, int n) {
 }
 #else
 static HCRYPTPROV hCryptoServiceProvider = 0;
-static int get_random_bytes (struct tgl_state *TLS, unsigned char *buf, int n) {
+static int get_random_bytes (unsigned char *buf, int n) {
 	if (hCryptoServiceProvider == 0) {
 		/* Crypto init */
 		CryptAcquireContextA(&hCryptoServiceProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
@@ -127,7 +131,7 @@ static __inline__ unsigned long long rdtsc (void) {
 }
 #endif
 
-void tgl_prng_seed (struct tgl_state *TLS, const char *password_filename, int password_length) {
+void tgl_prng_seed (const char *password_filename, int password_length) {
   struct timespec T;
   tgl_my_clock_gettime (CLOCK_REALTIME, &T);
   TGLC_rand_add (&T, sizeof (T), 4.0);
@@ -142,7 +146,7 @@ void tgl_prng_seed (struct tgl_state *TLS, const char *password_filename, int pa
   TGLC_rand_add (&p, sizeof (p), 0.0);
 #endif
   unsigned char rb[32];
-  int s = get_random_bytes (TLS, rb, 32);
+  int s = get_random_bytes (rb, 32);
   if (s > 0) {
     TGLC_rand_add (rb, s, s);
   }
@@ -150,22 +154,22 @@ void tgl_prng_seed (struct tgl_state *TLS, const char *password_filename, int pa
   if (password_filename && password_length > 0) {
     int fd = open (password_filename, O_RDONLY | O_BINARY);
     if (fd < 0) {
-      vlogprintf (E_WARNING, "Warning: fail to open password file - \"%s\", %s.\n", password_filename, strerror(errno));
+      TGL_WARNING("Warning: fail to open password file - \"" << password_filename << "\", " << strerror(errno) << ".");
     } else {
       unsigned char *a = (unsigned char *)talloc0(password_length);
       int l = read (fd, a, password_length);
       if (l < 0) {
-        vlogprintf (E_WARNING, "Warning: fail to read password file - \"%s\", %s.\n", password_filename, strerror(errno));
+        TGL_WARNING("Warning: fail to read password file - \"" << password_filename << "\", " << strerror(errno) << ".");
       } else {
-        vlogprintf (E_DEBUG, "read %d bytes from password file.\n", l);
+        TGL_DEBUG("read " << l << " bytes from password file.");
         TGLC_rand_add (a, l, l);
       }
       close (fd);
-      tfree_secure (a);
+      tfree_secure (a, password_length);
     }
   }
-  TLS->TGLC_bn_ctx = TGLC_bn_ctx_new ();
-  ensure_ptr (TLS->TGLC_bn_ctx);
+  tgl_state::instance()->TGLC_bn_ctx = TGLC_bn_ctx_new ();
+  ensure_ptr (tgl_state::instance()->TGLC_bn_ctx);
 }
 
 int tgl_serialize_bignum (TGLC_bn *b, char *buffer, int maxlen) {
@@ -240,7 +244,7 @@ int tgl_fetch_bignum (TGLC_bn *x) {
   return l;
 }
 
-int tgl_pad_rsa_encrypt (struct tgl_state *TLS, char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *E) {
+int tgl_pad_rsa_encrypt (char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *E) {
   int pad = (255000 - from_len - 32) % 255 + 32;
   int chunks = (from_len + pad) / 255;
   int bits = TGLC_bn_num_bits (N);
@@ -256,7 +260,7 @@ int tgl_pad_rsa_encrypt (struct tgl_state *TLS, char *from, int from_len, char *
   rsa_encrypted_chunks += chunks;
   for (i = 0; i < chunks; i++) {
     TGLC_bn_bin2bn ((unsigned char *) from, 255, x);
-    assert (TGLC_bn_mod_exp (y, x, E, N, TLS->TGLC_bn_ctx) == 1);
+    assert (TGLC_bn_mod_exp (y, x, E, N, tgl_state::instance()->TGLC_bn_ctx) == 1);
     unsigned l = 256 - TGLC_bn_num_bytes (y);
     assert (l <= 256);
     memset (to, 0, l);
@@ -268,7 +272,7 @@ int tgl_pad_rsa_encrypt (struct tgl_state *TLS, char *from, int from_len, char *
   return chunks * 256;
 }
 
-int tgl_pad_rsa_decrypt (struct tgl_state *TLS, char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *D) {
+int tgl_pad_rsa_decrypt (char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *D) {
   if (from_len < 0 || from_len > 0x1000 || (from_len & 0xff)) {
     return -1;
   }
@@ -284,7 +288,7 @@ int tgl_pad_rsa_decrypt (struct tgl_state *TLS, char *from, int from_len, char *
   for (i = 0; i < chunks; i++) {
     ++rsa_decrypted_chunks;
     TGLC_bn_bin2bn ((unsigned char *) from, 256, x);
-    assert (TGLC_bn_mod_exp (y, x, D, N, TLS->TGLC_bn_ctx) == 1);
+    assert (TGLC_bn_mod_exp (y, x, D, N, tgl_state::instance()->TGLC_bn_ctx) == 1);
     int l = TGLC_bn_num_bytes (y);
     if (l > 255) {
       TGLC_bn_free (x);

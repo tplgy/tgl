@@ -3,12 +3,13 @@
 #include "tg-mime-types.h"
 #include "tgl-layout.h"
 extern "C" {
+#include "crypto/aes.h"
+#include "crypto/md5.h"
 #include "mtproto-common.h"
 #include "tools.h"
 }
 
 #include <fcntl.h>
-#include <openssl/md5.h>
 #include <boost/filesystem.hpp>
 
 extern struct query_methods send_msgs_methods;
@@ -74,7 +75,7 @@ struct send_file {
     int part_size;
     long long id;
     long long thumb_id;
-    tgl_peer_id to_id;
+    tgl_peer_id_t to_id;
     int flags;
     std::string file_name;
     int encr;
@@ -311,9 +312,9 @@ void tgl_download_manager::send_part(std::shared_ptr<send_file> f, void *callbac
                 x = (x + 15) & ~15;
             }
 
-            AES_KEY aes_key;
-            AES_set_encrypt_key (f->key, 256, &aes_key);
-            AES_ige_encrypt ((unsigned char*)buf, (unsigned char*)buf, x, &aes_key, f->iv, 1);
+            TGLC_aes_key aes_key;
+            TGLC_aes_set_encrypt_key (f->key, 256, &aes_key);
+            TGLC_aes_ige_encrypt ((unsigned char *)buf, (unsigned char *)buf, x, &aes_key, f->iv, 1);
             memset (&aes_key, 0, sizeof (aes_key));
         }
         out_cstring (buf, x);
@@ -342,7 +343,7 @@ void tgl_download_manager::send_file_thumb (std::shared_ptr<send_file> f, const 
 }
 
 
-void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id to_id, const std::string &file_name, int avatar, int w, int h, int duration,
+void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id_t to_id, const std::string &file_name, int avatar, int w, int h, int duration,
                                 const void *thumb_data, int thumb_len, const std::string &caption, unsigned long long flags,
                                 void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
     int fd = -1;
@@ -415,7 +416,7 @@ void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id to_id, const std::str
     }
 }
 
-void tgl_download_manager::set_chat_photo (tgl_peer_id chat_id, const std::string &file_name, void (*callback)(std::shared_ptr<void> callback_extra, bool success),
+void tgl_download_manager::set_chat_photo (tgl_peer_id_t chat_id, const std::string &file_name, void (*callback)(std::shared_ptr<void> callback_extra, bool success),
         std::shared_ptr<void> callback_extra)
 {
     assert (tgl_get_peer_type (chat_id) == TGL_PEER_CHAT);
@@ -425,12 +426,12 @@ void tgl_download_manager::set_chat_photo (tgl_peer_id chat_id, const std::strin
 
 void tgl_download_manager::set_profile_photo (const std::string &file_name, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra)
 {
-    _tgl_do_send_photo (TGL_MK_USER(tgl_state::instance()->our_id()), file_name, -1, 0, 0, 0, 0, 0, NULL, TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
+    _tgl_do_send_photo (tgl_state::instance()->our_id(), file_name, -1, 0, 0, 0, 0, 0, NULL, TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
                         (void (*)(std::shared_ptr<void>, bool , struct tgl_message *))callback, callback_extra);
 }
 
 
-void tgl_download_manager::send_document (tgl_peer_id to_id, const std::string &file_name, const std::string &caption, unsigned long long flags,
+void tgl_download_manager::send_document (tgl_peer_id_t to_id, const std::string &file_name, const std::string &caption, unsigned long long flags,
         void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra)
 {
     if (flags & TGL_SEND_MSG_FLAG_DOCUMENT_AUTO) {
@@ -500,9 +501,9 @@ int tgl_download_manager::download_on_answer (std::shared_ptr<query> q, void *DD
         assert (!(len & 15));
         void *ptr = DS_UF->bytes->data;
 
-        AES_KEY aes_key;
-        AES_set_decrypt_key (D->key, 256, &aes_key);
-        AES_ige_encrypt ((unsigned char*)ptr, (unsigned char*)ptr, len, &aes_key, D->iv, 0);
+        TGLC_aes_key aes_key;
+        TGLC_aes_set_decrypt_key (D->key, 256, &aes_key);
+        TGLC_aes_ige_encrypt ((unsigned char*)ptr, (unsigned char*)ptr, len, &aes_key, D->iv, 0);
         memset ((unsigned char*)&aes_key, 0, sizeof (aes_key));
         if (len > D->size - D->offset) {
             len = D->size - D->offset;
@@ -710,6 +711,6 @@ void tgl_download_manager::download_encr_document (struct tgl_encr_document *V, 
     unsigned char str[64];
     memcpy (str, V->key, 32);
     memcpy (str + 32, V->iv, 32);
-    MD5 (str, 64, md5);
+    TGLC_md5 (str, 64, md5);
     assert (V->key_fingerprint == ((*(int *)md5) ^ (*(int *)(md5 + 4))));
 }

@@ -1,19 +1,19 @@
 #include "config.h"
-#include "crypto/bn.h"
 #include "tl-parser/portable_endian.h"
 #include <string.h>
 #include "tgl.h"
 extern "C" {
+#include "crypto/bn.h"
+#include "mtproto-utils.h"
 #include "tools.h"
 }
-#include "mtproto-utils.h"
 
 static unsigned long long gcd (unsigned long long a, unsigned long long b) {
   return b ? gcd (b, a % b) : a;
 }
 
-static int check_prime (struct tgl_state *TLS, TGLC_bn *p) {
-  int r = TGLC_bn_is_prime (p, /* "use default" */ 0, 0, TLS->TGLC_bn_ctx, 0);
+static int check_prime (TGLC_bn *p) {
+  int r = TGLC_bn_is_prime (p, /* "use default" */ 0, 0, tgl_state::instance()->TGLC_bn_ctx, 0);
   ensure (r >= 0);
   return r;
 }
@@ -23,7 +23,7 @@ static int check_prime (struct tgl_state *TLS, TGLC_bn *p) {
 
 
 // Checks that (p,g) is acceptable pair for DH
-int tglmp_check_DH_params (struct tgl_state *TLS, TGLC_bn *p, int g) {
+int tglmp_check_DH_params (TGLC_bn *p, int g) {
   if (g < 2 || g > 7) { return -1; }
   if (TGLC_bn_num_bits (p) != 2048) { return -1; }
   
@@ -32,7 +32,7 @@ int tglmp_check_DH_params (struct tgl_state *TLS, TGLC_bn *p, int g) {
   TGLC_bn *dh_g = TGLC_bn_new ();
   
   ensure (TGLC_bn_set_word (dh_g, 4 * g));
-  ensure (TGLC_bn_mod (t, p, dh_g, TLS->TGLC_bn_ctx));
+  ensure (TGLC_bn_mod (t, p, dh_g, tgl_state::instance()->TGLC_bn_ctx));
   int x = TGLC_bn_get_word (t);
   assert (x >= 0 && x < 4 * g);
 
@@ -59,15 +59,15 @@ int tglmp_check_DH_params (struct tgl_state *TLS, TGLC_bn *p, int g) {
     break;
   }
 
-  if (res < 0 || !check_prime (TLS, p)) { 
+  if (res < 0 || !check_prime (p)) {
     TGLC_bn_free (t);
-    return -1; 
+    return -1;
   }
 
   TGLC_bn *b = TGLC_bn_new ();
   ensure (TGLC_bn_set_word (b, 2));
-  ensure (TGLC_bn_div (t, 0, p, b, TLS->TGLC_bn_ctx));
-  if (!check_prime (TLS, t)) { 
+  ensure (TGLC_bn_div (t, 0, p, b, tgl_state::instance()->TGLC_bn_ctx));
+  if (!check_prime (t)) {
     res = -1;
   }
   TGLC_bn_free (b);
@@ -76,7 +76,7 @@ int tglmp_check_DH_params (struct tgl_state *TLS, TGLC_bn *p, int g) {
 }
 
 // checks that g_a is acceptable for DH
-int tglmp_check_g_a (struct tgl_state *TLS, TGLC_bn *p, TGLC_bn *g_a) {
+int tglmp_check_g_a (TGLC_bn *p, TGLC_bn *g_a) {
   if (TGLC_bn_num_bytes (g_a) > 256) {
     return -1;
   }

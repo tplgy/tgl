@@ -123,8 +123,8 @@ static connection_buffer *new_connection_buffer(int size) {
 }
 
 static void delete_connection_buffer(connection_buffer *b) {
-    tfree(b->start);
-    tfree(b);
+    free(b->start);
+    free(b);
 }
 
 ssize_t tgl_connection_asio::read_in_lookup(void *_data, size_t len) {

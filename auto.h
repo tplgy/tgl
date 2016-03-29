@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "tools.h"
+
 struct tl_type_descr {
   unsigned name;
   char *id;

@@ -29,9 +29,11 @@
 #include "crypto/rand.h"
 
 #define talloc0(X) calloc(1,X)
-#define tfree free
-#define tfree_str free
-#define tfree_secure free
+#define talloc(x) malloc(x)
+#define tfree(x, size) free(x)
+#define tfree_str(x) free(x)
+#define tfree_secure(x, size) free(x)
+#define trealloc(x, old_size, size) realloc(x, size)
 #define tstrdup tgl_strdup
 #define tmemdup tgl_memdup
 #define tstrndup tgl_strndup
