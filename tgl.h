@@ -28,6 +28,7 @@ extern "C" {
 #include "tgl-log.h"
 #include <memory>
 #include <stdlib.h>
+#include <string.h>
 #include <vector>
 
 //#define ENABLE_SECRET_CHAT
@@ -164,7 +165,7 @@ struct tgl_state {
   std::vector<void*> rsa_key_loaded;
   std::vector<long long> rsa_key_fingerprint;
 
-  TGLC_bn_ctx *TGLC_bn_ctx;
+  TGLC_bn_ctx *bn_ctx;
 
   std::vector<tgl_message*> unsent_messages;
 

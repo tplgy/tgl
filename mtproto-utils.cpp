@@ -13,7 +13,7 @@ static unsigned long long gcd (unsigned long long a, unsigned long long b) {
 }
 
 static int check_prime (TGLC_bn *p) {
-  int r = TGLC_bn_is_prime (p, /* "use default" */ 0, 0, tgl_state::instance()->TGLC_bn_ctx, 0);
+  int r = TGLC_bn_is_prime (p, /* "use default" */ 0, 0, tgl_state::instance()->bn_ctx, 0);
   ensure (r >= 0);
   return r;
 }
@@ -32,7 +32,7 @@ int tglmp_check_DH_params (TGLC_bn *p, int g) {
   TGLC_bn *dh_g = TGLC_bn_new ();
   
   ensure (TGLC_bn_set_word (dh_g, 4 * g));
-  ensure (TGLC_bn_mod (t, p, dh_g, tgl_state::instance()->TGLC_bn_ctx));
+  ensure (TGLC_bn_mod (t, p, dh_g, tgl_state::instance()->bn_ctx));
   int x = TGLC_bn_get_word (t);
   assert (x >= 0 && x < 4 * g);
 
@@ -66,7 +66,7 @@ int tglmp_check_DH_params (TGLC_bn *p, int g) {
 
   TGLC_bn *b = TGLC_bn_new ();
   ensure (TGLC_bn_set_word (b, 2));
-  ensure (TGLC_bn_div (t, 0, p, b, tgl_state::instance()->TGLC_bn_ctx));
+  ensure (TGLC_bn_div (t, 0, p, b, tgl_state::instance()->bn_ctx));
   if (!check_prime (t)) {
     res = -1;
   }

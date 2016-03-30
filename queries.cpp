@@ -860,7 +860,8 @@ static struct query_methods send_code_methods  = {
   .on_error = q_list_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(auth_sent_code),
-  .name = "send code"
+  .name = "send code",
+  .timeout = 0,
 };
 
 void tgl_do_send_code (const char *phone, int phone_len, void (*callback)(std::shared_ptr<void>, bool success, int registered, const char *hash), std::shared_ptr<void> callback_extra) {
@@ -892,7 +893,8 @@ static struct query_methods phone_call_methods  = {
   .on_error = q_void_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(bool),
-  .name = "phone call"
+  .name = "phone call",
+  .timeout = 0,
 };
 
 void tgl_do_phone_call (const char *phone, int phone_len, const char *hash, int hash_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -937,7 +939,8 @@ static struct query_methods sign_in_methods  = {
   .on_error = sign_in_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(auth_authorization),
-  .name = "sign in"
+  .name = "sign in",
+  .timeout = 0,
 };
 
 int tgl_do_send_code_result (const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -998,7 +1001,8 @@ static struct query_methods get_contacts_methods = {
   .on_error = q_list_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(contacts_contacts),
-  .name = "get contacts"
+  .name = "get contacts",
+  .timeout = 0,
 };
 
 
@@ -1081,7 +1085,8 @@ static struct query_methods msg_send_methods = {
   .on_error = msg_send_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(updates),
-  .name = "send message"
+  .name = "send message",
+  .timeout = 0,
 };
 
 void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
@@ -1409,7 +1414,8 @@ static struct query_methods mark_read_methods = {
   .on_error = mark_read_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(messages_affected_history),
-  .name = "mark read"
+  .name = "mark read",
+  .timeout = 0,
 };
 
 static struct query_methods mark_read_channels_methods = {
@@ -1417,7 +1423,8 @@ static struct query_methods mark_read_channels_methods = {
   .on_error = q_void_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(bool),
-  .name = "mark read (channels)"
+  .name = "mark read (channels)",
+  .timeout = 0,
 };
 
 void tgl_do_messages_mark_read (tgl_peer_id_t id, int max_id, int offset, void (*callback)(std::shared_ptr<void>, bool), std::shared_ptr<void> callback_extra) {
@@ -1552,7 +1559,8 @@ static struct query_methods get_history_methods = {
   .on_error = get_history_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(messages_messages),
-  .name = "get history"
+  .name = "get history",
+  .timeout = 0,
 };
 
 
@@ -1724,7 +1732,8 @@ static struct query_methods get_dialogs_methods = {
   .on_error = get_dialogs_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(messages_dialogs),
-  .name = "get dialogs"
+  .name = "get dialogs",
+  .timeout = 0,
 };
 
 static void _tgl_do_get_dialog_list (std::shared_ptr<get_dialogs_extra> E,  void (*callback)(std::shared_ptr<void>, bool success, int size, tgl_peer_id_t peers[], tgl_message_id_t *last_msg_id[], int unread_count[]), std::shared_ptr<void> callback_extra) {
@@ -1810,7 +1819,8 @@ static struct query_methods set_profile_name_methods = {
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(user),
-  .name = "set profile name"
+  .name = "set profile name",
+  .timeout = 0,
 };
 
 void tgl_do_set_profile_name (const char *first_name, const char *last_name) {
@@ -1863,7 +1873,8 @@ static struct query_methods contact_search_methods = {
   .on_error = q_list_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(contacts_resolved_peer),
-  .name = "contacts search"
+  .name = "contacts search",
+  .timeout = 0,
 };
 
 void tgl_do_contact_search (const char *name, int name_len, void (*callback)(std::shared_ptr<void>, bool success, tgl_peer_t *U), std::shared_ptr<void> callback_extra) {
@@ -1936,7 +1947,8 @@ struct query_methods send_msgs_methods = {
   .on_error = send_msgs_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(updates),
-  .name = "forward messages"
+  .name = "forward messages",
+  .timeout = 0,
 };
 
 void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_ids[], unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, int count, struct tgl_message *ML[]), std::shared_ptr<void> callback_extra) {
@@ -2331,8 +2343,10 @@ static int channels_set_about_on_answer (std::shared_ptr<query> q, void *D) {
 static struct query_methods channels_set_about_methods = {
   .on_answer = channels_set_about_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = nullptr,
   .type = TYPE_TO_PARAM(bool),
-  .name = "channels set about"
+  .name = "channels set about",
+  .timeout = 0,
 };
 
 void tgl_do_channel_set_about (tgl_peer_id_t id, const char *about, int about_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -2446,8 +2460,10 @@ static int channels_get_members_on_error (std::shared_ptr<struct query> q, int e
 static struct query_methods channels_get_members_methods = {
   .on_answer = channels_get_members_on_answer,
   .on_error = channels_get_members_on_error,
+  .on_timeout = nullptr,
   .type = TYPE_TO_PARAM(channels_channel_participants),
-  .name = "channels get members"
+  .name = "channels get members",
+  .timeout = 0,
 };
 
 void _tgl_do_channel_get_members  (std::shared_ptr<struct channel_get_members_extra> E, void (*callback)(std::shared_ptr<void>, bool success, int size, struct tgl_user *UL[]), std::shared_ptr<void> callback_extra) {
@@ -2502,7 +2518,8 @@ static struct query_methods chat_info_methods = {
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(messages_chat_full),
-  .name = "chat info"
+  .name = "chat info",
+  .timeout = 0,
 };
 
 void tgl_do_get_chat_info (tgl_peer_id_t id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_chat *C), std::shared_ptr<void> callback_extra) {
@@ -2544,8 +2561,10 @@ static int channel_info_on_answer (std::shared_ptr<query> q, void *D) {
 static struct query_methods channel_info_methods = {
   .on_answer = channel_info_on_answer,
   .on_error = q_ptr_on_error,
+  .on_timeout = nullptr,
   .type = TYPE_TO_PARAM(messages_chat_full),
-  .name = "channel info"
+  .name = "channel info",
+  .timeout = 0,
 };
 
 void tgl_do_get_channel_info (tgl_peer_id_t id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_channel *C), std::shared_ptr<void> callback_extra) {
@@ -2591,7 +2610,8 @@ static struct query_methods user_info_methods = {
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(user_full),
-  .name = "user info"
+  .name = "user info",
+  .timeout = 0,
 };
 
 void tgl_do_get_user_info (tgl_peer_id_t id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_user *U), std::shared_ptr<void> callback_extra) {
@@ -2666,7 +2686,8 @@ static struct query_methods import_auth_methods = {
   .on_error = fail_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(auth_authorization),
-  .name = "import authorization"
+  .name = "import authorization",
+  .timeout = 0,
 };
 
 static int export_auth_on_answer (std::shared_ptr<query> q, void *D) {
@@ -2690,7 +2711,8 @@ static struct query_methods export_auth_methods = {
   .on_error = fail_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(auth_exported_authorization),
-  .name = "export authorization"
+  .name = "export authorization",
+  .timeout = 0,
 };
 
 void tgl_do_export_auth (int num, void (*callback) (std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -2732,7 +2754,8 @@ static struct query_methods add_contact_methods = {
   .on_error = q_list_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(contacts_imported_contacts),
-  .name = "add contact"
+  .name = "add contact",
+  .timeout = 0,
 };
 
 void tgl_do_add_contact (const char *phone, const char *first_name, const char *last_name, int force, void (*callback)(std::shared_ptr<void>, bool success, int size, int users[]), std::shared_ptr<void> callback_extra) {
@@ -2766,7 +2789,8 @@ static struct query_methods del_contact_methods = {
   .on_error = q_void_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(contacts_link),
-  .name = "del contact"
+  .name = "del contact",
+  .timeout = 0,
 };
 
 void tgl_do_del_contact (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -2850,7 +2874,8 @@ static struct query_methods msg_search_methods = {
   .on_error = msg_search_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(messages_messages),
-  .name = "messages search"
+  .name = "messages search",
+  .timeout = 0,
 };
 
 static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, void (*callback)(std::shared_ptr<void>, bool success, std::vector<tgl_message*> list), std::shared_ptr<void> callback_extra) {
@@ -3010,7 +3035,8 @@ static struct query_methods lookup_state_methods = {
   .on_error = q_void_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(updates_state),
-  .name = "lookup state"
+  .name = "lookup state",
+  .timeout = 0,
 };
 
 static struct query_methods get_state_methods = {
@@ -3018,7 +3044,8 @@ static struct query_methods get_state_methods = {
   .on_error = q_void_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(updates_state),
-  .name = "get state"
+  .name = "get state",
+  .timeout = 0,
 };
 
 static struct query_methods get_difference_methods = {
@@ -3026,7 +3053,8 @@ static struct query_methods get_difference_methods = {
   .on_error = q_void_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(updates_difference),
-  .name = "get difference"
+  .name = "get difference",
+  .timeout = 0,
 };
 
 void tgl_do_lookup_state () {
@@ -3114,8 +3142,10 @@ struct paramed_type update_channel_diff_type = TYPE_TO_PARAM(updates_channel_dif
 static struct query_methods get_channel_difference_methods = {
   .on_answer = get_channel_difference_on_answer,
   .on_error = q_void_on_error,
+  .on_timeout = nullptr,
   .type = TYPE_TO_PARAM(updates_channel_difference),
-  .name = "get channel difference"
+  .name = "get channel difference",
+  .timeout = 0,
 };
 
 void tgl_do_get_channel_difference (int id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -3345,7 +3375,8 @@ static struct query_methods delete_msg_methods = {
   .on_error = delete_msg_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(messages_affected_messages),
-  .name = "delete message"
+  .name = "delete message",
+  .timeout = 0,
 };
 
 void tgl_do_delete_msg (tgl_message_id_t *_msg_id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -3412,7 +3443,8 @@ static struct query_methods export_card_methods = {
   .on_error = q_list_on_error,
   .on_timeout = NULL,
   .type = vector_type,
-  .name = "export card"
+  .name = "export card",
+  .timeout = 0,
 };
 
 void tgl_do_export_card (void (*callback)(std::shared_ptr<void>, bool success, int size, int *card), std::shared_ptr<void> callback_extra) {
@@ -3438,7 +3470,8 @@ static struct query_methods import_card_methods = {
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(user),
-  .name = "import card"
+  .name = "import card",
+  .timeout = 0,
 };
 
 void tgl_do_import_card (int size, int *card, void (*callback)(std::shared_ptr<void> , int user_id), std::shared_ptr<void> callback_extra) {
@@ -3480,7 +3513,8 @@ static struct query_methods send_typing_methods = {
   .on_error = q_void_on_error,
   .on_timeout = NULL,
   .type = bool_type,
-  .name = "send typing"
+  .name = "send typing",
+  .timeout = 0,
 };
 
 void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -3548,7 +3582,8 @@ static struct query_methods ext_query_methods = {
   .on_error = q_list_on_error,
   .on_timeout = NULL,
   .type = NULL,
-  .name = "ext query"
+  .name = "ext query",
+  .timeout = 0,
 };
 
 void tgl_do_send_extf (const char *data, int data_len, void (*callback)(std::shared_ptr<void>, bool success, const char *buf), std::shared_ptr<void> callback_extra) {
@@ -3615,7 +3650,8 @@ static struct query_methods get_messages_methods = {
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(messages_messages),
-  .name = "get messages"
+  .name = "get messages",
+  .timeout = 0,
 };
 
 void tgl_do_get_message (tgl_message_id_t *_msg_id, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
@@ -3672,7 +3708,8 @@ static struct query_methods export_chat_link_methods = {
   .on_error = q_ptr_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(exported_chat_invite),
-  .name = "export chat link"
+  .name = "export chat link",
+  .timeout = 0,
 };
 
 void tgl_do_export_chat_link (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success, const char *link), std::shared_ptr<void> callback_extra) {
@@ -3774,7 +3811,8 @@ static struct query_methods set_password_methods = {
   .on_error = set_password_on_error,
   .on_timeout = NULL,
   .type = bool_type,
-  .name = "set password"
+  .name = "set password",
+  .timeout = 0,
 };
 
 static void tgl_do_act_set_password(const char *current_password, int current_password_len, const char *new_password, int new_password_len, const char *current_salt, int current_salt_len, const char *new_salt, int new_salt_len, const std::string &hint, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -3919,7 +3957,8 @@ static struct query_methods set_get_password_methods = {
   .on_error = q_void_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(account_password),
-  .name = "get password"
+  .name = "get password",
+  .timeout = 0,
 };
 
 void tgl_do_set_password (const char *hint, int hint_len, void (*callback)(void *extra, bool success), std::shared_ptr<void> callback_extra) {
@@ -3960,7 +3999,8 @@ static struct query_methods check_password_methods = {
   .on_error = check_password_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(auth_authorization),
-  .name = "check password"
+  .name = "check password",
+  .timeout = 0,
 };
 
 
@@ -4042,7 +4082,8 @@ static struct query_methods check_get_password_methods = {
   .on_error = check_get_password_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(account_password),
-  .name = "get password"
+  .name = "get password",
+  .timeout = 0,
 };
 
 void tgl_do_check_password (void (*callback)(std::shared_ptr<void> extra, bool success), std::shared_ptr<void> callback_extra) {
@@ -4127,7 +4168,8 @@ static struct query_methods block_user_methods = {
   .on_error = q_void_on_error,
   .on_timeout = NULL,
   .type = bool_type,
-  .name = "block user"
+  .name = "block user",
+  .timeout = 0,
 };
 
 void tgl_do_block_user (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -4214,8 +4256,10 @@ struct paramed_type help_tos_type = TYPE_TO_PARAM(help_terms_of_service);
 static struct query_methods get_tos_methods = {
   .on_answer = get_tos_on_answer,
   .on_error = q_ptr_on_error,
+  .on_timeout = nullptr,
   .type = TYPE_TO_PARAM(help_terms_of_service),
-  .name = "get tos"
+  .name = "get tos",
+  .timeout = 0,
 };
 
 void tgl_do_get_terms_of_service (void (*callback)(std::shared_ptr<void>, bool success, const char *ans), std::shared_ptr<void> callback_extra) {
@@ -4267,7 +4311,8 @@ static struct query_methods send_bind_temp_methods = {
   .on_error = send_bind_on_error,
   .on_timeout = NULL,
   .type = bool_type,
-  .name = "bind temp auth key"
+  .name = "bind temp auth key",
+  .timeout = 0,
 };
 
 void tgl_do_send_bind_temp_key (std::shared_ptr<tgl_dc> D, long long nonce, int expires_at, void *data, int len, long long msg_id) {
@@ -4294,7 +4339,8 @@ static struct query_methods update_status_methods = {
   .on_error = q_void_on_error,
   .on_timeout = NULL,
   .type = bool_type,
-  .name = "update status"
+  .name = "update status",
+  .timeout = 0,
 };
 
 void tgl_do_update_status (int online, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
@@ -4622,15 +4668,19 @@ struct change_phone_extra {
 static struct query_methods set_phone_methods  = {
   .on_answer = callback,
   .on_error = sign_in_on_error,
+  .on_timeout = nullptr,
   .type = TYPE_TO_PARAM(user),
-  .name = "set phone"
+  .name = "set phone",
+  .timeout = 0,
 };
 
 static struct query_methods send_change_code_methods  = {
   .on_answer = send_change_code_on_answer,
   .on_error = q_list_on_error,
+  .on_timeout = nullptr,
   .type = TYPE_TO_PARAM(account_sent_change_phone_code),
-  .name = "send change phone code"
+  .name = "send change phone code",
+  .timeout = 0,
 };
 
 void tgl_set_number_code (const void *code, std::shared_ptr<void> _T);

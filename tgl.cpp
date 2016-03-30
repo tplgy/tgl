@@ -38,7 +38,7 @@ extern "C" {
 
 tgl_state::tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
        DC_working(NULL), temp_key_expire_time(0), io_service(NULL),
-       TGLC_bn_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
+       bn_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
        m_date(0), m_seq(0), m_test_mode(0), m_our_id(tgl_peer_id_t()), m_enable_pfs(false), m_ipv6_enabled(false)
 {
 }

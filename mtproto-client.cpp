@@ -342,12 +342,12 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
 
   TGLC_bn *y = TGLC_bn_new ();
   ensure_ptr (y);
-  ensure (TGLC_bn_mod_exp (y, dh_g, dh_power, dh_prime, tgl_state::instance()->TGLC_bn_ctx));
+  ensure (TGLC_bn_mod_exp (y, dh_g, dh_power, dh_prime, tgl_state::instance()->bn_ctx));
   out_bignum (y);
   TGLC_bn_free (y);
 
   TGLC_bn *auth_key_num = TGLC_bn_new ();
-  ensure (TGLC_bn_mod_exp (auth_key_num, g_a, dh_power, dh_prime, tgl_state::instance()->TGLC_bn_ctx));
+  ensure (TGLC_bn_mod_exp (auth_key_num, g_a, dh_power, dh_prime, tgl_state::instance()->bn_ctx));
   int l = TGLC_bn_num_bytes (auth_key_num);
   assert (l >= 250 && l <= 256);
   assert (TGLC_bn_bn2bin (auth_key_num, (unsigned char *)(temp_key ? DC->temp_auth_key : DC->auth_key)));
