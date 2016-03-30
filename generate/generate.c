@@ -2547,8 +2547,10 @@ void gen_types_header (void) {
       continue;
     }
     int j;
+    int empty = 1;
     if (tps[i]->constructors_num > 1) {
       printf ("  unsigned magic;\n");
+      empty = 0;
     }
     for (j = 0; j < tps[i]->constructors_num; j++) {
       struct tl_combinator *c = tps[i]->constructors[j];
@@ -2580,7 +2582,11 @@ void gen_types_header (void) {
         } else {
           printf ("%s;\n", c->args[k]->id);
         }
+        empty = 0;
       }
+    }
+    if (empty) {
+      printf("  int padding : 1;\n");
     }
     printf ("};\n");
   }
