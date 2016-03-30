@@ -80,6 +80,7 @@ private:
 
     void send_avatar_end(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void>callback_extra);
     void send_file_end(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void>callback_extra);
+    void send_file_unencrypted_end (std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra);
     void send_file_thumb(std::shared_ptr<send_file> f, const void *thumb_data, int thumb_len, void *callback, std::shared_ptr<void>callback_extra);
 
     void send_part(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra);

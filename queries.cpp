@@ -73,20 +73,6 @@ extern "C" {
 #define PATH_MAX 4096
 #endif
 
-
-#ifndef O_BINARY
-#define O_BINARY 0
-#endif
-
-static void out_peer_id (tgl_peer_id_t id);
-extern struct query_methods send_msgs_methods;
-
-struct messages_send_extra {
-  int multi = 0;
-  tgl_message_id_t id;
-  int count = 0;
-  tgl_message_id_t *list = NULL;
-};
 #define QUERY_TIMEOUT 6.0
 
 #define memcmp8(a,b) memcmp ((a), (b), 8)
@@ -1779,7 +1765,7 @@ void tgl_do_get_channels_dialog_list (int limit, int offset, void (*callback)(st
 
 /* {{{ Send document file */
 
-static void out_peer_id (tgl_peer_id_t id) {
+void out_peer_id (tgl_peer_id_t id) {
   switch (tgl_get_peer_type (id)) {
   case TGL_PEER_CHAT:
     out_int (CODE_input_peer_chat);

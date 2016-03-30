@@ -175,8 +175,7 @@ void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, void *
 }
 
 
-#ifdef ENABLE_SECRET_CHAT
-static void tgl_download_manager::send_file_unencrypted_end (std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra) {
+void tgl_download_manager::send_file_unencrypted_end (std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra) {
     out_int (CODE_messages_send_media);
     out_int ((f->reply ? 1 : 0));
     out_peer_id(f->to_id);
@@ -201,7 +200,7 @@ static void tgl_download_manager::send_file_unencrypted_end (std::shared_ptr<sen
 
     out_long (f->id);
     out_int (f->part_num);
-    char *s = f->file_name + strlen (f->file_name);
+    const char *s = f->file_name.c_str() + f->file_name.length();
     while (s >= f->file_name && *s != '/') { s --;}
     out_string (s + 1);
     if (f->size < (16 << 20)) {
@@ -209,7 +208,7 @@ static void tgl_download_manager::send_file_unencrypted_end (std::shared_ptr<sen
     }
 
     if (!(f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO)) {
-        out_string (tg_mime_by_filename (f->file_name));
+        out_string (tg_mime_by_filename (f->file_name.c_str()));
 
         out_int (CODE_vector);
         if (f->flags & TGLDF_IMAGE) {
@@ -256,22 +255,18 @@ static void tgl_download_manager::send_file_unencrypted_end (std::shared_ptr<sen
             out_string ("");
         }
     } else {
-        out_string (f->caption ? f->caption : "");
+        out_string (f->caption.c_str());
     }
 
-
-    struct messages_send_extra *E = (struct messages_send_extra *)calloc (1,sizeof (*E));
+    std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
     tglt_secure_random ((unsigned char*)&E->id, 8);
     out_long (E->id);
 
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, callback, callback_extra);
-    free (f->file_name);
-    free (f->caption);
-    free (f);
 }
-#endif
 
 void tgl_download_manager::send_file_end (std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra) {
+    TGL_NOTICE("send_file_end");
     cur_uploaded_bytes -= f->size;
     cur_uploading_bytes -= f->size;
     clear_packet ();
@@ -280,11 +275,11 @@ void tgl_download_manager::send_file_end (std::shared_ptr<send_file> f, void *ca
         send_avatar_end (f, callback, callback_extra);
         return;
     }
-#ifdef ENABLE_SECRET_CHAT
     if (!f->encr) {
         send_file_unencrypted_end (f, callback, callback_extra);
         return;
     }
+#ifdef ENABLE_SECRET_CHAT
     send_file_encrypted_end (f, callback, callback_extra);
 #endif
     return;
@@ -355,8 +350,13 @@ void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id_t to_id, const std::s
                                 const void *thumb_data, int thumb_len, const std::string &caption, unsigned long long flags,
                                 void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
     int fd = -1;
+    if (!boost::filesystem::exists(file_name)) {
+        TGL_ERROR("File " << file_name << " does not exist");
+        return;
+    }
     long long size = boost::filesystem::file_size(file_name);
-    if (size <= 0 && (fd = open (file_name.c_str(), O_RDONLY)) >= 0) {
+    TGL_ERROR("File " << size);
+    if (size <= 0 || (fd = open (file_name.c_str(), O_RDONLY)) <= 0) {
         TGL_ERROR("File is empty");
         if (!avatar) {
             if (callback) {
@@ -418,6 +418,7 @@ void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id_t to_id, const std::s
     }
 
     if (!f->encr && f->flags != -1 && thumb_len > 0) {
+        TGL_NOTICE("send_file_thumb");
         send_file_thumb (f, thumb_data, thumb_len, (void*)callback, callback_extra);
     } else {
         send_part (f, (void*)callback, callback_extra);

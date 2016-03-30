@@ -47,6 +47,14 @@ struct query {
     std::shared_ptr<void> callback_extra;
 };
 
+void out_peer_id (tgl_peer_id id);
+
+struct messages_send_extra {
+  int multi = 0;
+  tgl_message_id_t id;
+  int count = 0;
+  tgl_message_id_t *list = NULL;
+};
 
 std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int len, void *data, struct query_methods *methods, std::shared_ptr<void> extra, void *callback, std::shared_ptr<void> callback_extra);
 void tglq_query_ack (long long id);
