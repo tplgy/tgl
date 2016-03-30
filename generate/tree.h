@@ -23,7 +23,7 @@
 
 #include <memory.h>
 #include <assert.h>
-#include "tools.h"
+#include "../tools.h"
 
 #pragma pack(push,4)
 #define DEFINE_TREE(X_NAME, X_TYPE, X_CMP, X_UNSET) \

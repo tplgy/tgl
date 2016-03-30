@@ -64,7 +64,7 @@ char *strndup (const char *s, size_t n) {
 #define INT64_PRINTF_MODIFIER "ll"
 #endif
 
-#include "tl-parser/tl-tl.h"
+#include "../tl-parser/tl-tl.h"
 #include "generate.h"
 
 #include "tree.h"
