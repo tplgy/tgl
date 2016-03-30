@@ -48,7 +48,7 @@ void tgl_do_reply_contact (int reply_id, tgl_peer_id_t peer_id, const char *phon
 void tgl_do_forward_media (tgl_peer_id_t id, struct tgl_message_media *media, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // sends location to chat *id*
-void tgl_do_send_location (tgl_peer_id_t id, double latitude, double longitude, int reply_id, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+void tgl_do_send_location (tgl_peer_id_t id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 // sends broadcast (i.e. message to several users at once)
 // flags are same as in tgl_do_send_message

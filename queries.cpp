@@ -1246,7 +1246,7 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
 
 
     //bl_do_edit_message (&id, &from_id, &peer_id, NULL, NULL, &date, text, text_len, &TDSM, NULL, reply ? &reply : NULL, reply_markup, EN, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | disable_preview);
-    struct tgl_message *M = tglm_message_create (id.id, &from_id, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, NULL,
+    struct tgl_message *M = tglm_message_create (&id, &from_id, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, NULL,
         reply_markup, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_TEMP_MSG_ID);
 
     if (flags & TGLMF_HTML) {
@@ -4085,7 +4085,7 @@ void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, 
     struct tl_ds_message_media TDSM;
     TDSM.magic = CODE_message_media_empty;
 
-    tglm_message_create (id.id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
+    tglm_message_create (&id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
   }
 
   clear_packet ();

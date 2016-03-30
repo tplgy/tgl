@@ -24,7 +24,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if __cplusplus
+extern "C" {
+#endif
 #include "tools.h"
+#if __cplusplus
+}
+#endif
 
 struct tl_type_descr {
   unsigned name;

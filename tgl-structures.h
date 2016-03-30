@@ -27,7 +27,7 @@
 
 void tgls_free_bot_info (struct tgl_bot_info *B);
 
-struct tgl_message *tglm_message_create(long long id, tgl_peer_id_t *from_id,
+struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *from_id,
                                         tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const char *message,
                                         struct tl_ds_message_media *media, struct tl_ds_message_action *action,
@@ -42,8 +42,6 @@ void tglm_send_all_unsent ();
 void tglm_message_remove_tree (struct tgl_message *M);
 void tglm_message_add_peer (struct tgl_message *M);
 void tglm_message_del_peer (struct tgl_message *M);
-void tglm_message_del_use (struct tgl_message *M);
-void tglm_message_add_use (struct tgl_message *M);
 void tglm_message_del_temp_id (struct tgl_message *M);
 void tglm_message_del_random_id (struct tgl_message *M);
 

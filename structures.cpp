@@ -1069,7 +1069,7 @@ struct tgl_message *tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) 
 #endif
 
   DS_CSTR (msg_text, DS_U->message);
-  tglm_message_create (DS_LVAL (DS_U->id),
+  tglm_message_create (&msg_id,
           (f & 2) ? &our_id : &peer_id,
           (f & 2) ? &peer_id : &our_id,
           DS_U->fwd_from_id ? &fwd_from_id : NULL,
@@ -1145,7 +1145,7 @@ struct tgl_message *tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *D
 #endif
 
   DS_CSTR (msg_text, DS_U->message);
-  tglm_message_create (DS_LVAL (DS_U->id),
+  tglm_message_create (&msg_id,
       &from_id,
       &to_id,
       DS_U->fwd_from_id ? &fwd_from_id : NULL,
@@ -1507,7 +1507,7 @@ struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *n
       );
 #endif
   DS_CSTR (msg_text, DS_M->message);
-  tglm_message_create (DS_LVAL (DS_M->id),
+  tglm_message_create (&msg_id,
       DS_M->from_id ? &from_id : NULL,
       &to_id,
       DS_M->fwd_from_id ? &fwd_from_id : NULL,
@@ -2240,6 +2240,81 @@ struct tgl_message *tglm_message_alloc (tgl_message_id_t *id) {
   return M;
 }
 
+struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *from_id,
+                                        tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
+                                        int *date, const char *message,
+                                        struct tl_ds_message_media *media, struct tl_ds_message_action *action,
+                                        int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags)
+{
+    TGL_UNUSED(reply_markup);
+    struct tgl_message *M = tglm_message_alloc(id);
+
+    assert (!(M->flags & TGLMF_ENCRYPTED));
+    assert (!(flags & TGLMF_ENCRYPTED));
+
+//    if ((M->flags & TGLMF_PENDING) && !(flags & TGLMF_PENDING)){
+//        tglm_message_remove_unsent (TLS, M);
+//    }
+//    if (!(M->flags & TGLMF_PENDING) && (flags & TGLMF_PENDING)){
+//        tglm_message_insert_unsent (TLS, M);
+//    }
+
+    if ((M->flags & TGLMF_UNREAD) && !(flags & TGLMF_UNREAD)) {
+        M->flags = (flags & 0xffff) | TGLMF_UNREAD;
+    } else {
+        M->flags = (flags & 0xffff);
+    }
+
+    if (flags & TGLMF_TEMP_MSG_ID) {
+        M->flags |= TGLMF_TEMP_MSG_ID;
+    }
+
+    if (from_id) {
+        M->from_id = *from_id;
+    }
+    if (to_id) {
+        assert (flags & 0x10000);
+        M->to_id = *to_id;
+        assert (to_id->peer_type != TGL_PEER_ENCR_CHAT);
+    }
+
+    if (date) {
+        M->date = *date;
+    }
+
+    if (fwd_from_id) {
+        M->fwd_from_id = *fwd_from_id;
+        M->fwd_date = *fwd_date;
+    }
+
+    if (action) {
+        tglf_fetch_message_action(&M->action, action);
+        M->flags |= TGLMF_SERVICE;
+    }
+
+    if (message && strlen(message) != 0) {
+        M->message_len = strlen(message);
+        M->message = (char*)malloc(M->message_len*sizeof(char)+1);
+        strcpy(M->message, message);
+        assert (!(M->flags & TGLMF_SERVICE));
+    }
+
+    if (media) {
+        tglf_fetch_message_media (&M->media, media);
+        assert (!(M->flags & TGLMF_SERVICE));
+    }
+
+    if (reply_id) {
+        M->reply_id = DS_LVAL (reply_id);
+    }
+
+    //    if (reply_markup) {
+    //        M->reply_markup = tglf_fetch_alloc_reply_markup (M->next, reply_markup);
+    //    }
+    tgl_state::instance()->callback.new_msg(M);
+    return M;
+}
+
 void tglm_message_insert_tree (struct tgl_message *M) {
   assert (M->permanent_id.id);
   //tgl_state::instance()->message_tree = tree_insert_message (tgl_state::instance()->message_tree, M, rand ());
@@ -2251,7 +2326,7 @@ void tglm_message_remove_tree (struct tgl_message *M) {
 }
 
 void tglm_message_insert (struct tgl_message *M) {
-  tglm_message_add_use (M);
+  //tglm_message_add_use (M);
   tglm_message_add_peer (M);
 }
 
@@ -2381,17 +2456,19 @@ tgl_message_id_t *tgls_get_local_by_temp (int temp_id) {
   }
 }
 
+*/
 tgl_message_id_t tgl_convert_temp_msg_id (tgl_message_id_t msg_id) {
-  struct tgl_message M;
-  M.temp_id = msg_id.id;
-  struct tgl_message *N = tree_lookup_temp_id (tgl_state::instance()->temp_id_tree, &M);
-  if (N) {
-    return N->permanent_id;
-  } else {
+  //struct tgl_message M;
+  //M.temp_id = msg_id.id;
+  //struct tgl_message *N = tree_lookup_temp_id (tgl_state::instance()->temp_id_tree, &M);
+  //if (N) {
+    //return N->permanent_id;
+  //} else {
     return msg_id;
-  }
+  //}
 }
 
+/*
 void tgls_message_change_temp_id (struct tgl_message *M, int temp_id) {
   if (M->temp_id == temp_id) { return; }
   assert (!M->temp_id);
