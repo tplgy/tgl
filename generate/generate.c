@@ -2833,6 +2833,24 @@ void gen_print_ds_source (void) {
   printf ("#endif\n");
 }
 
+void fix_up_id() {
+  int i;
+  for (i = 0; i < tn; i++) {
+    int j;
+    for (j = 0; j < tps[i]->constructors_num; j++) {
+      int k;
+      struct tl_combinator *c = tps[i]->constructors[j];
+      for (k = 0; c && k < c->args_num; k++) {
+        if (c->args[k]->id && !strcmp (c->args[k]->id, "public")) {
+          char *new_id = strdup("public_");
+          free(c->args[k]->id);
+          c->args[k]->id = new_id;
+        }
+      }
+    }
+  }
+}
+
 int parse_tlo_file (void) {
   buf_end = buf_ptr + (buf_size / 4);
   assert (get_int () == TLS_SCHEMA_V2);
@@ -2897,6 +2915,7 @@ int parse_tlo_file (void) {
     }
   }
  
+  fix_up_id();
   
   for (i = 0; i < gen_what_cnt; i++) {
     if (!strcmp (gen_what[i], "fetch")) {
