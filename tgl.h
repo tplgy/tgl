@@ -235,11 +235,6 @@ private:
   std::shared_ptr<tgl_connection_factory> m_connection_factory;
 };
 
-tgl_peer_t *tgl_peer_get (tgl_peer_id_t id);
-tgl_peer_t *tgl_peer_get_by_name (const char *s);
-
-struct tgl_message *tgl_message_get (tgl_message_id_t *id);
-
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);
 int tgl_do_send_bot_auth (const char *code, int code_len, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_user *Self), std::shared_ptr<void> callback_extra);
 

@@ -87,9 +87,10 @@ int tgl_check_qts_diff (int qts, int qts_count) {
     return 1;
 }
 
-int tgl_check_channel_pts_diff (tgl_peer_t *_E, int pts, int pts_count) {
-  struct tgl_channel *E = &_E->channel;
-  TGL_DEBUG("channel " << tgl_get_peer_id (E->id) << ": pts = " << pts << ", pts_count = " << pts_count << ", current_pts = " << E->pts);
+int tgl_check_channel_pts_diff (tgl_peer_id_t channel_id, int pts, int pts_count) {
+    // TODO: remember channel pts
+#if 0
+  TGL_DEBUG("channel " << tgl_get_peer_id (channel_id) << ": pts = " << pts << ", pts_count = " << pts_count << ", current_pts = " << E->pts);
   if (!E->pts) {
     return 1;
   }
@@ -100,7 +101,7 @@ int tgl_check_channel_pts_diff (tgl_peer_t *_E, int pts, int pts_count) {
   }
   if (pts > E->pts + pts_count) {
     TGL_NOTICE("Hole in pts (pts = " << pts << ", count = " << pts_count << ", cur_pts = " << E->pts);
-    tgl_do_get_channel_difference (tgl_get_peer_id (E->id), 0, 0);
+    tgl_do_get_channel_difference (tgl_get_peer_id (channel_id), 0, 0);
     return -1;
   }
   if (E->flags & TGLCHF_DIFF) {
@@ -108,6 +109,7 @@ int tgl_check_channel_pts_diff (tgl_peer_t *_E, int pts, int pts_count) {
     return -1;
   }
   TGL_DEBUG("Ok update. pts = " << pts);
+#endif
   return 1;
 }
 
@@ -173,10 +175,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       channel_id = DS_LVAL (DS_U->message->to_id->channel_id);
     }    
 
-    tgl_peer_t *E = tgl_peer_get (TGL_MK_CHANNEL (channel_id));
-    if (!E) {
-      return;
-    }
+    tgl_peer_id_t E = TGL_MK_CHANNEL (channel_id);
 
     if (!check_only && tgl_check_channel_pts_diff (E, DS_LVAL (DS_U->channel_pts), DS_LVAL (DS_U->channel_pts_count)) <= 0) {
       return;
@@ -265,61 +264,47 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
       tgl_peer_id_t id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_t *C = tgl_peer_get (chat_id);
-      tgl_peer_t *U = tgl_peer_get (id);
-      enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);      
-      
-      if (U && C) {
-        if (tgl_state::instance()->callback.type_in_chat_notification) {
-          tgl_state::instance()->callback.type_in_chat_notification (DS_LVAL(DS_U->user_id), DS_LVAL(DS_U->chat_id), status);
-        }
+      enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
+
+      if (tgl_state::instance()->callback.type_in_chat_notification) {
+        tgl_state::instance()->callback.type_in_chat_notification (tgl_get_peer_id(id), tgl_get_peer_id(chat_id), status);
       }
     }
     break;
   case CODE_update_user_status:
     {
-      tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_t *U = tgl_peer_get (user_id);
-      if (U) {
-        tglf_fetch_user_status (&U->user.status, &U->user, DS_U->status);
+      //tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+      //tglf_fetch_user_status (&U->user.status, &U->user, DS_U->status);
 
-        if (tgl_state::instance()->callback.status_notification) {
-          //int expires = 0;
-          //enum tgl_user_status_type status = tglf_fetch_user_status(DS_U->status, &expires);
-          //tgl_state::instance()->callback.status_notification (DS_LVAL(DS_U->user_id), status, expires);
-        }
+      if (tgl_state::instance()->callback.status_notification) {
+        //int expires = 0;
+        //enum tgl_user_status_type status = tglf_fetch_user_status(DS_U->status, &expires);
+        //tgl_state::instance()->callback.status_notification (user_id, status, expires);
       }
     }
     break;
   case CODE_update_user_name:
     {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_t *UC = tgl_peer_get (user_id);
-      if (UC && (UC->flags & TGLPF_CREATED)) {
-        //bl_do_user (tgl_get_peer_id (user_id), NULL, DS_STR (DS_U->first_name), DS_STR (DS_U->last_name), NULL, 0, DS_STR (DS_U->username), NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-        DS_CSTR (firstname, DS_U->first_name);
-        DS_CSTR (lastname, DS_U->last_name);
-        DS_CSTR (username, DS_U->username);
-        tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), "", firstname, lastname, username);
-        free(firstname);
-        free(lastname);
-        free(username);
-      }
+      //bl_do_user (tgl_get_peer_id (user_id), NULL, DS_STR (DS_U->first_name), DS_STR (DS_U->last_name), NULL, 0, DS_STR (DS_U->username), NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
+      DS_CSTR (firstname, DS_U->first_name);
+      DS_CSTR (lastname, DS_U->last_name);
+      DS_CSTR (username, DS_U->username);
+      tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), "", firstname, lastname, username);
+      free(firstname);
+      free(lastname);
+      free(username);
       break;
     }
     case CODE_update_user_photo:
     {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_t *UC = tgl_peer_get (user_id);
-
-      if (UC && (UC->flags & TGLUF_CREATED)) {
-        //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, DS_U->photo, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-        tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), "", "", "", "");
-        if (DS_U->photo) {
-          tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
-          tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
-          tgl_state::instance()->callback.avatar_update(DS_LVAL (DS_U->user_id), photo_small, photo_big);
-        }
+      //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, DS_U->photo, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
+      tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), "", "", "", "");
+      if (DS_U->photo) {
+        tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
+        tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
+        tgl_state::instance()->callback.avatar_update(DS_LVAL (DS_U->user_id), photo_small, photo_big);
       }
       break;
     }
@@ -330,11 +315,10 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     case CODE_update_chat_participants:
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
-      tgl_peer_t *C = tgl_peer_get (chat_id);
-      if (C && (C->flags & TGLPF_CREATED) && DS_U->participants->magic == CODE_chat_participants) {
+      if (DS_U->participants->magic == CODE_chat_participants) {
         //bl_do_chat (tgl_get_peer_id (chat_id), NULL, 0, NULL, NULL, DS_U->participants->version, (struct tl_ds_vector *)DS_U->participants->participants, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
         for (int i=0; i<*DS_U->participants->participants->cnt; ++i) {
-          C->chat.users_num = *DS_U->participants->participants->cnt;
+          //C->chat.users_num = *DS_U->participants->participants->cnt;
           tgl_state::instance()->callback.chat_add_user(tgl_get_peer_id (chat_id), *DS_U->participants->participants->data[i]->user_id,
               *DS_U->participants->participants->data[i]->inviter_id, *DS_U->participants->participants->data[i]->date);
         }
@@ -416,13 +400,10 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       tgl_peer_id_t inviter_id = TGL_MK_USER (DS_LVAL (DS_U->inviter_id));
       //int version = DS_LVAL (DS_U->version); 
-      
-      tgl_peer_t *C = tgl_peer_get (chat_id);
-      if (C && (C->flags & TGLPF_CREATED)) {
-        //bl_do_chat_add_user (C->id, version, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
-        if (tgl_state::instance()->callback.chat_add_user) {
-          tgl_state::instance()->callback.chat_add_user(chat_id.peer_id, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
-        }
+
+      //bl_do_chat_add_user (C->id, version, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
+      if (tgl_state::instance()->callback.chat_add_user) {
+        tgl_state::instance()->callback.chat_add_user(tgl_get_peer_id (chat_id), tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
       }
     }
     break;
@@ -432,12 +413,9 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       //int version = DS_LVAL (DS_U->version); 
       
-      tgl_peer_t *C = tgl_peer_get (chat_id);
-      if (C && (C->flags & TGLPF_CREATED)) {
-        //bl_do_chat_del_user (C->id, version, tgl_get_peer_id (user_id));
-        if (tgl_state::instance()->callback.chat_delete_user) {
-          tgl_state::instance()->callback.chat_delete_user (C->chat.id.peer_id, tgl_get_peer_id (user_id));
-        }
+      //bl_do_chat_del_user (C->id, version, tgl_get_peer_id (user_id));
+      if (tgl_state::instance()->callback.chat_delete_user) {
+        tgl_state::instance()->callback.chat_delete_user (tgl_get_peer_id (chat_id), tgl_get_peer_id (user_id));
       }
     }
     break;
@@ -452,18 +430,11 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_user_blocked:
     {
       int blocked = DS_BVAL (DS_U->blocked);
-      tgl_peer_t *P = tgl_peer_get (TGL_MK_USER (DS_LVAL (DS_U->user_id)));
-      if (P && (P->flags & TGLPF_CREATED)) {
-        int flags = P->flags & 0xffff;
-        if (blocked) {
-          flags |= TGLUF_BLOCKED;
-        } else {
-          flags &= ~TGLUF_BLOCKED;
-        }
-        //bl_do_user (tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, flags);
-        if (tgl_state::instance()->callback.user_update) {
-          tgl_state::instance()->callback.user_update(tgl_get_peer_id (P->id), &blocked, tgl_update_blocked);
-        }
+      tgl_peer_id_t peer_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+
+      //bl_do_user (tgl_get_peer_id (peer_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, flags);
+      if (tgl_state::instance()->callback.user_update) {
+        tgl_state::instance()->callback.user_update(tgl_get_peer_id (peer_id), &blocked, tgl_update_blocked);
       }
     }
     break;
@@ -484,30 +455,25 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     break;
   case CODE_update_user_phone:
     {
-      tgl_peer_t *U = tgl_peer_get (TGL_MK_USER (DS_LVAL (DS_U->user_id)));
-      if (U && (U->flags & TGLPF_CREATED)) {
-        //bl_do_user (tgl_get_peer_id (U->id), NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-        if (tgl_state::instance()->callback.user_update) {
-          DS_CSTR (phone, DS_U->phone);
-          tgl_state::instance()->callback.user_update(tgl_get_peer_id (U->id), phone, tgl_update_phone);
-        }
+      tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+      //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
+      if (tgl_state::instance()->callback.user_update) {
+        DS_CSTR (phone, DS_U->phone);
+        tgl_state::instance()->callback.user_update(tgl_get_peer_id (user_id), phone, tgl_update_phone);
       }
     }
     break;
   case CODE_update_read_history_inbox:
     {
       tgl_peer_id_t id = tglf_fetch_peer_id (DS_U->peer);
-      tgl_peer_t *P = tgl_peer_get (id);
-      if (P && (P->flags & TGLPF_CREATED)) {
-        if (tgl_get_peer_type (P->id) == TGL_PEER_USER) {
-          //bl_do_user (tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, DS_U->max_id, NULL, NULL, TGL_FLAGS_UNCHANGED);
-          // TODO update read history (P->id) DS_U->max_id
-        } else {
-          //bl_do_chat (tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DS_U->max_id, NULL, TGL_FLAGS_UNCHANGED);
-          if (DS_U->max_id) {
-            P->chat.last_read_in = *DS_U->max_id;
-            //tgls_messages_mark_read (P->chat.last, 0, *DS_U->max_id);
-          }
+      if (tgl_get_peer_type (id) == TGL_PEER_USER) {
+        //bl_do_user (tgl_get_peer_id (id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, DS_U->max_id, NULL, NULL, TGL_FLAGS_UNCHANGED);
+        // TODO update read history (id) DS_U->max_id
+      } else {
+        //bl_do_chat (tgl_get_peer_id (id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DS_U->max_id, NULL, TGL_FLAGS_UNCHANGED);
+        if (DS_U->max_id) {
+          //P->chat.last_read_in = *DS_U->max_id;
+          //tgls_messages_mark_read (P->chat.last, 0, *DS_U->max_id);
         }
       }
     }
@@ -515,17 +481,14 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_read_history_outbox:
     {
       tgl_peer_id_t id = tglf_fetch_peer_id (DS_U->peer);
-      tgl_peer_t *P = tgl_peer_get (id);
-      if (P && (P->flags & TGLPF_CREATED)) {
-        if (tgl_get_peer_type (P->id) == TGL_PEER_USER) {
-          //bl_do_user (tgl_get_peer_id (P->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, DS_U->max_id, NULL, TGL_FLAGS_UNCHANGED);
-          // TODO update read history (P->id) DS_U->max_id
-        } else {
-          //bl_do_chat (tgl_get_peer_id (P->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DS_U->max_id, TGL_FLAGS_UNCHANGED);
-          if (DS_U->max_id) {
-            P->chat.last_read_out = *DS_U->max_id;
-            //tgls_messages_mark_read (P->chat.last, TGLMF_OUT, *DS_U->max_id);
-          }
+      if (tgl_get_peer_type (id) == TGL_PEER_USER) {
+        //bl_do_user (tgl_get_peer_id (id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, DS_U->max_id, NULL, TGL_FLAGS_UNCHANGED);
+        // TODO update read history (id) DS_U->max_id
+      } else {
+        //bl_do_chat (tgl_get_peer_id (id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, DS_U->max_id, TGL_FLAGS_UNCHANGED);
+        if (DS_U->max_id) {
+          //P->chat.last_read_out = *DS_U->max_id;
+          //tgls_messages_mark_read (P->chat.last, TGLMF_OUT, *DS_U->max_id);
         }
       }
     }

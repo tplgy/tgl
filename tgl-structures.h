@@ -65,14 +65,6 @@ tgl_message_id_t *tgls_get_local_by_temp (int temp_id);
 void tgls_message_change_temp_id (struct tgl_message *M, int temp_id);
 void tgls_message_change_random_id (struct tgl_message *M, long long random_id);
 
-
-void tgl_photo_insert (struct tgl_photo *P);
-struct tgl_photo *tgl_photo_get (long long id);
-struct tgl_document *tgl_document_get (long long id);
-void tgl_document_insert (struct tgl_document *P);
-struct tgl_webpage *tgl_webpage_get (long long id);
-void tgl_webpage_insert (struct tgl_webpage *P);
-
 tgl_message_id_t tgl_convert_temp_msg_id (tgl_message_id_t msg_id);
 
 static inline tgl_peer_id_t tgl_msg_id_to_peer_id (tgl_message_id_t msg_id) {
