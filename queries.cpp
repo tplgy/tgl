@@ -812,7 +812,7 @@ static int help_get_config_on_answer (std::shared_ptr<query> q, void *DS) {
   TGL_DEBUG("chat_size = " << max_chat_size << ", bcast_size = " << max_bcast_size);
 
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))(q->callback))(q->callback_extra, 1);
+        ((void (*)(std::shared_ptr<void>, bool))(q->callback))(q->callback_extra, 1);
     }
     return 0;
 }
@@ -3074,6 +3074,22 @@ void tgl_do_get_difference (int sync_from_start, void (*callback)(std::shared_pt
     if (callback) {
       callback (callback_extra, 0);
     }
+  }
+  tgl_state::instance()->locks |= TGL_LOCK_DIFF;
+  clear_packet ();
+  tgl_do_insert_header ();
+  if (tgl_state::instance()->pts() > 0 || sync_from_start) {
+    if (tgl_state::instance()->pts() == 0) { tgl_state::instance()->set_pts(1, true); }
+    //if (tgl_state::instance()->qts() == 0) { tgl_state::instance()->set_qts(1, true); }
+    if (tgl_state::instance()->date() == 0) { tgl_state::instance()->set_date(1, true); }
+    out_int (CODE_updates_get_difference);
+    out_int (tgl_state::instance()->pts());
+    out_int (tgl_state::instance()->date());
+    out_int (tgl_state::instance()->qts());
+	tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_difference_methods, 0, (void*)callback, callback_extra);
+  } else {
+	out_int (CODE_updates_get_state);
+	tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_state_methods, 0, (void*)callback, callback_extra);
   }
 }
 /* }}} */

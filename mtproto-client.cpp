@@ -649,7 +649,7 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
 
   DC->state = st_authorized;
 
-  TGL_DEBUG("Auth success");
+  TGL_DEBUG("Auth success for DC " << DC->id << ": salt=" << DC->server_salt);
   if (temp_key) {
     bind_temp_auth_key (c);
   } else {
@@ -1327,7 +1327,6 @@ static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
     DC->temp_auth_key_id = DC->auth_key_id;
     memcpy (DC->temp_auth_key, DC->auth_key, 256);
     DC->flags |= TGLDCF_BOUND;
-    tgl_do_help_get_config_dc(DC, mpc_on_get_config, DC);
   }
   switch (o) {
   case st_init:
@@ -1338,6 +1337,7 @@ static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
       assert (tgl_state::instance()->pfs_enabled());
       if (!DC->temp_auth_key_id) {
         assert (!DC->temp_auth_key_id);
+        assert (tgl_state::instance()->pfs_enabled());
         create_temp_auth_key (c);
       } else {
         bind_temp_auth_key (c);
