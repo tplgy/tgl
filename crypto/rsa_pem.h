@@ -29,8 +29,8 @@ typedef struct TGLC_rsa TGLC_rsa;
 
 TGLC_rsa *TGLC_rsa_new (unsigned long e, int n_bytes, const unsigned char *n);
 
-TGLC_bn *TGLC_rsa_n (TGLC_rsa *);
-TGLC_bn *TGLC_rsa_e (TGLC_rsa *);
+TGLC_bn *TGLC_rsa_n (const TGLC_rsa *);
+TGLC_bn *TGLC_rsa_e (const TGLC_rsa *);
 
 void TGLC_rsa_free (TGLC_rsa *);
 

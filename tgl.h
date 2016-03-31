@@ -102,6 +102,7 @@ namespace asio {
 
 class tgl_download_manager;
 class tgl_connection_factory;
+class tgl_rsa_key;
 class tgl_timer;
 class tgl_timer_factory;
 class tgl_update_callback;
@@ -123,10 +124,6 @@ struct tgl_state {
   int temp_key_expire_time;
 
   boost::asio::io_service *io_service;
-
-  std::vector<char*> rsa_key_list;
-  std::vector<void*> rsa_key_loaded;
-  std::vector<long long> rsa_key_fingerprint;
 
   TGLC_bn_ctx *bn_ctx;
 
@@ -150,16 +147,18 @@ struct tgl_state {
   void set_seq(int seq);
   void reset_server_state();
   void set_callback(const std::shared_ptr<tgl_update_callback>& cb) { m_callback = cb; }
-  void set_rsa_key (const char *key);
+  void add_rsa_key(const std::string& key);
   void set_enable_pfs (bool); // enable perfect forward secrecy (does not work properly right now)
   void set_test_mode (bool);
   void set_connection_factory(const std::shared_ptr<tgl_connection_factory>& factory) { m_connection_factory = factory; }
   void set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory) { m_timer_factory = factory; }
   void set_io_service (boost::asio::io_service* io_service);
   void set_enable_ipv6 (bool val);
-  std::string app_version() { return m_app_version; }
-  std::string app_hash() { return m_app_hash; }
-  int app_id() { return m_app_id; }
+
+  const std::string& app_version() const { return m_app_version; }
+  const std::string& app_hash() const { return m_app_hash; }
+  int app_id() const { return m_app_id; }
+  const std::vector<std::unique_ptr<tgl_rsa_key>>& rsa_key_list() const { return m_rsa_key_list; }
 
   const std::shared_ptr<tgl_download_manager>& download_manager() const { return m_download_manager; }
   const std::shared_ptr<tgl_connection_factory>& connection_factory() const { return m_connection_factory; }
@@ -192,6 +191,7 @@ private:
   bool m_enable_pfs;
   std::string m_app_version;
   bool m_ipv6_enabled;
+  std::vector<std::unique_ptr<tgl_rsa_key>> m_rsa_key_list;
 
   tgl_state();
 

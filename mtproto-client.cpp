@@ -65,6 +65,7 @@ extern "C" {
 #include "tools.h"
 }
 #include "tgl-methods-in.h"
+#include "types/tgl_rsa_key.h"
 
 #define MAX_NET_RES        (1L << 16)
 //extern int log_level;
@@ -104,19 +105,6 @@ static double get_utime (int clock_id) {
 
 #define MAX_RESPONSE_SIZE        (1L << 24)
 
-static TGLC_rsa *rsa_load_public_key (const char *public_key) {
-  TGLC_rsa *res = TGLC_pem_read_RSAPublicKey (public_key);
-  if (res == NULL) {
-    TGL_WARNING("TGLC_pem_read_RSAPublicKey returns NULL.\n");
-    return NULL;
-  }
-
-  return res;
-}
-
-
-
-
 /*
  *
  *        UNAUTHORIZED (DH KEY EXCHANGE) PROTOCOL PART
@@ -130,7 +118,7 @@ static int encrypt_buffer[ENCRYPT_BUFFER_INTS];
 static int decrypt_buffer[ENCRYPT_BUFFER_INTS];
 
 static int encrypt_packet_buffer (std::shared_ptr<tgl_dc> DC) {
-  TGLC_rsa *key = (TGLC_rsa *)tgl_state::instance()->rsa_key_loaded[DC->rsa_key_idx];
+  const TGLC_rsa *key = tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->public_key();
   return tgl_pad_rsa_encrypt ((char *) packet_buffer, (packet_ptr - packet_buffer) * 4, (char *) encrypt_buffer, ENCRYPT_BUFFER_INTS * 4, TGLC_rsa_n (key), TGLC_rsa_e (key));
 }
 
@@ -308,7 +296,7 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
   out_bignum (p);
   out_bignum (q);
 
-  out_long (tgl_state::instance()->rsa_key_fingerprint[DC->rsa_key_idx]);
+  out_long (tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->fingerprint());
   out_cstring ((char *) encrypt_buffer, l);
 
   TGLC_bn_free (p);
@@ -422,15 +410,13 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
   assert (fingerprints_num >= 0);
   DC->rsa_key_idx = -1;
 
-  int i;
-  for (i = 0; i < fingerprints_num; i++) {
+  for (int i = 0; i < fingerprints_num; i++) {
     long long fprint = fetch_long ();
-    for (size_t j = 0; j < tgl_state::instance()->rsa_key_loaded.size(); j++) {
-      if (tgl_state::instance()->rsa_key_loaded[j]) {
-        if (fprint == tgl_state::instance()->rsa_key_fingerprint[j]) {
-          DC->rsa_key_idx = j;
-          break;
-        }
+    for (size_t j = 0; j < tgl_state::instance()->rsa_key_list().size(); ++j) {
+      const auto& key = tgl_state::instance()->rsa_key_list()[j];
+      if (key->is_loaded() && fprint == key->fingerprint()) {
+        DC->rsa_key_idx = j;
+        break;
       }
     }
   }
@@ -1375,26 +1361,12 @@ static int rpc_close (const std::shared_ptr<tgl_connection>& c) {
 int tglmp_on_start () {
   tgl_prng_seed (RANDSEED_PASSWORD_FILENAME, RANDSEED_PASSWORD_LENGTH);
 
-  int ok = 0;
-  for (size_t i = 0; i < tgl_state::instance()->rsa_key_list.size(); i++) {
-    char *key = tgl_state::instance()->rsa_key_list[i];
-    if (!key) {
-      /* This key was provided using 'tgl_set_rsa_key_direct'. */
-      TGLC_rsa *rsa = (TGLC_rsa *)tgl_state::instance()->rsa_key_loaded[i];
-      assert (rsa);
-      tgl_state::instance()->rsa_key_fingerprint[i] = tgl_do_compute_rsa_key_fingerprint (rsa);
-      TGL_NOTICE("'direct' public key loaded successfully\n");
-      ok = 1;
+  bool ok = false;
+  for (const auto& key: tgl_state::instance()->rsa_key_list()) {
+    if (key->load()) {
+      ok = true;
     } else {
-      TGLC_rsa *res = rsa_load_public_key (key);
-      if (!res) {
-        TGL_WARNING("Can not load key " << key);
-        tgl_state::instance()->rsa_key_loaded[i] = NULL;
-      } else {
-        ok = 1;
-        tgl_state::instance()->rsa_key_loaded[i] = res;
-        tgl_state::instance()->rsa_key_fingerprint[i] = tgl_do_compute_rsa_key_fingerprint (res);
-      }
+      TGL_WARNING("Can not load key " << key->public_key_string());
     }
   }
 
@@ -1553,13 +1525,4 @@ void tgls_free_dc (std::shared_ptr<tgl_dc> DC) {
   if (S) { tgls_free_session (S); }
 
   if (DC->ev) { DC->ev = nullptr; }
-}
-
-void tgls_free_pubkey () {
-  for (size_t i = 0; i < tgl_state::instance()->rsa_key_loaded.size(); i++) {
-    if (tgl_state::instance()->rsa_key_loaded[i]) {
-      TGLC_rsa_free ((TGLC_rsa *)tgl_state::instance()->rsa_key_loaded[i]);
-      tgl_state::instance()->rsa_key_loaded[i] = NULL;
-    }
-  }
 }

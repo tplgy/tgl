@@ -23,17 +23,18 @@
 #include "config.h"
 #endif
 
-#include "crypto/rsa_pem.h"
 #include "tgl.h"
 
 extern "C" {
+#include "crypto/rsa_pem.h"
+#include "crypto/sha.h"
 #include "tools.h"
 }
 #include "mtproto-client.h"
 #include "tgl_download_manager.h"
 #include "tgl-structures.h"
 #include "types/tgl_update_callback.h"
-#include <openssl/sha.h>
+#include "types/tgl_rsa_key.h"
 
 #include <assert.h>
 
@@ -61,7 +62,7 @@ void tgl_state::set_auth_key(int num, const char *buf)
     }
 
     static unsigned char sha1_buffer[20];
-    SHA1 ((unsigned char *)DC_list[num]->auth_key, 256, sha1_buffer);
+    TGLC_sha1 ((unsigned char *)DC_list[num]->auth_key, 256, sha1_buffer);
     DC_list[num]->auth_key_id = *(long long *)(sha1_buffer + 12);
 
     DC_list[num]->flags |= TGLDCF_AUTHORIZED;
@@ -154,10 +155,9 @@ void tgl_state::reset_server_state()
     m_seq = 0;
 }
 
-void tgl_state::set_rsa_key(const char *key) {
-  rsa_key_list.push_back(tstrdup(key));
-  rsa_key_fingerprint.push_back(0);
-  rsa_key_loaded.push_back(NULL);
+void tgl_state::add_rsa_key(const std::string& key)
+{
+    m_rsa_key_list.push_back(std::unique_ptr<tgl_rsa_key>(new tgl_rsa_key(key)));
 }
 
 int tgl_state::init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version)

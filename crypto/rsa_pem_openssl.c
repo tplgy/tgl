@@ -46,7 +46,7 @@ TGLC_rsa *TGLC_rsa_new (unsigned long e, int n_bytes, const unsigned char *n) {
 }
 
 #define RSA_GETTER(M)                                                          \
-  TGLC_bn *TGLC_rsa_ ## M (TGLC_rsa *key) {                                    \
+  TGLC_bn *TGLC_rsa_ ## M (const TGLC_rsa *key) {                              \
     return wrap_bn (unwrap_rsa (key)->M);                                      \
   }                                                                            \
 
