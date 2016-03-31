@@ -2,19 +2,16 @@
 #define TGL_FILE_LOCATION
 
 struct tgl_file_location {
-    tgl_file_location() :m_dc(0), m_volume(0), m_local_id(0), m_secret(0) {}
-    tgl_file_location(int dc, long long volume, int local_id, long long secret) :
-        m_dc(dc), m_volume(volume), m_local_id(local_id), m_secret(secret) {}
-
-    tgl_file_location(int dc, long long id, long long access_hash) :
-        m_dc(dc), m_volume(id), m_secret(access_hash) {}
-
     int dc() const { return m_dc; }
+    void set_dc(int d) { m_dc = d; }
 
     // regular files
     long long volume() const { return m_volume; }
+    void set_volume(long long v) { m_volume = v; }
     int local_id() const { return m_local_id; }
+    void set_local_id(int id) { m_local_id = id; }
     long long secret() const { return m_secret; }
+    void set_secret(long long s) { m_secret = s; }
 
     // documents
     long long document_id() const { return m_volume; }

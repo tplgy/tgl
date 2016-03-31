@@ -14,14 +14,22 @@ extern "C" {
 
 extern struct query_methods send_msgs_methods;
 
-download::download(int type, tgl_document *doc) : download(doc->size, tgl_file_location(doc->dc_id, doc->id, doc->access_hash))
+download::download(int type, tgl_document *doc) : size(doc->size)
 {
     this->type = type;
+    location.set_dc(doc->dc_id);
+    location.set_local_id(doc->id);
+    location.set_secret(doc->access_hash);
+    location.set_volume(0);
 }
 
-download::download(int type, tgl_encr_document *doc) : download(doc->size, tgl_file_location(doc->dc_id, doc->id, doc->access_hash))
+download::download(int type, tgl_encr_document *doc) : size(doc->size)
 {
     this->type = type;
+    location.set_dc(doc->dc_id);
+    location.set_local_id(doc->id);
+    location.set_secret(doc->access_hash);
+    location.set_volume(0);
 }
 
 tgl_download_manager::tgl_download_manager(std::string download_directory)

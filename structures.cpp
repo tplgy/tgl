@@ -99,8 +99,18 @@ tgl_peer_id_t tglf_fetch_peer_id (struct tl_ds_peer *DS_P) {
 }
 
 tgl_file_location tglf_fetch_file_location (struct tl_ds_file_location *DS_FL) {
-  if (!DS_FL) { return tgl_file_location(); }
-  return tgl_file_location(DS_LVAL (DS_FL->dc_id), DS_LVAL (DS_FL->volume_id), DS_LVAL (DS_FL->local_id), DS_LVAL (DS_FL->secret));
+  tgl_file_location location;
+
+  if (!DS_FL) {
+    return location;
+  }
+
+  location.set_dc(DS_LVAL(DS_FL->dc_id));
+  location.set_volume(DS_LVAL(DS_FL->volume_id));
+  location.set_local_id(DS_LVAL(DS_FL->local_id));
+  location.set_secret(DS_LVAL(DS_FL->secret));
+
+  return location;
 }
 
 int tglf_fetch_user_status (struct tgl_user_status *S, struct tgl_user *U, struct tl_ds_user_status *DS_US) {
