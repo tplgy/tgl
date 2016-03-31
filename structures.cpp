@@ -31,6 +31,7 @@
 #include "tgl-methods-in.h"
 #include "updates.h"
 #include "mtproto-client.h"
+#include "types/tgl_update_callback.h"
 
 #include "tgl.h"
 extern "C" {
@@ -272,9 +273,7 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
 #endif
 
   if (DS_LVAL (DS_U->flags) & (1 << 13)) {
-    if (tgl_state::instance()->callback.user_deleted) {
-      tgl_state::instance()->callback.user_deleted (user_id.peer_id);
-    }
+    tgl_state::instance()->callback()->user_deleted(tgl_get_peer_id(user_id));
     return U;
   } else {
     DS_CSTR(firstname, DS_U->first_name);
@@ -282,7 +281,7 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
     DS_CSTR(phone, DS_U->phone);
     DS_CSTR(username, DS_U->username);
 
-    tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username);
+    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username);
 
     free(firstname);
     free(lastname);
@@ -293,7 +292,7 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
       tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
       tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
 
-      tgl_state::instance()->callback.avatar_update(tgl_get_peer_id(user_id), photo_small, photo_big);
+      tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(user_id), photo_small, photo_big);
     }
     return U;
   }
@@ -328,12 +327,12 @@ struct tgl_user *tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_UF) {
   );
 #endif
 
-    tgl_state::instance()->callback.new_user(tgl_get_peer_id(U->id), "", "", "", "");
+    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(U->id), "", "", "", "");
 
     if (DS_UF->user->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_UF->user->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location(DS_UF->user->photo->photo_small);
-        tgl_state::instance()->callback.avatar_update(tgl_get_peer_id(U->id), photo_small, photo_big);
+        tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(U->id), photo_small, photo_big);
     }
 
   return U;
@@ -532,8 +531,8 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
   C->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
   C->photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
 
-  tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_C->participants_count, -1, time(0), std::string(DS_C->title->data, DS_C->title->len));
-  tgl_state::instance()->callback.avatar_update(tgl_get_peer_id (C->id), C->photo_big, C->photo_small);
+  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, -1, time(0), std::string(DS_C->title->data, DS_C->title->len));
+  tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), C->photo_big, C->photo_small);
 
   return C;
 }
@@ -614,7 +613,7 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
   }
 
   //tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, *DS_CF->participants->admin_id,
-  tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, 0,
+  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, 0,
       *DS_CF->chat_photo->date, std::string());
   //TODO update users
 
@@ -2321,7 +2320,7 @@ struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *fro
     //    if (reply_markup) {
     //        M->reply_markup = tglf_fetch_alloc_reply_markup (M->next, reply_markup);
     //    }
-    tgl_state::instance()->callback.new_msg(M);
+    tgl_state::instance()->callback()->new_message(M);
     return M;
 }
 
@@ -2360,7 +2359,7 @@ static void __send_msg (struct tgl_message *M) {
   if (M->media.type != tgl_message_media_none) {
     assert (M->flags & TGLMF_ENCRYPTED);
     //bl_do_message_delete (&M->permanent_id);
-    tgl_state::instance()->callback.msg_deleted(M->permanent_id.id);
+    tgl_state::instance()->callback()->message_deleted(M->permanent_id.id);
   } else {
     tgl_do_send_msg (M, 0, 0);
   }
@@ -2399,7 +2398,7 @@ void tgls_messages_mark_read (struct tgl_message *M, int out, int seq) {
         if ((M->flags & TGLMF_OUT) == out) {
             if (M->flags & TGLMF_UNREAD) {
                 M->flags &= ~TGLMF_UNREAD;
-                tgl_state::instance()->callback.marked_read (1, &M);
+                //tgl_state::instance()->callback()->marked_read (1, &M);
             } else {
                 return;
             }

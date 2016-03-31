@@ -91,43 +91,6 @@ enum tgl_user_status_type {
     tgl_user_status_last_month
 };
 
-struct tgl_update_callback {
-  void (*new_msg)(struct tgl_message *M);
-  void (*msg_sent)(long long int old_msg_id, long long int new_msg_id, int chat_id);
-  void (*msg_deleted)(long long int msg_id);
-  void (*marked_read)(int num, struct tgl_message *list[]);
-  //void (*logprintf)(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
-  void (*log_output)(int verbosity, const std::string &str);
-  void (*get_values)(enum tgl_value_type type, const char *prompt, int num_values,
-          void (*callback)(const void *answer, std::shared_ptr<void> arg), std::shared_ptr<void> arg);
-  void (*logged_in)();
-  void (*started)();
-  void (*type_notification)(int user_id, enum tgl_typing_status status);
-  void (*type_in_chat_notification)(int user_id, int chat_id, enum tgl_typing_status status);
-  void (*type_in_secret_chat_notification)(int chat_id);
-  void (*status_notification)(int user_id, enum tgl_user_status_type, int expires);
-  void (*user_registered)(int user_id);
-  void (*new_authorization)(const std::string &device, const std::string &location);
-  void (*new_user)(int user_id, const std::string &phone, const std::string &firstname,
-                   const std::string &lastname, const std::string &username);
-  void (*user_update)(int user_id, void *value, enum tgl_user_update_type update_type);
-  void (*user_deleted)(int id);
-  void (*avatar_update)(int peer_id, const tgl_file_location &photo_small, const tgl_file_location &photo_big);
-  void (*chat_update)(int chat_id, int peers_num, int admin, int date, const std::string &title);
-  void (*chat_add_user)(int chat_id, int user, int inviter, int date);
-  void (*chat_delete_user)(int chat_id, int user);
-  void (*secret_chat_update)(struct tgl_secret_chat *C, unsigned flags);
-  void (*channel_update)(struct tgl_channel *C, unsigned flags);
-  void (*msg_receive)(struct tgl_message *M);
-  void (*our_id)(int id);
-  void (*notification)(const char *type, const char *message);
-  void (*user_status_update)(struct tgl_user *U);
-  void (*dc_update)(std::shared_ptr<tgl_dc>);
-  void (*change_active_dc)(int new_dc_id);
-  char *(*create_print_name) (tgl_peer_id_t id, const char *a1, const char *a2, const char *a3, const char *a4);
-  void (*on_failed_login) ();
-};
-
 #define TGL_LOCK_DIFF 1
 #define TGL_LOCK_PASSWORD 2
 
@@ -141,6 +104,7 @@ class tgl_download_manager;
 class tgl_connection_factory;
 class tgl_timer;
 class tgl_timer_factory;
+class tgl_update_callback;
 
 struct tgl_state {
   static tgl_state *instance();
@@ -158,7 +122,6 @@ struct tgl_state {
   std::shared_ptr<tgl_dc> DC_working;
   int temp_key_expire_time;
 
-  struct tgl_update_callback callback;
   boost::asio::io_service *io_service;
 
   std::vector<char*> rsa_key_list;
@@ -186,7 +149,7 @@ struct tgl_state {
   void set_date(int date, bool force = false);
   void set_seq(int seq);
   void reset_server_state();
-  void set_callback (struct tgl_update_callback *cb);
+  void set_callback(const std::shared_ptr<tgl_update_callback>& cb) { m_callback = cb; }
   void set_rsa_key (const char *key);
   void set_enable_pfs (bool); // enable perfect forward secrecy (does not work properly right now)
   void set_test_mode (bool);
@@ -201,6 +164,7 @@ struct tgl_state {
   const std::shared_ptr<tgl_download_manager>& download_manager() const { return m_download_manager; }
   const std::shared_ptr<tgl_connection_factory>& connection_factory() const { return m_connection_factory; }
   const std::shared_ptr<tgl_timer_factory>& timer_factory() const { return m_timer_factory; }
+  const std::shared_ptr<tgl_update_callback>& callback() const { return m_callback; }
 
   void set_error(std::string error, int error_code);
 
@@ -234,6 +198,7 @@ private:
   std::shared_ptr<tgl_download_manager> m_download_manager;
   std::shared_ptr<tgl_timer_factory> m_timer_factory;
   std::shared_ptr<tgl_connection_factory> m_connection_factory;
+  std::shared_ptr<tgl_update_callback> m_callback;
 };
 
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);

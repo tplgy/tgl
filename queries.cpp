@@ -37,6 +37,7 @@
 #include "tgl-structures.h"
 #include "tgl_download_manager.h"
 #include "tgl-timer.h"
+#include "types/tgl_update_callback.h"
 
 #include "tgl-binlog.h"
 #include "updates.h"
@@ -71,6 +72,10 @@ extern "C" {
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
+#endif
+
+#ifndef O_BINARY
+#define O_BINARY 0
 #endif
 
 #define QUERY_TIMEOUT 6.0
@@ -198,7 +203,7 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
   if (!DC->sessions[0]) {
     tglmp_dc_create_session (DC);
   }
-  TGL_DEBUG("Sending query \"" << methods->name << "\" of size " << 4 * ints << " to DC " << DC->id);
+  TGL_DEBUG("Sending query \"" << (methods->name ? methods->name : "") << "\" of size " << 4 * ints << " to DC " << DC->id);
   std::shared_ptr<query> q = std::make_shared<query>();
   q->data_len = ints;
   q->data = talloc (4 * ints);
@@ -1013,8 +1018,8 @@ static int msg_send_on_answer (std::shared_ptr<query> q, void *D) {
 
   std::shared_ptr<msg_callback_extra> old_msg_id = std::static_pointer_cast<msg_callback_extra>(q->extra);
 
-  if (tgl_state::instance()->callback.msg_sent && old_msg_id) {
-    tgl_state::instance()->callback.msg_sent(old_msg_id->old_msg_id, DS_LVAL(DS_U->id), old_msg_id->to_id);
+  if (old_msg_id) {
+    tgl_state::instance()->callback()->message_sent(old_msg_id->old_msg_id, DS_LVAL(DS_U->id), old_msg_id->to_id);
   }
 
 #if 0
@@ -1059,10 +1064,11 @@ static int msg_send_on_error (std::shared_ptr<query> q, int error_code, const st
   }
 #endif
 
-  if (tgl_state::instance()->callback.msg_deleted) {
-     auto x = std::static_pointer_cast<msg_callback_extra>(q->extra);
-     tgl_state::instance()->callback.msg_deleted(x->old_msg_id);
+  auto x = std::static_pointer_cast<msg_callback_extra>(q->extra);
+  if (q->callback) {
+    ((void (*)(std::shared_ptr<void>, int, struct tgl_message *))q->callback) (q->callback_extra, 0, NULL);
   }
+  tgl_state::instance()->callback()->message_deleted(x->old_msg_id);
   return 0;
 }
 
@@ -1372,11 +1378,11 @@ static int mark_read_on_receive (std::shared_ptr<query> q, void *D) {
 
   if (tgl_get_peer_type (E->id) == TGL_PEER_USER) {
     //bl_do_user (tgl_get_peer_id (E->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, &E->max_id, NULL, NULL, TGL_FLAGS_UNCHANGED);
-    tgl_state::instance()->callback.new_user(tgl_get_peer_id (E->id), "", "", "", "");
+    tgl_state::instance()->callback()->new_user(tgl_get_peer_id (E->id), "", "", "", "");
   } else {
     assert (tgl_get_peer_type (E->id) == TGL_PEER_CHAT);
     //bl_do_chat (tgl_get_peer_id (E->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &E->max_id, NULL, TGL_FLAGS_UNCHANGED);
-    //tgl_state::instance()->callback.chat_update (tgl_get_peer_id (E->id), &E->max_id, 0);
+    //tgl_state::instance()->callback()->chat_update (tgl_get_peer_id (E->id), &E->max_id, 0);
   }
   if (q->callback) {
     ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 1);
@@ -2939,22 +2945,22 @@ static int lookup_state_on_answer (std::shared_ptr<query> q, void *D) {
 
 //int get_difference_active;
 static int get_difference_on_answer (std::shared_ptr<query> q, void *D) {
-    struct tl_ds_updates_difference *DS_UD = (struct tl_ds_updates_difference *)D;
+  struct tl_ds_updates_difference *DS_UD = (struct tl_ds_updates_difference *)D;
 
-    TGL_DEBUG2("get difference answer\n");
-    assert (tgl_state::instance()->locks & TGL_LOCK_DIFF);
-    tgl_state::instance()->locks ^= TGL_LOCK_DIFF;
+  TGL_DEBUG2("get difference answer\n");
+  assert (tgl_state::instance()->locks & TGL_LOCK_DIFF);
+  tgl_state::instance()->locks ^= TGL_LOCK_DIFF;
 
-    if (DS_UD->magic == CODE_updates_difference_empty) {
-        tgl_state::instance()->set_date (DS_LVAL (DS_UD->date));
-        tgl_state::instance()->set_seq (DS_LVAL (DS_UD->seq));
+  if (DS_UD->magic == CODE_updates_difference_empty) {
+    tgl_state::instance()->set_date (DS_LVAL (DS_UD->date));
+    tgl_state::instance()->set_seq (DS_LVAL (DS_UD->seq));
 
-        TGL_DEBUG("Empty difference. Seq = " << tgl_state::instance()->seq());
-        if (q->callback) {
-            ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
-        }
-    } else {
-        int i;
+    TGL_DEBUG("Empty difference. Seq = " << tgl_state::instance()->seq());
+    if (q->callback) {
+      ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+    }
+  } else {
+    int i;
 
     for (i = 0; i < DS_LVAL (DS_UD->users->cnt); i++) {
       tglf_fetch_alloc_user (DS_UD->users->data[i]);
@@ -2964,8 +2970,9 @@ static int get_difference_on_answer (std::shared_ptr<query> q, void *D) {
     }
 
     int ml_pos = DS_LVAL (DS_UD->new_messages->cnt);
+    std::vector<tgl_message*> ML;
     for (i = 0; i < ml_pos; i++) {
-      tglf_fetch_alloc_message (DS_UD->new_messages->data[i], NULL);
+      ML.push_back(tglf_fetch_alloc_message (DS_UD->new_messages->data[i], NULL));
     }
 
     int el_pos = DS_LVAL (DS_UD->new_encrypted_messages->cnt);
@@ -2976,9 +2983,9 @@ static int get_difference_on_answer (std::shared_ptr<query> q, void *D) {
 #endif
     }
 
-//    for (i = 0; i < DS_LVAL (DS_UD->other_updates->cnt); i++) {
-//      tglu_work_update (1, DS_UD->other_updates->data[i]);
-//    }
+    //for (i = 0; i < DS_LVAL (DS_UD->other_updates->cnt); i++) {
+      //tglu_work_update (1, DS_UD->other_updates->data[i]);
+    //}
 
     for (i = 0; i < DS_LVAL (DS_UD->other_updates->cnt); i++) {
       tglu_work_update (-1, DS_UD->other_updates->data[i]);
@@ -2986,34 +2993,36 @@ static int get_difference_on_answer (std::shared_ptr<query> q, void *D) {
 
     for (i = 0; i < ml_pos; i++) {
       //bl_do_msg_update (&ML[i]->permanent_id);
-      //tgl_state::instance()->callback.new_msg(ML[i]);
+      //tgl_state::instance()->callback()->new_message(ML[i]);
     }
     for (i = 0; i < el_pos; i++) {
       // messages to secret chats that no longer exist are not initialized and NULL
       if (EL[i]) {
         //bl_do_msg_update (&EL[i]->permanent_id);
-        tgl_state::instance()->callback.new_msg(EL[i]);
+        tgl_state::instance()->callback()->new_message(EL[i]);
       }
     }
 
-        if (DS_UD->state) {
-            tgl_state::instance()->set_pts (DS_LVAL (DS_UD->state->pts));
-            tgl_state::instance()->set_qts (DS_LVAL (DS_UD->state->qts));
-            tgl_state::instance()->set_date (DS_LVAL (DS_UD->state->date));
-            tgl_state::instance()->set_seq (DS_LVAL (DS_UD->state->seq));
+    // FIXME: clean up ML and EL
 
-            if (q->callback) {
-                ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
-            }
-        } else {
-            tgl_state::instance()->set_pts (DS_LVAL (DS_UD->intermediate_state->pts));
-            tgl_state::instance()->set_qts (DS_LVAL (DS_UD->intermediate_state->qts));
-            tgl_state::instance()->set_date (DS_LVAL (DS_UD->intermediate_state->date));
+    if (DS_UD->state) {
+      tgl_state::instance()->set_pts (DS_LVAL (DS_UD->state->pts));
+      tgl_state::instance()->set_qts (DS_LVAL (DS_UD->state->qts));
+      tgl_state::instance()->set_date (DS_LVAL (DS_UD->state->date));
+      tgl_state::instance()->set_seq (DS_LVAL (DS_UD->state->seq));
 
-            tgl_do_get_difference (0, (void (*)(std::shared_ptr<void>, bool ))q->callback, q->callback_extra);
-        }
+      if (q->callback) {
+        ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+      }
+    } else {
+      tgl_state::instance()->set_pts (DS_LVAL (DS_UD->intermediate_state->pts));
+      tgl_state::instance()->set_qts (DS_LVAL (DS_UD->intermediate_state->qts));
+      tgl_state::instance()->set_date (DS_LVAL (DS_UD->intermediate_state->date));
+
+      tgl_do_get_difference (0, (void (*)(std::shared_ptr<void>, bool))q->callback, q->callback_extra);
     }
-    return 0;
+  }
+  return 0;
 }
 
 static struct query_methods lookup_state_methods = {
@@ -3346,7 +3355,7 @@ static int delete_msg_on_answer (std::shared_ptr<query> q, void *D) {
     //tgl_state::instance()->callback.msg_deleted(M->&permanent_id);
   }
 #endif
-  tgl_state::instance()->callback.msg_deleted(id->id);
+  tgl_state::instance()->callback()->message_deleted(id->id);
 
   int r = tgl_check_pts_diff (DS_LVAL (DS_MAM->pts), DS_LVAL (DS_MAM->pts_count));
 
@@ -3890,7 +3899,7 @@ void tgl_on_new2_pwd (const void *pwd, std::shared_ptr<void> _T) {
         E->new_password = NULL;
         E->new_password_len = 0;
         TGL_ERROR("passwords do not match\n");
-        tgl_state::instance()->callback.get_values (tgl_new_password, "new password: ", 2, tgl_on_new_pwd, E);
+        tgl_state::instance()->callback()->get_values(tgl_new_password, "new password: ", 2, tgl_on_new_pwd, E);
         return;
     }
     tgl_do_act_set_password (E->current_password, E->current_password_len,
@@ -3945,11 +3954,11 @@ static int set_get_password_on_answer (std::shared_ptr<query> q, void *D) {
     E->callback_extra = q->callback_extra;
 
     if (DS_AP->magic == CODE_account_no_password) {
-        tgl_state::instance()->callback.get_values (tgl_new_password, "new password: ", 2, tgl_on_new_pwd, E);
+        tgl_state::instance()->callback()->get_values(tgl_new_password, "new password: ", 2, tgl_on_new_pwd, E);
     } else {
-      static char s[512];
-      snprintf (s, 511, "old password (hint %.*s): ", DS_RSTR (DS_AP->hint));
-        tgl_state::instance()->callback.get_values (tgl_cur_and_new_password, s, 3, tgl_on_old_pwd, E);
+        static char s[512];
+        snprintf (s, 511, "old password (hint %.*s): ", DS_RSTR (DS_AP->hint));
+        tgl_state::instance()->callback()->get_values(tgl_cur_and_new_password, s, 3, tgl_on_old_pwd, E);
     }
     return 0;
 }
@@ -4075,7 +4084,7 @@ static int check_get_password_on_answer (std::shared_ptr<query> q, void *D) {
     E->callback = (void (*)(std::shared_ptr<void>, int))q->callback;
     E->callback_extra = q->callback_extra;
 
-    tgl_state::instance()->callback.get_values (tgl_cur_password, s, 1, tgl_pwd_got, E);
+    tgl_state::instance()->callback()->get_values(tgl_cur_password, s, 1, tgl_pwd_got, E);
     return 0;
 }
 
@@ -4383,18 +4392,12 @@ void tgl_started_cb(std::shared_ptr<void> arg, bool success) {
   TGL_UNUSED(arg);
   if (!success) {
     TGL_ERROR("login problem");
-    if (tgl_state::instance()->callback.on_failed_login) {
-      tgl_state::instance()->callback.on_failed_login ();
-    } else {
-      assert (success);
-    }
+    tgl_state::instance()->callback()->on_failed_login ();
     return;
   }
   if (!tgl_state::instance()->started) {
     tgl_state::instance()->started = 1;
-    if (tgl_state::instance()->callback.started) {
-      tgl_state::instance()->callback.started ();
-    }
+    tgl_state::instance()->callback()->started();
   }
 }
 
@@ -4402,17 +4405,13 @@ void tgl_export_auth_callback (std::shared_ptr<void> arg, bool success) {
   TGL_UNUSED(arg);
   if (!success) {
     TGL_ERROR("login problem");
-    if (tgl_state::instance()->callback.on_failed_login) {
-      tgl_state::instance()->callback.on_failed_login ();
-    }
+    tgl_state::instance()->callback()->on_failed_login ();
     return;
   }
   for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
     return;
   }
-  if (tgl_state::instance()->callback.logged_in) {
-    tgl_state::instance()->callback.logged_in ();
-  }
+  tgl_state::instance()->callback()->logged_in();
 
   tglm_send_all_unsent();
   tgl_do_get_difference (0, tgl_started_cb, 0);
@@ -4420,13 +4419,14 @@ void tgl_export_auth_callback (std::shared_ptr<void> arg, bool success) {
 
 void tgl_export_all_auth () {
     TGL_WARNING("exporting all auth\n");
+  int ok = 1;
     for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
         tgl_do_export_auth (i, tgl_export_auth_callback, tgl_state::instance()->DC_list[i]);
+    ok = 0;
     }
-    if (tgl_state::instance()->DC_working && tgl_signed_dc(tgl_state::instance()->DC_working)) {
-        if (tgl_state::instance()->callback.logged_in) {
-            tgl_state::instance()->callback.logged_in ();
-        }
+  if (ok) {
+    //if (tgl_state::instance()->DC_working && tgl_signed_dc(tgl_state::instance()->DC_working)) {
+        tgl_state::instance()->callback()->logged_in();
 
         tglm_send_all_unsent ();
         tgl_do_get_difference (0, tgl_started_cb, 0);
@@ -4453,7 +4453,7 @@ void tgl_sign_in_result (std::shared_ptr<void> _T, bool success) {
         free (E->hash);
     } else {
         TGL_ERROR("incorrect code\n");
-        tgl_state::instance()->callback.get_values (tgl_code, "code ('call' for phone call):", 1, tgl_sign_in_code, E);
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_in_code, E);
         return;
     }
     tgl_export_all_auth();
@@ -4463,7 +4463,7 @@ void tgl_sign_in_code (const void *code, std::shared_ptr<void> _T) {
     std::shared_ptr<sign_up_extra> E = std::static_pointer_cast<sign_up_extra>(_T);
     if (!strcmp ((const char *)code, "call")) {
         tgl_do_phone_call (E->phone, E->phone_len, E->hash, E->hash_len, 0, 0);
-        tgl_state::instance()->callback.get_values (tgl_code, "code ('call' for phone call):", 1, tgl_sign_in_code, E);
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_in_code, E);
         return;
     }
 
@@ -4481,7 +4481,7 @@ void tgl_sign_up_result (std::shared_ptr<void> _T, bool success, struct tgl_user
         free (E->last_name);
     } else {
         TGL_ERROR("incorrect code\n");
-        tgl_state::instance()->callback.get_values (tgl_code, "code ('call' for phone call):", 1, tgl_sign_up_code, E);
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_up_code, E);
         return;
     }
     tgl_export_all_auth();
@@ -4491,7 +4491,7 @@ void tgl_sign_up_code (const void *code, std::shared_ptr<void> _T) {
     std::shared_ptr<sign_up_extra> E = std::static_pointer_cast<sign_up_extra>(_T);
     if (!strcmp ((const char*)code, "call")) {
         tgl_do_phone_call (E->phone, E->phone_len, E->hash, E->hash_len, 0, 0);
-        tgl_state::instance()->callback.get_values (tgl_code, "code ('call' for phone call):", 1, tgl_sign_up_code, E);
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_up_code, E);
         return;
     }
 
@@ -4520,10 +4520,10 @@ void tgl_register_cb (const void *rinfo, std::shared_ptr<void> _T) {
     if (yn[0]) {
         if (!tgl_set_first_name(yn[1], E)) {
             tgl_set_last_name(yn[2], E);
-            tgl_state::instance()->callback.get_values (tgl_code, "code ('call' for phone call):", 1, tgl_sign_up_code, E);
+            tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_up_code, E);
         }
         else {
-            tgl_state::instance()->callback.get_values (tgl_register_info, "registration info:", 3, tgl_register_cb, E);
+            tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, tgl_register_cb, E);
         }
     } else {
         TGL_ERROR("stopping registration");
@@ -4540,7 +4540,7 @@ void tgl_sign_in_phone_cb (std::shared_ptr<void> extra, bool success, int regist
         TGL_ERROR("Incorrect phone number\n");
 
         free (E->phone);
-        tgl_state::instance()->callback.get_values (tgl_phone_number, "phone number:", 1, tgl_sign_in_phone, NULL);
+        tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone, NULL);
         return;
     }
 
@@ -4549,10 +4549,10 @@ void tgl_sign_in_phone_cb (std::shared_ptr<void> extra, bool success, int regist
 
     if (registered) {
         TGL_NOTICE("Already registered. Need code\n");
-        tgl_state::instance()->callback.get_values (tgl_code, "code ('call' for phone call):", 1, tgl_sign_in_code, E);
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_in_code, E);
     } else {
         TGL_NOTICE("Not registered\n");
-        tgl_state::instance()->callback.get_values (tgl_register_info, "registration info:", 3, tgl_register_cb, E);
+        tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, tgl_register_cb, E);
     }
 }
 
@@ -4572,7 +4572,7 @@ void tgl_sign_in_bot_cb (std::shared_ptr<void> _T, bool success, struct tgl_user
     TGL_UNUSED(U);
     if (!success) {
         TGL_ERROR("incorrect bot hash\n");
-        tgl_state::instance()->callback.get_values (tgl_bot_hash, "bot hash:", 1, tgl_bot_hash_cb, nullptr);
+        tgl_state::instance()->callback()->get_values(tgl_bot_hash, "bot hash:", 1, tgl_bot_hash_cb, nullptr);
         return;
     }
     tgl_export_all_auth();
@@ -4585,7 +4585,7 @@ void tgl_bot_hash_cb (const void *code, std::shared_ptr<void> arg) {
 
 void tgl_sign_in () {
     if (!tgl_signed_dc(tgl_state::instance()->DC_working)) {
-        tgl_state::instance()->callback.get_values (tgl_phone_number, "phone number:", 1, tgl_sign_in_phone, NULL);
+        tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone, NULL);
     } else {
         tgl_export_all_auth();
     }
@@ -4696,7 +4696,7 @@ void tgl_set_number_result (std::shared_ptr<void> _T, bool success, struct tgl_u
     tfree (E->hash, E->hash_len);
   } else {
     TGL_ERROR("incorrect code");
-    tgl_state::instance()->callback.get_values (tgl_code, "code:", 1, tgl_set_number_code, E);
+    tgl_state::instance()->callback()->get_values (tgl_code, "code:", 1, tgl_set_number_code, E);
   }
 }
 
@@ -4728,7 +4728,7 @@ void tgl_set_phone_number_cb (std::shared_ptr<void> extra, bool success, const c
   E->hash_len = strlen (mhash);
   E->hash = (char *)tmemdup (mhash, E->hash_len);
 
-  tgl_state::instance()->callback.get_values (tgl_code, "code:", 1, tgl_set_number_code, E);
+  tgl_state::instance()->callback()->get_values (tgl_code, "code:", 1, tgl_set_number_code, E);
 }
 
 void tgl_do_set_phone_number (const char *phonenumber, int phonenumber_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {

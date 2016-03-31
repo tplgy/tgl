@@ -47,7 +47,7 @@ struct query {
     std::shared_ptr<void> callback_extra;
 };
 
-void out_peer_id (tgl_peer_id id);
+void out_peer_id (tgl_peer_id_t id);
 
 struct messages_send_extra {
   int multi = 0;

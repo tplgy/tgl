@@ -33,6 +33,7 @@ extern "C" {
 #include "tgl-methods-in.h"
 #include "tgl-timer-asio.h"
 //#include "tree.h"
+#include "types/tgl_update_callback.h"
 
 #include <assert.h>
 
@@ -194,7 +195,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       assert (M);
       if (new_msg) {
         //bl_do_msg_update (&M->permanent_id);
-        tgl_state::instance()->callback.new_msg(M);
+        tgl_state::instance()->callback()->new_message(M);
       }
       break;
     };
@@ -255,9 +256,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       //tgl_peer_t *U = tgl_peer_get (id);
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
-      if (tgl_state::instance()->callback.type_notification) {
-        tgl_state::instance()->callback.type_notification (DS_LVAL (DS_U->user_id), status);
-      }
+      tgl_state::instance()->callback()->type_notification(DS_LVAL(DS_U->user_id), status);
     }
     break;
   case CODE_update_chat_user_typing:
@@ -266,9 +265,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       tgl_peer_id_t id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
-      if (tgl_state::instance()->callback.type_in_chat_notification) {
-        tgl_state::instance()->callback.type_in_chat_notification (tgl_get_peer_id(id), tgl_get_peer_id(chat_id), status);
-      }
+      tgl_state::instance()->callback()->type_in_chat_notification(tgl_get_peer_id(id), tgl_get_peer_id(chat_id), status);
     }
     break;
   case CODE_update_user_status:
@@ -276,11 +273,9 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       //tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       //tglf_fetch_user_status (&U->user.status, &U->user, DS_U->status);
 
-      if (tgl_state::instance()->callback.status_notification) {
-        //int expires = 0;
-        //enum tgl_user_status_type status = tglf_fetch_user_status(DS_U->status, &expires);
-        //tgl_state::instance()->callback.status_notification (user_id, status, expires);
-      }
+      //int expires = 0;
+      //enum tgl_user_status_type status = tglf_fetch_user_status(DS_U->status, &expires);
+      //tgl_state::instance()->callback()->status_notification(tgl_get_peer_id(user_id), status, expires);
     }
     break;
   case CODE_update_user_name:
@@ -290,21 +285,21 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       DS_CSTR (firstname, DS_U->first_name);
       DS_CSTR (lastname, DS_U->last_name);
       DS_CSTR (username, DS_U->username);
-      tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), "", firstname, lastname, username);
+      tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), "", firstname, lastname, username);
       free(firstname);
       free(lastname);
       free(username);
       break;
     }
-    case CODE_update_user_photo:
+  case CODE_update_user_photo:
     {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, DS_U->photo, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-      tgl_state::instance()->callback.new_user(tgl_get_peer_id(user_id), "", "", "", "");
+      tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), "", "", "", "");
       if (DS_U->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
-        tgl_state::instance()->callback.avatar_update(DS_LVAL (DS_U->user_id), photo_small, photo_big);
+        tgl_state::instance()->callback()->avatar_update(DS_LVAL (DS_U->user_id), photo_small, photo_big);
       }
       break;
     }
@@ -319,7 +314,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
         //bl_do_chat (tgl_get_peer_id (chat_id), NULL, 0, NULL, NULL, DS_U->participants->version, (struct tl_ds_vector *)DS_U->participants->participants, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
         for (int i=0; i<*DS_U->participants->participants->cnt; ++i) {
           //C->chat.users_num = *DS_U->participants->participants->cnt;
-          tgl_state::instance()->callback.chat_add_user(tgl_get_peer_id (chat_id), *DS_U->participants->participants->data[i]->user_id,
+          tgl_state::instance()->callback()->chat_add_user(tgl_get_peer_id (chat_id), *DS_U->participants->participants->data[i]->user_id,
               *DS_U->participants->participants->data[i]->inviter_id, *DS_U->participants->participants->data[i]->date);
         }
       }
@@ -327,9 +322,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     }
     case CODE_update_contact_registered:
     {
-        if (tgl_state::instance()->callback.user_registered) {
-            tgl_state::instance()->callback.user_registered(DS_LVAL (DS_U->user_id));
-        }
+        tgl_state::instance()->callback()->user_registered(DS_LVAL (DS_U->user_id));
         break;
     }
     case CODE_update_contact_link:
@@ -338,9 +331,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     }
     case CODE_update_new_authorization:
     {
-        if (tgl_state::instance()->callback.new_authorization) {
-            tgl_state::instance()->callback.new_authorization (DS_U->device->data, DS_U->location->data);
-        }
+        tgl_state::instance()->callback()->new_authorization(DS_U->device->data, DS_U->location->data);
     }
     break;
   /*case CODE_update_new_geo_chat_message:
@@ -353,7 +344,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       struct tgl_message *M = tglf_fetch_alloc_encrypted_message (TLS, DS_U->encr_message);
       if (M) {
         //bl_do_msg_update (TLS, &M->permanent_id);
-        TLS->callback.new_msg(M);
+        TLS->callback()->new_message(M);
       }
 #endif
     }
@@ -371,9 +362,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     break;
   case CODE_update_encrypted_chat_typing:
     {
-      if (tgl_state::instance()->callback.type_in_secret_chat_notification) {
-        tgl_state::instance()->callback.type_in_secret_chat_notification(DS_LVAL (DS_U->chat_id));
-      }
+      tgl_state::instance()->callback()->type_in_secret_chat_notification(DS_LVAL(DS_U->chat_id));
     }
     break;
   case CODE_update_encrypted_messages_read:
@@ -402,9 +391,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       //int version = DS_LVAL (DS_U->version); 
 
       //bl_do_chat_add_user (C->id, version, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
-      if (tgl_state::instance()->callback.chat_add_user) {
-        tgl_state::instance()->callback.chat_add_user(tgl_get_peer_id (chat_id), tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
-      }
+      tgl_state::instance()->callback()->chat_add_user(tgl_get_peer_id (chat_id), tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
     }
     break;
   case CODE_update_chat_participant_delete:
@@ -414,9 +401,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       //int version = DS_LVAL (DS_U->version); 
       
       //bl_do_chat_del_user (C->id, version, tgl_get_peer_id (user_id));
-      if (tgl_state::instance()->callback.chat_delete_user) {
-        tgl_state::instance()->callback.chat_delete_user (tgl_get_peer_id (chat_id), tgl_get_peer_id (user_id));
-      }
+      tgl_state::instance()->callback()->chat_delete_user(tgl_get_peer_id (chat_id), tgl_get_peer_id (user_id));
     }
     break;
   case CODE_update_dc_options:
@@ -433,9 +418,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       tgl_peer_id_t peer_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
 
       //bl_do_user (tgl_get_peer_id (peer_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, flags);
-      if (tgl_state::instance()->callback.user_update) {
-        tgl_state::instance()->callback.user_update(tgl_get_peer_id (peer_id), &blocked, tgl_update_blocked);
-      }
+      tgl_state::instance()->callback()->user_update(tgl_get_peer_id (peer_id), &blocked, tgl_update_blocked);
     }
     break;
   case CODE_update_notify_settings:
@@ -445,9 +428,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_service_notification:
     {
       TGL_ERROR("Notification " << std::string(DS_U->type->data, DS_U->type->len) << ":" << std::string(DS_U->message_text->data, DS_U->message_text->len));
-      if (tgl_state::instance()->callback.notification) {
-        tgl_state::instance()->callback.notification (DS_U->type->data, DS_U->message_text->data);
-      }
+      tgl_state::instance()->callback()->notification(DS_U->type->data, DS_U->message_text->data);
     }
     break;
   case CODE_update_privacy:
@@ -457,10 +438,8 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-      if (tgl_state::instance()->callback.user_update) {
-        DS_CSTR (phone, DS_U->phone);
-        tgl_state::instance()->callback.user_update(tgl_get_peer_id (user_id), phone, tgl_update_phone);
-      }
+      DS_CSTR (phone, DS_U->phone);
+      tgl_state::instance()->callback()->user_update(DS_LVAL(DS_U->user_id), phone, tgl_update_phone);
     }
     break;
   case CODE_update_read_history_inbox:
@@ -523,6 +502,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       struct tgl_message *M = tglf_fetch_alloc_message (DS_U->message, &new_msg);
       if (M && new_msg) {
         //bl_do_msg_update (&M->permanent_id);
+        tgl_state::instance()->callback()->new_message(M);
       }
     }
     break;
@@ -661,7 +641,7 @@ void tglu_work_update_short_message (int check_only, struct tl_ds_updates *DS_U)
 
   if (1) {
     //bl_do_msg_update (&M->permanent_id);
-    tgl_state::instance()->callback.new_msg(M);
+    tgl_state::instance()->callback()->new_message(M);
   }
   
   if (check_only) { return; }
@@ -693,7 +673,7 @@ void tglu_work_update_short_chat_message (int check_only, struct tl_ds_updates *
 
   if (1) {
     //bl_do_msg_update (&M->permanent_id);
-    tgl_state::instance()->callback.new_msg(M);
+    tgl_state::instance()->callback()->new_message(M);
   }
 
   if (check_only) { return; }
@@ -766,7 +746,8 @@ void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *
  
   if (check_only) { return; }
   //bl_do_msg_update (&M->permanent_id);
-  
+  tgl_state::instance()->callback()->new_message(M);
+
   if (DS_U->pts) {
     //bl_do_set_pts (DS_LVAL (DS_U->pts));
     tgl_state::instance()->set_pts (DS_LVAL (DS_U->pts));

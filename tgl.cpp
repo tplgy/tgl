@@ -32,6 +32,7 @@ extern "C" {
 #include "mtproto-client.h"
 #include "tgl_download_manager.h"
 #include "tgl-structures.h"
+#include "types/tgl_update_callback.h"
 #include <openssl/sha.h>
 
 #include <assert.h>
@@ -65,7 +66,7 @@ void tgl_state::set_auth_key(int num, const char *buf)
 
     DC_list[num]->flags |= TGLDCF_AUTHORIZED;
 
-    callback.dc_update(DC_list[num]);
+    m_callback->dc_update(DC_list[num]);
 }
 
 void tgl_state::set_our_id(int id)
@@ -75,9 +76,7 @@ void tgl_state::set_our_id(int id)
     }
     m_our_id.peer_id = id;
     assert (our_id().peer_id > 0);
-    if (callback.our_id) {
-        callback.our_id (our_id().peer_id);
-    }
+    m_callback->our_id(our_id().peer_id);
 }
 
 void tgl_state::set_dc_option(int flags, int id, std::string ip, int port)
@@ -116,7 +115,7 @@ void tgl_state::set_working_dc(int num)
     TGL_DEBUG2("set working " << num);
     assert (num > 0 && num <= MAX_DC_ID);
     DC_working = DC_list[num];
-    callback.change_active_dc(num);
+    m_callback->change_active_dc(num);
 }
 
 void tgl_state::set_qts(int qts)
@@ -153,10 +152,6 @@ void tgl_state::reset_server_state()
     m_pts = 0;
     m_date = 0;
     m_seq = 0;
-}
-
-void tgl_state::set_callback(struct tgl_update_callback *cb) {
-  callback = *cb;
 }
 
 void tgl_state::set_rsa_key(const char *key) {
