@@ -107,8 +107,8 @@ struct tgl_update_callback {
   void (*type_in_secret_chat_notification)(int chat_id);
   void (*status_notification)(int user_id, enum tgl_user_status_type, int expires);
   void (*user_registered)(int user_id);
-  void (*new_authorization)(const char *device, const char *location);
-  void (*new_user)(int user_id, const std::string &phone, const std::string &fistname,
+  void (*new_authorization)(const std::string &device, const std::string &location);
+  void (*new_user)(int user_id, const std::string &phone, const std::string &firstname,
                    const std::string &lastname, const std::string &username);
   void (*user_update)(int user_id, void *value, enum tgl_user_update_type update_type);
   void (*user_deleted)(int id);
