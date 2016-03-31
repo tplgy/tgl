@@ -1453,8 +1453,10 @@ std::shared_ptr<tgl_dc> tglmp_alloc_dc (int flags, int id, const std::string &ip
     DC->id = id;
     DC->sessions[0] = NULL;
     tgl_state::instance()->DC_list[id] = DC;
-    DC->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
-    DC->ev->start(0);
+    if (tgl_state::instance()->pfs_enabled()) {
+      DC->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
+      DC->ev->start(0);
+    }
   }
 
   std::shared_ptr<tgl_dc> DC = tgl_state::instance()->DC_list[id];

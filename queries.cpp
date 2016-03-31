@@ -212,7 +212,7 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
   if (!DC->sessions[0]) {
     tglmp_dc_create_session (DC);
   }
-  TGL_DEBUG("Sending query of size "<< 4 * ints << " to DC " << DC->id);
+  TGL_DEBUG("Sending query \"" << methods->name << "\" of size " << 4 * ints << " to DC " << DC->id);
   std::shared_ptr<query> q = std::make_shared<query>();
   q->data_len = ints;
   q->data = talloc (4 * ints);
@@ -800,21 +800,21 @@ static void fetch_dc_option (struct tl_ds_dc_option *DS_DO) {
 }
 
 static int help_get_config_on_answer (std::shared_ptr<query> q, void *DS) {
-    struct tl_ds_config *DS_C = (struct tl_ds_config *) DS;
+  struct tl_ds_config *DS_C = (struct tl_ds_config *) DS;
 
-    int i;
-    for (i = 0; i < DS_LVAL (DS_C->dc_options->cnt); i++) {
-        fetch_dc_option (DS_C->dc_options->data[i]);
-    }
+  int i;
+  for (i = 0; i < DS_LVAL (DS_C->dc_options->cnt); i++) {
+    fetch_dc_option (DS_C->dc_options->data[i]);
+  }
 
   int max_chat_size = DS_LVAL (DS_C->chat_size_max);
   int max_bcast_size = 0;//DS_LVAL (DS_C->broadcast_size_max);
   TGL_DEBUG("chat_size = " << max_chat_size << ", bcast_size = " << max_bcast_size);
 
-    if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, bool))(q->callback))(q->callback_extra, 1);
-    }
-    return 0;
+  if (q->callback) {
+    ((void (*)(std::shared_ptr<void>, bool))(q->callback))(q->callback_extra, 1);
+  }
+  return 0;
 }
 
 static struct query_methods help_get_config_methods  = {
@@ -826,7 +826,7 @@ static struct query_methods help_get_config_methods  = {
   .timeout = 1
 };
 
-void tgl_do_help_get_config (void (*callback)(std::shared_ptr<void>, int), std::shared_ptr<void> callback_extra) {
+void tgl_do_help_get_config (void (*callback)(std::shared_ptr<void>, bool), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     tgl_do_insert_header ();
     out_int (CODE_help_get_config);
