@@ -41,6 +41,7 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     , m_ip(host)
     , m_port(port)
     , m_state(conn_none)
+    , m_io_service(io_service)
     , m_socket(io_service)
     , m_ping_timer(io_service)
     , m_fail_timer(io_service)
@@ -365,7 +366,7 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
     TGL_NOTICE("connected to " << m_ip << ":" << m_port);
 
     m_last_receive_time = tglt_get_double_time();
-    tgl_state::instance()->io_service->post(boost::bind(&tgl_connection_asio::start_read, shared_from_this()));
+    m_io_service.post(boost::bind(&tgl_connection_asio::start_read, shared_from_this()));
 }
 
 ssize_t tgl_connection_asio::read(void* buffer, size_t len) {
@@ -452,7 +453,7 @@ ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
         }
     }
     if (m_bytes_to_write) {
-        tgl_state::instance()->io_service->post(boost::bind(&tgl_connection_asio::start_write, shared_from_this()));
+        m_io_service.post(boost::bind(&tgl_connection_asio::start_write, shared_from_this()));
     }
     return x;
 }
@@ -546,6 +547,6 @@ void tgl_connection_asio::handle_write(const boost::system::error_code& ec, size
 
     m_bytes_to_write -= bytes_transferred;
     if (m_bytes_to_write > 0) {
-        tgl_state::instance()->io_service->post(boost::bind(&tgl_connection_asio::start_write, shared_from_this()));
+        m_io_service.post(boost::bind(&tgl_connection_asio::start_write, shared_from_this()));
     }
 }

@@ -94,12 +94,6 @@ enum tgl_user_status_type {
 #define TGL_LOCK_DIFF 1
 #define TGL_LOCK_PASSWORD 2
 
-namespace boost {
-namespace asio {
-  class io_service;
-}
-}
-
 class tgl_download_manager;
 class tgl_connection_factory;
 class tgl_rsa_key;
@@ -122,8 +116,6 @@ struct tgl_state {
   std::vector<std::shared_ptr<tgl_dc>> DC_list;
   std::shared_ptr<tgl_dc> DC_working;
   int temp_key_expire_time;
-
-  boost::asio::io_service *io_service;
 
   TGLC_bn_ctx *bn_ctx;
 
@@ -152,7 +144,6 @@ struct tgl_state {
   void set_test_mode (bool);
   void set_connection_factory(const std::shared_ptr<tgl_connection_factory>& factory) { m_connection_factory = factory; }
   void set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory) { m_timer_factory = factory; }
-  void set_io_service (boost::asio::io_service* io_service);
   void set_enable_ipv6 (bool val);
 
   const std::string& app_version() const { return m_app_version; }
@@ -175,6 +166,7 @@ struct tgl_state {
   tgl_peer_id_t our_id() { return m_our_id; }
   bool ipv6_enabled() { return m_ipv6_enabled; }
   bool pfs_enabled() { return m_enable_pfs; }
+
 private:
   int m_app_id;
   std::string m_app_hash;

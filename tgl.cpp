@@ -38,10 +38,28 @@ extern "C" {
 
 #include <assert.h>
 
-tgl_state::tgl_state() : encr_root(0), encr_prime(NULL), encr_prime_bn(NULL), encr_param_version(0), active_queries(0), started(false), locks(0),
-       DC_working(NULL), temp_key_expire_time(0), io_service(NULL),
-       bn_ctx(0), ev_login(NULL), m_app_id(0), m_error_code(0), m_pts(0), m_qts(0),
-       m_date(0), m_seq(0), m_test_mode(0), m_our_id(tgl_peer_id_t()), m_enable_pfs(false), m_ipv6_enabled(false)
+tgl_state::tgl_state()
+    : encr_root(0)
+    , encr_prime(NULL)
+    , encr_prime_bn(NULL)
+    , encr_param_version(0)
+    , active_queries(0)
+    , started(false)
+    , locks(0)
+    , DC_working(NULL)
+    , temp_key_expire_time(0)
+    , bn_ctx(0)
+    , ev_login(NULL)
+    , m_app_id(0)
+    , m_error_code(0)
+    , m_pts(0)
+    , m_qts(0)
+    , m_date(0)
+    , m_seq(0)
+    , m_test_mode(0)
+    , m_our_id(tgl_peer_id_t())
+    , m_enable_pfs(false)
+    , m_ipv6_enabled(false)
 {
 }
 
@@ -199,10 +217,6 @@ void tgl_state::set_enable_pfs (bool val) {
 
 void tgl_state::set_test_mode (bool val) {
   this->m_test_mode = val;
-}
-
-void tgl_state::set_io_service (boost::asio::io_service *io_service) {
-  this->io_service = io_service;
 }
 
 void tgl_state::set_enable_ipv6 (bool val) {
