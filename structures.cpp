@@ -100,12 +100,11 @@ tgl_peer_id_t tglf_fetch_peer_id (struct tl_ds_peer *DS_P) {
 }
 
 tgl_file_location tglf_fetch_file_location (struct tl_ds_file_location *DS_FL) {
-  tgl_file_location location;
-
   if (!DS_FL) {
-    return location;
+    return no_file_location;
   }
 
+  tgl_file_location location;
   location.set_dc(DS_LVAL(DS_FL->dc_id));
   location.set_volume(DS_LVAL(DS_FL->volume_id));
   location.set_local_id(DS_LVAL(DS_FL->local_id));
