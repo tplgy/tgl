@@ -259,8 +259,8 @@ void tgl_download_manager::send_file_unencrypted_end (std::shared_ptr<send_file>
     }
 
     std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-    tglt_secure_random ((unsigned char*)&E->id, 8);
-    out_long (E->id);
+    E->id = tgl_peer_id_to_random_msg_id (f->to_id);
+    out_long (E->id.id);
 
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, callback, callback_extra);
 }
