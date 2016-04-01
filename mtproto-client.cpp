@@ -240,6 +240,7 @@ static int send_req_pq_packet (const std::shared_ptr<tgl_connection>& c) {
     clear_packet ();
     out_int (CODE_req_pq);
     out_ints ((int *)DC->nonce, 4);
+    TGL_DEBUG(__FUNCTION__ << " nonce=" << std::hex << DC->nonce);
     rpc_send_packet(c);
 
     DC->state = st_reqpq_sent;
@@ -259,6 +260,7 @@ static int send_req_pq_temp_packet (const std::shared_ptr<tgl_connection>& c) {
     clear_packet ();
     out_int (CODE_req_pq);
     out_ints ((int *)DC->nonce, 4);
+    TGL_DEBUG(__FUNCTION__ << " nonce=" << std::hex << DC->nonce);
     rpc_send_packet(c);
 
     DC->state = st_reqpq_sent_temp;
@@ -312,6 +314,7 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
   TGLC_bn_free (p);
   TGLC_bn_free (q);
   DC->state = temp_key ? st_reqdh_sent_temp : st_reqdh_sent;
+  TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " nonce=" << std::hex << DC->nonce << " server_nonce=" << DC->server_nonce);
   rpc_send_packet (c);
 }
 /* }}} */
@@ -372,6 +375,7 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   out_cstring ((char *) encrypt_buffer, l);
 
   DC->state = temp_key ? st_client_dh_sent_temp : st_client_dh_sent;;
+  TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " nonce=" << std::hex << DC->nonce << " server_nonce=" << DC->server_nonce);
   rpc_send_packet (c);
 }
 /* }}} */
@@ -379,6 +383,7 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
 /* {{{ RECV RESPQ */
 // resPQ#05162463 nonce:int128 server_nonce:int128 pq:string server_public_key_fingerprints:Vector long = ResPQ
 static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char *packet, int len, int temp_key) {
+  TGL_DEBUG(__FUNCTION__);
   assert (!(len & 3));
   in_ptr = (int *)packet;
   in_end = in_ptr + (len / 4);
@@ -447,6 +452,7 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
 // server_DH_params_ok#d0e8075c nonce:int128 server_nonce:int128 encrypted_answer:string = Server_DH_Params;
 // server_DH_inner_data#b5890dba nonce:int128 server_nonce:int128 g:int dh_prime:string g_a:string server_time:int = Server_DH_inner_data;
 static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *packet, int len, int temp_key) {
+  TGL_DEBUG(__FUNCTION__);
   assert (!(len & 3));
   in_ptr = (int *)packet;
   in_end = in_ptr + (len / 4);
@@ -844,16 +850,15 @@ static int work_container (const std::shared_ptr<tgl_connection>& c, long long m
   assert (fetch_int () == CODE_msg_container);
   int n = fetch_int ();
   int i;
-  std::shared_ptr<tgl_session> S = c->get_session().lock();
-  if (!S) {
-    return -1;
-  }
-
   for (i = 0; i < n; i++) {
     long long id = fetch_long ();
     //int seqno = fetch_int ();
     fetch_int (); // seq_no
     if (id & 1) {
+      std::shared_ptr<tgl_session> S = c->get_session().lock();
+      if (!S) {
+        return -1;
+      }
       tgln_insert_msg_id(S, id);
     }
     int bytes = fetch_int ();
@@ -946,13 +951,14 @@ static int work_bad_server_salt (const std::shared_ptr<tgl_connection>& c, long 
   TGL_UNUSED(msg_id);
   assert (fetch_int () == (int)CODE_bad_server_salt);
   long long id = fetch_long ();
-  fetch_int (); // seq_no
-  fetch_int (); // error_code
+  int seq_no = fetch_int (); // seq_no
+  int error_code = fetch_int (); // error_code
   long long new_server_salt = fetch_long ();
   std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
   if (!DC) {
     return -1;
   }
+  TGL_DEBUG(__FUNCTION__ << " id=" << id << " seq_no=" << seq_no << " error_code= " << error_code << " new_server_salt=" << new_server_salt << " (old_server_salt=" << DC->server_salt << ")");
   DC->server_salt = new_server_salt;
   tglq_query_restart (id);
   return 0;
@@ -1222,6 +1228,7 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
   S->received_messages ++;
 
   if (DC->server_salt != enc->server_salt) {
+    TGL_DEBUG("updating server salt from " << DC->server_salt << " to " << enc->server_salt);
     DC->server_salt = enc->server_salt;
   }
 
