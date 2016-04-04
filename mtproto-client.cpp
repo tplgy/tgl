@@ -1419,9 +1419,9 @@ void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& S, long long id) {
 //extern struct tgl_dc *DC_list[];
 
 
-static void regen_temp_key_gw (std::shared_ptr<tgl_dc> dc) {
-  tglmp_regenerate_temp_auth_key(dc);
-}
+//static void regen_temp_key_gw (std::shared_ptr<tgl_dc> dc) {
+  //tglmp_regenerate_temp_auth_key(dc);
+//}
 
 std::shared_ptr<tgl_dc> tglmp_alloc_dc (int flags, int id, const std::string &ip, int port) {
 
@@ -1431,8 +1431,8 @@ std::shared_ptr<tgl_dc> tglmp_alloc_dc (int flags, int id, const std::string &ip
     DC->sessions[0] = NULL;
     tgl_state::instance()->DC_list[id] = DC;
     if (tgl_state::instance()->pfs_enabled()) {
-      DC->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
-      DC->ev->start(0);
+      //DC->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
+      //DC->ev->start(0);
     }
   }
 
@@ -1476,7 +1476,6 @@ void tgl_dc_iterator_ex (void (*iterator)(struct tgl_dc *DC, void *extra), void 
     iterator (tgl_state::instance()->DC_list[i], extra);
   }
 }
-#endif
 
 void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& DC) {
   DC->flags &= ~(TGLDCF_BOUND);
@@ -1507,6 +1506,7 @@ void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& DC) {
     create_temp_auth_key (S->c);
   }
 }
+#endif
 
 void tgls_free_session(std::shared_ptr<tgl_session> S) {
   S->ack_tree.clear();

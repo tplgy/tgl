@@ -4292,19 +4292,19 @@ void tgl_do_upgrade_group (tgl_peer_id_t id, void (*callback)(std::shared_ptr<vo
 }
 
 
-static void set_flag_4 (std::shared_ptr<void> _D, bool success) {
+static void set_dc_configured (std::shared_ptr<void> _D, bool success) {
     std::shared_ptr<tgl_dc> D = std::static_pointer_cast<tgl_dc>(_D);
     assert (success);
     D->flags |= TGLDCF_CONFIGURED;
 
-    D->ev->start(tgl_state::instance()->temp_key_expire_time * 0.9);
+    //D->ev->start(tgl_state::instance()->temp_key_expire_time * 0.9);
 }
 
 static int send_bind_temp_on_answer(std::shared_ptr<query> q, void *D) {
     TGL_UNUSED(D);
     std::shared_ptr<tgl_dc> DC = std::static_pointer_cast<tgl_dc>(q->extra);
     DC->flags |= TGLDCF_BOUND;
-    tgl_do_help_get_config_dc (DC, set_flag_4, DC); //TODO change callback extra to smart ptr
+    tgl_do_help_get_config_dc (DC, set_dc_configured, DC);
     TGL_DEBUG("Bind successful in dc " << DC->id);
     return 0;
 }
