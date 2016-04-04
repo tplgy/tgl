@@ -295,6 +295,7 @@ void tgl_connection_asio::close()
         return;
     }
 
+    m_mtproto_client->close(shared_from_this());
     m_closed = true;
     m_ping_timer.cancel();
     m_fail_timer.cancel();

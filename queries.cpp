@@ -125,7 +125,7 @@ static int alarm_query (std::shared_ptr<query> q) {
     out_ints ((int*)q->data, q->data_len);
 
     tglmp_encrypt_send_message (q->session->c, packet_buffer, packet_ptr - packet_buffer, q->flags & QUERY_FORCE_SEND);
-  } else {
+  } else if (q->DC->sessions[0]) {
     q->flags &= ~QUERY_ACK_RECEIVED;
     tglq_query_remove(q);
     q->session = q->DC->sessions[0];
@@ -138,6 +138,10 @@ static int alarm_query (std::shared_ptr<query> q) {
     if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !(q->flags & QUERY_FORCE_SEND)) {
       q->session_id = 0;
     }
+  } else {
+    // we don't have a valid session with the DC, so try again soon
+    // TODO: replace this with a proper async call after we get a session
+    q->ev->start(1);
   }
   return 0;
 }
@@ -199,7 +203,7 @@ static void alarm_query_gateway(std::shared_ptr<query> q) {
 
 std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, void *data, struct query_methods *methods, std::shared_ptr<void> extra, void *callback, std::shared_ptr<void> callback_extra, int flags) {
   assert (DC);
-  assert (DC->auth_key_id);
+  //assert (DC->auth_key_id);
   if (!DC->sessions[0]) {
     tglmp_dc_create_session (DC);
   }
@@ -328,6 +332,7 @@ int tglq_query_error (long long id) {
           TGL_WARNING("Trying to handle error...");
           if (i > 0 && i < TGL_MAX_DC_NUM) {
             tgl_state::instance()->set_working_dc(i);
+            tgl_state::instance()->login();
             q->flags &= ~QUERY_ACK_RECEIVED;
             //q->session_id = 0;
             //struct tgl_dc *DC = q->DC;
@@ -361,6 +366,7 @@ int tglq_query_error (long long id) {
           res = 1;
           error_handled = 1;
         }
+        // TODO: handle AUTH_KEY_INVALID and AUTH_KEY_UNREGISTERED
         break;
       case 403:
         // privacy violation
@@ -2662,12 +2668,15 @@ static void resend_query_cb(std::shared_ptr<void> _q, bool success) {
 /* {{{ Export auth */
 
 static int import_auth_on_answer (std::shared_ptr<query> q, void *D) {
-  TGL_NOTICE("import_auth_on_answer " << std::static_pointer_cast<tgl_dc>(q->extra)->id);
   struct tl_ds_auth_authorization *DS_U = (struct tl_ds_auth_authorization *)D;
   tglf_fetch_alloc_user (DS_U->user);
 
+  std::shared_ptr<tgl_dc> DC = std::static_pointer_cast<tgl_dc>(q->extra);
+  assert(DC);
+  TGL_NOTICE("auth imported from DC " << tgl_state::instance()->DC_working << " to DC " << DC->id);
+
   //bl_do_dc_signed (((struct tgl_dc *)q->extra)->id);
-  tgl_state::instance()->set_dc_signed(std::static_pointer_cast<tgl_dc>(q->extra)->id);
+  tgl_state::instance()->set_dc_signed(DC->id);
 
   if (q->callback) {
     ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
@@ -2709,8 +2718,9 @@ static struct query_methods export_auth_methods = {
   .timeout = 0,
 };
 
+// export auth from working DC and import to DC "num"
 void tgl_do_export_auth (int num, void (*callback) (std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
-    TGL_NOTICE("Exporting out DC " << num);
+    TGL_NOTICE("Transferring auth from DC " << tgl_state::instance()->DC_working << " to DC " << num);
     clear_packet ();
     out_int (CODE_auth_export_authorization);
     out_int (num);
@@ -4393,7 +4403,7 @@ void tgl_started_cb(std::shared_ptr<void> arg, bool success) {
   TGL_UNUSED(arg);
   if (!success) {
     TGL_ERROR("login problem");
-    tgl_state::instance()->callback()->on_failed_login ();
+    tgl_state::instance()->callback()->on_failed_login();
     return;
   }
   if (!tgl_state::instance()->started) {
@@ -4404,34 +4414,30 @@ void tgl_started_cb(std::shared_ptr<void> arg, bool success) {
 
 void tgl_export_auth_callback (std::shared_ptr<void> arg, bool success) {
   TGL_UNUSED(arg);
+  std::shared_ptr<tgl_dc> DC = std::static_pointer_cast<tgl_dc>(arg);
+  assert(DC);
   if (!success) {
-    TGL_ERROR("login problem");
-    tgl_state::instance()->callback()->on_failed_login ();
+    TGL_ERROR("auth export problem to DC " << DC->id);
     return;
   }
-  for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
-    return;
-  }
-  tgl_state::instance()->callback()->logged_in();
-
-  tglm_send_all_unsent();
-  tgl_do_get_difference (0, tgl_started_cb, 0);
+  TGL_NOTICE("auth exported from DC " << tgl_state::instance()->DC_working << " for DC " << DC->id);
 }
 
 void tgl_export_all_auth () {
-    TGL_WARNING("exporting all auth\n");
-  int ok = 1;
-    for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
-        tgl_do_export_auth (i, tgl_export_auth_callback, tgl_state::instance()->DC_list[i]);
-    ok = 0;
+  for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) {
+    if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
+      tgl_do_export_auth (i, tgl_export_auth_callback, tgl_state::instance()->DC_list[i]);
     }
-  if (ok) {
-    //if (tgl_state::instance()->DC_working && tgl_signed_dc(tgl_state::instance()->DC_working)) {
-        tgl_state::instance()->callback()->logged_in();
+  }
+}
 
-        tglm_send_all_unsent ();
-        tgl_do_get_difference (0, tgl_started_cb, 0);
-    }
+void tgl_signed_in() {
+  tgl_state::instance()->callback()->logged_in();
+
+  TGL_DEBUG("signed in, sending unsent messages and retrieving current server state");
+
+  tglm_send_all_unsent();
+  tgl_do_get_difference (0, tgl_started_cb, 0);
 }
 
 struct sign_up_extra {
@@ -4457,7 +4463,7 @@ void tgl_sign_in_result (std::shared_ptr<void> _T, bool success) {
         tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_in_code, E);
         return;
     }
-    tgl_export_all_auth();
+    tgl_signed_in();
 }
 
 void tgl_sign_in_code (const void *code, std::shared_ptr<void> _T) {
@@ -4485,7 +4491,7 @@ void tgl_sign_up_result (std::shared_ptr<void> _T, bool success, struct tgl_user
         tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_up_code, E);
         return;
     }
-    tgl_export_all_auth();
+    tgl_signed_in();
 }
 
 void tgl_sign_up_code (const void *code, std::shared_ptr<void> _T) {
@@ -4576,7 +4582,7 @@ void tgl_sign_in_bot_cb (std::shared_ptr<void> _T, bool success, struct tgl_user
         tgl_state::instance()->callback()->get_values(tgl_bot_hash, "bot hash:", 1, tgl_bot_hash_cb, nullptr);
         return;
     }
-    tgl_export_all_auth();
+    tgl_signed_in();
 }
 
 void tgl_bot_hash_cb (const void *code, std::shared_ptr<void> arg) {
@@ -4585,53 +4591,36 @@ void tgl_bot_hash_cb (const void *code, std::shared_ptr<void> arg) {
 }
 
 void tgl_sign_in () {
-    if (!tgl_signed_dc(tgl_state::instance()->DC_working)) {
-        tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone, NULL);
-    } else {
-        tgl_export_all_auth();
-    }
+  if (!tgl_signed_dc(tgl_state::instance()->DC_working)) {
+    tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone, NULL);
+  } else {
+    tgl_signed_in();
+  }
 }
 
 static void check_authorized (std::shared_ptr<void> arg) {
-  TGL_UNUSED(arg);
-  int ok = 1;
-  for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) {
-    if (tgl_state::instance()->DC_list[i]) {
-      tgl_dc_authorize (tgl_state::instance()->DC_list[i]);
-    }
+  std::shared_ptr<tgl_dc> DC = tgl_state::instance()->DC_working;
+  if (!DC) {
+    TGL_ERROR("no working DC, can't check authorization");
+    return;
   }
-  for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) {
-    if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i]) && !tgl_authorized_dc(tgl_state::instance()->DC_list[i])) {
-      ok = 0;
-      break;
-    }
 
-    if (ok) {
-      tgl_state::instance()->ev_login = nullptr;
-      tgl_sign_in();
-    } else {
-      tgl_state::instance()->ev_login->start(0.1);
-    }
+  if (DC && (tgl_signed_dc(DC) || tgl_authorized_dc(DC))) {
+    tgl_state::instance()->ev_login = nullptr;
+    tgl_sign_in();
+  } else {
+    tgl_dc_authorize(DC);
+    tgl_state::instance()->ev_login->start(0.1);
   }
 }
 
 void tgl_state::login () {
-    //TGL_DEBUG2("login\n");
-    int ok = 1;
-    for (size_t i = 0; i < DC_list.size(); i++) {
-        if (DC_list[i] && !tgl_signed_dc(DC_list[i]) && !tgl_authorized_dc(DC_list[i])) {
-            ok = 0;
-            break;
-        }
-    }
-
-    if (!ok) {
-        //TGL_DEBUG("not authorized...waiting\n");
-        tgl_state::instance()->ev_login = tgl_state::instance()->timer_factory()->create_timer(std::bind(&check_authorized, nullptr));
-        tgl_state::instance()->ev_login->start(0.1);
-    } else {
-        tgl_sign_in();
-    }
+  if (DC_working && tgl_signed_dc(DC_working) && tgl_authorized_dc(DC_working)) {
+    tgl_sign_in();
+  } else {
+    tgl_state::instance()->ev_login = tgl_state::instance()->timer_factory()->create_timer(std::bind(&check_authorized, nullptr));
+    tgl_state::instance()->ev_login->start(0.1);
+  }
 }
 
 
