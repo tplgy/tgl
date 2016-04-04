@@ -438,10 +438,10 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     break;
   case CODE_update_user_phone:
     {
-      //tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
       DS_CSTR (phone, DS_U->phone);
-      tgl_state::instance()->callback()->user_update(DS_LVAL(DS_U->user_id), phone, tgl_update_phone);
+      tgl_state::instance()->callback()->user_update(tgl_get_peer_id(user_id), phone, tgl_update_phone);
     }
     break;
   case CODE_update_read_history_inbox:
