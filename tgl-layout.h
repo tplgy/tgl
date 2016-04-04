@@ -21,6 +21,7 @@
 #define __TGL_LAYOUT_H__
 
 #include <array>
+#include <list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -187,6 +188,8 @@ struct tgl_dc {
 
     // ipv4, ipv6, ipv4_media, ipv6_media
     std::array<tgl_dc_option, 4> options;
+
+    std::list<std::shared_ptr<struct query>> pending_queries;
 };
 
 enum tgl_message_entity_type {
