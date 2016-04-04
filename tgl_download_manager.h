@@ -9,7 +9,30 @@
 
 struct tgl_document;
 struct tgl_encr_document;
-struct send_file;
+
+struct send_file {
+    int fd;
+    long long size;
+    long long offset;
+    int part_num;
+    int part_size;
+    long long id;
+    long long thumb_id;
+    tgl_peer_id_t to_id;
+    int flags;
+    std::string file_name;
+    int encr;
+    int avatar;
+    int reply;
+    unsigned char *iv;
+    unsigned char *init_iv;
+    unsigned char *key;
+    int w;
+    int h;
+    int duration;
+    std::string caption;
+};
+
 struct download {
     download(int size, tgl_file_location location)
         : location(location), offset(0), size(size), fd(-1), iv(NULL), key(NULL), type(0), refcnt(0)

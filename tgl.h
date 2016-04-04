@@ -26,6 +26,7 @@ extern "C" {
 }
 #include "tgl-layout.h"
 #include "tgl-log.h"
+#include <map>
 #include <memory>
 #include <stdlib.h>
 #include <string.h>
@@ -100,6 +101,7 @@ class tgl_rsa_key;
 class tgl_timer;
 class tgl_timer_factory;
 class tgl_update_callback;
+struct tgl_secret_chat;
 
 struct tgl_state {
   static tgl_state *instance();
@@ -167,6 +169,13 @@ struct tgl_state {
   bool ipv6_enabled() { return m_ipv6_enabled; }
   bool pfs_enabled() { return m_enable_pfs; }
 
+  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(const tgl_peer_id_t& id) const
+  {
+      return secret_chat_for_id(id.peer_id);
+  }
+  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int peer_id) const;
+  std::shared_ptr<tgl_secret_chat> ensure_secret_chat(const tgl_peer_id_t& id);
+
 private:
   int m_app_id;
   std::string m_app_hash;
@@ -184,6 +193,7 @@ private:
   std::string m_app_version;
   bool m_ipv6_enabled;
   std::vector<std::unique_ptr<tgl_rsa_key>> m_rsa_key_list;
+  std::map<int/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
 
   tgl_state();
 
@@ -211,11 +221,11 @@ int tgl_do_send_bot_auth (const char *code, int code_len, void (*callback)(std::
 #define TGL_MK_GEO_CHAT(id) tgl_set_peer_id (TGL_PEER_GEO_CHAT,id)
 #define TGL_MK_ENCR_CHAT(id) tgl_set_peer_id (TGL_PEER_ENCR_CHAT,id)
 
-static inline int tgl_get_peer_type (tgl_peer_id_t id) {
+static inline int tgl_get_peer_type (const tgl_peer_id_t& id) {
   return id.peer_type;
 }
 
-static inline int tgl_get_peer_id (tgl_peer_id_t id) {
+static inline int tgl_get_peer_id (const tgl_peer_id_t& id) {
   return id.peer_id;
 }
 

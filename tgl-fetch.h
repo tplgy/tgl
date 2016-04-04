@@ -30,7 +30,7 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C);
 struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS_MCF);
 struct tgl_channel *tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C);
 struct tgl_channel *tglf_fetch_alloc_channel_full (struct tl_ds_messages_chat_full *DS_MCF);
-struct tgl_secret_chat *tglf_fetch_alloc_encrypted_chat (struct tl_ds_encrypted_chat *DS_EC);
+std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_encrypted_chat *DS_EC);
 struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *new_msg);
 struct tgl_message *tglf_fetch_alloc_message_short_buf ();
 struct tgl_message *tglf_fetch_alloc_message_short_chat_buf ();

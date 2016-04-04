@@ -341,10 +341,10 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_new_encrypted_message:
     {
 #ifdef ENABLE_SECRET_CHAT
-      struct tgl_message *M = tglf_fetch_alloc_encrypted_message (TLS, DS_U->encr_message);
+      struct tgl_message *M = tglf_fetch_alloc_encrypted_message (DS_U->encr_message);
       if (M) {
-        //bl_do_msg_update (TLS, &M->permanent_id);
-        TLS->callback()->new_message(M);
+        //bl_do_msg_update (tgl_state::instance(), &M->permanent_id);
+        tgl_state::instance()->callback()->new_message(M);
       }
 #endif
     }
@@ -352,10 +352,10 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_encryption:
     {
 #ifdef ENABLE_SECRET_CHAT
-      struct tgl_secret_chat *E = tglf_fetch_alloc_encrypted_chat (DS_U->encr_chat);
-      TGL_DEBUG("Secret chat state = %d\n", E->state);
+      std::shared_ptr<tgl_secret_chat> E = tglf_fetch_alloc_encrypted_chat (DS_U->encr_chat);
+      TGL_DEBUG("Secret chat state = " << E->state);
       if (E->state == sc_ok) {
-        tgl_do_send_encr_chat_layer (E);
+        tgl_do_send_encr_chat_layer (E.get());
       }
 #endif
     }
@@ -368,6 +368,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_encrypted_messages_read:
     {
 #ifdef ENABLE_SECRET_CHAT
+#if 0
       tgl_peer_id_t id = TGL_MK_ENCR_CHAT (DS_LVAL (DS_U->chat_id));
       tgl_peer_t *P = tgl_peer_get (id);
       
@@ -375,11 +376,12 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
         struct tgl_message *M = P->last;
         while (M && (!(M->flags & TGLMF_OUT) || (M->flags & TGLMF_UNREAD))) {
           if (M->flags & TGLMF_OUT) {
-            bl_do_edit_message_encr (&M->permanent_id, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, M->flags & ~TGLMF_UNREAD);
+            bl_do_edit_message_encr (tgl_state::instance(), &M->permanent_id, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, M->flags & ~TGLMF_UNREAD);
           }
           M = M->next;
         }
       }
+#endif
 #endif
     }
     break;

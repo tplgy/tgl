@@ -25,6 +25,10 @@
 
 #include "config.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct TGLC_aes_key {
   char _dummy[
 #ifdef TGL_AVOID_OPENSSL
@@ -38,5 +42,9 @@ typedef struct TGLC_aes_key {
 void TGLC_aes_set_encrypt_key (const unsigned char *userKey, const int bits, TGLC_aes_key *key);
 void TGLC_aes_set_decrypt_key (const unsigned char *userKey, const int bits, TGLC_aes_key *key);
 void TGLC_aes_ige_encrypt (const unsigned char *in, unsigned char *out, size_t length, const TGLC_aes_key *key, unsigned char *ivec, const int enc);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

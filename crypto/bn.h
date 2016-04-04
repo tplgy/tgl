@@ -21,6 +21,10 @@
 #ifndef __TGL_CRYPTO_BN_H__
 #define __TGL_CRYPTO_BN_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct TGLC_bn_ctx TGLC_bn_ctx;
 typedef struct TGLC_bn TGLC_bn;
 
@@ -40,6 +44,10 @@ int TGLC_bn_num_bits (const TGLC_bn *a);
 void TGLC_bn_sub (TGLC_bn *r, const TGLC_bn *a, const TGLC_bn *b);
 int TGLC_bn_div (TGLC_bn *dv, TGLC_bn *rem, const TGLC_bn *a, const TGLC_bn *d, TGLC_bn_ctx *ctx);
 int TGLC_bn_mod_exp (TGLC_bn *r, const TGLC_bn *a, const TGLC_bn *p, const TGLC_bn *m, TGLC_bn_ctx *ctx);
+
+#ifdef __cplusplus
+}
+#endif
 
 #define TGLC_bn_num_bytes(a) ((TGLC_bn_num_bits(a)+7)/8)
 #define TGLC_bn_mod(rem,m,d,ctx) TGLC_bn_div(NULL,(rem),(m),(d),(ctx))

@@ -133,7 +133,7 @@ void tgl_do_unblock_user (int user_id, long long int access_hash, void (*callbac
 
 // accepts secret chat request
 // method can fail if another device will be first to accept it
-void tgl_do_accept_encr_chat_request (struct tgl_secret_chat *E, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_secret_chat *E), std::shared_ptr<void> callback_extra);
+void tgl_do_accept_encr_chat_request (std::shared_ptr<tgl_secret_chat> E, void (*callback)(std::shared_ptr<void> callback_extra, bool success, std::shared_ptr<tgl_secret_chat> E), std::shared_ptr<void> callback_extra);
 
 // sets ttl of secret chat
 void tgl_do_set_encr_chat_ttl (struct tgl_secret_chat *E, int ttl);
@@ -142,7 +142,7 @@ void tgl_do_set_encr_chat_ttl (struct tgl_secret_chat *E, int ttl);
 //int tgl_do_visualize_key (int id, unsigned char buf[16]);
 
 // requests creation of secret chat with user id
-void tgl_do_create_secret_chat (int user_id, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_secret_chat *E), std::shared_ptr<void> callback_extra);
+void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_secret_chat *E), std::shared_ptr<void> callback_extra);
 /* }}} */
 
 /* {{{ WORKING WITH DIALOG LIST */

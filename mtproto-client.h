@@ -20,7 +20,9 @@
 */
 #ifndef __MTPROTO_CLIENT_H__
 #define __MTPROTO_CLIENT_H__
+extern "C" {
 #include "crypto/bn.h"
+}
 
 #include "tgl.h"
 

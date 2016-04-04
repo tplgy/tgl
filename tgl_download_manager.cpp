@@ -75,29 +75,6 @@ int tgl_download_manager::download_error (std::shared_ptr<query> q, int error_co
     return 0;
 }
 
-struct send_file {
-    int fd;
-    long long size;
-    long long offset;
-    int part_num;
-    int part_size;
-    long long id;
-    long long thumb_id;
-    tgl_peer_id_t to_id;
-    int flags;
-    std::string file_name;
-    int encr;
-    int avatar;
-    int reply;
-    unsigned char *iv;
-    unsigned char *init_iv;
-    unsigned char *key;
-    int w;
-    int h;
-    int duration;
-    std::string caption;
-};
-
 int tgl_download_manager::send_file_part_on_answer (std::shared_ptr<query> q, void *D)
 {
     TGL_UNUSED(D);

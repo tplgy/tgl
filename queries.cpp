@@ -38,6 +38,7 @@
 #include "tgl_download_manager.h"
 #include "tgl-timer.h"
 #include "types/tgl_update_callback.h"
+#include "types/tgl_peer_id.h"
 
 #include "tgl-binlog.h"
 #include "updates.h"
@@ -55,9 +56,8 @@ extern "C" {
 #include "crypto/sha.h"
 #include "crypto/md5.h"
 #include "mtproto-common.h"
-}
-
 #include "mtproto-utils.h"
+}
 
 #include "tgl.h"
 #include "tg-mime-types.h"
@@ -568,7 +568,14 @@ static int q_list_on_error (std::shared_ptr<query> q, int error_code, const std:
 }
 /* }}} */
 
-#include "queries-encrypted.c"
+struct msg_callback_extra
+{
+    msg_callback_extra(long long old_msg_id, int to_id) : old_msg_id(old_msg_id), to_id(to_id) {}
+    long long old_msg_id;
+    int to_id;
+};
+
+#include "queries-encrypted.cpp"
 
 static void increase_ent (int *ent_size, int **ent, int s) {
   *ent = (int *)trealloc (*ent, (*ent_size) * 4, (*ent_size) * 4 + 4 * s);
@@ -1005,13 +1012,6 @@ void tgl_do_update_contact_list () {
 }
 /* }}} */
 
-struct msg_callback_extra
-{
-    msg_callback_extra(long long old_msg_id, int to_id) : old_msg_id(old_msg_id), to_id(to_id) {}
-    long long old_msg_id;
-    int to_id;
-};
-
 /* {{{ Send msg (plain text) */
 static int msg_send_on_answer (std::shared_ptr<query> q, void *D) {
   struct tl_ds_updates *DS_U = (struct tl_ds_updates *)D;
@@ -1172,15 +1172,15 @@ void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<vo
 void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
   if (tgl_get_peer_type (peer_id) == TGL_PEER_ENCR_CHAT) {
 #ifdef ENABLE_SECRET_CHAT
-    tgl_peer_t *P = tgl_peer_get (peer_id);
-    if (!P) {
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
+    if (!secret_chat) {
       tgl_set_query_error (EINVAL, "unknown secret chat");
       if (callback) {
         callback (callback_extra, 0, 0);
       }
       return;
     }
-    if (P->encr_chat.state != sc_ok) {
+    if (secret_chat->state != sc_ok) {
       tgl_set_query_error (EINVAL, "secret chat not in ok state");
       if (callback) {
         callback (callback_extra, 0, 0);
@@ -1461,18 +1461,18 @@ void tgl_do_mark_read (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>,
   }
 #ifdef ENABLE_SECRET_CHAT
   assert (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT);
-  tgl_peer_t *P = tgl_peer_get (id);
-  if (!P) {
+  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(id);
+  if (!secret_chat) {
     tgl_set_query_error (EINVAL, "unknown secret chat");
     if (callback) {
       callback (callback_extra, 0);
     }
     return;
   }
-  if (P->last) {
-    tgl_do_messages_mark_read_encr (id, P->encr_chat.access_hash, P->last->date, callback, callback_extra);
+  if (secret_chat->last) {
+    tgl_do_messages_mark_read_encr (id, secret_chat->access_hash, secret_chat->last->date, callback, callback_extra);
   } else {
-    tgl_do_messages_mark_read_encr (id, P->encr_chat.access_hash, time (0) - 10, callback, callback_extra);
+    tgl_do_messages_mark_read_encr (id, secret_chat->access_hash, time (0) - 10, callback, callback_extra);
   }
 #endif
 }
@@ -1581,7 +1581,8 @@ void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, int offline_mo
     void (*callback)(std::shared_ptr<void>, bool success, std::vector<tgl_message*> list), std::shared_ptr<void> callback_extra) {
   if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT || offline_mode) {
 #ifdef ENABLE_SECRET_CHAT
-    tgl_do_get_local_history (id, offset, limit, callback, callback_extra);
+    // FIXME
+    //tgl_do_get_local_history (id, offset, limit, callback, callback_extra);
     //tgl_do_mark_read (id, 0, 0);
 #endif
     return;
@@ -2979,7 +2980,7 @@ static int get_difference_on_answer (std::shared_ptr<query> q, void *D) {
     std::vector<tgl_message*> EL;
     for (i = 0; i < el_pos; i++) {
 #ifdef ENABLE_SECRET_CHAT
-      EL[i].push_back(tglf_fetch_alloc_encrypted_message (DS_UD->new_encrypted_messages->data[i]));
+      EL.push_back(tglf_fetch_alloc_encrypted_message (DS_UD->new_encrypted_messages->data[i]));
 #endif
     }
 
@@ -3279,7 +3280,7 @@ void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, void 
 /* {{{ Create secret chat */
 
 #ifdef ENABLE_SECRET_CHAT
-void tgl_do_create_secret_chat (int user_id, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_secret_chat *E), std::shared_ptr<void> callback_extra) {
+void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, void (*callback)(std::shared_ptr<void>, bool success, std::shared_ptr<tgl_secret_chat> E), std::shared_ptr<void> callback_extra) {
     tgl_do_create_encr_chat_request (user_id, callback, callback_extra);
 }
 #endif
@@ -3518,7 +3519,6 @@ static int send_typing_on_answer (std::shared_ptr<query> q, void *D) {
     return 0;
 }
 
-struct paramed_type bool_type = (struct paramed_type) {.type = &tl_type_bool, .params=0};
 static struct query_methods send_typing_methods = {
   .on_answer = send_typing_on_answer,
   .on_error = q_void_on_error,

@@ -228,3 +228,23 @@ void tgl_state::set_error(std::string error, int error_code)
     m_error = error;
     m_error_code = error_code;
 }
+
+std::shared_ptr<tgl_secret_chat> tgl_state::secret_chat_for_id(int peer_id) const
+{
+    auto secret_chat_it = m_secret_chats.find(peer_id);
+    if (secret_chat_it == m_secret_chats.end()) {
+        return nullptr;
+    }
+    return secret_chat_it->second;
+}
+
+std::shared_ptr<tgl_secret_chat> tgl_state::ensure_secret_chat(const tgl_peer_id_t& peer_id)
+{
+    auto& secret_chat = m_secret_chats[tgl_get_peer_id(peer_id)];
+    if (!secret_chat) {
+        secret_chat = std::make_shared<tgl_secret_chat>();
+        secret_chat->id = peer_id;
+    }
+    return secret_chat;
+}
+

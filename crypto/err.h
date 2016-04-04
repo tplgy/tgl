@@ -23,6 +23,14 @@
 
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void TGLC_err_print_errors_fp (FILE *fp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

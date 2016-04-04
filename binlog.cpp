@@ -20,7 +20,8 @@
 
 #include "tgl.h"
 
-#ifdef ENABLE_SECRET_CHAT
+#ifdef ENABLE_SECRET_CHAT 
+#if 0
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -782,7 +783,7 @@ void bl_do_chat (struct tgl_state *TLS, int id, const char *title, int title_len
 }
 /* }}} */
 
-void bl_do_encr_chat (struct tgl_state *TLS, int id, long long *access_hash, int *date, int *admin, int *user_id, void *key, void *g_key, void *first_key_id, int *state, int *ttl, int *layer, int *in_seq_no, int *last_in_seq_no, int *out_seq_no, long long *key_fingerprint, int flags, const char *print_name, int print_name_len) /* {{{ */ {
+void bl_do_encr_chat (struct tgl_state *TLS, int id, long long *access_hash, int *date, int *admin, const int *user_id, void *key, void *g_key, void *first_key_id, int *state, int *ttl, int *layer, int *in_seq_no, int *last_in_seq_no, int *out_seq_no, long long *key_fingerprint, int flags, const char *print_name, int print_name_len) /* {{{ */ {
   tgl_peer_t *_U = tgl_peer_get (TLS, TGL_MK_ENCR_CHAT (id));
 
   unsigned updates = 0;
@@ -1040,4 +1041,5 @@ void bl_do_peer_delete (struct tgl_state *TLS, tgl_peer_id_t id) /* {{{ */ {
   }
 }
 /* }}} */
+#endif
 #endif
