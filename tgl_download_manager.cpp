@@ -37,21 +37,27 @@ tgl_download_manager::tgl_download_manager(std::string download_directory)
         .on_answer = std::bind(&tgl_download_manager::send_file_part_on_answer, this, std::placeholders::_1, std::placeholders::_2),
         .on_error = std::bind(&tgl_download_manager::send_file_part_on_error, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
         .on_timeout = NULL,
-        .type = (struct paramed_type) {.type = &tl_type_bool, .params=0}
+        .type = (struct paramed_type) {.type = &tl_type_bool, .params=0},
+        .name = "send file part",
+        .timeout = 0
     };
 
     m_download_methods = {
         .on_answer = std::bind(&tgl_download_manager::download_on_answer, this, std::placeholders::_1, std::placeholders::_2),
         .on_error = std::bind(&tgl_download_manager::download_on_error, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
         .on_timeout = NULL,
-        .type = TYPE_TO_PARAM(upload_file)
+        .type = TYPE_TO_PARAM(upload_file),
+        .name = "download",
+        .timeout = 0
     };
 
     m_set_photo_methods = {
         .on_answer = std::bind(&tgl_download_manager::set_photo_on_answer, this, std::placeholders::_1, std::placeholders::_2),
         .on_error = std::bind(&tgl_download_manager::download_error, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
         .on_timeout = NULL,
-        .type = TYPE_TO_PARAM(photos_photo)
+        .type = TYPE_TO_PARAM(photos_photo),
+        .name = "set photo",
+        .timeout = 0
     };
 }
 
@@ -549,7 +555,7 @@ void tgl_download_manager::load_next_part (std::shared_ptr<download> D, void *ca
             if (D->offset >= D->size) {
                 cur_downloading_bytes += D->size;
                 cur_downloaded_bytes += D->offset;
-                TGL_NOTICE("Already downloaded\n");
+                TGL_NOTICE("Already downloaded");
                 end_load (D, callback, callback_extra);
                 return;
             }
@@ -585,7 +591,7 @@ void tgl_download_manager::download_photo_size (struct tgl_photo_size *P, void (
         std::shared_ptr<void> callback_extra)
 {
     if (!P->loc.dc()) {
-        TGL_WARNING("Bad video thumb\n");
+        TGL_WARNING("Bad video thumb");
         if (callback) {
             callback (callback_extra, 0, 0);
         }

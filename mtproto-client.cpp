@@ -200,13 +200,13 @@ static int rpc_send_message (const std::shared_ptr<tgl_connection>& c, void *dat
 static int check_unauthorized_header () {
     long long auth_key_id = fetch_long ();
     if (auth_key_id) {
-        TGL_ERROR("ERROR: auth_key_id should be NULL\n");
+        TGL_ERROR("ERROR: auth_key_id should be NULL");
         return -1;
     }
     fetch_long (); // msg_id
     int len = fetch_int ();
     if (len != 4 * (in_end - in_ptr)) {
-        TGL_ERROR("ERROR: length mismatch\n");
+        TGL_ERROR("ERROR: length mismatch");
         return -1;
     }
     return 0;
@@ -226,7 +226,7 @@ static int send_req_pq_packet (const std::shared_ptr<tgl_connection>& c) {
     clear_packet ();
     out_int (CODE_req_pq);
     out_ints ((int *)DC->nonce, 4);
-    TGL_DEBUG(__FUNCTION__ << " nonce=" << std::hex << DC->nonce);
+    TGL_DEBUG(__FUNCTION__ << " dc=" << DC->id);
     rpc_send_packet(c);
 
     DC->state = st_reqpq_sent;
@@ -246,7 +246,7 @@ static int send_req_pq_temp_packet (const std::shared_ptr<tgl_connection>& c) {
     clear_packet ();
     out_int (CODE_req_pq);
     out_ints ((int *)DC->nonce, 4);
-    TGL_DEBUG(__FUNCTION__ << " nonce=" << std::hex << DC->nonce);
+    TGL_DEBUG(__FUNCTION__ << " dc=" << DC->id);
     rpc_send_packet(c);
 
     DC->state = st_reqpq_sent_temp;
@@ -300,7 +300,7 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
   TGLC_bn_free (p);
   TGLC_bn_free (q);
   DC->state = temp_key ? st_reqdh_sent_temp : st_reqdh_sent;
-  TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " nonce=" << std::hex << DC->nonce << " server_nonce=" << DC->server_nonce);
+  TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " dc=" << DC->id);
   rpc_send_packet (c);
 }
 /* }}} */
@@ -361,7 +361,7 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   out_cstring ((char *) encrypt_buffer, l);
 
   DC->state = temp_key ? st_client_dh_sent_temp : st_client_dh_sent;;
-  TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " nonce=" << std::hex << DC->nonce << " server_nonce=" << DC->server_nonce);
+  TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " dc=" << DC->id);
   rpc_send_packet (c);
 }
 /* }}} */
@@ -380,7 +380,7 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
   int *in_save = in_ptr;
   struct paramed_type type = TYPE_TO_PARAM (res_p_q);
   if (skip_type_any (&type) < 0 || in_ptr != in_end) {
-    TGL_ERROR("can not parse req_p_q answer\n");
+    TGL_ERROR("can not parse req_p_q answer");
     return -1;
   }
   in_ptr = in_save;
@@ -395,7 +395,7 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
   static int tmp[4];
   fetch_ints (tmp, 4);
   if (memcmp (tmp, DC->nonce, 16)) {
-    TGL_ERROR("nonce mismatch\n");
+    TGL_ERROR("nonce mismatch");
     return -1;
   }
   fetch_ints (DC->server_nonce, 4);
@@ -420,7 +420,7 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
   }
   assert (in_ptr == in_end);
   if (DC->rsa_key_idx == -1) {
-    TGL_ERROR("fatal: don't have any matching keys\n");
+    TGL_ERROR("fatal: don't have any matching keys");
     return -1;
   }
 
@@ -494,7 +494,7 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   in_end = decrypt_buffer + (l >> 2);
   struct paramed_type type2 = TYPE_TO_PARAM (server_d_h_inner_data);
   if (skip_type_any (&type2) < 0) {
-    TGL_ERROR("can not parse server_DH_inner_data answer\n");
+    TGL_ERROR("can not parse server_DH_inner_data answer");
     return -1;
   }
   in_ptr = decrypt_buffer + 5;
@@ -585,7 +585,7 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
   int *in_save = in_ptr;
   struct paramed_type type = TYPE_TO_PARAM (set_client_d_h_params_answer);
   if (skip_type_any (&type) < 0 || in_ptr != in_end) {
-    TGL_ERROR("can not parse server_DH_params answer\n");
+    TGL_ERROR("can not parse server_DH_params answer");
     return -1;
   }
   in_ptr = in_save;
@@ -596,16 +596,16 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
   int tmp[4];
   fetch_ints (tmp, 4);
   if (memcmp (DC->nonce, tmp, 16)) {
-    TGL_ERROR("nonce mismatch\n");
+    TGL_ERROR("nonce mismatch");
     return -1;
   }
   fetch_ints (tmp, 4);
   if (memcmp (DC->server_nonce, tmp, 16)) {
-    TGL_ERROR("nonce mismatch\n");
+    TGL_ERROR("nonce mismatch");
     return -1;
   }
   if (op != CODE_dh_gen_ok) {
-    TGL_ERROR("DH failed. Retry\n");
+    TGL_ERROR("DH failed. Retry");
     return -1;
   }
 
@@ -622,7 +622,7 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
   memcpy (th + 33, sha1_buffer, 8);
   TGLC_sha1 (th, 41, sha1_buffer);
   if (memcmp (tmp, sha1_buffer + 4, 16)) {
-    TGL_ERROR("hash mismatch\n");
+    TGL_ERROR("hash mismatch");
     return -1;
   }
 
@@ -729,7 +729,7 @@ static void init_enc_msg(std::shared_ptr<tgl_session> S, int useful) {
 
   assert (DC->state == st_authorized);
   assert (DC->temp_auth_key_id);
-  TGL_DEBUG("temp_auth_key_id = " << std::hex << DC->temp_auth_key_id << ", auth_key_id = " << DC->auth_key_id);
+  TGL_DEBUG("DC " << DC->id << ": temp_auth_key_id = " << std::hex << DC->temp_auth_key_id << ", auth_key_id = " << DC->auth_key_id);
   enc_msg.auth_key_id = DC->temp_auth_key_id;
   enc_msg.server_salt = DC->server_salt;
   if (!S->session_id) {
@@ -775,7 +775,7 @@ long long tglmp_encrypt_send_message (const std::shared_ptr<tgl_connection>& c, 
     }
 
     if (!(DC->flags & TGLDCF_CONFIGURED) && !(flags & QUERY_FORCE_SEND)) {
-        TGL_NOTICE("generate next msg ID...request not sent\n");
+        TGL_NOTICE("generate next msg ID...request not sent");
         return generate_next_msg_id(DC, S);
     }
 
@@ -1142,7 +1142,7 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
   const int UNENCSZ = offsetof (struct encrypted_message, server_salt);
   TGL_DEBUG("process_rpc_message(), len=" << len);
   if (len < MINSZ || (len & 15) != (UNENCSZ & 15)) {
-    TGL_WARNING("Incorrect packet from server. Closing connection\n");
+    TGL_WARNING("Incorrect packet from server. Closing connection");
     fail_connection (c);
     return -1;
   }
@@ -1171,7 +1171,7 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
   assert (l == len - UNENCSZ);
 
   if (!(!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12)) {
-    TGL_WARNING("Incorrect packet from server. Closing connection\n");
+    TGL_WARNING("Incorrect packet from server. Closing connection");
     fail_connection(c);
     return -1;
   }
@@ -1179,14 +1179,14 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
 
   std::shared_ptr<tgl_session> S = c->get_session().lock();
   if (!S || S->session_id != enc->session_id) {
-      TGL_WARNING("Message to bad session. Drop.\n");
+      TGL_WARNING("Message to bad session. Drop.");
       return 0;
   }
 
   static unsigned char sha1_buffer[20];
   TGLC_sha1 ((unsigned char *)&enc->server_salt, enc->msg_len + (MINSZ - UNENCSZ), sha1_buffer);
   if (memcmp (&enc->msg_key, sha1_buffer + 4, 16)) {
-    TGL_WARNING("Incorrect packet from server. Closing connection\n");
+    TGL_WARNING("Incorrect packet from server. Closing connection");
     fail_connection(c);
     return -1;
   }
@@ -1284,7 +1284,7 @@ static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int le
         return process_auth_complete(c, Response/* + 8*/, Response_len/* - 12*/, 1);
     case st_authorized:
         if (op < 0 && op >= -999) {
-            TGL_WARNING("Server error " << op << "\n");
+            TGL_WARNING("Server error " << op << " from DC " << DC->id);
             return -1;
         } else {
             return process_rpc_message(c, (struct encrypted_message *)(Response/* + 8*/), Response_len/* - 12*/);
@@ -1369,7 +1369,7 @@ int tglmp_on_start () {
   }
 
   if (!ok) {
-    TGL_ERROR("No public keys found\n");
+    TGL_ERROR("No public keys found");
     tgl_state::instance()->set_error(tstrdup ("No public keys found"), ENOTCONN);
     return -1;
   }

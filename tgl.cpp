@@ -129,7 +129,10 @@ void tgl_state::set_dc_signed(int num)
 
 void tgl_state::set_working_dc(int num)
 {
-    TGL_DEBUG2("set working " << num);
+    if (DC_working && DC_working->id == num) {
+        return;
+    }
+    TGL_DEBUG2("change working DC to " << num);
     assert (num > 0 && num <= MAX_DC_ID);
     DC_working = DC_list[num];
     m_callback->change_active_dc(num);

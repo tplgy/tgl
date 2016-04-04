@@ -124,7 +124,7 @@ static int do_skip_seq (int seq) {
         }
         if (seq > tgl_state::instance()->seq() + 1) {
             TGL_NOTICE("Hole in seq (seq = " << seq <<", cur_seq = " << tgl_state::instance()->seq() << ")");
-            //vlogprintf (E_NOTICE, "lock_diff = %s\n", (TLS->locks & TGL_LOCK_DIFF) ? "true" : "false");
+            //vlogprintf (E_NOTICE, "lock_diff = %s", (TLS->locks & TGL_LOCK_DIFF) ? "true" : "false");
             tgl_do_get_difference (0, 0, 0);
             return -1;
         }
