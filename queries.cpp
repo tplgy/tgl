@@ -82,6 +82,8 @@ extern "C" {
 
 #define memcmp8(a,b) memcmp ((a), (b), 8)
 
+struct paramed_type bool_type = TYPE_TO_PARAM(bool);
+
 static int mystreq1 (const char *a, const char *b, int l) {
     if ((int)strlen (a) != l) { return 1; }
     return memcmp (a, b, l);

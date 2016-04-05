@@ -318,7 +318,6 @@ static int mark_read_encr_on_error (std::shared_ptr<query> q, int error_code, co
   return 0;
 }
 
-struct paramed_type bool_type = TYPE_TO_PARAM(bool);
 static struct query_methods mark_read_encr_methods = {
   .on_answer = mark_read_encr_on_receive,
   .on_error = mark_read_encr_on_error,
