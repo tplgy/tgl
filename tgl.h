@@ -92,6 +92,7 @@ enum tgl_user_status_type {
 
 #define TGL_LOCK_DIFF 1
 #define TGL_LOCK_PASSWORD 2
+#define TGL_LOCK_PHONE 4
 
 class tgl_download_manager;
 class tgl_connection_factory;

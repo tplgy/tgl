@@ -4591,6 +4591,7 @@ void tgl_register_cb (const void *rinfo, std::shared_ptr<void> _T) {
 
 void tgl_sign_in_phone (const void *phone, std::shared_ptr<void> arg);
 void tgl_sign_in_phone_cb (std::shared_ptr<void> extra, bool success, int registered, const char *mhash) {
+    tgl_state::instance()->locks ^= TGL_LOCK_PHONE;
     std::shared_ptr<sign_up_extra> E = std::static_pointer_cast<sign_up_extra>(extra);
     if (!success) {
         TGL_ERROR("Incorrect phone number");
@@ -4615,8 +4616,10 @@ void tgl_sign_in_phone_cb (std::shared_ptr<void> extra, bool success, int regist
 void tgl_sign_in_phone (const void *phone, std::shared_ptr<void> arg) {
     TGL_UNUSED(arg);
     std::shared_ptr<sign_up_extra> E = std::make_shared<sign_up_extra>();
-    E->phone_len = strlen ((char*)phone);
+    E->phone_len = strlen((const char *)phone);
     E->phone = (char*)tmemdup (phone, E->phone_len);
+
+    tgl_state::instance()->locks |= TGL_LOCK_PHONE;
 
     tgl_do_send_code (E->phone, E->phone_len, tgl_sign_in_phone_cb, E);
 }
@@ -4641,7 +4644,9 @@ void tgl_bot_hash_cb (const void *code, std::shared_ptr<void> arg) {
 
 void tgl_sign_in () {
   if (!tgl_signed_dc(tgl_state::instance()->DC_working)) {
-    tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone, NULL);
+    if (!(tgl_state::instance()->locks & TGL_LOCK_PHONE)) {
+      tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone, NULL);
+    }
   } else {
     tgl_signed_in();
   }
