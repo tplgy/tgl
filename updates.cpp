@@ -20,14 +20,12 @@
 #include "tgl.h"
 #include "updates.h"
 #include "tgl-binlog.h"
-extern "C" {
 #include "auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "auto/auto-store-ds.h"
 #include "mtproto-common.h"
-}
 #include "tgl-log.h"
 #include "tgl-structures.h"
 #include "tgl-methods-in.h"

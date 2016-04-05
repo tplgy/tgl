@@ -53,7 +53,6 @@
 #include "tgl-net.h"
 #include "mtproto-client.h"
 #include "updates.h"
-extern "C" {
 #include "auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-skip.h"
@@ -63,7 +62,6 @@ extern "C" {
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "tools.h"
-}
 #include "tgl-methods-in.h"
 #include "types/tgl_rsa_key.h"
 

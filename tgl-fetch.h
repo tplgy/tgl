@@ -20,9 +20,7 @@
 #ifndef __TGL_FETCH_H__
 #define __TGL_FETCH_H__
 #include "tgl.h"
-extern "C" {
 #include "auto/auto-types.h"
-}
 
 struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U);
 struct tgl_user *tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_U);

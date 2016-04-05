@@ -25,11 +25,9 @@
 
 #include "tgl.h"
 
-extern "C" {
 #include "crypto/rsa_pem.h"
 #include "crypto/sha.h"
 #include "tools.h"
-}
 #include "mtproto-client.h"
 #include "tgl_download_manager.h"
 #include "tgl-structures.h"

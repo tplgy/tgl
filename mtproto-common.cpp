@@ -33,13 +33,11 @@
 #include <netdb.h>
 #endif
 
-extern "C" {
 #include "crypto/aes.h"
 #include "crypto/rand.h"
 #include "crypto/sha.h"
 #include "mtproto-common.h"
 #include "tools.h"
-}
 
 #include "auto.h"
 #include "tgl.h"
@@ -212,24 +210,6 @@ long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key) {
   assert (l2 > 0 && l1 + l2 <= 4096);
   TGLC_sha1 ((unsigned char *)tempbuff, l1 + l2, sha);
   return *(long long *)(sha + 12);
-}
-
-void tgl_out_cstring (const char *str, long len) {
-  assert (len >= 0 && len < (1 << 24));
-  assert ((char *) packet_ptr + len + 8 < (char *) (packet_buffer + PACKET_BUFFER_SIZE));
-  char *dest = (char *) packet_ptr;
-  if (len < 254) {
-    *dest++ = len;
-  } else {
-    *packet_ptr = (len << 8) + 0xfe;
-    dest += 4;
-  }
-  memcpy (dest, str, len);
-  dest += len;
-  while ((long) dest & 3) {
-    *dest++ = 0;
-  }
-  packet_ptr = (int *) dest;
 }
 
 int *tgl_in_ptr, *tgl_in_end;

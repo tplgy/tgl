@@ -39,8 +39,7 @@
 #define tstrndup tgl_strndup
 #define tsnprintf tgl_snprintf
 
-
-double tglt_get_double_time (void);
+double tglt_get_double_time ();
 
 int tgl_inflate (void *input, int ilen, void *output, int olen);
 
@@ -69,6 +68,7 @@ int tgl_asprintf (char **res, const char *format, ...) __attribute__ ((format (_
 
 void tglt_secure_random (unsigned char *s, int l);
 
+void tgl_my_clock_gettime (int clock_id, struct timespec *T);
 
 static inline void hexdump (void *ptr, void *end_ptr) {
   int total = 0;

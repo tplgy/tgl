@@ -21,9 +21,7 @@
 #ifndef __TGL_H__
 #define __TGL_H__
 
-extern "C" {
 #include "crypto/bn.h"
-}
 #include "tgl-layout.h"
 #include "tgl-log.h"
 #include <map>

@@ -42,7 +42,6 @@
 
 #include "tgl-binlog.h"
 #include "updates.h"
-extern "C" {
 #include "auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-fetch-ds.h"
@@ -57,7 +56,6 @@ extern "C" {
 #include "crypto/md5.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
-}
 
 #include "tgl.h"
 #include "tg-mime-types.h"

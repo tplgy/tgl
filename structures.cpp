@@ -31,7 +31,6 @@
 #include "types/tgl_update_callback.h"
 
 #include "tgl.h"
-extern "C" {
 #include "auto.h"
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
@@ -40,9 +39,7 @@ extern "C" {
 #include "crypto/aes.h"
 #include "crypto/bn.h"
 #include "crypto/sha.h"
-
 #include "mtproto-common.h"
-}
 
 //static void increase_peer_size ();
 

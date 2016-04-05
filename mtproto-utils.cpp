@@ -2,11 +2,9 @@
 #include "tl-parser/portable_endian.h"
 #include <string.h>
 #include "tgl.h"
-extern "C" {
 #include "crypto/bn.h"
 #include "mtproto-utils.h"
 #include "tools.h"
-}
 
 static unsigned long long gcd (unsigned long long a, unsigned long long b) {
   return b ? gcd (b, a % b) : a;

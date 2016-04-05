@@ -2289,6 +2289,10 @@ void gen_skip_header (void) {
   printf ("#include \"auto.h\"\n");
   printf ("#include <assert.h>\n");
 
+  printf ("#ifdef __cplusplus\n");
+  printf ("extern \"C\" {\n");
+  printf ("#endif\n");
+
   int i, j;
   for (i = 0; i < tn; i++) {
     for (j = 0; j < tps[i]->constructors_num; j ++) {
@@ -2300,6 +2304,10 @@ void gen_skip_header (void) {
     printf ("int skip_type_bare_%s (struct paramed_type *T);\n", tps[i]->print_id);
   }
   printf ("int skip_type_any (struct paramed_type *T);\n");
+
+  printf ("#ifdef __cplusplus\n");
+  printf ("}\n");
+  printf ("#endif\n");
 }
 
 void gen_skip_source (void) {
@@ -2334,6 +2342,10 @@ void gen_fetch_header (void) {
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
+  printf ("#ifdef __cplusplus\n");
+  printf ("extern \"C\" {\n");
+  printf ("#endif\n");
+
   printf ("struct tgl_state;\n");
   printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
@@ -2348,6 +2360,10 @@ void gen_fetch_header (void) {
     printf ("int fetch_type_bare_%s (struct paramed_type *T);\n", tps[i]->print_id);
   }
   printf ("int fetch_type_any (struct paramed_type *T);\n");
+
+  printf ("#ifdef __cplusplus\n");
+  printf ("}\n");
+  printf ("#endif\n");
 }
 
 void gen_fetch_source (void) {
@@ -2381,6 +2397,9 @@ void gen_store_header (void) {
   printf ("#include \"auto.h\"\n");
   printf ("#include <assert.h>\n");
 
+  printf ("#ifdef __cplusplus\n");
+  printf ("extern \"C\" {\n");
+  printf ("#endif\n");
 
   printf ("struct paramed_type *tglf_extf_store (const char *data, int data_len);\n");
   printf ("int tglf_store_type (const char *work, int work_len, struct paramed_type *P);\n");
@@ -2400,6 +2419,10 @@ void gen_store_header (void) {
   }
   printf ("int store_type_any (struct paramed_type *T);\n");
   printf ("struct paramed_type *store_function_any (void);\n");
+
+  printf ("#ifdef __cplusplus\n");
+  printf ("}\n");
+  printf ("#endif\n");
 }
 
 void gen_store_source (void ) {
@@ -2458,6 +2481,10 @@ void gen_autocomplete_header (void) {
   printf ("#include \"auto.h\"\n");
   printf ("#include <assert.h>\n");
 
+  printf ("#ifdef __cplusplus\n");
+  printf ("extern \"C\" {\n");
+  printf ("#endif\n");
+
   printf ("int tglf_extf_autocomplete (const char *text, int text_len, int index, char **R, char *data, int data_len);\n");
 
   int i, j;
@@ -2473,6 +2500,10 @@ void gen_autocomplete_header (void) {
   }
   printf ("int autocomplete_type_any (struct paramed_type *T);\n");
   printf ("struct paramed_type *autocomplete_function_any (void);\n");
+
+  printf ("#ifdef __cplusplus\n");
+  printf ("}\n");
+  printf ("#endif\n");
 }
 
 void gen_autocomplete_source (void) {
@@ -2533,6 +2564,11 @@ void gen_types_header (void) {
   printf ("#ifndef __AUTO_TYPES_H__\n");
   printf ("#define __AUTO_TYPES_H__\n");
   printf ("#include \"auto.h\"\n");
+
+  printf ("#ifdef __cplusplus\n");
+  printf ("extern \"C\" {\n");
+  printf ("#endif\n");
+
   int i;
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     printf ("extern struct tl_type_descr tl_type_%s;\n", tps[i]->print_id);
@@ -2590,6 +2626,10 @@ void gen_types_header (void) {
     }
     printf ("};\n");
   }
+  printf ("#ifdef __cplusplus\n");
+  printf ("}\n");
+  printf ("#endif\n");
+
   printf ("#endif\n");
 }
 
@@ -2644,6 +2684,10 @@ void gen_fetch_ds_header (void) {
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
+  printf ("#ifdef __cplusplus\n");
+  printf ("extern \"C\" {\n");
+  printf ("#endif\n");
+
   printf ("struct tgl_state;\n");
   //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
@@ -2661,6 +2705,10 @@ void gen_fetch_ds_header (void) {
     printf ("fetch_ds_type_bare_%s (struct paramed_type *T);\n", tps[i]->print_id);
   }
   printf ("void *fetch_ds_type_any (struct paramed_type *T);\n");
+
+  printf ("#ifdef __cplusplus\n");
+  printf ("}\n");
+  printf ("#endif\n");
 }
 
 void gen_free_ds_source (void) {
@@ -2696,6 +2744,10 @@ void gen_free_ds_header (void) {
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
+  printf ("#ifdef __cplusplus\n");
+  printf ("extern \"C\" {\n");
+  printf ("#endif\n");
+
   printf ("struct tgl_state;\n");
   //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
@@ -2713,6 +2765,10 @@ void gen_free_ds_header (void) {
     printf ("D, struct paramed_type *T);\n");
   }
   printf ("void free_ds_type_any (void *D, struct paramed_type *T);\n");
+
+  printf ("#ifdef __cplusplus\n");
+  printf ("}\n");
+  printf ("#endif\n");
 }
 
 void gen_store_ds_source (void) {
@@ -2748,6 +2804,10 @@ void gen_store_ds_header (void) {
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
+  printf ("#ifdef __cplusplus\n");
+  printf ("extern \"C\" {\n");
+  printf ("#endif\n");
+
   printf ("struct tgl_state;\n");
   //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
@@ -2768,6 +2828,10 @@ void gen_store_ds_header (void) {
     printf ("D, struct paramed_type *T);\n");
   }
   printf ("void store_ds_type_any (void *D, struct paramed_type *T);\n");
+
+  printf ("#ifdef __cplusplus\n");
+  printf ("}\n");
+  printf ("#endif\n");
 }
 
 void gen_print_ds_header (void) {
@@ -2778,6 +2842,10 @@ void gen_print_ds_header (void) {
   printf ("#include \"auto-types.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
+
+  printf ("#ifdef __cplusplus\n");
+  printf ("extern \"C\" {\n");
+  printf ("#endif\n");
 
   printf ("struct tgl_state;\n");
   printf ("char *tglf_extf_print_ds (void *DS, struct paramed_type *T);\n");
@@ -2799,6 +2867,11 @@ void gen_print_ds_header (void) {
     printf ("DS, struct paramed_type *T);\n");
   }
   printf ("int print_ds_type_any (void *DS, struct paramed_type *T);\n");
+
+  printf ("#ifdef __cplusplus\n");
+  printf ("}\n");
+  printf ("#endif\n");
+
   printf ("#endif\n");
 }
 

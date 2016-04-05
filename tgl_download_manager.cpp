@@ -2,12 +2,10 @@
 #include "queries.h"
 #include "tg-mime-types.h"
 #include "tgl-layout.h"
-extern "C" {
 #include "crypto/aes.h"
 #include "crypto/md5.h"
 #include "mtproto-common.h"
 #include "tools.h"
-}
 
 #include <fcntl.h>
 #include <boost/filesystem.hpp>

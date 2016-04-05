@@ -38,7 +38,6 @@
 #include "tgl-binlog.h"
 #include "mtproto-client.h"
 
-//extern "C" {
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "auto.h"
@@ -47,7 +46,6 @@
 #include "auto/auto-skip.h"
 #include "auto/auto-free-ds.h"
 #include "constants.h"
-//}
 
 #include "tgl-structures.h"
 #include "tgl-methods-in.h"

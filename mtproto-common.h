@@ -159,7 +159,23 @@ static inline void clear_packet (void) {
   packet_ptr = packet_buffer;
 }
 
-void tgl_out_cstring (const char *str, long len);
+static inline void tgl_out_cstring (const char *str, long len) {
+  assert (len >= 0 && len < (1 << 24));
+  assert ((char *) packet_ptr + len + 8 < (char *) (packet_buffer + PACKET_BUFFER_SIZE));
+  char *dest = (char *) packet_ptr;
+  if (len < 254) {
+    *dest++ = len;
+  } else {
+    *packet_ptr = (len << 8) + 0xfe;
+    dest += 4;
+  }
+  memcpy (dest, str, len);
+  dest += len;
+  while ((long) dest & 3) {
+    *dest++ = 0;
+  }
+  packet_ptr = (int *) dest;
+}
 
 #define out_cstring tgl_out_cstring
 
@@ -354,8 +370,6 @@ void tgl_init_aes_unauth (const unsigned char server_nonce[16], const unsigned c
 void tgl_init_aes_auth (unsigned char auth_key[192], unsigned char msg_key[16], int encrypt);
 int tgl_pad_aes_encrypt (unsigned char *from, int from_len, unsigned char *to, int size);
 int tgl_pad_aes_decrypt (unsigned char *from, int from_len, unsigned char *to, int size);
-
-void tgl_my_clock_gettime (int clock_id, struct timespec *T);
 
 void *tgl_alloc0 (size_t size);
 

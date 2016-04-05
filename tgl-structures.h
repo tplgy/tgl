@@ -24,6 +24,7 @@
 #include "tgl-layout.h"
 #include "tgl-fetch.h"
 #include "tgl.h"
+#include "tools.h"
 
 void tgls_free_bot_info (struct tgl_bot_info *B);
 

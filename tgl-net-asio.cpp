@@ -26,9 +26,7 @@
 #include "tgl-log.h"
 #include "mtproto-client.h"
 
-extern "C" {
 #include "tools.h"
-}
 
 #define PING_TIMEOUT 10
 

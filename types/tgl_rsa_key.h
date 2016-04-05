@@ -5,10 +5,7 @@
 #include <memory>
 #include <string>
 
-extern "C" {
 #include "../crypto/rsa_pem.h"
-}
-
 #include "../mtproto-common.h"
 
 class tgl_rsa_key
