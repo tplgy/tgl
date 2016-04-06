@@ -228,6 +228,18 @@ bool send_pending_query(std::shared_ptr<query> q) {
   return true;
 }
 
+void send_pending_queries(std::shared_ptr<tgl_dc> DC) {
+  while (!DC->pending_queries.empty()) {
+    std::shared_ptr<query> q = DC->pending_queries.front();
+    DC->pending_queries.pop_front();
+    if (!send_pending_query(q)) {
+      TGL_ERROR("sending pending query failed for DC " << DC->id);
+      break;
+    }
+  }
+}
+
+
 std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, void *data, struct query_methods *methods, std::shared_ptr<void> extra, void *callback, std::shared_ptr<void> callback_extra, int flags) {
   assert (DC);
   bool pending = false;
@@ -2714,7 +2726,7 @@ static int import_auth_on_answer (std::shared_ptr<query> q, void *D) {
 
   std::shared_ptr<tgl_dc> DC = std::static_pointer_cast<tgl_dc>(q->extra);
   assert(DC);
-  TGL_NOTICE("auth imported from DC " << tgl_state::instance()->DC_working << " to DC " << DC->id);
+  TGL_NOTICE("auth imported from DC " << tgl_state::instance()->DC_working->id << " to DC " << DC->id);
 
   //bl_do_dc_signed (((struct tgl_dc *)q->extra)->id);
   tgl_state::instance()->set_dc_signed(DC->id);
@@ -2760,8 +2772,8 @@ static struct query_methods export_auth_methods = {
 };
 
 // export auth from working DC and import to DC "num"
-void tgl_do_export_auth (int num, void (*callback) (std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
-    TGL_NOTICE("Transferring auth from DC " << tgl_state::instance()->DC_working << " to DC " << num);
+void tgl_do_transfer_auth (int num, void (*callback) (std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+    TGL_NOTICE("Transferring auth from DC " << tgl_state::instance()->DC_working->id << " to DC " << num);
     clear_packet ();
     out_int (CODE_auth_export_authorization);
     out_int (num);
@@ -4343,20 +4355,18 @@ void tgl_do_upgrade_group (tgl_peer_id_t id, void (*callback)(std::shared_ptr<vo
 }
 
 
+void tgl_transfer_auth_callback (std::shared_ptr<void> arg, bool success);
 static void set_dc_configured (std::shared_ptr<void> _D, bool success) {
-    std::shared_ptr<tgl_dc> D = std::static_pointer_cast<tgl_dc>(_D);
-    assert (success);
-    D->flags |= TGLDCF_CONFIGURED;
+  std::shared_ptr<tgl_dc> D = std::static_pointer_cast<tgl_dc>(_D);
+  assert (success);
+  D->flags |= TGLDCF_CONFIGURED;
 
-    //D->ev->start(tgl_state::instance()->temp_key_expire_time * 0.9);
-    while (!D->pending_queries.empty()) {
-        std::shared_ptr<query> q = D->pending_queries.front();
-        D->pending_queries.pop_front();
-        if (!send_pending_query(q)) {
-            TGL_ERROR("sending pending query failed for DC " << D->id);
-            break;
-        }
-    }
+  //D->ev->start(tgl_state::instance()->temp_key_expire_time * 0.9);
+  if (D == tgl_state::instance()->DC_working) {
+    send_pending_queries(D);
+  } else if (!tgl_signed_dc(D)) {
+    tgl_do_transfer_auth(D->id, tgl_transfer_auth_callback, D);
+  }
 }
 
 static int send_bind_temp_on_answer(std::shared_ptr<query> q, void *D) {
@@ -4461,21 +4471,21 @@ void tgl_started_cb(std::shared_ptr<void> arg, bool success) {
   }
 }
 
-void tgl_export_auth_callback (std::shared_ptr<void> arg, bool success) {
-  TGL_UNUSED(arg);
+void tgl_transfer_auth_callback (std::shared_ptr<void> arg, bool success) {
   std::shared_ptr<tgl_dc> DC = std::static_pointer_cast<tgl_dc>(arg);
   assert(DC);
   if (!success) {
-    TGL_ERROR("auth export problem to DC " << DC->id);
+    TGL_ERROR("auth transfer problem to DC " << DC->id);
     return;
   }
-  TGL_NOTICE("auth exported from DC " << tgl_state::instance()->DC_working << " for DC " << DC->id);
+  TGL_NOTICE("auth transferred from DC " << tgl_state::instance()->DC_working << " to DC " << DC->id << (DC->pending_queries.empty() ? "" : ", sending pending queries"));
+  send_pending_queries(DC);
 }
 
 void tgl_export_all_auth () {
   for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) {
     if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
-      tgl_do_export_auth (i, tgl_export_auth_callback, tgl_state::instance()->DC_list[i]);
+      tgl_do_transfer_auth (i, tgl_transfer_auth_callback, tgl_state::instance()->DC_list[i]);
     }
   }
 }
