@@ -40,7 +40,7 @@ void tgl_do_get_difference (int sync_from_start, void (*callback)(std::shared_pt
 
 void tgl_do_lookup_state ();
 
-void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D, void (*callback)(std::shared_ptr<void>, bool), std::shared_ptr<void> callback_extra);
+void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D);
 
 void tgl_do_request_exchange (struct tgl_secret_chat *E);
 

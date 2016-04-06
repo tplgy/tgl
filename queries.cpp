@@ -889,11 +889,12 @@ void tgl_do_help_get_config (void (*callback)(std::shared_ptr<void>, bool), std:
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0, (void*)callback, callback_extra);
 }
 
-void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D, void (*callback)(std::shared_ptr<void>, bool), std::shared_ptr<void> callback_extra) {
+static void set_dc_configured (std::shared_ptr<void> _D, bool success);
+void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D) {
     clear_packet ();
     tgl_do_insert_header();
     out_int (CODE_help_get_config);
-    tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0, (void*)callback, callback_extra, 2);
+    tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0, (void*)set_dc_configured, D, 2);
 }
 /* }}} */
 
@@ -4373,7 +4374,7 @@ static int send_bind_temp_on_answer(std::shared_ptr<query> q, void *D) {
     TGL_UNUSED(D);
     std::shared_ptr<tgl_dc> DC = std::static_pointer_cast<tgl_dc>(q->extra);
     DC->flags |= TGLDCF_BOUND;
-    tgl_do_help_get_config_dc (DC, set_dc_configured, DC);
+    tgl_do_help_get_config_dc (DC);
     TGL_DEBUG("Bind successful in dc " << DC->id);
     return 0;
 }

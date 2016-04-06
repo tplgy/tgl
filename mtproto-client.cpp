@@ -561,7 +561,6 @@ static void create_temp_auth_key (const std::shared_ptr<tgl_connection>& c) {
 
 int tglmp_encrypt_inner_temp (const std::shared_ptr<tgl_connection>& c, int *msg, int msg_ints, int useful, void *data, long long msg_id);
 static long long msg_id_override;
-static void mpc_on_get_config (std::shared_ptr<void> extra, bool success);
 static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c);
 
 /* {{{ RECV AUTH COMPLETE */
@@ -650,7 +649,7 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
       memcpy (DC->temp_auth_key, DC->auth_key, 256);
       DC->flags |= TGLDCF_BOUND;
       if (!(DC->flags & TGLDCF_CONFIGURED)) {
-        tgl_do_help_get_config_dc(DC, mpc_on_get_config, DC);
+        tgl_do_help_get_config_dc(DC);
       }
     }
   }
@@ -1294,12 +1293,6 @@ static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int le
     }
 }
 
-static void mpc_on_get_config(std::shared_ptr<void> extra, bool success) {
-    assert (success);
-    std::shared_ptr<tgl_dc> DC = std::static_pointer_cast<tgl_dc>(extra);
-    DC->flags |= TGLDCF_CONFIGURED;
-}
-
 static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
   std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
   if (!DC) {
@@ -1334,7 +1327,7 @@ static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
         bind_temp_auth_key (c);
       }
     } else if (!(DC->flags & TGLDCF_CONFIGURED)) {
-      tgl_do_help_get_config_dc (DC, mpc_on_get_config, DC);
+      tgl_do_help_get_config_dc (DC);
     }
     break;
   default:
