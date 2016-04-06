@@ -65,6 +65,8 @@ struct tgl_dc_option {
 };
 
 struct tgl_dc {
+    tgl_dc();
+
     int id;
     int flags = 0;
     int rsa_key_idx = 0;
@@ -98,6 +100,9 @@ struct tgl_dc {
 private:
     std::list<std::shared_ptr<struct query>> active_queries;
     std::list<std::shared_ptr<struct query>> pending_queries;
+
+    void cleanup_timer_expired();
+    std::shared_ptr<tgl_timer> session_cleanup_timer;
 };
 
 #pragma pack(pop)

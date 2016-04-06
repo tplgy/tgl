@@ -22,9 +22,12 @@
 
 #include "mtproto-client.h"
 #include "queries.h"
+#include "tgl-net.h"
 #include "tgl-timer.h"
 
-void tglq_query_remove (std::shared_ptr<query> q);
+static const float SESSION_CLEANUP_TIMEOUT = 5.0;
+
+void tglq_query_remove(std::shared_ptr<query> q);
 bool send_pending_query(std::shared_ptr<query> q) {
     assert(q->DC);
     if (!q->DC->auth_key_id || !q->DC->sessions[0]) {
@@ -52,6 +55,11 @@ bool send_pending_query(std::shared_ptr<query> q) {
     return true;
 }
 
+tgl_dc::tgl_dc()
+    : session_cleanup_timer(tgl_state::instance()->timer_factory()->create_timer(std::bind(&tgl_dc::cleanup_timer_expired, this)))
+{
+}
+
 void tgl_dc::send_pending_queries() {
     TGL_NOTICE("sending pending queries for DC " << id);
     while (!pending_queries.empty()) {
@@ -66,10 +74,15 @@ void tgl_dc::send_pending_queries() {
 
 void tgl_dc::add_query(std::shared_ptr<query> q) {
     active_queries.push_back(q);
+    session_cleanup_timer->cancel();
 }
 
 void tgl_dc::remove_query(std::shared_ptr<query> q) {
     active_queries.remove(q);
+
+    if (active_queries.empty() && pending_queries.empty() && tgl_state::instance()->DC_working.get() != this) {
+        session_cleanup_timer->start(SESSION_CLEANUP_TIMEOUT);
+    }
 }
 
 void tgl_dc::add_pending_query(std::shared_ptr<query> q) {
@@ -78,4 +91,20 @@ void tgl_dc::add_pending_query(std::shared_ptr<query> q) {
 
 void tgl_dc::remove_pending_query(std::shared_ptr<query> q) {
     pending_queries.remove(q);
+}
+
+void tgl_dc::cleanup_timer_expired() {
+    if (active_queries.empty() && pending_queries.empty()) {
+        TGL_DEBUG("cleanup timer expired for DC " << id << ", deleting sessions");
+        for (int i = 0; i < sessions.size(); ++i) {
+            std::shared_ptr<tgl_session> session = sessions[i];
+            if (session) {
+                session->c->close();
+                session->ev->cancel();
+                session->c = nullptr;
+                session->ev = nullptr;
+                sessions[i] = nullptr;
+            }
+        }
+    }
 }
