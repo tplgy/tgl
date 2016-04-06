@@ -16,6 +16,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
+    Copyright Topology LP 2016
 */
 //#include "net.h"
 #ifndef __QUERIES_H__
@@ -24,6 +25,8 @@
 #include "auto.h"
 #include "tgl-layout.h"
 #include "types/query_methods.h"
+
+static const float DEFAULT_QUERY_TIMEOUT = 6.0;
 
 #define QUERY_ACK_RECEIVED 1
 #define QUERY_FORCE_SEND 2

@@ -131,66 +131,9 @@
 #define TGL_PERMANENT_ID_SIZE 24
 #pragma pack(push,4)
 
-enum tgl_dc_state {
-  st_init,
-  st_reqpq_sent,
-  st_reqdh_sent,
-  st_client_dh_sent,
-  st_init_temp,
-  st_reqpq_sent_temp,
-  st_reqdh_sent_temp,
-  st_client_dh_sent_temp,
-  st_authorized,
-  st_error
-};
-
-#define MAX_DC_SESSIONS 3
-
 struct tgl_dc;
 class tgl_connection;
 class tgl_timer;
-
-struct tgl_session {
-  std::weak_ptr<tgl_dc> dc;
-  long long session_id = 0;
-  long long last_msg_id = 0;
-  int seq_no = 0;
-  int received_messages = 0;
-  std::shared_ptr<tgl_connection> c = nullptr;
-  std::vector<long> ack_tree;
-  std::shared_ptr<tgl_timer> ev = nullptr;
-};
-
-struct tgl_dc_option {
-    std::vector<std::pair<std::string, int>> option_list;
-};
-
-struct tgl_dc {
-    int id;
-    int flags = 0;
-    int rsa_key_idx = 0;
-    enum tgl_dc_state state = st_init;
-    std::array<std::shared_ptr<tgl_session> , MAX_DC_SESSIONS> sessions;
-    unsigned char auth_key[256];
-    unsigned char temp_auth_key[256];
-    unsigned char nonce[256];
-    unsigned char new_nonce[256];
-    unsigned char server_nonce[256];
-    long long auth_key_id = 0;
-    long long temp_auth_key_id = 0;
-    long long temp_auth_key_bind_query_id = 0;
-
-    long long server_salt = 0;
-    std::shared_ptr<tgl_timer> ev = nullptr;
-
-    int server_time_delta = 0;
-    double server_time_udelta = 0;
-
-    // ipv4, ipv6, ipv4_media, ipv6_media
-    std::array<tgl_dc_option, 4> options;
-
-    std::list<std::shared_ptr<struct query>> pending_queries;
-};
 
 enum tgl_message_entity_type {
 tgl_message_entity_unknown,

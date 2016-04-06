@@ -22,6 +22,7 @@
 #define __TGL_H__
 
 #include "crypto/bn.h"
+#include "tgl-dc.h"
 #include "tgl-layout.h"
 #include "tgl-log.h"
 #include <map>

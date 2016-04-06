@@ -16,6 +16,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
+    Copyright Topology LP 2016
 */
 
 #define _FILE_OFFSET_BITS 64
@@ -76,8 +77,6 @@
 #define O_BINARY 0
 #endif
 
-#define QUERY_TIMEOUT 6.0
-
 #define memcmp8(a,b) memcmp ((a), (b), 8)
 
 struct paramed_type bool_type = TYPE_TO_PARAM(bool);
@@ -113,7 +112,7 @@ static int alarm_query (std::shared_ptr<query> q) {
   assert (q);
   TGL_DEBUG("Alarm query " << q->msg_id << " (type '" << (q->methods->name ? q->methods->name : "") << "')");
 
-  q->ev->start(q->methods->timeout ? q->methods->timeout : QUERY_TIMEOUT);
+  q->ev->start(q->methods->timeout ? q->methods->timeout : DEFAULT_QUERY_TIMEOUT);
 
   if (q->session && q->session_id && q->DC && q->DC->sessions[0] == q->session && q->session->session_id == q->session_id) {
     clear_packet ();
@@ -141,7 +140,7 @@ static int alarm_query (std::shared_ptr<query> q) {
   } else {
     // we don't have a valid session with the DC, so defer query until we do
     q->ev->cancel();
-    q->DC->pending_queries.push_back(q);
+    q->DC->add_pending_query(q);
   }
   return 0;
 }
@@ -201,45 +200,6 @@ static void alarm_query_gateway(std::shared_ptr<query> q) {
     alarm_query(q);
 }
 
-bool send_pending_query(std::shared_ptr<query> q) {
-  assert(q->DC);
-  if (!q->DC->auth_key_id || !q->DC->sessions[0]) {
-    TGL_WARNING("not ready to send pending query " << q << ", re-queuing");
-    tglmp_dc_create_session(q->DC);
-    q->DC->pending_queries.push_back(q);
-    return false;
-  }
-
-  q->flags &= ~QUERY_ACK_RECEIVED;
-  tglq_query_remove(q);
-  q->session = q->DC->sessions[0];
-  q->msg_id = tglmp_encrypt_send_message (q->session->c, (int*)q->data, q->data_len, (q->flags & QUERY_FORCE_SEND) | 1);
-  tgl_state::instance()->queries_tree.push_back(q);
-  q->session_id = q->session->session_id;
-  auto dc = q->session->dc.lock();
-  if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !(q->flags & QUERY_FORCE_SEND)) {
-      q->session_id = 0;
-  }
-
-  TGL_DEBUG("Sending pending query \"" << (q->methods->name ? q->methods->name : "") << "\" (" << q->msg_id << ") of size " << 4 * q->data_len << " to DC " << q->DC->id);
-
-  q->ev->start(q->methods->timeout ? q->methods->timeout : QUERY_TIMEOUT);
-
-  return true;
-}
-
-void send_pending_queries(std::shared_ptr<tgl_dc> DC) {
-  while (!DC->pending_queries.empty()) {
-    std::shared_ptr<query> q = DC->pending_queries.front();
-    DC->pending_queries.pop_front();
-    if (!send_pending_query(q)) {
-      TGL_ERROR("sending pending query failed for DC " << DC->id);
-      break;
-    }
-  }
-}
-
-
 std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, void *data, struct query_methods *methods, std::shared_ptr<void> extra, void *callback, std::shared_ptr<void> callback_extra, int flags) {
   assert (DC);
   bool pending = false;
@@ -275,16 +235,17 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
 
   q->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&alarm_query_gateway, q));
   if (!pending) {
-    q->ev->start(q->methods->timeout ? q->methods->timeout : QUERY_TIMEOUT);
+    q->ev->start(q->methods->timeout ? q->methods->timeout : DEFAULT_QUERY_TIMEOUT);
   }
 
   q->extra = extra;
   q->callback = callback;
   q->callback_extra = callback_extra;
   tgl_state::instance()->active_queries ++;
+  DC->add_query(q);
 
   if (pending) {
-    DC->pending_queries.push_back(q);
+    DC->add_pending_query(q);
   }
   return q;
 }
@@ -322,6 +283,7 @@ void tglq_query_delete(long long id) {
     q->ev = nullptr;
     tglq_query_remove(q);
     tgl_state::instance()->active_queries --;
+    q->DC->remove_query(q);
 }
 
 static void resend_query_cb (std::shared_ptr<void> _q, bool success);
@@ -470,11 +432,13 @@ int tglq_query_error (long long id) {
 
     if (res == -11) {
       tgl_state::instance()->active_queries --;
+      q->DC->remove_query(q);
       return -1;
 
     }
   }
   tgl_state::instance()->active_queries --;
+  q->DC->remove_query(q);
   return 0;
 }
 
@@ -536,6 +500,7 @@ int tglq_query_result (long long id) {
     in_end = eend;
   }
   tgl_state::instance()->active_queries --;
+  q->DC->remove_query(q);
   return 0;
 }
 
@@ -4364,7 +4329,7 @@ static void set_dc_configured (std::shared_ptr<void> _D, bool success) {
 
   //D->ev->start(tgl_state::instance()->temp_key_expire_time * 0.9);
   if (D == tgl_state::instance()->DC_working) {
-    send_pending_queries(D);
+    D->send_pending_queries();
   } else if (!tgl_signed_dc(D)) {
     tgl_do_transfer_auth(D->id, tgl_transfer_auth_callback, D);
   }
@@ -4479,8 +4444,8 @@ void tgl_transfer_auth_callback (std::shared_ptr<void> arg, bool success) {
     TGL_ERROR("auth transfer problem to DC " << DC->id);
     return;
   }
-  TGL_NOTICE("auth transferred from DC " << tgl_state::instance()->DC_working << " to DC " << DC->id << (DC->pending_queries.empty() ? "" : ", sending pending queries"));
-  send_pending_queries(DC);
+  TGL_NOTICE("auth transferred from DC " << tgl_state::instance()->DC_working << " to DC " << DC->id);
+  DC->send_pending_queries();
 }
 
 void tgl_export_all_auth () {
