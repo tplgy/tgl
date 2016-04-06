@@ -69,7 +69,6 @@ tgl_state *tgl_state::instance()
 
 void tgl_state::set_auth_key(int num, const char *buf)
 {
-    TGL_DEBUG("set auth " << num);
     assert (num > 0 && num <= MAX_DC_ID);
     assert (DC_list[num]);
 
@@ -83,6 +82,7 @@ void tgl_state::set_auth_key(int num, const char *buf)
 
     DC_list[num]->flags |= TGLDCF_AUTHORIZED;
 
+    TGL_DEBUG("set auth key for DC " << num << " to " << std::hex << DC_list[num]->auth_key_id);
     m_callback->dc_update(DC_list[num]);
 }
 
@@ -125,6 +125,7 @@ void tgl_state::set_dc_signed(int num)
     assert (num > 0 && num <= MAX_DC_ID);
     assert (DC_list[num]);
     DC_list[num]->flags |= TGLDCF_LOGGED_IN;
+    m_callback->dc_update(DC_list[num]);
 }
 
 void tgl_state::set_working_dc(int num)
