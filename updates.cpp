@@ -199,6 +199,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     };
   case CODE_update_message_i_d:
     {
+#if 0 // FIXME
       tgl_message_id_t msg_id;
       msg_id.peer_type = TGL_PEER_RANDOM_ID;
       msg_id.id = DS_LVAL (DS_U->random_id);
@@ -210,6 +211,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
         //bl_do_msg_update (&msg_id);
         //TODO update the id of the message
       //}
+#endif
     }
     break;
 /*  case CODE_update_read_messages:
@@ -436,7 +438,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     break;
   case CODE_update_user_phone:
     {
-      tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+      //tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
       DS_CSTR (phone, DS_U->phone);
       tgl_state::instance()->callback()->user_update(DS_LVAL(DS_U->user_id), phone, tgl_update_phone);
@@ -545,6 +547,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   if (DS_U->channel_pts) {
     assert (DS_U->channel_pts_count);
     
+#if 0 // FIXME
     int channel_id;
     if (DS_U->channel_id) {
       channel_id = DS_LVAL (DS_U->channel_id);
@@ -555,7 +558,8 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       channel_id = DS_LVAL (DS_U->message->to_id->channel_id);
     }    
 
-    //bl_do_set_channel_pts (channel_id, DS_LVAL (DS_U->channel_pts));
+    bl_do_set_channel_pts (channel_id, DS_LVAL (DS_U->channel_pts));
+#endif
   }
 }
 
@@ -709,11 +713,13 @@ void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *
 
   if (!M) { return; }
   
-  //long long random_id = M->permanent_id.id;
+#if 0 // FIXME
+  long long random_id = M->permanent_id.id;
   tgl_message_id_t msg_id = M->permanent_id;
   msg_id.id = DS_LVAL (DS_U->id);
-  //bl_do_set_msg_id (&M->permanent_id, &msg_id);
-  //tgls_insert_random2local (random_id, &msg_id);
+  bl_do_set_msg_id (&M->permanent_id, &msg_id);
+  tgls_insert_random2local (random_id, &msg_id);
+#endif
 
   int f = DS_LVAL (DS_U->flags);
 

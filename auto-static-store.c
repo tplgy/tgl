@@ -252,6 +252,8 @@ void tgl_paramed_type_free (struct paramed_type *P);
 #ifndef IN_AUTOCOMPLETE_H
 struct paramed_type *tglf_extf_store (const char *data, int data_len) {
 #ifdef DISABLE_EXTF
+  TGL_UNUSED(data);
+  TGL_UNUSED(data_len);
   assert (0);
 #else
   buffer_pos = (char *)data;

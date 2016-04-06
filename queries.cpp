@@ -1253,11 +1253,13 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
 
     tgl_do_send_msg (M, callback, callback_extra);
   } else {
+#if 0 // FIXME
     struct tl_ds_decrypted_message_media TDSM;
     TDSM.magic = CODE_decrypted_message_media_empty;
 
-    //tgl_peer_id_t from_id = tgl_state::instance()->our_id();
-    //bl_do_edit_message_encr (&id, &from_id, &peer_id, &date, text, text_len, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
+    tgl_peer_id_t from_id = tgl_state::instance()->our_id();
+    bl_do_edit_message_encr (&id, &from_id, &peer_id, &date, text, text_len, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
+#endif
   }
 }
 

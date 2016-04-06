@@ -387,8 +387,8 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
 
     str_to_256 (g_key, DS_STR (DS_EC->g_a));
  
-    int user_id =  DS_LVAL (DS_EC->participant_id) + DS_LVAL (DS_EC->admin_id) - tgl_get_peer_id (tgl_state::instance()->our_id());
 #if 0 // FIXME
+    int user_id =  DS_LVAL (DS_EC->participant_id) + DS_LVAL (DS_EC->admin_id) - tgl_get_peer_id (tgl_state::instance()->our_id());
     int r = sc_request;
     bl_do_encr_chat(tgl_state::instance(),
       tgl_get_peer_id (U->id), 
@@ -408,8 +408,8 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
 #endif
   } else {
     if (DS_EC->magic == CODE_encrypted_chat_waiting) {
-      int r = sc_waiting;
 #if 0 // FIXME
+      int r = sc_waiting;
       bl_do_encr_chat(tgl_state::instance(),
         tgl_get_peer_id (U->id), 
         DS_EC->access_hash,
@@ -432,8 +432,8 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
     str_to_256 (g_key, DS_STR (DS_EC->g_a_or_b));
     
     //write_secret_chat_file ();
-    int r = sc_ok;
 #if 0 // FIXME
+    int r = sc_ok;
     bl_do_encr_chat(tgl_state::instance(),
       tgl_get_peer_id (U->id), 
       DS_EC->access_hash,
@@ -1322,18 +1322,18 @@ void tglf_fetch_message_action_encrypted (struct tgl_message_action *M, struct t
     { 
       M->read_cnt = DS_LVAL (DS_DMA->random_ids->cnt);
       
+#if 0 // FIXME
       int i;
       for (i = 0; i < M->read_cnt; i++) {
         tgl_message_id_t id;
         id.peer_type = TGL_PEER_RANDOM_ID;
         id.id = DS_LVAL (DS_DMA->random_ids->data[i]);
-#if 0
         struct tgl_message *N = tgl_message_get (&id);
         if (N) {
           N->flags &= ~TGLMF_UNREAD;
         }
-#endif
       }
+#endif
     }
     break;
   case CODE_decrypted_message_action_delete_messages: 
@@ -1712,15 +1712,14 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
     return M;
   }
 
+#if 0 // FIXME
   tgl_peer_id_t from_id = TGL_MK_USER (secret_chat->user_id);
-  // FIXME
   //bl_do_edit_message_encr(tgl_state::instance(), &M->permanent_id, &from_id, &secret_chat->id, DS_EM->date, DS_STR (DS_DM->message), DS_DM->media, DS_DM->action, DS_EM->file, TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
 
   if (in_seq_no >= 0 && out_seq_no >= 0) {
     //bl_do_encr_chat_update_seq ((void *)P, in_seq_no / 2 + 1, out_seq_no / 2);
     in_seq_no = in_seq_no / 2 + 1;
     out_seq_no = out_seq_no / 2;
-#if 0 // FIXME
     bl_do_encr_chat(tgl_state::instance(),
       tgl_get_peer_id (secret_chat->id),
       NULL, NULL, NULL, NULL,
@@ -1729,9 +1728,9 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
       TGL_FLAGS_UNCHANGED,
       NULL, 0
     );
-#endif
     assert (secret_chat->in_seq_no == in_seq_no);
   }
+#endif
   
   free_ds_type_decrypted_message_layer (DS_DML, &decrypted_message_layer);
   return M;
