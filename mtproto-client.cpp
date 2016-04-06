@@ -629,7 +629,6 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
   if (!temp_key) {
     //bl_do_set_auth_key (DC->id, (unsigned char *)DC->auth_key);
     tgl_state::instance()->set_auth_key(DC->id, NULL);
-    TGLC_sha1 ((unsigned char *)DC->auth_key, 256, sha1_buffer);
   } else {
     TGLC_sha1 ((unsigned char *)DC->temp_auth_key, 256, sha1_buffer);
     DC->temp_auth_key_id = *(long long *)(sha1_buffer + 12);
@@ -1307,7 +1306,7 @@ static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
     return -1;
   }
 
-  TGL_NOTICE("outbound rpc connection from dc #" << DC->id << " became ready");
+  TGL_NOTICE("outbound rpc connection from DC " << DC->id << " became ready");
   //char byte = 0xef;
   //assert(c->write_out(&byte, 1) == 1);
   //c->flush();
@@ -1321,6 +1320,7 @@ static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
   }
   switch (o) {
   case st_init:
+    // start creating a new authorization key
     send_req_pq_packet (c);
     break;
   case st_authorized:
