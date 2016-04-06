@@ -583,7 +583,7 @@ void tgl_do_send_accept_encr_chat (std::shared_ptr<void> x, unsigned char *rando
     }
     return; 
   } // Already generated key for this chat
-  assert (E->g_key);
+  assert (!E->g_key.empty());
   assert (tgl_state::instance()->bn_ctx);
   unsigned char random_here[256];
   tglt_secure_random (random_here, 256);
@@ -592,7 +592,7 @@ void tgl_do_send_accept_encr_chat (std::shared_ptr<void> x, unsigned char *rando
   }
   TGLC_bn *b = TGLC_bn_bin2bn (random, 256, 0);
   ensure_ptr (b);
-  TGLC_bn *g_a = TGLC_bn_bin2bn (E->g_key, 256, 0);
+  TGLC_bn *g_a = TGLC_bn_bin2bn (E->g_key.data(), 256, 0);
   ensure_ptr (g_a);
   assert (tglmp_check_g_a (tgl_state::instance()->encr_prime_bn, g_a) >= 0);
   //if (!ctx) {
@@ -651,7 +651,7 @@ void tgl_do_send_accept_encr_chat (std::shared_ptr<void> x, unsigned char *rando
 
 void tgl_do_create_keys_end (struct tgl_secret_chat *U) {
   assert (tgl_state::instance()->encr_prime);
-  TGLC_bn *g_b = TGLC_bn_bin2bn (U->g_key, 256, 0);
+  TGLC_bn *g_b = TGLC_bn_bin2bn (U->g_key.data(), 256, 0);
   ensure_ptr (g_b);
   assert (tglmp_check_g_a (tgl_state::instance()->encr_prime_bn, g_b) >= 0);
   

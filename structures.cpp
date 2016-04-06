@@ -2148,14 +2148,6 @@ void tgls_free_user (struct tgl_user *U) {
   tfree (U, sizeof (tgl_peer_t));
 }
 
-#ifdef ENABLE_SECRET_CHAT
-void tgls_free_encr_chat (struct tgl_secret_chat *U) {
-  if (U->print_name) { tfree_str (U->print_name); }
-  if (U->g_key) { tfree (U->g_key, 256); } 
-  tfree (U, sizeof (tgl_peer_t));
-}
-#endif
-
 void tgls_free_channel (struct tgl_channel *U) {
   if (U->print_title) { tfree_str (U->print_title); }
   if (U->username) { tfree_str (U->username); }
@@ -2172,7 +2164,7 @@ void tgls_free_peer (tgl_peer_t *P) {
     tgls_free_chat ((tgl_chat *)P);
 #ifdef ENABLE_SECRET_CHAT
   } else if (tgl_get_peer_type (P->id) == TGL_PEER_ENCR_CHAT) {
-    //tgls_free_encr_chat ((tgl_chat *)P);
+    assert(0);
 #endif
   } else if (tgl_get_peer_type (P->id) == TGL_PEER_CHANNEL) {
     tgls_free_channel ((tgl_channel *)P);

@@ -438,8 +438,8 @@ struct tgl_secret_chat {
   tgl_peer_id_t id;
   int flags;
   struct tgl_message *last;
-  char *print_name;
-  char *username;
+  std::string print_name;
+  std::string username;
   int structure_version;
   struct tgl_file_location photo_big;
   struct tgl_file_location photo_small;
@@ -457,7 +457,7 @@ struct tgl_secret_chat {
   int out_seq_no;
   int last_in_seq_no;
   long long access_hash;
-  unsigned char *g_key;
+  std::vector<unsigned char> g_key;
 
   enum tgl_secret_chat_state state;
   int key[64];
