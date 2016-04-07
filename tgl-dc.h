@@ -43,6 +43,11 @@ enum tgl_dc_state {
   st_error
 };
 
+#define TGLDCF_AUTHORIZED 1
+#define TGLDCF_BOUND 2
+#define TGLDCF_CONFIGURED 4
+#define TGLDCF_LOGGED_IN 8
+
 #define MAX_DC_SESSIONS 3
 
 struct tgl_dc;
@@ -86,6 +91,8 @@ struct tgl_dc {
 
     int server_time_delta = 0;
     double server_time_udelta = 0;
+
+    bool auth_transfer_in_process = false;
 
     // ipv4, ipv6, ipv4_media, ipv6_media
     std::array<tgl_dc_option, 4> options;

@@ -123,11 +123,6 @@
 
 #define TGL_FLAGS_UNCHANGED 0x40000000
 
-#define TGLDCF_AUTHORIZED 1
-#define TGLDCF_BOUND 2
-#define TGLDCF_CONFIGURED 4
-#define TGLDCF_LOGGED_IN 8
-
 #define TGL_PERMANENT_ID_SIZE 24
 #pragma pack(push,4)
 
