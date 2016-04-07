@@ -96,7 +96,7 @@ void tgl_dc::remove_pending_query(std::shared_ptr<query> q) {
 void tgl_dc::cleanup_timer_expired() {
     if (active_queries.empty() && pending_queries.empty()) {
         TGL_DEBUG("cleanup timer expired for DC " << id << ", deleting sessions");
-        for (int i = 0; i < sessions.size(); ++i) {
+        for (size_t i = 0; i < sessions.size(); ++i) {
             std::shared_ptr<tgl_session> session = sessions[i];
             if (session) {
                 session->c->close();
