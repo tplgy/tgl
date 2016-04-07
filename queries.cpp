@@ -500,7 +500,6 @@ int tglq_query_result (long long id) {
     in_end = eend;
   }
   tgl_state::instance()->active_queries --;
-  q->DC->remove_query(q);
   return 0;
 }
 
@@ -3100,6 +3099,7 @@ void tgl_do_get_difference (int sync_from_start, void (*callback)(std::shared_pt
     if (callback) {
       callback (callback_extra, 0);
     }
+    return;
   }
   tgl_state::instance()->locks |= TGL_LOCK_DIFF;
   clear_packet ();
