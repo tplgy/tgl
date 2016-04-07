@@ -489,7 +489,6 @@ typedef union tgl_peer {
   struct tgl_user user;
   struct tgl_chat chat;
   struct tgl_channel channel;
-  struct tgl_secret_chat encr_chat;
 } tgl_peer_t;
 
 struct tgl_document {
