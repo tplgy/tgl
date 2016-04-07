@@ -47,7 +47,6 @@
 
 #include "queries.h"
 #include "tgl-structures.h"
-#include "tgl-binlog.h"
 #include "tgl.h"
 #include "tgl-timer.h"
 #include "tgl-net.h"

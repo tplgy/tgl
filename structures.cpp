@@ -24,7 +24,6 @@
 #include <strings.h>
 #include "tgl-structures.h"
 #include "queries.h"
-#include "tgl-binlog.h"
 #include "tgl-methods-in.h"
 #include "updates.h"
 #include "mtproto-client.h"

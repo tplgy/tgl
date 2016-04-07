@@ -41,7 +41,6 @@
 #include "types/tgl_update_callback.h"
 #include "types/tgl_peer_id.h"
 
-#include "tgl-binlog.h"
 #include "updates.h"
 #include "auto.h"
 #include "auto/auto-types.h"
