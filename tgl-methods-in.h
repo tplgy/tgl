@@ -34,7 +34,7 @@ void tgl_do_check_password (void (*callback)(std::shared_ptr<void> extra, bool s
 
 void tgl_do_export_auth (int num, void (*callback) (std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra);
 
-void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_secret_chat *E), std::shared_ptr<void> callback_extra);
+void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, void (*callback)(std::shared_ptr<void>, bool success, std::shared_ptr<tgl_secret_chat> E), std::shared_ptr<void> callback_extra);
 
 void tgl_do_get_difference (int sync_from_start, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra);
 
