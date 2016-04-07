@@ -199,6 +199,9 @@ static void alarm_query_gateway(std::shared_ptr<query> q) {
     alarm_query(q);
 }
 
+void tgl_transfer_auth_callback (std::shared_ptr<void> arg, bool success);
+void tgl_do_transfer_auth (int num, void (*callback) (std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra);
+
 std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, void *data, struct query_methods *methods, std::shared_ptr<void> extra, void *callback, std::shared_ptr<void> callback_extra, int flags) {
   assert (DC);
   bool pending = false;
@@ -207,6 +210,10 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
     pending = true;
   }
   if (!(DC->flags & TGLDCF_CONFIGURED) && !(flags & QUERY_FORCE_SEND)) {
+    pending = true;
+  }
+  if (!tgl_signed_dc(DC) && DC != tgl_state::instance()->DC_working) {
+    tgl_do_transfer_auth(DC->id, tgl_transfer_auth_callback, DC);
     pending = true;
   }
   TGL_DEBUG("Sending query \"" << (methods->name ? methods->name : "") << "\" of size " << 4 * ints << " to DC " << DC->id << (pending ? " (pending)" : ""));
@@ -4320,7 +4327,6 @@ void tgl_do_upgrade_group (tgl_peer_id_t id, void (*callback)(std::shared_ptr<vo
 }
 
 
-void tgl_transfer_auth_callback (std::shared_ptr<void> arg, bool success);
 static void set_dc_configured (std::shared_ptr<void> _D, bool success) {
   std::shared_ptr<tgl_dc> D = std::static_pointer_cast<tgl_dc>(_D);
   assert (success);
