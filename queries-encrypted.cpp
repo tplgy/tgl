@@ -3,6 +3,7 @@
 
 #ifdef ENABLE_SECRET_CHAT
 #include "tgl-layout.h"
+#include <algorithm>
 
 /* {{{ Encrypt decrypted */
 static int *encr_extra;
@@ -90,6 +91,120 @@ static void encr_finish (struct tgl_secret_chat *E) {
     encr_end = packet_ptr;
     memcpy (encr_extra, encrypt_decrypted_message (E), 16);
 }
+
+void tgl_do_encr_chat(const tgl_peer_id_t& id,
+        long long* access_hash,
+        int* date,
+        int* admin,
+        const int* user_id,
+        void* key,
+        unsigned char* g_key,
+        void* first_key_id,
+        tgl_secret_chat_state* state,
+        int* ttl,
+        int* layer,
+        int* in_seq_no,
+        int* last_in_seq_no,
+        int* out_seq_no,
+        long long* key_fingerprint,
+        int flags,
+        const char* print_name,
+        int print_name_len)
+{
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(id);
+
+    if((flags & TGLPF_CREATE) && (flags != TGL_FLAGS_UNCHANGED)) {
+        if(!secret_chat) {
+          secret_chat = tgl_state::instance()->ensure_secret_chat(id);
+          secret_chat->id = id;
+        } else {
+          assert (!(secret_chat->flags & TGLPF_CREATED));
+        }
+    } else {
+        assert (secret_chat->flags & TGLPF_CREATED);
+    }
+
+    if(flags == TGL_FLAGS_UNCHANGED) {
+        flags = secret_chat->flags;
+    }
+    flags &= TGLECF_TYPE_MASK;
+
+    secret_chat->flags = (secret_chat->flags & ~TGLECF_TYPE_MASK) | flags;
+
+    if(access_hash && *access_hash != secret_chat->access_hash) {
+        secret_chat->access_hash = *access_hash;
+        secret_chat->id.access_hash = *access_hash;
+    }
+
+    if(date) {
+        secret_chat->date = *date;
+    }
+
+    if(admin) {
+        secret_chat->admin_id = *admin;
+    }
+
+    if(user_id) {
+        secret_chat->user_id = *user_id;
+    }
+
+    if(key_fingerprint) {
+        secret_chat->key_fingerprint = *key_fingerprint;
+    }
+
+    if(in_seq_no) {
+        secret_chat->in_seq_no = *in_seq_no;
+    }
+
+    if(out_seq_no) {
+        secret_chat->out_seq_no = *out_seq_no;
+    }
+
+    if(last_in_seq_no) {
+        secret_chat->last_in_seq_no = *last_in_seq_no;
+    }
+
+    if(secret_chat->print_name.empty()) {
+        if(print_name) {
+            secret_chat->print_name = std::string(print_name, print_name_len);
+        } else {
+#if 0 // FXIME
+        tgl_peer_t *Us = tgl_peer_get (TLS, TGL_MK_USER (U->user_id));
+        if(Us) {
+            U->print_name = TLS->callback.create_print_name (TLS, TGL_MK_ENCR_CHAT (id), "!", Us->user.first_name, Us->user.last_name, 0);
+        } else {
+            static char buf[100];
+            tsnprintf (buf, 99, "user#%d", U->user_id);
+            U->print_name = TLS->callback.create_print_name (TLS, TGL_MK_ENCR_CHAT (id), "!", buf, 0, 0);
+        }
+        tglp_peer_insert_name (TLS, (void *)U);
+#endif
+        }
+    }
+
+    if(g_key) {
+        secret_chat->g_key.resize(256);
+        std::copy(g_key, g_key + 256, secret_chat->g_key.begin());
+    }
+
+    if(key) {
+        memcpy(secret_chat->key, key, 256);
+    }
+
+    if(first_key_id) {
+        memcpy(secret_chat->first_key_sha, first_key_id, 20);
+    }
+
+    if(state) {
+        if(secret_chat->state == sc_waiting && *state == sc_ok) {
+            tgl_do_create_keys_end(secret_chat.get());
+        }
+        secret_chat->state = *state;
+    }
+
+    tgl_state::instance()->callback()->secret_chat_update(secret_chat);
+}
+
 /* }}} */
 
 void tgl_do_send_encr_action (struct tgl_secret_chat *E, struct tl_ds_decrypted_message_action *A) {
@@ -609,24 +724,28 @@ void tgl_do_send_accept_encr_chat (std::shared_ptr<void> x, unsigned char *rando
   static unsigned char sha_buffer[20];
   TGLC_sha1 (kk, 256, sha_buffer);
 
-#if 0 // FIXME
   long long fingerprint = *(long long *)(sha_buffer + 12);
 
-  //bl_do_encr_chat_set_key (E, kk, *(long long *)(sha_buffer + 12));
-  //bl_do_encr_chat_set_sha (E, sha_buffer);
+  tgl_secret_chat_state state = sc_ok;
 
-  int state = sc_ok;
-
-  bl_do_encr_chat (tgl_state::instance(),
-    tgl_get_peer_id (E->id), 
-    NULL, NULL, NULL, NULL, 
-    kk, NULL, sha_buffer, &state, 
-    NULL, NULL, NULL, NULL, NULL, 
-    &fingerprint, 
-    TGL_FLAGS_UNCHANGED,
-    NULL, 0
-  );
-#endif
+  tgl_do_encr_chat(E->id,
+          NULL,
+          NULL,
+          NULL,
+          NULL,
+          kk,
+          NULL,
+          sha_buffer,
+          &state,
+          NULL,
+          NULL,
+          NULL,
+          NULL,
+          NULL,
+          &fingerprint,
+          TGL_FLAGS_UNCHANGED,
+          NULL,
+          0);
 
   clear_packet ();
   out_int (CODE_messages_accept_encryption);
@@ -723,24 +842,35 @@ void tgl_do_send_create_encr_chat(std::shared_ptr<void> x, unsigned char *random
 
   //bl_do_encr_chat_init (t, user_id, (void *)random, (void *)g_a);
   
-#if 0 // FIXME
-  int state = sc_waiting;
+  tgl_secret_chat_state state = sc_waiting;
   int our_id = tgl_get_peer_id (tgl_state::instance()->our_id());
-  bl_do_encr_chat (tgl_state::instance(), t, NULL, NULL, &our_id, &user_id->peer_id, random, NULL, NULL, &state, NULL, NULL, NULL, NULL, NULL, NULL, TGLPF_CREATE | TGLPF_CREATED, NULL, 0);
-#endif
+  tgl_do_encr_chat(TGL_MK_ENCR_CHAT(t),
+        NULL,
+        NULL,
+        &our_id,
+        &user_id->peer_id,
+        random,
+        NULL,
+        NULL,
+        &state,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        TGLPF_CREATE | TGLPF_CREATED,
+        NULL,
+        0);
 
-  
   std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT (t));
   assert(secret_chat);
   
   clear_packet ();
   out_int (CODE_messages_request_encryption);
-  //tgl_peer_t *U = tgl_peer_get (TGL_MK_USER (secret_chat->user_id));
-  //assert (U);
   
   out_int (CODE_input_user);
   out_int (secret_chat->user_id);
-  //out_long (U ? U->user.access_hash : 0);
   out_long(user_id->access_hash);
 
   out_int (tgl_get_peer_id (secret_chat->id));

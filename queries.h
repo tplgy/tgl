@@ -84,6 +84,29 @@ void tglq_regen_query (long long id);
 void tglq_query_delete (long long id);
 void tglq_query_free_all ();
 void tglq_regen_queries_from_old_session (struct tgl_dc *DC, struct tgl_session *S);
+
+
+#ifdef ENABLE_SECRET_CHAT
+void tgl_do_encr_chat(const tgl_peer_id_t& id,
+        long long* access_hash,
+        int* date,
+        int* admin,
+        const int* user_id,
+        void* key,
+        unsigned char* g_key,
+        void* first_key_id,
+        tgl_secret_chat_state* state,
+        int* ttl,
+        int* layer,
+        int* in_seq_no,
+        int* last_in_seq_no,
+        int* out_seq_no,
+        long long* key_fingerprint,
+        int flags,
+        const char* print_name,
+        int print_name_len);
+#endif
+
 // For binlog
 
 //int get_dh_config_on_answer (struct query *q);

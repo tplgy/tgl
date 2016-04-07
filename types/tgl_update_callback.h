@@ -25,7 +25,7 @@ public:
     virtual void chat_update(int chat_id, int peers_num, int admin, int date, const std::string &title) = 0;
     virtual void chat_add_user(int chat_id, int user, int inviter, int date) = 0;
     virtual void chat_delete_user(int chat_id, int user) = 0;
-    virtual void secret_chat_update(struct tgl_secret_chat *C, unsigned flags) = 0;
+    virtual void secret_chat_update(const std::shared_ptr<tgl_secret_chat>& secret_chat) = 0;
     virtual void channel_update(struct tgl_channel *C, unsigned flags) = 0;
     virtual void our_id(int id) = 0;
     virtual void notification(const std::string& type, const std::string& message) = 0;
