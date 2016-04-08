@@ -225,7 +225,7 @@ static int send_req_pq_packet (const std::shared_ptr<tgl_connection>& c) {
     clear_packet ();
     out_int (CODE_req_pq);
     out_ints ((int *)DC->nonce, 4);
-    TGL_DEBUG(__FUNCTION__ << " dc=" << DC->id);
+    TGL_DEBUG(__FUNCTION__ << " DC " << DC->id);
     rpc_send_packet(c);
 
     DC->state = st_reqpq_sent;
@@ -245,7 +245,7 @@ static int send_req_pq_temp_packet (const std::shared_ptr<tgl_connection>& c) {
     clear_packet ();
     out_int (CODE_req_pq);
     out_ints ((int *)DC->nonce, 4);
-    TGL_DEBUG(__FUNCTION__ << " dc=" << DC->id);
+    TGL_DEBUG(__FUNCTION__ << " DC " << DC->id);
     rpc_send_packet(c);
 
     DC->state = st_reqpq_sent_temp;
@@ -299,7 +299,7 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
   TGLC_bn_free (p);
   TGLC_bn_free (q);
   DC->state = temp_key ? st_reqdh_sent_temp : st_reqdh_sent;
-  TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " dc=" << DC->id);
+  TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " DC " << DC->id);
   rpc_send_packet (c);
 }
 /* }}} */
@@ -360,7 +360,7 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   out_cstring ((char *) encrypt_buffer, l);
 
   DC->state = temp_key ? st_client_dh_sent_temp : st_client_dh_sent;;
-  TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " dc=" << DC->id);
+  TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " DC " << DC->id);
   rpc_send_packet (c);
 }
 /* }}} */
@@ -636,7 +636,7 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
 
   DC->state = st_authorized;
 
-  TGL_DEBUG("Auth success for DC " << DC->id << ": salt=" << DC->server_salt);
+  TGL_DEBUG("Auth success for DC " << DC->id << " " << (temp_key ? "(temp)" : "") << " salt=" << DC->server_salt);
   if (temp_key) {
     bind_temp_auth_key (c);
   } else {
@@ -850,6 +850,7 @@ static int work_container (const std::shared_ptr<tgl_connection>& c, long long m
     assert (in_ptr == in_end);
     in_end = t;
   }
+  TGL_DEBUG("end work_container: msg_id = " << msg_id);
   return 0;
 }
 
@@ -862,7 +863,7 @@ static int work_new_session_created (const std::shared_ptr<tgl_connection>& c, l
   if (!DC) {
     return -1;
   }
-  TGL_DEBUG("work_new_session_created: msg_id = " << msg_id << ", dc = " << DC->id);
+  TGL_DEBUG("work_new_session_created: msg_id = " << msg_id << ", DC " << DC->id);
   assert (fetch_int () == (int)CODE_new_session_created);
   fetch_long (); // first message id
   fetch_long (); // unique_id
@@ -939,7 +940,7 @@ static int work_bad_server_salt (const std::shared_ptr<tgl_connection>& c, long 
   if (!DC) {
     return -1;
   }
-  TGL_DEBUG(__FUNCTION__ << " id=" << id << " seq_no=" << seq_no << " error_code= " << error_code << " new_server_salt=" << new_server_salt << " (old_server_salt=" << DC->server_salt << ")");
+  TGL_DEBUG(__FUNCTION__ << " DC " << DC->id << " id=" << id << " seq_no=" << seq_no << " error_code= " << error_code << " new_server_salt=" << new_server_salt << " (old_server_salt=" << DC->server_salt << ")");
   DC->server_salt = new_server_salt;
   tglq_query_restart (id);
   return 0;
@@ -1254,7 +1255,7 @@ static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int le
     int Response_len = len;
 
     static char Response[MAX_RESPONSE_SIZE];
-    TGL_DEBUG("Response_len = " << Response_len);
+    TGL_DEBUG("Response_len = " << Response_len << " DC " << DC->id);
     int result = c->read(Response, Response_len);
     TGL_ASSERT_UNUSED(result, result == Response_len);
 

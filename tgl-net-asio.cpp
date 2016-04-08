@@ -419,7 +419,7 @@ void tgl_connection_asio::start_read() {
 }
 
 ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
-    //TGL_DEBUG("write: " << len << " bytes");
+    //TGL_DEBUG("write: " << len << " bytes to DC " << m_dc.lock()->id);
     const unsigned char* data = static_cast<const unsigned char*>(data_in);
     if (!len) {
         return 0;
@@ -530,7 +530,7 @@ void tgl_connection_asio::handle_write(const boost::system::error_code& ec, size
         return;
     }
 
-    TGL_DEBUG("wrote " << bytes_transferred << " bytes");
+    TGL_DEBUG("wrote " << bytes_transferred << " bytes to DC " << m_dc.lock()->id);
 
     if (m_out_head) {
         m_out_head->rptr += bytes_transferred;

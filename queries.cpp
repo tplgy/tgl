@@ -316,9 +316,9 @@ int tglq_query_error (long long id) {
   std::string error = std::string(fetch_str (error_len), error_len);
   std::shared_ptr<query> q = tglq_query_get (id);
   if (!q) {
-    TGL_WARNING("error for query '" << q->methods->name << "' #" << id << " #" << error_code << ": " << error);
     TGL_WARNING("No such query");
   } else {
+    TGL_WARNING("error for query '" << (q->methods->name ? q->methods->name : "") << "' #" << id << " #" << error_code << ": " << error);
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
       q->ev->cancel();
     }
@@ -4336,6 +4336,8 @@ static void set_dc_configured (std::shared_ptr<void> _D, bool success) {
   assert (success);
   D->flags |= TGLDCF_CONFIGURED;
 
+  TGL_DEBUG("DC " << D->id << " is now configured");
+
   //D->ev->start(tgl_state::instance()->temp_key_expire_time * 0.9);
   if (D == tgl_state::instance()->DC_working) {
     D->send_pending_queries();
@@ -4348,8 +4350,8 @@ static int send_bind_temp_on_answer(std::shared_ptr<query> q, void *D) {
     TGL_UNUSED(D);
     std::shared_ptr<tgl_dc> DC = std::static_pointer_cast<tgl_dc>(q->extra);
     DC->flags |= TGLDCF_BOUND;
+    TGL_DEBUG("Bind successful in DC " << DC->id);
     tgl_do_help_get_config_dc (DC);
-    TGL_DEBUG("Bind successful in dc " << DC->id);
     return 0;
 }
 
@@ -4454,7 +4456,7 @@ void tgl_transfer_auth_callback (std::shared_ptr<void> arg, bool success) {
     TGL_ERROR("auth transfer problem to DC " << DC->id);
     return;
   }
-  TGL_NOTICE("auth transferred from DC " << tgl_state::instance()->DC_working << " to DC " << DC->id);
+  TGL_NOTICE("auth transferred from DC " << tgl_state::instance()->DC_working->id << " to DC " << DC->id);
   DC->send_pending_queries();
 }
 
