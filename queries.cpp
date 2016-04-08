@@ -431,6 +431,8 @@ int tglq_query_error (long long id) {
       }
     }
 
+    q->DC->remove_query(q);
+
     if (res <= 0) {
       free (q->data);
       q->ev = nullptr;
@@ -438,13 +440,11 @@ int tglq_query_error (long long id) {
 
     if (res == -11) {
       tgl_state::instance()->active_queries --;
-      q->DC->remove_query(q);
       return -1;
 
     }
   }
   tgl_state::instance()->active_queries --;
-  q->DC->remove_query(q);
   return 0;
 }
 
