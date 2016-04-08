@@ -1,12 +1,12 @@
-#ifndef PEER_ID_H
-#define PEER_ID_H
+#ifndef __TGL_PEER_ID_H__
+#define __TGL_PEER_ID_H__
 
-typedef struct {
-  int peer_type;
-  int peer_id;
-  long long access_hash;
-} tgl_peer_id_t;
+struct tgl_peer_id_t{
+    int peer_type;
+    int peer_id;
+    long long access_hash;
+};
 
+static const tgl_peer_id_t no_peer_id = { 0, 0, 0 };
 
-#endif // PEER_ID_H
-
+#endif

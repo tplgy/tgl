@@ -25,6 +25,7 @@
 #include "auto.h"
 #include "tgl-layout.h"
 #include "types/query_methods.h"
+#include "types/tgl_secret_chat.h"
 
 static const float DEFAULT_QUERY_TIMEOUT = 6.0;
 

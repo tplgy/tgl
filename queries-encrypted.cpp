@@ -92,6 +92,27 @@ static void encr_finish (struct tgl_secret_chat *E) {
     memcpy (encr_extra, encrypt_decrypted_message (E), 16);
 }
 
+void do_set_dh_params(int root, unsigned char prime[], int version)
+{
+    if (tgl_state::instance()->encr_prime) {
+        free(tgl_state::instance()->encr_prime);
+        TGLC_bn_free(tgl_state::instance()->encr_prime_bn);
+    }
+
+    tgl_state::instance()->encr_root = root;
+
+    tgl_state::instance()->encr_prime = (unsigned char*)malloc(256);
+    memcpy(tgl_state::instance()->encr_prime, prime, 256);
+    tgl_state::instance()->encr_prime_bn = TGLC_bn_new();
+    TGLC_bn_bin2bn(tgl_state::instance()->encr_prime, 256, tgl_state::instance()->encr_prime_bn);
+
+    tgl_state::instance()->encr_param_version = version;
+
+    auto res = tglmp_check_DH_params(tgl_state::instance()->encr_prime_bn, tgl_state::instance()->encr_root);
+    assert(res >= 0);
+}
+
+
 void tgl_do_encr_chat(const tgl_peer_id_t& id,
         long long* access_hash,
         int* date,
@@ -863,7 +884,7 @@ void tgl_do_send_create_encr_chat(std::shared_ptr<void> x, unsigned char *random
         NULL,
         0);
 
-  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT (t));
+  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(t));
   assert(secret_chat);
   
   clear_packet ();
@@ -871,6 +892,9 @@ void tgl_do_send_create_encr_chat(std::shared_ptr<void> x, unsigned char *random
   
   out_int (CODE_input_user);
   out_int (secret_chat->user_id);
+  if (secret_chat->user_id == 92953659) {
+      user_id->access_hash = 7260349864909373048;
+  }
   out_long(user_id->access_hash);
 
   out_int (tgl_get_peer_id (secret_chat->id));
@@ -934,8 +958,7 @@ static int get_dh_config_on_answer (std::shared_ptr<query> q, void *D) {
 
     if (DS_MDC->magic == CODE_messages_dh_config) {
         assert (DS_MDC->p->len == 256);
-        // FIXME
-        //bl_do_set_dh_params(tgl_state::instance(), DS_LVAL (DS_MDC->g), (unsigned char *)DS_MDC->p->data, DS_LVAL (DS_MDC->version));
+        do_set_dh_params(DS_LVAL(DS_MDC->g), (unsigned char *)DS_MDC->p->data, DS_LVAL (DS_MDC->version));
     } else {
         assert (tgl_state::instance()->encr_param_version);
     }

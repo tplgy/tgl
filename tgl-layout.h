@@ -358,59 +358,6 @@ struct tgl_chat {
   int admin_id;
 };
 
-enum tgl_secret_chat_state {
-  sc_none,
-  sc_waiting,
-  sc_request,
-  sc_ok,
-  sc_deleted
-};
-
-enum tgl_secret_chat_exchange_state {
-  tgl_sce_none,
-  tgl_sce_requested,
-  tgl_sce_accepted,
-  tgl_sce_committed,
-  tgl_sce_confirmed,
-  tgl_sce_aborted
-};
-
-struct tgl_secret_chat {
-  tgl_peer_id_t id;
-  int flags;
-  struct tgl_message *last;
-  std::string print_name;
-  std::string username;
-  int structure_version;
-  struct tgl_file_location photo_big;
-  struct tgl_file_location photo_small;
-  int pad1;
-  int pad2;
-  long long pad;
-  struct tgl_photo *photo;
-  void *extra;
-  int user_id;
-  int admin_id;
-  int date;
-  int ttl;
-  int layer;
-  int in_seq_no;
-  int out_seq_no;
-  int last_in_seq_no;
-  long long access_hash;
-  std::vector<unsigned char> g_key;
-
-  enum tgl_secret_chat_state state;
-  int key[64];
-  long long key_fingerprint;
-  unsigned char first_key_sha[20];
-
-  long long exchange_id;
-  enum tgl_secret_chat_exchange_state exchange_state;
-  int exchange_key[64];
-  long long exchange_key_fingerprint;
-};
-
 typedef union tgl_peer {
   struct {
     tgl_peer_id_t id;

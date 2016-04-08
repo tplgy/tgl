@@ -33,6 +33,7 @@
 #include "tgl-structures.h"
 #include "types/tgl_update_callback.h"
 #include "types/tgl_rsa_key.h"
+#include "types/tgl_secret_chat.h"
 
 #include <assert.h>
 

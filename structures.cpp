@@ -277,7 +277,7 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
     DS_CSTR(phone, DS_U->phone);
     DS_CSTR(username, DS_U->username);
 
-    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username);
+    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username, DS_U->access_hash ? * DS_U->access_hash : 0);
 
     free(firstname);
     free(lastname);
@@ -323,7 +323,7 @@ struct tgl_user *tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_UF) {
   );
 #endif
 
-    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(U->id), "", "", "", "");
+    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(U->id), "", "", "", "", 0);
 
     if (DS_UF->user->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_UF->user->photo->photo_big);

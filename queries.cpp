@@ -1419,7 +1419,7 @@ static int mark_read_on_receive (std::shared_ptr<query> q, void *D) {
 
   if (tgl_get_peer_type (E->id) == TGL_PEER_USER) {
     //bl_do_user (tgl_get_peer_id (E->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, &E->max_id, NULL, NULL, TGL_FLAGS_UNCHANGED);
-    tgl_state::instance()->callback()->new_user(tgl_get_peer_id (E->id), "", "", "", "");
+    tgl_state::instance()->callback()->new_user(tgl_get_peer_id (E->id), "", "", "", "", 0);
   } else {
     assert (tgl_get_peer_type (E->id) == TGL_PEER_CHAT);
     //bl_do_chat (tgl_get_peer_id (E->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &E->max_id, NULL, TGL_FLAGS_UNCHANGED);
