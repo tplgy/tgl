@@ -864,7 +864,7 @@ void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D) {
     clear_packet ();
     tgl_do_insert_header();
     out_int (CODE_help_get_config);
-    tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0, (void*)set_dc_configured, D, 2);
+    tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0, (void*)set_dc_configured, D, QUERY_FORCE_SEND);
 }
 /* }}} */
 
@@ -4380,7 +4380,7 @@ void tgl_do_send_bind_temp_key (std::shared_ptr<tgl_dc> D, long long nonce, int 
     out_long (nonce);
     out_int (expires_at);
     out_cstring ((char*)data, len);
-    std::shared_ptr<query> q = tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &send_bind_temp_methods, D, 0, 0, 2);
+    std::shared_ptr<query> q = tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &send_bind_temp_methods, D, 0, 0, QUERY_FORCE_SEND);
     assert (q->msg_id == msg_id);
 }
 
