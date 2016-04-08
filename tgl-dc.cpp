@@ -31,8 +31,13 @@ void tglq_query_remove(std::shared_ptr<query> q);
 bool send_pending_query(std::shared_ptr<query> q) {
     assert(q->DC);
     if (!q->DC->auth_key_id || !q->DC->sessions[0]) {
-        TGL_WARNING("not ready to send pending query " << q << ", re-queuing");
+        TGL_DEBUG("not ready to send pending query " << q << " (" << (q->methods->name ? q->methods->name : "") << "), re-queuing");
         tglmp_dc_create_session(q->DC);
+        q->DC->add_pending_query(q);
+        return false;
+    }
+    if (!tgl_signed_dc(q->DC) && !(q->flags & QUERY_LOGIN)) {
+        TGL_DEBUG("not ready to send pending non-login query " << q << " (" << (q->methods->name ? q->methods->name : "") << "), re-queuing");
         q->DC->add_pending_query(q);
         return false;
     }
@@ -62,12 +67,12 @@ tgl_dc::tgl_dc()
 
 void tgl_dc::send_pending_queries() {
     TGL_NOTICE("sending pending queries for DC " << id);
-    while (!pending_queries.empty()) {
-        std::shared_ptr<query> q = pending_queries.front();
-        pending_queries.pop_front();
-        if (!send_pending_query(q)) {
-            TGL_ERROR("sending pending query failed for DC " << id);
-            break;
+    std::list<std::shared_ptr<query>> queries = pending_queries; // make a copy since queries can get re-enqueued
+    for (std::shared_ptr<query> q : queries) {
+        if (send_pending_query(q)) {
+            pending_queries.remove(q);
+        } else {
+            TGL_DEBUG("sending pending query failed for DC " << id);
         }
     }
 }

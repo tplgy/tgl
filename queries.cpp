@@ -212,9 +212,11 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
   if (!(DC->flags & TGLDCF_CONFIGURED) && !(flags & QUERY_FORCE_SEND)) {
     pending = true;
   }
-  if (!tgl_signed_dc(DC) && DC != tgl_state::instance()->DC_working && !(flags & QUERY_FORCE_SEND)) {
-    tgl_do_transfer_auth(DC->id, tgl_transfer_auth_callback, DC);
+  if (!tgl_signed_dc(DC) && !(flags & QUERY_LOGIN) && !(flags & QUERY_FORCE_SEND)) {
     pending = true;
+    if (DC != tgl_state::instance()->DC_working && !(flags & QUERY_FORCE_SEND)) {
+      tgl_do_transfer_auth(DC->id, tgl_transfer_auth_callback, DC);
+    }
   }
   TGL_DEBUG("Sending query \"" << (methods->name ? methods->name : "") << "\" of size " << 4 * ints << " to DC " << DC->id << (pending ? " (pending)" : ""));
   std::shared_ptr<query> q = std::make_shared<query>();
@@ -236,7 +238,7 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
   q->methods = methods;
   q->type = &methods->type;
   q->DC = DC;
-  q->flags = flags & QUERY_FORCE_SEND;
+  q->flags = flags & ~QUERY_ACK_RECEIVED;
   tgl_state::instance()->queries_tree.push_back(q);
 
   q->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&alarm_query_gateway, q));
@@ -903,7 +905,7 @@ void tgl_do_send_code (const char *phone, int phone_len, void (*callback)(std::s
     out_string (tgl_state::instance()->app_hash().c_str());
     out_string ("en");
 
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_code_methods, NULL, (void*)callback, callback_extra);
+    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_code_methods, NULL, (void*)callback, callback_extra, QUERY_LOGIN);
 }
 
 
@@ -976,7 +978,7 @@ int tgl_do_send_code_result (const char *phone, int phone_len, const char *hash,
     out_cstring (phone, phone_len);
     out_cstring (hash, hash_len);
     out_cstring (code, code_len);
-    tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, (void*)callback, callback_extra, QUERY_LOGIN);
     return 0;
 }
 
@@ -988,7 +990,7 @@ int tgl_do_send_code_result_auth (const char *phone, int phone_len, const char *
     out_cstring (code, code_len);
     out_cstring (first_name, first_name_len);
     out_cstring (last_name, last_name_len);
-    tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, (void*)callback, callback_extra, QUERY_LOGIN);
     return 0;
 }
 
@@ -999,7 +1001,7 @@ int tgl_do_send_bot_auth (const char *code, int code_len, void (*callback)(std::
     out_int (tgl_state::instance()->app_id());
     out_string (tgl_state::instance()->app_hash().c_str());
     out_cstring (code, code_len);
-    tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, (void*)callback, callback_extra, QUERY_LOGIN);
     return 0;
 }
 /* }}} */
@@ -2728,7 +2730,7 @@ static int export_auth_on_answer (std::shared_ptr<query> q, void *D) {
   out_int (CODE_auth_import_authorization);
   out_int (tgl_get_peer_id (tgl_state::instance()->our_id()));
   out_cstring (DS_STR (DS_EA->bytes));
-  tglq_send_query(std::static_pointer_cast<tgl_dc>(q->extra), packet_ptr - packet_buffer, packet_buffer, &import_auth_methods, q->extra, q->callback, q->callback_extra);
+  tglq_send_query_ex(std::static_pointer_cast<tgl_dc>(q->extra), packet_ptr - packet_buffer, packet_buffer, &import_auth_methods, q->extra, q->callback, q->callback_extra, QUERY_LOGIN);
   return 0;
 }
 
@@ -4342,7 +4344,11 @@ static void set_dc_configured (std::shared_ptr<void> _D, bool success) {
   if (D == tgl_state::instance()->DC_working) {
     D->send_pending_queries();
   } else if (!tgl_signed_dc(D)) {
-    tgl_do_transfer_auth(D->id, tgl_transfer_auth_callback, D);
+    if (D->auth_transfer_in_process) {
+      D->send_pending_queries();
+    } else {
+      tgl_do_transfer_auth(D->id, tgl_transfer_auth_callback, D);
+    }
   }
 }
 

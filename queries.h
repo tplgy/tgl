@@ -30,6 +30,7 @@ static const float DEFAULT_QUERY_TIMEOUT = 6.0;
 
 #define QUERY_ACK_RECEIVED 1
 #define QUERY_FORCE_SEND 2
+#define QUERY_LOGIN 4
 
 class tgl_timer;
 
