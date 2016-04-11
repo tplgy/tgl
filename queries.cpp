@@ -4341,7 +4341,7 @@ static void set_dc_configured (std::shared_ptr<void> _D, bool success) {
   TGL_DEBUG("DC " << D->id << " is now configured");
 
   //D->ev->start(tgl_state::instance()->temp_key_expire_time * 0.9);
-  if (D == tgl_state::instance()->DC_working) {
+  if (D == tgl_state::instance()->DC_working || tgl_signed_dc(D)) {
     D->send_pending_queries();
   } else if (!tgl_signed_dc(D)) {
     if (D->auth_transfer_in_process) {
