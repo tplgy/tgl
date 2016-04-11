@@ -892,9 +892,6 @@ void tgl_do_send_create_encr_chat(std::shared_ptr<void> x, unsigned char *random
   
   out_int (CODE_input_user);
   out_int (secret_chat->user_id);
-  if (secret_chat->user_id == 92953659) {
-      user_id->access_hash = 7260349864909373048;
-  }
   out_long(user_id->access_hash);
 
   out_int (tgl_get_peer_id (secret_chat->id));
