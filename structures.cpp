@@ -531,7 +531,7 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
   C->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
   C->photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
 
-  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, -1, time(0), std::string(DS_C->title->data, DS_C->title->len));
+  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, -1, std::string(DS_C->title->data, DS_C->title->len));
   tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), C->photo_big, C->photo_small);
 
   return C;
@@ -605,16 +605,21 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
       );
 #endif
 
-  if (*DS_CF->chat_photo->sizes->cnt > 1) {
+  if (DS_CF->chat_photo && DS_CF->chat_photo->sizes && *DS_CF->chat_photo->sizes->cnt > 1) {
     C->photo_big = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[1]->location);
   }
-  if (*DS_CF->chat_photo->sizes->cnt > 0) {
+  if (DS_CF->chat_photo && DS_CF->chat_photo->sizes && *DS_CF->chat_photo->sizes->cnt > 0) {
     C->photo_small = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[0]->location);
   }
 
-  //tgl_state::instance()->callback.chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, *DS_CF->participants->admin_id,
-  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, 0,
-      *DS_CF->chat_photo->date, std::string());
+  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, 0, std::string());
+  if (DS_CF->participants && DS_CF->participants->participants) {
+        for (int i=0; i<*(DS_CF->participants->participants->cnt); ++i) {
+            tgl_state::instance()->callback()->chat_add_user(tgl_get_peer_id (C->id), *DS_CF->participants->participants->data[i]->user_id,
+                    DS_CF->participants->participants->data[i]->inviter_id ? *DS_CF->participants->participants->data[i]->inviter_id : 0,
+                    DS_CF->participants->participants->data[i]->date ? *DS_CF->participants->participants->data[i]->date : 0);
+        }
+  }
   //TODO update users
 
   return C;

@@ -2546,7 +2546,7 @@ static struct query_methods chat_info_methods = {
   .timeout = 0,
 };
 
-void tgl_do_get_chat_info (tgl_peer_id_t id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_chat *C), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_chat_info (int id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_chat *C), std::shared_ptr<void> callback_extra) {
   if (offline_mode) {
 #if 0
     tgl_peer_t *C = tgl_peer_get (id);
@@ -2565,8 +2565,7 @@ void tgl_do_get_chat_info (tgl_peer_id_t id, int offline_mode, void (*callback)(
   }
   clear_packet ();
   out_int (CODE_messages_get_full_chat);
-  assert (tgl_get_peer_type (id) == TGL_PEER_CHAT);
-  out_int (tgl_get_peer_id (id));
+  out_int (id);
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &chat_info_methods, 0, (void*)callback, callback_extra);
 }
 /* }}} */

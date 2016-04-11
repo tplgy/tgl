@@ -78,7 +78,7 @@ void tgl_do_rename_chat (int id, const char *new_title, int new_title_len, void 
 
 // requests full info about chat *id*.
 // if *offline_mode* is set no actual query is sent
-void tgl_do_get_chat_info (int chat_id, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_chat *C), std::shared_ptr<void> callback_extra);
+void tgl_do_get_chat_info (int id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_chat *C), std::shared_ptr<void> callback_extra);
 
 // adds user *id* to chat *chat_id*
 // sends *limit* last messages from this chat to user
