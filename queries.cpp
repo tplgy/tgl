@@ -111,6 +111,8 @@ static int alarm_query (std::shared_ptr<query> q) {
   assert (q);
   TGL_DEBUG("Alarm query " << q->msg_id << " (type '" << (q->methods->name ? q->methods->name : "") << "')");
 
+  assert(q->ev);
+  assert(q->methods);
   q->ev->start(q->methods->timeout ? q->methods->timeout : DEFAULT_QUERY_TIMEOUT);
 
   if (q->session && q->session_id && q->DC && q->DC->sessions[0] == q->session && q->session->session_id == q->session_id) {
@@ -283,12 +285,12 @@ void tglq_query_delete(long long id) {
     if (!q) {
         return;
     }
-    if (!(q->flags & QUERY_ACK_RECEIVED)) {
-        q->ev->cancel();
-    }
 
     free (q->data);
-    q->ev = nullptr;
+    if (q->ev) {
+        q->ev->cancel();
+        q->ev = nullptr;
+    }
     tglq_query_remove(q);
     tgl_state::instance()->active_queries --;
     q->DC->remove_query(q);
@@ -297,11 +299,11 @@ void tglq_query_delete(long long id) {
 static void resend_query_cb (std::shared_ptr<void> _q, bool success);
 
 void tglq_free_query (std::shared_ptr<query> q) {
-    if (!(q->flags & QUERY_ACK_RECEIVED)) {
-        q->ev->cancel();
-    }
     free (q->data);
-    q->ev = nullptr;
+    if (q->ev) {
+        q->ev->cancel();
+        q->ev = nullptr;
+    }
 }
 
 void tglq_query_free_all () {
@@ -437,7 +439,10 @@ int tglq_query_error (long long id) {
 
     if (res <= 0) {
       free (q->data);
-      q->ev = nullptr;
+      if (q->ev) {
+          q->ev->cancel();
+          q->ev = nullptr;
+      }
     }
 
     if (res == -11) {
@@ -499,7 +504,10 @@ int tglq_query_result (long long id) {
       assert (in_ptr == in_end);
     }
     free (q->data);
-    q->ev = nullptr;
+    if (q->ev) {
+        q->ev->cancel();
+        q->ev = nullptr;
+    }
     tglq_query_remove(q);
 
   }
@@ -2686,7 +2694,10 @@ static void resend_query_cb(std::shared_ptr<void> _q, bool success) {
     tglq_send_query (q->DC, packet_ptr - packet_buffer, packet_buffer, &user_info_methods, 0, q->callback, q->callback_extra);
 
     free (q->data);
-    q->ev = nullptr;
+    if (q->ev) {
+        q->ev->cancel();
+        q->ev = nullptr;
+    }
 }
 /* }}} */
 
