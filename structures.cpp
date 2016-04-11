@@ -531,7 +531,7 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
   C->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
   C->photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
 
-  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, -1, std::string(DS_C->title->data, DS_C->title->len));
+  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, std::string(DS_C->title->data, DS_C->title->len));
   tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), C->photo_big, C->photo_small);
 
   return C;
@@ -612,7 +612,7 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
     C->photo_small = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[0]->location);
   }
 
-  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, 0, std::string());
+  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, std::string());
   if (DS_CF->participants && DS_CF->participants->participants) {
         for (int i=0; i<*(DS_CF->participants->participants->cnt); ++i) {
             tgl_state::instance()->callback()->chat_add_user(tgl_get_peer_id (C->id), *DS_CF->participants->participants->data[i]->user_id,
