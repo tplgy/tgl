@@ -612,7 +612,7 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
     C->photo_small = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[0]->location);
   }
 
-  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, std::string());
+  //tgl_state::instance()->callback()->chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, DS_CF->);
   if (DS_CF->participants && DS_CF->participants->participants) {
         for (int i=0; i<*(DS_CF->participants->participants->cnt); ++i) {
             tgl_state::instance()->callback()->chat_add_user(tgl_get_peer_id (C->id), *DS_CF->participants->participants->data[i]->user_id,
