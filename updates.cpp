@@ -342,8 +342,8 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
 #ifdef ENABLE_SECRET_CHAT
       struct tgl_message *M = tglf_fetch_alloc_encrypted_message (DS_U->encr_message);
       if (M) {
-        //bl_do_msg_update (tgl_state::instance(), &M->permanent_id);
-        tgl_state::instance()->callback()->new_message(M);
+          //bl_do_msg_update (tgl_state::instance(), &M->permanent_id);
+          tgls_free_message(M);
       }
 #endif
     }

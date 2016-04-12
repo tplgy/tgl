@@ -112,7 +112,6 @@ void do_set_dh_params(int root, unsigned char prime[], int version)
     assert(res >= 0);
 }
 
-
 void tgl_do_encr_chat(const tgl_peer_id_t& id,
         long long* access_hash,
         int* date,
@@ -134,8 +133,8 @@ void tgl_do_encr_chat(const tgl_peer_id_t& id,
 {
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(id);
 
-    if((flags & TGLPF_CREATE) && (flags != TGL_FLAGS_UNCHANGED)) {
-        if(!secret_chat) {
+    if ((flags & TGLPF_CREATE) && (flags != TGL_FLAGS_UNCHANGED)) {
+        if (!secret_chat) {
           secret_chat = tgl_state::instance()->ensure_secret_chat(id);
           secret_chat->id = id;
         } else {
@@ -145,48 +144,48 @@ void tgl_do_encr_chat(const tgl_peer_id_t& id,
         assert (secret_chat->flags & TGLPF_CREATED);
     }
 
-    if(flags == TGL_FLAGS_UNCHANGED) {
+    if (flags == TGL_FLAGS_UNCHANGED) {
         flags = secret_chat->flags;
     }
     flags &= TGLECF_TYPE_MASK;
 
     secret_chat->flags = (secret_chat->flags & ~TGLECF_TYPE_MASK) | flags;
 
-    if(access_hash && *access_hash != secret_chat->access_hash) {
+    if (access_hash && *access_hash != secret_chat->access_hash) {
         secret_chat->access_hash = *access_hash;
         secret_chat->id.access_hash = *access_hash;
     }
 
-    if(date) {
+    if (date) {
         secret_chat->date = *date;
     }
 
-    if(admin) {
+    if (admin) {
         secret_chat->admin_id = *admin;
     }
 
-    if(user_id) {
+    if (user_id) {
         secret_chat->user_id = *user_id;
     }
 
-    if(key_fingerprint) {
+    if (key_fingerprint) {
         secret_chat->key_fingerprint = *key_fingerprint;
     }
 
-    if(in_seq_no) {
+    if (in_seq_no) {
         secret_chat->in_seq_no = *in_seq_no;
     }
 
-    if(out_seq_no) {
+    if (out_seq_no) {
         secret_chat->out_seq_no = *out_seq_no;
     }
 
-    if(last_in_seq_no) {
+    if (last_in_seq_no) {
         secret_chat->last_in_seq_no = *last_in_seq_no;
     }
 
-    if(secret_chat->print_name.empty()) {
-        if(print_name) {
+    if (secret_chat->print_name.empty()) {
+        if (print_name) {
             secret_chat->print_name = std::string(print_name, print_name_len);
         } else {
 #if 0 // FXIME
@@ -203,21 +202,21 @@ void tgl_do_encr_chat(const tgl_peer_id_t& id,
         }
     }
 
-    if(g_key) {
+    if (g_key) {
         secret_chat->g_key.resize(256);
         std::copy(g_key, g_key + 256, secret_chat->g_key.begin());
     }
 
-    if(key) {
+    if (key) {
         memcpy(secret_chat->key, key, 256);
     }
 
-    if(first_key_id) {
+    if (first_key_id) {
         memcpy(secret_chat->first_key_sha, first_key_id, 20);
     }
 
-    if(state) {
-        if(secret_chat->state == sc_waiting && *state == sc_ok) {
+    if (state) {
+        if (secret_chat->state == sc_waiting && *state == sc_ok) {
             tgl_do_create_keys_end(secret_chat.get());
         }
         secret_chat->state = *state;

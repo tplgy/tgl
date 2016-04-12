@@ -1613,20 +1613,21 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
   }
 
   tgl_message_id_t msg_id = tgl_peer_id_to_msg_id (secret_chat->id, DS_LVAL (DS_EM->random_id));
-  //struct tgl_message *M = tgl_message_get (&msg_id);
-  struct tgl_message *M = nullptr; // FIXME
+#if 0
+  struct tgl_message *M = tgl_message_get (&msg_id);
   if (!M) {
     M = static_cast<tgl_message*>(calloc(1, sizeof (*M)));
     M->permanent_id = msg_id;
-    //tglm_message_insert_tree (M);
-    //tgl_state::instance()->messages_allocated ++;
-    //assert (tgl_message_get (&msg_id) == M);
+    tglm_message_insert_tree (M);
+    tgl_state::instance()->messages_allocated ++;
+    assert (tgl_message_get (&msg_id) == M);
   }
 
   int is_new = !(M->flags & TGLMF_CREATED);
   if (!is_new) {
     return M;
   }
+#endif
 
   decr_ptr = reinterpret_cast<int*>(DS_EM->bytes->data);
   decr_end = decr_ptr + (DS_EM->bytes->len / 4);
@@ -1639,14 +1640,14 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
   long long key_fingerprint = secret_chat->exchange_state != tgl_sce_committed ? secret_chat->key_fingerprint : secret_chat->exchange_key_fingerprint;
   if (*(long long *)decr_ptr != key_fingerprint) {
     TGL_WARNING("Encrypted message with bad fingerprint to chat " << secret_chat->print_name);
-    return M;
+    return NULL;
   }
   
   decr_ptr += 2;
 
   if (decrypt_encrypted_message (secret_chat.get()) < 0) {
     TGL_WARNING("can not decrypt message");
-    return M;
+    return NULL;
   }
   
   int *save_in_ptr = in_ptr;
@@ -1657,13 +1658,14 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
   in_end = in_ptr + ll / 4 + 1;  
   assert (fetch_int () == ll);
 
+  struct tgl_message* M = NULL;
   if (*in_ptr == CODE_decrypted_message_layer) {
-    struct paramed_type decrypted_message_layer = { .type = &tl_type_decrypted_message_layer, .params = 0 };
+    struct paramed_type decrypted_message_layer = TYPE_TO_PARAM(decrypted_message_layer);
     if (skip_type_decrypted_message_layer (&decrypted_message_layer) < 0 || in_ptr != in_end) {
       TGL_WARNING("can not fetch message");
       in_ptr = save_in_ptr;
       in_end = save_in_end;
-      return M;
+      return NULL;
     }
 
     in_ptr = decr_ptr;
@@ -1701,49 +1703,44 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
     if (in_seq_no / 2 != secret_chat->in_seq_no) {
       TGL_WARNING("Hole in seq in secret chat. in_seq_no = " << in_seq_no / 2 << ", expect_seq_no = " << secret_chat->in_seq_no);
       free_ds_type_decrypted_message_layer (DS_DML, &decrypted_message_layer);
-      return M;
+      return NULL;
     }
 
     if ((in_seq_no & 1)  != 1 - (secret_chat->admin_id == tgl_get_peer_id (tgl_state::instance()->our_id())) ||
         (out_seq_no & 1) != (secret_chat->admin_id == tgl_get_peer_id (tgl_state::instance()->our_id()))) {
       TGL_WARNING("Bad msg admin");
       free_ds_type_decrypted_message_layer (DS_DML, &decrypted_message_layer);
-      return M;
+      return NULL;
     }
     if (out_seq_no / 2 > secret_chat->out_seq_no) {
       TGL_WARNING("In seq no is bigger than our's out seq no (out_seq_no = " << out_seq_no / 2 << ", our_out_seq_no = " << secret_chat->out_seq_no << "). Drop");
       free_ds_type_decrypted_message_layer (DS_DML, &decrypted_message_layer);
-      return M;
+      return NULL;
     }
     if (out_seq_no / 2 < secret_chat->last_in_seq_no) {
       TGL_WARNING("Clients in_seq_no decreased (out_seq_no = " << out_seq_no / 2 << ", last_out_seq_no = " << secret_chat->last_in_seq_no << "). Drop");
       free_ds_type_decrypted_message_layer (DS_DML, &decrypted_message_layer);
-      return M;
+      return NULL;
     }
 
     struct tl_ds_decrypted_message *DS_DM = DS_DML->message;
-    if (M->permanent_id.id != DS_LVAL (DS_DM->random_id)) {
-      TGL_ERROR("Incorrect message: id = " << M->permanent_id.id << ", new_id = " << DS_LVAL (DS_DM->random_id));
+    if (msg_id.id != DS_LVAL (DS_DM->random_id)) {
+      TGL_ERROR("Incorrect message: id = " << msg_id.id << ", new_id = " << DS_LVAL (DS_DM->random_id));
       free_ds_type_decrypted_message_layer (DS_DML, &decrypted_message_layer);
-      return M;
+      return NULL;
     }
 
-    //tgl_peer_id_t from_id = TGL_MK_USER (secret_chat->user_id);
+    tgl_peer_id_t from_id = TGL_MK_USER(secret_chat->user_id);
     //bl_do_edit_message_encr(tgl_state::instance(), &M->permanent_id, &from_id, &secret_chat->id, DS_EM->date, DS_STR (DS_DM->message), DS_DM->media, DS_DM->action, DS_EM->file, TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
-    tglm_message_create (&msg_id,
+    M = tglm_create_encr_message(&msg_id,
         &from_id,
         &secret_chat->id,
-        NULL,
-        NULL,
         DS_EM->date,
-        DS_STR (DS_DM->message),
+        DS_STR(DS_DM->message),
         DS_DM->media,
         DS_DM->action,
-        //DS_EM->file,
-        NULL
-        NULL,
-        TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED
-        );
+        DS_EM->file,
+        TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
 
     if (in_seq_no >= 0 && out_seq_no >= 0) {
       //bl_do_encr_chat_update_seq ((void *)P, in_seq_no / 2 + 1, out_seq_no / 2);
@@ -1773,12 +1770,12 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
     free_ds_type_decrypted_message_layer (DS_DML, &decrypted_message_layer);
   } else {
     // Pre-layer 17 encrypted message
-    struct paramed_type decrypted_message = { .type = &tl_type_decrypted_message, .params = 0 };
+    struct paramed_type decrypted_message = TYPE_TO_PARAM(decrypted_message);
     if (skip_type_decrypted_message (&decrypted_message) < 0 || in_ptr != in_end) {
       TGL_WARNING("can not fetch message");
       in_ptr = save_in_ptr;
       in_end = save_in_end;
-      return M;
+      return NULL;
     }
 
     in_ptr = decr_ptr;
@@ -1795,20 +1792,16 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
     in_ptr = save_in_ptr;
     in_end = save_in_end;
 
-    tglm_message_create (&msg_id,
+    tgl_peer_id_t from_id = TGL_MK_USER(secret_chat->user_id);
+    M = tglm_create_encr_message(&msg_id,
         &from_id,
         &secret_chat->id,
-        NULL,
-        NULL,
         DS_EM->date,
-        DS_STR (DS_DM->message),
+        DS_STR(DS_DM->message),
         DS_DM->media,
         DS_DM->action,
-        //DS_EM->file,
-        NULL
-        NULL,
-        TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED
-        );
+        DS_EM->file,
+        TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
 
     tgl_do_encr_chat(secret_chat->id,
         NULL,
@@ -1820,7 +1813,7 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
         NULL,
         NULL,
         NULL,
-        layer,
+        &layer,
         NULL,
         NULL,
         NULL,
@@ -2445,6 +2438,103 @@ struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *fro
     tgl_state::instance()->callback()->new_message(M);
     return M;
 }
+
+#ifdef ENABLE_SECRET_CHAT
+struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
+        const tgl_peer_id_t* from_id,
+        const tgl_peer_id_t* to_id,
+        const int *date,
+        const char *message,
+        int message_len,
+        tl_ds_decrypted_message_media* media,
+        tl_ds_decrypted_message_action* action,
+        tl_ds_encrypted_file* file,
+        int flags)
+{
+    clear_packet ();
+    assert (!(flags & 0xfffe0000));
+
+    struct tgl_message* M = tglm_message_alloc(id);
+
+    if (flags & (1 << 16)) {
+      //if (!M) {
+      //  M = tglm_message_alloc (TLS, id);
+      //} else {
+      //  assert (!(M->flags & TGLMF_CREATED));
+      //}
+      assert (!(M->flags & TGLMF_CREATED));
+    } else {
+      assert (M->flags & TGLMF_CREATED);
+    }
+
+    assert (flags & TGLMF_CREATED);
+    assert (flags & TGLMF_ENCRYPTED);
+
+    if ((M->flags & TGLMF_PENDING) && !(flags & TGLMF_PENDING)){
+        tglm_message_remove_unsent(M);
+    }
+
+    if (!(M->flags & TGLMF_PENDING) && (flags & TGLMF_PENDING)){
+        tglm_message_insert_unsent(M);
+    }
+
+    M->flags = flags & 0xffff;
+
+    if (from_id) {
+        M->from_id = *from_id;
+    }
+
+    if (to_id) {
+        assert (flags & 0x10000);
+        M->to_id = *to_id;
+    }
+
+    if (date) {
+        M->date = *date;
+    }
+
+    std::shared_ptr<tgl_secret_chat> E = tgl_state::instance()->secret_chat_for_id(M->to_id);
+    assert(E);
+
+    if (action) {
+        tglf_fetch_message_action_encrypted(&M->action, action);
+        M->flags |= TGLMF_SERVICE;
+    }
+
+    if (message) {
+        M->message_len = message_len;
+        M->message = tstrndup (message, message_len);
+        assert(!(M->flags & TGLMF_SERVICE));
+    }
+
+    if (media) {
+        tglf_fetch_message_media_encrypted(&M->media, media);
+        assert(!(M->flags & TGLMF_SERVICE));
+    }
+
+    if (file) {
+        tglf_fetch_encrypted_message_file(&M->media, file);
+        assert(!(M->flags & TGLMF_SERVICE));
+    }
+
+    if (action && !(M->flags & TGLMF_OUT) && M->action.type == tgl_message_action_notify_layer) {
+        E->layer = M->action.layer;
+    }
+
+    if ((flags & TGLMF_CREATE) && (flags & TGLMF_OUT)) {
+        E->out_seq_no++;
+    }
+
+    if (flags & 0x10000) {
+        tglm_message_insert(M);
+    }
+
+    tgl_state::instance()->callback()->new_message(M);
+
+    return M;
+}
+
+#endif
 
 void tglm_message_insert_tree (struct tgl_message *M) {
   assert (M->permanent_id.id);

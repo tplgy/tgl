@@ -33,6 +33,18 @@ struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *fro
                                         int *date, const char *message,
                                         struct tl_ds_message_media *media, struct tl_ds_message_action *action,
                                         int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags);
+
+struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
+        const tgl_peer_id_t* from_id,
+        const tgl_peer_id_t* to_id,
+        const int *date,
+        const char *message,
+        int message_len,
+        tl_ds_decrypted_message_media* media,
+        tl_ds_decrypted_message_action* action,
+        tl_ds_encrypted_file* file,
+        int flags);
+
 struct tgl_message *tglm_message_alloc (tgl_message_id_t *id);
 void tglm_message_insert_tree (struct tgl_message *M);
 void tglm_update_message_id (struct tgl_message *M, long long id);
@@ -88,4 +100,7 @@ static inline tgl_message_id_t tgl_peer_id_to_random_msg_id (tgl_peer_id_t peer_
   tglt_secure_random ((unsigned char*)&id, 8);
   return tgl_peer_id_to_msg_id (peer_id, id);
 }
+
+void tgls_free_message (struct tgl_message *M);
+
 #endif
