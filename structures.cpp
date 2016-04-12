@@ -369,7 +369,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
  
   if (DS_EC->magic == CODE_encrypted_chat_discarded) {
     if (is_new) {
-      TGL_WARNING("Unknown chat in deleted state. May be we forgot something...");
+      //TGL_WARNING("Unknown chat in deleted state. May be we forgot something...");
       return secret_chat;
     }
     //bl_do_peer_delete (tgl_state::instance(), secret_chat->id);
