@@ -320,7 +320,7 @@ int tglq_query_error (long long id) {
   std::string error = std::string(fetch_str (error_len), error_len);
   std::shared_ptr<query> q = tglq_query_get (id);
   if (!q) {
-    TGL_WARNING("No such query");
+    TGL_WARNING("error for unknown query #" << id << " #" << error_code << ": " << error);
   } else {
     TGL_WARNING("error for query '" << (q->methods->name ? q->methods->name : "") << "' #" << id << " #" << error_code << ": " << error);
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
@@ -459,7 +459,6 @@ int tglq_query_error (long long id) {
 static int packed_buffer[MAX_PACKED_SIZE / 4];
 
 int tglq_query_result (long long id) {
-  TGL_DEBUG2("result for query #" << id << ". Size " << (long)4 * (in_end - in_ptr) << " bytes");
   int op = prefetch_int ();
   int *end = 0;
   int *eend = 0;
@@ -476,9 +475,10 @@ int tglq_query_result (long long id) {
   }
   std::shared_ptr<query> q = tglq_query_get(id);
   if (!q) {
-    TGL_WARNING("No such query");
+    TGL_WARNING("result for unknown query #" << id);
     in_ptr = in_end;
   } else {
+    TGL_DEBUG2("result for query #" << id << ". Size " << (long)4 * (in_end - in_ptr) << " bytes");
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
       q->ev->cancel();
     }
