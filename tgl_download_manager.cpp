@@ -31,7 +31,11 @@ download::download(int type, tgl_encr_document *doc) : size(doc->size)
 }
 
 tgl_download_manager::tgl_download_manager(std::string download_directory)
-        : m_download_directory(download_directory)
+    : m_download_directory(download_directory)
+    , cur_uploading_bytes(0)
+    , cur_uploaded_bytes(0)
+    , cur_downloading_bytes(0)
+    , cur_downloaded_bytes(0)
 {
     m_send_file_part_methods = {
         .on_answer = std::bind(&tgl_download_manager::send_file_part_on_answer, this, std::placeholders::_1, std::placeholders::_2),
@@ -603,7 +607,7 @@ void tgl_download_manager::download_photo_size (struct tgl_photo_size *P, void (
     load_next_part (D, (void*)callback, callback_extra);
 }
 
-void tgl_download_manager::download_file_location (struct tgl_file_location file_location, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+void tgl_download_manager::download_file_location (const tgl_file_location& file_location, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
         std::shared_ptr<void> callback_extra)
 {
     if (!file_location.dc()) {

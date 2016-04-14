@@ -79,7 +79,7 @@ public:
     void download_photo_size(struct tgl_photo_size *P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
             std::shared_ptr<void> callback_extra);
 
-    void download_file_location(struct tgl_file_location P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+    void download_file_location(const tgl_file_location& P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
             std::shared_ptr<void> callback_extra);
 
     void download_document(struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
