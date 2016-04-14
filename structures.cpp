@@ -1877,7 +1877,7 @@ struct tgl_message *tglf_fetch_alloc_encrypted_message (struct tl_ds_encrypted_m
   if (!M) { return M; }
 
   if (M->flags & TGLMF_CREATED) {
-    std::shared_ptr<tgl_secret_chat> E = tgl_state::instance()->secret_chat_for_id(M->to_id);
+    std::shared_ptr<tgl_secret_chat> E = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(M->permanent_id.peer_id));
     assert(E);
     if (M->action.type == tgl_message_action_request_key) {
       if (E->exchange_state == tgl_sce_none || (E->exchange_state == tgl_sce_requested && E->exchange_id > M->action.exchange_id )) {
@@ -2495,7 +2495,7 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
         M->date = *date;
     }
 
-    std::shared_ptr<tgl_secret_chat> E = tgl_state::instance()->secret_chat_for_id(M->to_id);
+    std::shared_ptr<tgl_secret_chat> E = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(M->permanent_id.peer_id));
     assert(E);
 
     if (action) {

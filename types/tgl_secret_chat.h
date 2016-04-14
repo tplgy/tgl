@@ -1,5 +1,5 @@
 #ifndef __TGL_SECRET_CHAT_H__
-#define  __TGL_SECRET_CHAT_H__
+#define __TGL_SECRET_CHAT_H__
 
 #include "tgl-layout.h"
 #include "types/tgl_file_location.h"

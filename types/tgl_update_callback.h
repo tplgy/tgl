@@ -1,6 +1,8 @@
 #ifndef __TGL_UPDATE_CALLBACK__
 #define __TGL_UPDATE_CALLBACK__
 
+#include "types/tgl_secret_chat.h"
+
 class tgl_update_callback {
 public:
     virtual void new_message(struct tgl_message *M) = 0;

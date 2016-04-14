@@ -289,7 +289,7 @@ static int msg_send_encr_on_answer (std::shared_ptr<query> q, void *D) {
 
 static int msg_send_encr_on_error (std::shared_ptr<query> q, int error_code, const std::string& error) {
   struct tgl_message *M = (struct tgl_message*)q->extra.get();
-  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(M->to_id);
+  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(M->permanent_id.peer_id));
   if (secret_chat && secret_chat->state != sc_deleted && error_code == 400) {
     if (strncmp (error.c_str(), "ENCRYPTION_DECLINED", 19) == 0) {
       //bl_do_peer_delete (tgl_state::instance(), secret_chat->id);
@@ -317,7 +317,7 @@ static struct query_methods msg_send_encr_methods = {
 /* }}} */
 
 void tgl_do_send_encr_msg_action (struct tgl_message *M, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
-  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(M->to_id);
+  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(M->permanent_id.peer_id));
   if (!secret_chat || secret_chat->state != sc_ok) { 
     TGL_WARNING("Unknown encrypted chat");
     if (callback) {
@@ -388,7 +388,7 @@ void tgl_do_send_encr_msg (struct tgl_message *M, void (*callback)(std::shared_p
     tgl_do_send_encr_msg_action (M, callback, callback_extra);
     return;
   }
-  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(M->to_id);
+  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(M->permanent_id.peer_id));
   if (!secret_chat || secret_chat->state != sc_ok) { 
     TGL_WARNING("Unknown encrypted chat");
     if (callback) {
