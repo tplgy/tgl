@@ -239,6 +239,7 @@ void tgl_download_manager::send_file_unencrypted_end (std::shared_ptr<send_file>
             out_string ("thumb.jpg");
             out_string ("");
         }
+        out_string (f->caption.c_str());
     } else {
         out_string (f->caption.c_str());
     }
