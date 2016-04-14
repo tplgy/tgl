@@ -1731,10 +1731,11 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
     }
 
     tgl_peer_id_t from_id = TGL_MK_USER(secret_chat->user_id);
+    tgl_peer_id_t to_id = tgl_state::instance()->our_id();
     //bl_do_edit_message_encr(tgl_state::instance(), &M->permanent_id, &from_id, &secret_chat->id, DS_EM->date, DS_STR (DS_DM->message), DS_DM->media, DS_DM->action, DS_EM->file, TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
     M = tglm_create_encr_message(&msg_id,
         &from_id,
-        &secret_chat->id,
+        &to_id,
         DS_EM->date,
         DS_STR(DS_DM->message),
         DS_DM->media,
@@ -1793,9 +1794,10 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
     in_end = save_in_end;
 
     tgl_peer_id_t from_id = TGL_MK_USER(secret_chat->user_id);
+    tgl_peer_id_t to_id = tgl_state::instance()->our_id();
     M = tglm_create_encr_message(&msg_id,
         &from_id,
-        &secret_chat->id,
+        &to_id,
         DS_EM->date,
         DS_STR(DS_DM->message),
         DS_DM->media,
