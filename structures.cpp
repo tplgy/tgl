@@ -1015,18 +1015,19 @@ void tglf_fetch_message_action (struct tgl_message_action *M, struct tl_ds_messa
   }
 }
 
-struct tgl_message *tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
+void tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
   tgl_peer_id_t peer_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
 
   tgl_message_id_t msg_id = tgl_peer_id_to_msg_id (peer_id, DS_LVAL (DS_U->id));
-  struct tgl_message *M = (struct tgl_message *)talloc0 (sizeof (*M));
-  M->permanent_id = msg_id;
+  //struct tgl_message *M = (struct tgl_message *)talloc0 (sizeof (*M));
+  //M->permanent_id = msg_id;
 
-  int flags = M->flags & 0xffff;
+  //int flags = M->flags & 0xffff;
+  int flags = 0;
 
-  if (M->flags & TGLMF_PENDING) {
-    M->flags ^= TGLMF_PENDING;
-  }
+  //if (M->flags & TGLMF_PENDING) {
+  //  M->flags ^= TGLMF_PENDING;
+  //}
 
   if (!(flags & TGLMF_CREATED)) {
     flags |= TGLMF_CREATE | TGLMF_CREATED;
@@ -1074,7 +1075,7 @@ struct tgl_message *tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) 
 #endif
 
   DS_CSTR (msg_text, DS_U->message);
-  tglm_message_create (&msg_id,
+  struct tgl_message* M = tglm_message_create (&msg_id,
           (f & 2) ? &our_id : &peer_id,
           (f & 2) ? &peer_id : &our_id,
           DS_U->fwd_from_id ? &fwd_from_id : NULL,
@@ -1088,23 +1089,23 @@ struct tgl_message *tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) 
           flags
           );
   free(msg_text);
-
-  return M;
+  tgls_free_message(M);
 }
 
-struct tgl_message *tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
+void tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
   tgl_peer_id_t from_id = TGL_MK_USER (DS_LVAL (DS_U->from_id));
   tgl_peer_id_t to_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
   
   tgl_message_id_t msg_id = tgl_peer_id_to_msg_id (to_id, DS_LVAL (DS_U->id));
-  struct tgl_message *M = (struct tgl_message *)talloc0 (sizeof (*M));
-  M->permanent_id = msg_id;
+  //struct tgl_message *M = (struct tgl_message *)talloc0 (sizeof (*M));
+  //M->permanent_id = msg_id;
 
-  int flags = M->flags & 0xffff;
+  //int flags = M->flags & 0xffff;
+  int flags = 0;
   
-  if (M->flags & TGLMF_PENDING) {
-    M->flags ^= TGLMF_PENDING;
-  }
+  //if (M->flags & TGLMF_PENDING) {
+  //  M->flags ^= TGLMF_PENDING;
+  //}
 
   if (!(flags & TGLMF_CREATED)) {
     flags |= TGLMF_CREATE | TGLMF_CREATED;
@@ -1150,7 +1151,7 @@ struct tgl_message *tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *D
 #endif
 
   DS_CSTR (msg_text, DS_U->message);
-  tglm_message_create (&msg_id,
+  struct tgl_message* M = tglm_message_create (&msg_id,
       &from_id,
       &to_id,
       DS_U->fwd_from_id ? &fwd_from_id : NULL,
@@ -1164,7 +1165,7 @@ struct tgl_message *tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *D
       flags
       );
   free(msg_text);
-  return M;
+  tgls_free_message(M);
 }
 
 
@@ -1471,8 +1472,8 @@ struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *n
     msg_id = tgl_peer_id_to_msg_id (to_id, DS_LVAL (DS_M->id));
   }
 
-  struct tgl_message *M = (struct tgl_message *)talloc0 (sizeof (*M));
-  M->permanent_id = msg_id;
+  //struct tgl_message *M = (struct tgl_message *)talloc0 (sizeof (*M));
+  //M->permanent_id = msg_id;
 
   if (new_msg) {
     *new_msg = 1;
@@ -1512,7 +1513,7 @@ struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *n
       );
 #endif
   DS_CSTR (msg_text, DS_M->message);
-  tglm_message_create (&msg_id,
+  struct tgl_message* M = tglm_message_create (&msg_id,
       DS_M->from_id ? &from_id : NULL,
       &to_id,
       DS_M->fwd_from_id ? &fwd_from_id : NULL,

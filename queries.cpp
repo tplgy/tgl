@@ -1302,6 +1302,7 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
   }
 
   tgl_do_send_msg (M, callback, callback_extra);
+  tgls_free_message(M);
 }
 
 void tgl_do_reply_message (tgl_message_id_t *_reply_id, const char *text, int text_len, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
@@ -3049,16 +3050,18 @@ static int get_difference_on_answer (std::shared_ptr<query> q, void *D) {
     for (i = 0; i < ml_pos; i++) {
       //bl_do_msg_update (&ML[i]->permanent_id);
       //tgl_state::instance()->callback()->new_message(ML[i]);
+      if (ML[i]) {
+        tgls_free_message(ML[i]);
+      }
     }
     for (i = 0; i < el_pos; i++) {
       // messages to secret chats that no longer exist are not initialized and NULL
       if (EL[i]) {
         //bl_do_msg_update (&EL[i]->permanent_id);
         tgl_state::instance()->callback()->new_message(EL[i]);
+        tgls_free_message(EL[i]);
       }
     }
-
-    // FIXME: clean up ML and EL
 
     if (DS_UD->state) {
       tgl_state::instance()->set_pts (DS_LVAL (DS_UD->state->pts));
@@ -4192,7 +4195,8 @@ void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, 
     struct tl_ds_message_media TDSM;
     TDSM.magic = CODE_message_media_empty;
 
-    tglm_message_create (&id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
+    struct tgl_message* M = tglm_message_create (&id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
+    tgls_free_message(M);
   }
 
   clear_packet ();

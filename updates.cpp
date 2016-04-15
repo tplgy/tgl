@@ -634,17 +634,20 @@ void tglu_work_update_short_message (int check_only, struct tl_ds_updates *DS_U)
   //struct tgl_message *N = tgl_message_get (DS_LVAL (DS_U->id));
   //int new = (!N || !(N->flags & TGLMF_CREATED));
   
-  struct tgl_message *M = tglf_fetch_alloc_message_short (DS_U);
+  tglf_fetch_alloc_message_short (DS_U);
   
   if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
+
+#if 0
   assert (M);
 
   if (1) {
     //bl_do_msg_update (&M->permanent_id);
     tgl_state::instance()->callback()->new_message(M);
   }
+#endif
   
   if (check_only) { return; }
   //bl_do_set_pts (DS_LVAL (DS_U->pts));
@@ -665,18 +668,20 @@ void tglu_work_update_short_chat_message (int check_only, struct tl_ds_updates *
   //struct tgl_message *N = tgl_message_get (DS_LVAL (DS_U->id));
   //int new = (!N || !(N->flags & TGLMF_CREATED));
   
-  struct tgl_message *M = tglf_fetch_alloc_message_short_chat (DS_U);
+  tglf_fetch_alloc_message_short_chat (DS_U);
   
   if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
   
+#if 0
   assert (M);
 
   if (1) {
     //bl_do_msg_update (&M->permanent_id);
     tgl_state::instance()->callback()->new_message(M);
   }
+#endif
 
   if (check_only) { return; }
   //bl_do_set_pts (DS_LVAL (DS_U->pts));

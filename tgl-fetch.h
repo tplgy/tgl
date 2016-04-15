@@ -57,8 +57,8 @@ tgl_file_location tglf_fetch_file_location (struct tl_ds_file_location *DS_FL);
 void tglf_fetch_message_short (struct tgl_message *M, struct tl_ds_updates *DS_U);
 void tglf_fetch_message_short_chat (struct tgl_message *M, struct tl_ds_updates *DS_U);
 
-struct tgl_message *tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U);
-struct tgl_message *tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U);
+void tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U);
+void tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U);
 struct tgl_photo *tglf_fetch_alloc_photo (struct tl_ds_photo *DS_P);
 struct tgl_bot_info *tglf_fetch_alloc_bot_info (struct tl_ds_bot_info *DS_BI);
 struct tgl_message_reply_markup *tglf_fetch_alloc_reply_markup (struct tgl_message *M, struct tl_ds_reply_markup *DS_RM);
