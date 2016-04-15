@@ -1984,7 +1984,7 @@ struct query_methods send_msgs_methods = {
   .on_error = send_msgs_on_error,
   .on_timeout = NULL,
   .type = TYPE_TO_PARAM(updates),
-  .name = "forward messages",
+  .name = "send messages",
   .timeout = 0,
 };
 
@@ -4493,6 +4493,7 @@ void tgl_signed_in() {
 
   TGL_DEBUG("signed in, sending unsent messages and retrieving current server state");
 
+  tgl_export_all_auth();
   tglm_send_all_unsent();
   tgl_do_get_difference (0, tgl_started_cb, 0);
 }
