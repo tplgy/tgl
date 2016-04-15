@@ -310,11 +310,10 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     {
       tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
       if (DS_U->participants->magic == CODE_chat_participants) {
-        //bl_do_chat (tgl_get_peer_id (chat_id), NULL, 0, NULL, NULL, DS_U->participants->version, (struct tl_ds_vector *)DS_U->participants->participants, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
         for (int i=0; i<*DS_U->participants->participants->cnt; ++i) {
-          //C->chat.users_num = *DS_U->participants->participants->cnt;
           tgl_state::instance()->callback()->chat_add_user(tgl_get_peer_id (chat_id), *DS_U->participants->participants->data[i]->user_id,
-              *DS_U->participants->participants->data[i]->inviter_id, *DS_U->participants->participants->data[i]->date);
+              DS_U->participants->participants->data[i]->inviter_id ? *DS_U->participants->participants->data[i]->inviter_id : 0,
+              DS_U->participants->participants->data[i]->date ? *DS_U->participants->participants->data[i]->date : 0);
         }
       }
       break;

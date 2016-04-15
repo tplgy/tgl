@@ -3343,14 +3343,13 @@ void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, void (*callback)(st
 
 /* {{{ Create group chat */
 
-void tgl_do_create_group_chat (int users_num, tgl_peer_id_t ids[], const char *chat_topic, int chat_topic_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::string &chat_topic, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
   clear_packet ();
   out_int (CODE_messages_create_chat);
   out_int (CODE_vector);
-  out_int (users_num); // Number of users, currently we support only 1 user.
+  out_int (user_ids.size()); // Number of users, currently we support only 1 user.
   int i;
-  for (i = 0; i < users_num; i++) {
-    tgl_peer_id_t id = ids[i];
+  for (tgl_peer_id_t id : user_ids) {
     if (tgl_get_peer_type (id) != TGL_PEER_USER) {
       tgl_set_query_error (EINVAL, "Can not create chat with unknown user");
       if (callback) {
@@ -3362,7 +3361,8 @@ void tgl_do_create_group_chat (int users_num, tgl_peer_id_t ids[], const char *c
     out_int (tgl_get_peer_id (id));
     out_long (id.access_hash);
   }
-  out_cstring (chat_topic, chat_topic_len);
+  TGL_NOTICE("sending out chat creat request users number:%d" << user_ids.size());
+  out_cstring (chat_topic.c_str(), chat_topic.length());
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
 }
 /* }}} */

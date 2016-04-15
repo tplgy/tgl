@@ -472,45 +472,35 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
   struct tgl_chat *C = (struct tgl_chat *)talloc0 (sizeof (tgl_peer_t));
   C->id = chat_id;
 
-  int flags = C->flags;
-  if (!(flags & TGLCF_CREATED)) {
-    flags |= TGLCF_CREATE | TGLCF_CREATED;
-  }
+  bool creator = false;
+  bool kicked = false;
+  bool left = false;
+  bool admins_enabled = false;
+  bool deactivated = false;
+  bool admin = false;
 
   if (DS_LVAL (DS_C->flags) & 1) {
-    flags |= TGLCF_CREATOR;
-  } else {
-    flags &= ~TGLCF_CREATOR;
+    creator = TGLCF_CREATED;
   }
 
   if (DS_LVAL (DS_C->flags) & 2) {
-    flags |= TGLCF_KICKED;
-  } else {
-    flags &= ~TGLCF_KICKED;
+    kicked = TGLCF_KICKED;
   }
 
   if (DS_LVAL (DS_C->flags) & 4) {
-    flags |= TGLCF_LEFT;
-  } else {
-    flags &= ~TGLCF_LEFT;
+    left = TGLCF_LEFT;
   }
 
   if (DS_LVAL (DS_C->flags) & 8) {
-    flags |= TGLCF_ADMINS_ENABLED;
-  } else {
-    flags &= ~TGLCF_ADMINS_ENABLED;
+    admins_enabled = TGLCF_ADMINS_ENABLED;
   }
 
   if (DS_LVAL (DS_C->flags) & 16) {
-    flags |= TGLCF_ADMIN;
-  } else {
-    flags &= ~TGLCF_ADMIN;
+    admin = TGLCF_ADMIN;
   }
 
   if (DS_LVAL (DS_C->flags) & 32) {
-    flags |= TGLCF_DEACTIVATED;
-  } else {
-    flags &= ~TGLCF_DEACTIVATED;
+    deactivated |= TGLCF_DEACTIVATED;
   }
 
 #if 0
@@ -531,7 +521,8 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
   C->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
   C->photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
 
-  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, std::string(DS_C->title->data, DS_C->title->len));
+  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, std::string(DS_C->title->data, DS_C->title->len), *(DS_C->date), creator,
+        admin, admins_enabled, kicked, left, deactivated);
   tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), C->photo_big, C->photo_small);
 
   return C;

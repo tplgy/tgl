@@ -24,7 +24,7 @@ public:
     virtual void user_update(int user_id, void *value, enum tgl_user_update_type update_type) = 0;
     virtual void user_deleted(int id) = 0;
     virtual void avatar_update(int peer_id, const tgl_file_location &photo_small, const tgl_file_location &photo_big) = 0;
-    virtual void chat_update(int chat_id, int peers_num, const std::string &title) = 0;
+    virtual void chat_update(int chat_id, int peers_num, const std::string &title, int date, bool creator, bool admin, bool admin_enabled, bool kicked, bool left, bool deactivated) = 0;
     virtual void chat_add_user(int chat_id, int user, int inviter, int date) = 0;
     virtual void chat_delete_user(int chat_id, int user) = 0;
     virtual void secret_chat_update(const std::shared_ptr<tgl_secret_chat>& secret_chat) = 0;

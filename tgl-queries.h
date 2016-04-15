@@ -90,7 +90,7 @@ void tgl_do_del_user_from_chat (int chat_id, int id, void (*callback)(std::share
 
 // creates group chat with users ids
 // there should be at least one user other then you in chat
-void tgl_do_create_group_chat (int users_num, int ids[], const char *chat_topic, int chat_topic_len, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
+void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::string &chat_topic, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
 
 // receives invitation link to this chat
 // only chat admin can create one
