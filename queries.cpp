@@ -3351,7 +3351,6 @@ void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::s
   out_int (CODE_messages_create_chat);
   out_int (CODE_vector);
   out_int (user_ids.size()); // Number of users, currently we support only 1 user.
-  int i;
   for (tgl_peer_id_t id : user_ids) {
     if (tgl_get_peer_type (id) != TGL_PEER_USER) {
       tgl_set_query_error (EINVAL, "Can not create chat with unknown user");
