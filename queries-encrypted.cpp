@@ -263,13 +263,13 @@ void tgl_do_set_encr_chat_ttl (struct tgl_secret_chat *E, int ttl) {
 
 /* {{{ Seng msg (plain text, encrypted) */
 static int msg_send_encr_on_answer (std::shared_ptr<query> q, void *D) {
-  struct tl_ds_updates *DS_U = (struct tl_ds_updates *)D;
-  //struct tgl_message *M = (struct tgl_message*)q->extra.get();
+  //struct tl_ds_updates *DS_U = (struct tl_ds_updates *)D;
+  struct tgl_message* M = (struct tgl_message*)q->extra.get();
   std::shared_ptr<msg_callback_extra> old_msg_id = std::static_pointer_cast<msg_callback_extra>(q->extra);
   if (old_msg_id) {
-      tgl_state::instance()->callback()->message_sent(old_msg_id->old_msg_id, DS_LVAL(DS_U->id), old_msg_id->to_id);
+    tgl_state::instance()->callback()->message_sent(old_msg_id->old_msg_id, old_msg_id->old_msg_id, old_msg_id->to_id);
   }
-#if 0 // FXIME
+#if 0
   //assert (M->flags & TGLMF_ENCRYPTED);
   
   if (M->flags & TGLMF_PENDING) {
@@ -279,11 +279,11 @@ static int msg_send_encr_on_answer (std::shared_ptr<query> q, void *D) {
     
     //bl_do_msg_update (&M->permanent_id);
   }
+#endif
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, struct tgl_message *))q->callback) (q->callback_extra, 1, M);
+    ((void (*)(std::shared_ptr<void>, int, struct tgl_message*))q->callback) (q->callback_extra, 1, M);
   }
-#endif
   return 0;
 }
 

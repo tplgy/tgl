@@ -175,6 +175,7 @@ struct tgl_state {
   }
   std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int peer_id) const;
   std::shared_ptr<tgl_secret_chat> ensure_secret_chat(const tgl_peer_id_t& id);
+  void add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 
 private:
   int m_app_id;

@@ -251,3 +251,7 @@ std::shared_ptr<tgl_secret_chat> tgl_state::ensure_secret_chat(const tgl_peer_id
     return secret_chat;
 }
 
+void tgl_state::add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat)
+{
+    m_secret_chats[tgl_get_peer_id(secret_chat->id)] = secret_chat;
+}

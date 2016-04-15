@@ -1233,6 +1233,8 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
 
   struct tgl_message_id id = tgl_peer_id_to_random_msg_id (peer_id);
 
+  struct tgl_message *M = NULL;
+
   if (tgl_get_peer_type (peer_id) != TGL_PEER_ENCR_CHAT) {
     //int reply = (flags >> 32);
     int disable_preview = flags & TGL_SEND_MSG_FLAG_DISABLE_PREVIEW;
@@ -1282,7 +1284,7 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
 
 
     //bl_do_edit_message (&id, &from_id, &peer_id, NULL, NULL, &date, text, text_len, &TDSM, NULL, reply ? &reply : NULL, reply_markup, EN, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | disable_preview);
-    struct tgl_message *M = tglm_message_create (&id, &from_id, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, NULL,
+    M = tglm_message_create (&id, &from_id, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, NULL,
         reply_markup, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_TEMP_MSG_ID);
 
     if (flags & TGLMF_HTML) {
@@ -1290,16 +1292,16 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
       //free_ds_type_any (EN, TYPE_TO_PARAM_1 (vector, TYPE_TO_PARAM (message_entity)));
     }
 
-    tgl_do_send_msg (M, callback, callback_extra);
   } else {
-#if 0 // FIXME
     struct tl_ds_decrypted_message_media TDSM;
     TDSM.magic = CODE_decrypted_message_media_empty;
 
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
-    bl_do_edit_message_encr (&id, &from_id, &peer_id, &date, text, text_len, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
-#endif
+    //bl_do_edit_message_encr (&id, &from_id, &peer_id, &date, text, text_len, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
+    M = tglm_create_encr_message(&id, &from_id, &peer_id, &date, text, text_len, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
   }
+
+  tgl_do_send_msg (M, callback, callback_extra);
 }
 
 void tgl_do_reply_message (tgl_message_id_t *_reply_id, const char *text, int text_len, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
