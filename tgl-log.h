@@ -58,3 +58,5 @@ void tgl_log(std::string str, int severity);
 
 #define TGL_ASSERT(x) assert(x)
 #define TGL_ASSERT_UNUSED(u, x) { static_cast<void>(u); assert(x); }
+
+std::ostream& operator<<(std::ostream& s, __int128 i);
