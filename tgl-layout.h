@@ -256,63 +256,6 @@ struct tgl_encr_document {
   int duration;
 };
 
-struct tgl_channel {
-  tgl_peer_id_t id;
-  int flags;
-  struct tgl_message *last;
-  char *print_title;
-  char *username;
-  int structure_version;
-  struct tgl_file_location photo_big;
-  struct tgl_file_location photo_small;
-  int last_read_in;
-  int last_read_out;
-  long long photo_id;
-  struct tgl_photo *photo;
-  void *extra;
-
-  long long access_hash;
-  int date;
-  char *title;
-  int version;
-  char *about;
-  int participants_count;
-  int admins_count;
-  int kicked_count;
-
-  int pts;
-};
-
-struct tgl_chat_user {
-  int user_id;
-  int inviter_id;
-  int date;
-};
-
-struct tgl_chat {
-  tgl_peer_id_t id;
-  int flags;
-  struct tgl_message *last;
-  char *print_title;
-  char *username;
-  int structure_version;
-  tgl_file_location photo_big;
-  tgl_file_location photo_small;
-  int last_read_in;
-  int last_read_out;
-  long long pad;
-  struct tgl_photo *photo;
-  void *extra;
-  char *title;
-  int users_num;
-  int user_list_size;
-  int user_list_version;
-  struct tgl_chat_user *user_list;
-  int date;
-  int version;
-  int admin_id;
-};
-
 typedef union tgl_peer {
   struct {
     tgl_peer_id_t id;
@@ -329,8 +272,8 @@ typedef union tgl_peer {
     long long photo_id;
     void *extra;
   };
-  struct tgl_chat chat;
-  struct tgl_channel channel;
+  //struct tgl_chat chat;
+  //struct tgl_channel channel;
 } tgl_peer_t;
 
 struct tgl_document {

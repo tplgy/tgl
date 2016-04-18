@@ -2,6 +2,7 @@
 #define __TGL_QUERIES_H__
 
 #include "tgl.h"
+#include "types/tgl_chat.h"
 #include "types/tgl_user.h"
 
 #include <vector>
@@ -81,7 +82,7 @@ void tgl_do_rename_chat (int id, const char *new_title, int new_title_len, void 
 
 // requests full info about chat *id*.
 // if *offline_mode* is set no actual query is sent
-void tgl_do_get_chat_info (int id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_chat *C), std::shared_ptr<void> callback_extra);
+void tgl_do_get_chat_info (int id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_chat>& C), std::shared_ptr<void> callback_extra);
 
 // adds user *id* to chat *chat_id*
 // sends *limit* last messages from this chat to user
@@ -120,7 +121,7 @@ void tgl_do_add_contact (const char *phone, const char *first_name, const char *
 void tgl_do_del_contact (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
 
 // imports card exported by another user
-void tgl_do_import_card (int size, int *card, void (*callback)(std::shared_ptr<void> callback_extra, const std::shared_ptr<tgl_user>& user), std::shared_ptr<void> callback_extra);
+void tgl_do_import_card (int size, int *card, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::shared_ptr<tgl_user>& user), std::shared_ptr<void> callback_extra);
 
 // blocks user
 void tgl_do_block_user (int user_id, long long int access_hash, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);

@@ -38,6 +38,7 @@
 #include "tgl-structures.h"
 #include "tgl_download_manager.h"
 #include "tgl-timer.h"
+#include "types/tgl_chat.h"
 #include "types/tgl_update_callback.h"
 #include "types/tgl_peer_id.h"
 
@@ -592,7 +593,7 @@ static int q_void_on_error (std::shared_ptr<query> q, int error_code, const std:
 static int q_ptr_on_error (std::shared_ptr<query> q, int error_code, const std::string &error) {
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error));
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int, void *))(q->callback))(q->callback_extra, 0, NULL);
+        ((void (*)(std::shared_ptr<void>, bool, void *))(q->callback))(q->callback_extra, false, NULL);
     }
     return 0;
 }
@@ -1845,7 +1846,7 @@ int set_profile_name_on_answer (std::shared_ptr<query> q, void *D) {
   struct tl_ds_user *DS_U = (struct tl_ds_user *)D;
   std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user (DS_U);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, const std::shared_ptr<tgl_user>&))q->callback) (q->callback_extra, 1, user);
+    ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_user>&))q->callback) (q->callback_extra, true, user);
   }
   return 0;
 }
@@ -2541,10 +2542,10 @@ void tgl_do_channel_get_members  (tgl_peer_id_t channel_id, int limit, int offse
 /* {{{ Chat info */
 
 static int chat_info_on_answer (std::shared_ptr<query> q, void *D) {
-  struct tgl_chat *C = tglf_fetch_alloc_chat_full ((struct tl_ds_messages_chat_full *)D);
+  std::shared_ptr<tgl_chat> C = tglf_fetch_alloc_chat_full ((struct tl_ds_messages_chat_full *)D);
   //print_chat_info (C);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, struct tgl_chat *))q->callback) (q->callback_extra, 1, C);
+    ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_chat>&))q->callback) (q->callback_extra, true, C);
   }
   return 0;
 }
@@ -2558,7 +2559,7 @@ static struct query_methods chat_info_methods = {
   .timeout = 0,
 };
 
-void tgl_do_get_chat_info (int id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_chat *C), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_chat_info (int id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_chat>& C), std::shared_ptr<void> callback_extra) {
   if (offline_mode) {
 #if 0
     tgl_peer_t *C = tgl_peer_get (id);
@@ -2585,10 +2586,10 @@ void tgl_do_get_chat_info (int id, int offline_mode, void (*callback)(std::share
 /* {{{ Channel info */
 
 static int channel_info_on_answer (std::shared_ptr<query> q, void *D) {
-  struct tgl_channel *C = tglf_fetch_alloc_channel_full ((struct tl_ds_messages_chat_full *)D);
+  std::shared_ptr<tgl_channel> C = tglf_fetch_alloc_channel_full ((struct tl_ds_messages_chat_full *)D);
   //print_chat_info (C);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, struct tgl_channel *))q->callback) (q->callback_extra, 1, C);
+    ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_channel>&))q->callback) (q->callback_extra, true, C);
   }
   return 0;
 }
@@ -2602,7 +2603,7 @@ static struct query_methods channel_info_methods = {
   .timeout = 0,
 };
 
-void tgl_do_get_channel_info (tgl_peer_id_t id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_channel *C), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_channel_info (tgl_peer_id_t id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_channel>& C), std::shared_ptr<void> callback_extra) {
   if (offline_mode) {
 #if 0
     tgl_peer_t *C = tgl_peer_get (id);
@@ -3526,7 +3527,7 @@ static int import_card_on_answer (std::shared_ptr<query> q, void *D) {
   std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user((struct tl_ds_user *)D);
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, const std::shared_ptr<tgl_user>&))q->callback) (q->callback_extra, user);
+    ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_user>&))q->callback) (q->callback_extra, true, user);
   }
   return 0;
 }
@@ -3540,7 +3541,7 @@ static struct query_methods import_card_methods = {
   .timeout = 0,
 };
 
-void tgl_do_import_card (int size, int *card, void (*callback)(std::shared_ptr<void>, const std::shared_ptr<tgl_user>& user), std::shared_ptr<void> callback_extra) {
+void tgl_do_import_card (int size, int *card, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_user>& user), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_contacts_import_card);
     out_int (CODE_vector);

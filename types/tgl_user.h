@@ -14,6 +14,7 @@ struct tgl_user_status {
     int online;
     int when;
     std::shared_ptr<tgl_timer> ev;
+    tgl_user_status(): online(0), when(0) { }
 };
 
 struct tgl_user {
@@ -21,6 +22,7 @@ struct tgl_user {
     int flags;
     long long access_hash;
     struct tgl_user_status status;
+    tgl_user(): id({0, 0, 0}), flags(0) { }
 };
 
 #endif

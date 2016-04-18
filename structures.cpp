@@ -460,18 +460,18 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
 }
 #endif
 
-struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
-  if (!DS_C) { return NULL; }
+std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
+  if (!DS_C) { return nullptr; }
   if (DS_C->magic == CODE_chat_empty) { 
-    return NULL;
+    return nullptr;
   }
   if (DS_C->magic == CODE_channel || DS_C->magic == CODE_channel_forbidden) {
-    return reinterpret_cast<struct tgl_chat *>(tglf_fetch_alloc_channel (DS_C));
+    return tglf_fetch_alloc_channel (DS_C);
   }
   tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_C->id));  
   chat_id.access_hash = 0; // chats don't have access hash
 
-  struct tgl_chat *C = (struct tgl_chat *)talloc0 (sizeof (tgl_peer_t));
+  std::shared_ptr<tgl_chat> C = std::make_shared<tgl_chat>();
   C->id = chat_id;
 
   bool creator = false;
@@ -530,10 +530,10 @@ struct tgl_chat *tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
   return C;
 }
 
-struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS_MCF) {
-  if (!DS_MCF) { return NULL; }
+std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS_MCF) {
+  if (!DS_MCF) { return nullptr; }
   if (DS_MCF->full_chat->magic == CODE_channel_full) {
-    return reinterpret_cast<struct tgl_chat *>(tglf_fetch_alloc_channel_full (DS_MCF));
+    return tglf_fetch_alloc_channel_full (DS_MCF);
   }
  
   if (DS_MCF->users) {
@@ -579,7 +579,7 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
   }
 
   tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_CF->id));  
-  struct tgl_chat *C = (struct tgl_chat *)talloc0 (sizeof (tgl_peer_t));
+  std::shared_ptr<tgl_chat> C = std::make_shared<tgl_chat>();
   C->id = chat_id;
 
 #if 0
@@ -618,13 +618,13 @@ struct tgl_chat *tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS
   return C;
 }
 
-struct tgl_channel *tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C) {
-  if (!DS_C) { return NULL; }
+std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C) {
+  if (!DS_C) { return nullptr; }
   
   tgl_peer_id_t chat_id = TGL_MK_CHANNEL (DS_LVAL (DS_C->id));  
   chat_id.access_hash = DS_LVAL (DS_C->access_hash); 
 
-  struct tgl_channel *C = (struct tgl_channel *)talloc0 (sizeof (tgl_peer_t));
+  std::shared_ptr<tgl_channel> C = std::make_shared<tgl_channel>();
   C->id = chat_id;
   
   int flags = C->flags;
@@ -698,8 +698,8 @@ struct tgl_channel *tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C) {
   return C;
 }
 
-struct tgl_channel *tglf_fetch_alloc_channel_full (struct tl_ds_messages_chat_full *DS_MCF) {
-  if (!DS_MCF) { return NULL; }
+std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full (struct tl_ds_messages_chat_full *DS_MCF) {
+  if (!DS_MCF) { return nullptr; }
   
   if (DS_MCF->users) {
     int i;
@@ -718,7 +718,7 @@ struct tgl_channel *tglf_fetch_alloc_channel_full (struct tl_ds_messages_chat_fu
 
   tgl_peer_id_t chat_id = TGL_MK_CHANNEL (DS_LVAL (DS_CF->id));
 
-  struct tgl_channel *C = (struct tgl_channel *)talloc0 (sizeof (tgl_peer_t));
+  std::shared_ptr<tgl_channel> C = std::make_shared<tgl_channel>();
   C->id = chat_id;
 
 #if 0
@@ -2235,6 +2235,7 @@ void tgls_free_message (struct tgl_message *M) {
     free (M);
 }
 
+#if 0
 void tgls_free_chat (struct tgl_chat *U) {
   if (U->title) { tfree_str (U->title); }
   if (U->print_title) { tfree_str (U->print_title); }
@@ -2253,18 +2254,21 @@ void tgls_free_channel (struct tgl_channel *U) {
   if (U->photo) { tgls_free_photo (U->photo); }
   tfree (U, sizeof (tgl_peer_t));
 }
+#endif
 
 void tgls_free_peer (tgl_peer_t *P) {
   if (tgl_get_peer_type (P->id) == TGL_PEER_USER) {
     assert(0);
   } else if (tgl_get_peer_type (P->id) == TGL_PEER_CHAT) {
-    tgls_free_chat ((tgl_chat *)P);
+    //tgls_free_chat ((tgl_chat *)P);
+    assert(0);
 #ifdef ENABLE_SECRET_CHAT
   } else if (tgl_get_peer_type (P->id) == TGL_PEER_ENCR_CHAT) {
     assert(0);
 #endif
   } else if (tgl_get_peer_type (P->id) == TGL_PEER_CHANNEL) {
-    tgls_free_channel ((tgl_channel *)P);
+    //tgls_free_channel ((tgl_channel *)P);
+    assert(0);
   } else {
     assert (0);
   }
