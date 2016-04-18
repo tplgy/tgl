@@ -27,7 +27,9 @@
 #include "tgl-methods-in.h"
 #include "updates.h"
 #include "mtproto-client.h"
+#include "types/tgl_bot.h"
 #include "types/tgl_update_callback.h"
+#include "types/tgl_user.h"
 
 #include "tgl.h"
 #include "auto.h"
@@ -194,22 +196,22 @@ int tglf_fetch_user_status (struct tgl_user_status *S, struct tgl_user *U, struc
   return 0;
 }
 
-struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
-  if (!DS_U) { return 0; }
+std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U) {
+  if (!DS_U) { return nullptr; }
   if (DS_U->magic == CODE_user_empty) {
-    return 0;
+    return nullptr;
   } 
 
   tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->id));  
   user_id.access_hash = DS_LVAL (DS_U->access_hash);
 
-  struct tgl_user *U = (struct tgl_user *)talloc0 (sizeof (tgl_peer_t));
-  U->id = user_id;
+  std::shared_ptr<tgl_user> user = std::make_shared<tgl_user>();
+  user->id = user_id;
 
-  int flags = U->flags;
+  int flags = user->flags;
 
   if (DS_LVAL (DS_U->flags) & (1 << 10)) {
-    //bl_do_set_our_id (U->id);
+    //bl_do_set_our_id (user->id);
     tgl_state::instance()->set_our_id (tgl_get_peer_id(user_id));
     flags |= TGLUF_SELF;
   } else {
@@ -254,7 +256,7 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
   }
 
 #if 0
-  bl_do_user (tgl_get_peer_id (U->id), 
+  bl_do_user (tgl_get_peer_id (user->id),
     DS_U->access_hash,
     DS_STR (DS_U->first_name), 
     DS_STR (DS_U->last_name), 
@@ -270,7 +272,7 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
 
   if (DS_LVAL (DS_U->flags) & (1 << 13)) {
     tgl_state::instance()->callback()->user_deleted(tgl_get_peer_id(user_id));
-    return U;
+    return user;
   } else {
     DS_CSTR(firstname, DS_U->first_name);
     DS_CSTR(lastname, DS_U->last_name);
@@ -290,17 +292,17 @@ struct tgl_user *tglf_fetch_alloc_user (struct tl_ds_user *DS_U) {
 
       tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(user_id), photo_small, photo_big);
     }
-    return U;
+    return user;
   }
 }
 
-struct tgl_user *tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_UF) {
-  if (!DS_UF) { return NULL; }
+std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(struct tl_ds_user_full *DS_UF) {
+  if (!DS_UF) { return nullptr; }
 
-  struct tgl_user *U = tglf_fetch_alloc_user (DS_UF->user);
-  if (!U) { return NULL; }
+  auto user = tglf_fetch_alloc_user(DS_UF->user);
+  if (!user) { return nullptr; }
 
-  int flags = U->flags;
+  int flags = user->flags;
   
   if (DS_BVAL (DS_UF->blocked)) {
     flags |= TGLUF_BLOCKED;
@@ -309,7 +311,7 @@ struct tgl_user *tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_UF) {
   }
 
 #if 0
-  bl_do_user (tgl_get_peer_id (U->id), 
+  bl_do_user (tgl_get_peer_id (user->id),
     NULL,
     NULL, 0, 
     NULL, 0,
@@ -323,15 +325,15 @@ struct tgl_user *tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_UF) {
   );
 #endif
 
-    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(U->id), "", "", "", "", 0);
+    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user->id), "", "", "", "", 0);
 
     if (DS_UF->user->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_UF->user->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location(DS_UF->user->photo->photo_small);
-        tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(U->id), photo_small, photo_big);
+        tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(user->id), photo_small, photo_big);
     }
 
-  return U;
+  return user;
 }
 
 void str_to_256 (unsigned char *dst, char *src, int src_len) {
@@ -1945,20 +1947,29 @@ struct tgl_message *tglf_fetch_alloc_encrypted_message (struct tl_ds_encrypted_m
 }
 #endif
 
-struct tgl_bot_info *tglf_fetch_alloc_bot_info (struct tl_ds_bot_info *DS_BI) {
+std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info (struct tl_ds_bot_info *DS_BI) {
     if (!DS_BI || DS_BI->magic == CODE_bot_info_empty) { return NULL; }
-    struct tgl_bot_info *B = (struct tgl_bot_info *)malloc (sizeof (*B));
+    std::shared_ptr<tgl_bot_info> B = std::make_shared<tgl_bot_info>();
     B->version = DS_LVAL (DS_BI->version);
-    B->share_text = DS_STR_DUP (DS_BI->share_text);
-    B->description = DS_STR_DUP (DS_BI->description);
+    if (DS_BI->share_text->data) {
+       B->share_text = std::string(DS_BI->share_text->data, DS_BI->share_text->len);
+    }
 
-    B->commands_num = DS_LVAL (DS_BI->commands->cnt);
-    B->commands = (struct tgl_bot_command *)malloc (sizeof (struct tgl_bot_command) * B->commands_num);
-    int i;
-    for (i = 0; i < B->commands_num; i++) {
+    if (DS_BI->description->data) {
+        B->description = std::string(DS_BI->description->data, DS_BI->description->len);
+    }
+
+    int commands_num = DS_LVAL (DS_BI->commands->cnt);
+    B->commands.resize(commands_num);
+    for (int i = 0; i < commands_num; i++) {
         struct tl_ds_bot_command *BC = DS_BI->commands->data[i];
-        B->commands[i].command = DS_STR_DUP (BC->command);
-        B->commands[i].description = DS_STR_DUP (BC->description);
+        B->commands[i] = std::make_shared<tgl_bot_command>();
+        if (BC->command->data) {
+            B->commands[i]->command = std::string(BC->command->data, BC->command->len);
+        }
+        if (BC->description->data) {
+            B->commands[i]->description = std::string(BC->description->data, BC->description->len);
+        }
     }
     return B;
 }
@@ -2234,20 +2245,6 @@ void tgls_free_chat (struct tgl_chat *U) {
   tfree (U, sizeof (tgl_peer_t));
 }
 
-void tgls_free_user (struct tgl_user *U) {
-  if (U->first_name) { tfree_str (U->first_name); }
-  if (U->last_name) { tfree_str (U->last_name); }
-  if (U->print_name) { tfree_str (U->print_name); }
-  if (U->phone) { tfree_str (U->phone); }
-  if (U->username) { tfree_str (U->username); }
-  if (U->real_first_name) { tfree_str (U->real_first_name); }
-  if (U->real_last_name) { tfree_str (U->real_last_name); }
-  //if (U->status.ev) { tgl_remove_status_expire (U); }
-  if (U->photo) { tgls_free_photo (U->photo); }
-  if (U->bot_info) { tgls_free_bot_info (U->bot_info); }
-  tfree (U, sizeof (tgl_peer_t));
-}
-
 void tgls_free_channel (struct tgl_channel *U) {
   if (U->print_title) { tfree_str (U->print_title); }
   if (U->username) { tfree_str (U->username); }
@@ -2259,7 +2256,7 @@ void tgls_free_channel (struct tgl_channel *U) {
 
 void tgls_free_peer (tgl_peer_t *P) {
   if (tgl_get_peer_type (P->id) == TGL_PEER_USER) {
-    tgls_free_user ((tgl_user *)P);
+    assert(0);
   } else if (tgl_get_peer_type (P->id) == TGL_PEER_CHAT) {
     tgls_free_chat ((tgl_chat *)P);
 #ifdef ENABLE_SECRET_CHAT
@@ -2273,18 +2270,6 @@ void tgls_free_peer (tgl_peer_t *P) {
   }
 }
 
-void tgls_free_bot_info (struct tgl_bot_info *B) {
-    if (!B) { return; }
-    int i;
-    for (i = 0; i < B->commands_num; i++) {
-        tfree_str (B->commands[i].command);
-        tfree_str (B->commands[i].description);
-    }
-    free (B->commands);
-    tfree_str (B->share_text);
-    tfree_str (B->description);
-    free (B);
-}
 /* }}} */
 
 /* Messages {{{ */

@@ -2,6 +2,9 @@
 #define __TGL_QUERIES_H__
 
 #include "tgl.h"
+#include "types/tgl_user.h"
+
+#include <vector>
 
 void tgl_do_get_terms_of_service (struct tgl_state *TLS, void (*callback)(struct tgl_state *TLS, std::shared_ptr<void> callback_extra, bool success, const char *ans), std::shared_ptr<void> callback_extra);
 
@@ -111,13 +114,13 @@ void tgl_do_get_user_info (int id, void (*callback)(std::shared_ptr<void> callba
 // adds contact to contact list by phone number
 // user will be named  *first_name* *last_name* in contact list
 // force should be set to 0
-void tgl_do_add_contact (const char *phone, const char *first_name, const char *last_name, int force, void (*callback)(std::shared_ptr<void> callback_extra, bool success, int size, int users[]), std::shared_ptr<void> callback_extra);
+void tgl_do_add_contact (const char *phone, const char *first_name, const char *last_name, int force, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::vector<std::shared_ptr<tgl_user>>& users), std::shared_ptr<void> callback_extra);
 
 // deletes user *id* from contact listus
 void tgl_do_del_contact (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
 
 // imports card exported by another user
-void tgl_do_import_card (int size, int *card, void (*callback)(std::shared_ptr<void> callback_extra, int), std::shared_ptr<void> callback_extra);
+void tgl_do_import_card (int size, int *card, void (*callback)(std::shared_ptr<void> callback_extra, const std::shared_ptr<tgl_user>& user), std::shared_ptr<void> callback_extra);
 
 // blocks user
 void tgl_do_block_user (int user_id, long long int access_hash, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);

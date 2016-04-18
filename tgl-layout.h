@@ -256,51 +256,6 @@ struct tgl_encr_document {
   int duration;
 };
 
-struct tgl_user_status {
-  int online;
-  int when;
-  std::shared_ptr<tgl_timer> ev;
-};
-
-struct tgl_bot_command {
-  char *command;
-  char *description;
-};
-
-struct tgl_bot_info {
-  int version;
-  char *share_text;
-  char *description;
-  int commands_num;
-  struct tgl_bot_command *commands;
-};
-
-struct tgl_user {
-  tgl_peer_id_t id;
-  int flags;
-  struct tgl_message *last;
-  char *print_name;
-  char *username;
-  int structure_version;
-  struct tgl_file_location photo_big;
-  struct tgl_file_location photo_small;
-  int last_read_in;
-  int last_read_out;
-  long long photo_id;
-  struct tgl_photo *photo;
-  void *extra;
-  char *first_name;
-  char *last_name;
-  char *phone;
-  long long access_hash;
-  struct tgl_user_status status;
-  int blocked;
-  char *real_first_name;
-  char *real_last_name;
-
-  struct tgl_bot_info *bot_info;
-};
-
 struct tgl_channel {
   tgl_peer_id_t id;
   int flags;
@@ -374,7 +329,6 @@ typedef union tgl_peer {
     long long photo_id;
     void *extra;
   };
-  struct tgl_user user;
   struct tgl_chat chat;
   struct tgl_channel channel;
 } tgl_peer_t;

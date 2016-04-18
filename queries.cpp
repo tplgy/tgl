@@ -1022,14 +1022,13 @@ static int get_contacts_on_answer (std::shared_ptr<query> q, void *D) {
     int n = DS_CC->users ? DS_LVAL (DS_CC->users->cnt) : 0;
 
   int i;
-  struct tgl_user **list = (struct tgl_user **)talloc (sizeof (void *) * n);
+  std::vector<std::shared_ptr<tgl_user>> users(n);
   for (i = 0; i < n; i++) {
-    list[i] = tglf_fetch_alloc_user (DS_CC->users->data[i]);
+    users[i] = tglf_fetch_alloc_user (DS_CC->users->data[i]);
   }
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, int, struct tgl_user **))q->callback) (q->callback_extra, 1, n, list);
+    ((void (*)(std::shared_ptr<void>, int, int, const std::vector<std::shared_ptr<tgl_user>>&))q->callback) (q->callback_extra, 1, n, users);
   }
-  tfree (list, sizeof (void *) * n);
   return 0;
 }
 
@@ -1844,9 +1843,9 @@ void out_peer_id (tgl_peer_id_t id) {
 int set_profile_name_on_answer (std::shared_ptr<query> q, void *D) {
   TGL_UNUSED(q);
   struct tl_ds_user *DS_U = (struct tl_ds_user *)D;
-  struct tgl_user *U = tglf_fetch_alloc_user (DS_U);
+  std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user (DS_U);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, struct tgl_user  *))q->callback) (q->callback_extra, 1, U);
+    ((void (*)(std::shared_ptr<void>, int, const std::shared_ptr<tgl_user>&))q->callback) (q->callback_extra, 1, user);
   }
   return 0;
 }
@@ -2784,16 +2783,14 @@ static int add_contact_on_answer (std::shared_ptr<query> q, void *D) {
 
   int n = DS_LVAL (DS_CIC->users->cnt);
 
-  struct tgl_user **UL = (struct tgl_user **)talloc (n * sizeof (void *));
-  int i;
-  for (i = 0; i < n; i++) {
-    UL[i] = tglf_fetch_alloc_user (DS_CIC->users->data[i]);
+  std::vector<std::shared_ptr<tgl_user>> users(n);
+  for (int i = 0; i < n; i++) {
+    users[i] = tglf_fetch_alloc_user (DS_CIC->users->data[i]);
   }
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, int, struct tgl_user **))q->callback) (q->callback_extra, 1, n, UL);
+    ((void (*)(std::shared_ptr<void>, bool, const std::vector<std::shared_ptr<tgl_user>>&))q->callback) (q->callback_extra, true, users);
   }
-  free (UL);
   return 0;
 }
 
@@ -2806,7 +2803,7 @@ static struct query_methods add_contact_methods = {
   .timeout = 0,
 };
 
-void tgl_do_add_contact (const char *phone, const char *first_name, const char *last_name, int force, void (*callback)(std::shared_ptr<void>, bool success, int size, int users[]), std::shared_ptr<void> callback_extra) {
+void tgl_do_add_contact (const char *phone, const char *first_name, const char *last_name, int force, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_user>>& users), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_contacts_import_contacts);
     out_int (CODE_vector);
@@ -3526,10 +3523,10 @@ void tgl_do_export_card (void (*callback)(std::shared_ptr<void>, bool success, i
 /* {{{ Import card */
 
 static int import_card_on_answer (std::shared_ptr<query> q, void *D) {
-  struct tgl_user *U = tglf_fetch_alloc_user ((struct tl_ds_user *)D);
+  std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user((struct tl_ds_user *)D);
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, tgl_user *))q->callback) (q->callback_extra, U);
+    ((void (*)(std::shared_ptr<void>, const std::shared_ptr<tgl_user>&))q->callback) (q->callback_extra, user);
   }
   return 0;
 }
@@ -3543,7 +3540,7 @@ static struct query_methods import_card_methods = {
   .timeout = 0,
 };
 
-void tgl_do_import_card (int size, int *card, void (*callback)(std::shared_ptr<void> , int user_id), std::shared_ptr<void> callback_extra) {
+void tgl_do_import_card (int size, int *card, void (*callback)(std::shared_ptr<void>, const std::shared_ptr<tgl_user>& user), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_contacts_import_card);
     out_int (CODE_vector);
