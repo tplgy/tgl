@@ -106,11 +106,6 @@ struct tgl_secret_chat;
 struct tgl_state {
   static tgl_state *instance();
 
-  int encr_root;
-  unsigned char *encr_prime;
-  TGLC_bn *encr_prime_bn;
-  int encr_param_version;
-
   int active_queries;
   int started;
 

@@ -1,9 +1,11 @@
 #ifndef __TGL_SECRET_CHAT_H__
 #define __TGL_SECRET_CHAT_H__
 
+#include "crypto/bn.h"
 #include "tgl-layout.h"
 #include "types/tgl_file_location.h"
 #include <string.h>
+#include <memory>
 
 enum tgl_secret_chat_state {
     sc_none,
@@ -20,6 +22,13 @@ enum tgl_secret_chat_exchange_state {
     tgl_sce_committed,
     tgl_sce_confirmed,
     tgl_sce_aborted
+};
+
+struct TGLC_bn_deleter {
+    void operator()(TGLC_bn* bn)
+    {
+        TGLC_bn_free(bn);
+    }
 };
 
 struct tgl_secret_chat {
@@ -54,6 +63,11 @@ struct tgl_secret_chat {
     int exchange_key[64];
     long long exchange_key_fingerprint;
 
+    int encr_root;
+    std::vector<unsigned char> encr_prime;
+    std::unique_ptr<TGLC_bn, TGLC_bn_deleter> encr_prime_bn;
+    int encr_param_version;
+
     tgl_secret_chat()
         : id({0, 0, 0})
         , flags(0)
@@ -80,6 +94,10 @@ struct tgl_secret_chat {
         , exchange_id(0)
         , exchange_state(tgl_sce_none)
         , exchange_key_fingerprint(0)
+        , encr_root(0)
+        , encr_prime()
+        , encr_prime_bn(nullptr)
+        , encr_param_version(0)
     {
         memset(key, 0, sizeof(key));
         memset(first_key_sha, 0, sizeof(first_key_sha));

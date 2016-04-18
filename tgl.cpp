@@ -38,11 +38,7 @@
 #include <assert.h>
 
 tgl_state::tgl_state()
-    : encr_root(0)
-    , encr_prime(NULL)
-    , encr_prime_bn(NULL)
-    , encr_param_version(0)
-    , active_queries(0)
+    : active_queries(0)
     , started(false)
     , locks(0)
     , DC_working(NULL)
