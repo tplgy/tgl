@@ -256,24 +256,21 @@ struct tgl_encr_document {
   int duration;
 };
 
-typedef union tgl_peer {
-  struct {
-    tgl_peer_id_t id;
-    int flags;
-    struct tgl_message *last;
-    char *print_name;
-    char *username;
-    int structure_version;
-    struct tgl_file_location photo_big;
-    struct tgl_file_location photo_small;
-    struct tgl_photo *photo;
-    int last_read_in;
-    int last_read_out;
-    long long photo_id;
-    void *extra;
-  };
-  //struct tgl_chat chat;
-  //struct tgl_channel channel;
+// FIXME: We may be able to remove this after evaluate the usage.
+typedef struct tgl_peer {
+  tgl_peer_id_t id;
+  int flags;
+  struct tgl_message *last;
+  char *print_name;
+  char *username;
+  int structure_version;
+  struct tgl_file_location photo_big;
+  struct tgl_file_location photo_small;
+  struct tgl_photo *photo;
+  int last_read_in;
+  int last_read_out;
+  long long photo_id;
+  void *extra;
 } tgl_peer_t;
 
 struct tgl_document {

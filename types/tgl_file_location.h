@@ -2,6 +2,12 @@
 #define TGL_FILE_LOCATION
 
 struct tgl_file_location {
+    tgl_file_location()
+        : m_dc(0)
+        , m_volume(0)
+        , m_local_id(0)
+        , m_secret(0)
+    { }
 
     int dc() const { return m_dc; }
     void set_dc(int d) { m_dc = d; }
@@ -23,7 +29,5 @@ struct tgl_file_location {
     int m_local_id;  // not used for documents
     long long m_secret; // == access hash for documents
 };
-
-static const tgl_file_location no_file_location = { 0, 0, 0, 0 };
 
 #endif // TGL_FILE_LOCATION

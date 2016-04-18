@@ -59,10 +59,6 @@ void tglm_message_del_temp_id (struct tgl_message *M);
 void tglm_message_del_random_id (struct tgl_message *M);
 
 #ifdef ENABLE_SECRET_CHAT
-void tglp_insert_encrypted_chat (tgl_peer_t *P);
-void tglp_insert_user (tgl_peer_t *P);
-void tglp_insert_chat (tgl_peer_t *P);
-void tglp_insert_channel (tgl_peer_t *P);
 //enum tgl_typing_status tglf_fetch_typing_buf (void);
 void tgls_messages_mark_read (struct tgl_message *M, int out, int seq);
 #endif

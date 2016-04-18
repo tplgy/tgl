@@ -99,11 +99,12 @@ tgl_peer_id_t tglf_fetch_peer_id (struct tl_ds_peer *DS_P) {
 }
 
 tgl_file_location tglf_fetch_file_location (struct tl_ds_file_location *DS_FL) {
+  tgl_file_location location;
+
   if (!DS_FL) {
-    return no_file_location;
+    return location;
   }
 
-  tgl_file_location location;
   location.set_dc(DS_LVAL(DS_FL->dc_id));
   location.set_volume(DS_LVAL(DS_FL->volume_id));
   location.set_local_id(DS_LVAL(DS_FL->local_id));
@@ -2233,45 +2234,6 @@ void tgls_free_message (struct tgl_message *M) {
         tgls_free_reply_markup (M->reply_markup);
     }
     free (M);
-}
-
-#if 0
-void tgls_free_chat (struct tgl_chat *U) {
-  if (U->title) { tfree_str (U->title); }
-  if (U->print_title) { tfree_str (U->print_title); }
-  if (U->user_list) {
-    tfree (U->user_list, U->user_list_size * 12);
-  }
-  if (U->photo) { tgls_free_photo (U->photo); }
-  tfree (U, sizeof (tgl_peer_t));
-}
-
-void tgls_free_channel (struct tgl_channel *U) {
-  if (U->print_title) { tfree_str (U->print_title); }
-  if (U->username) { tfree_str (U->username); }
-  if (U->title) { tfree_str (U->title); }
-  if (U->about) { tfree_str (U->about); }
-  if (U->photo) { tgls_free_photo (U->photo); }
-  tfree (U, sizeof (tgl_peer_t));
-}
-#endif
-
-void tgls_free_peer (tgl_peer_t *P) {
-  if (tgl_get_peer_type (P->id) == TGL_PEER_USER) {
-    assert(0);
-  } else if (tgl_get_peer_type (P->id) == TGL_PEER_CHAT) {
-    //tgls_free_chat ((tgl_chat *)P);
-    assert(0);
-#ifdef ENABLE_SECRET_CHAT
-  } else if (tgl_get_peer_type (P->id) == TGL_PEER_ENCR_CHAT) {
-    assert(0);
-#endif
-  } else if (tgl_get_peer_type (P->id) == TGL_PEER_CHANNEL) {
-    //tgls_free_channel ((tgl_channel *)P);
-    assert(0);
-  } else {
-    assert (0);
-  }
 }
 
 /* }}} */
