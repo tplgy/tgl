@@ -170,7 +170,7 @@ void tgl_prng_seed (const char *password_filename, int password_length) {
   ensure_ptr (tgl_state::instance()->bn_ctx);
 }
 
-int tgl_serialize_bignum (TGLC_bn *b, char *buffer, int maxlen) {
+int tgl_serialize_bignum (const TGLC_bn *b, char *buffer, int maxlen) {
   int itslen = TGLC_bn_num_bytes (b);
   int reqlen;
   if (itslen < 254) {

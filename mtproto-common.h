@@ -122,7 +122,7 @@ struct encrypted_message {
 //TGLC_bn_ctx *bn_ctx;
 
 void tgl_prng_seed (const char *password_filename, int password_length);
-int tgl_serialize_bignum (TGLC_bn *b, char *buffer, int maxlen);
+int tgl_serialize_bignum (const TGLC_bn *b, char *buffer, int maxlen);
 long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key);
 
 #define packet_buffer tgl_packet_buffer
