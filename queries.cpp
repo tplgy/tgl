@@ -951,14 +951,14 @@ void tgl_do_phone_call (const char *phone, int phone_len, const char *hash, int 
 /* {{{ Sign in / Sign up */
 static int sign_in_on_answer (std::shared_ptr<query> q, void *D) {
     TGL_DEBUG2("sign_in_on_answer");
-    //struct tl_ds_auth_authorization *DS_AA = (struct tl_ds_auth_authorization *)D;
+    struct tl_ds_auth_authorization *DS_AA = (struct tl_ds_auth_authorization *)D;
 
-  //struct tgl_user *U = tglf_fetch_alloc_user (DS_AA->user);
+    std::shared_ptr<struct tgl_user> U = tglf_fetch_alloc_user (DS_AA->user);
 
     tgl_state::instance()->set_dc_signed (tgl_state::instance()->DC_working->id);
 
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 1);
+        ((void (*)(std::shared_ptr<void>, int, std::shared_ptr<struct tgl_user>))q->callback)(q->callback_extra, 1, U);
     }
 
     return 0;
@@ -981,7 +981,7 @@ static struct query_methods sign_in_methods  = {
   .timeout = 0,
 };
 
-int tgl_do_send_code_result (const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+int tgl_do_send_code_result (const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_user *U), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_auth_sign_in);
     out_cstring (phone, phone_len);
@@ -2634,10 +2634,10 @@ void tgl_do_get_channel_info (tgl_peer_id_t id, int offline_mode, void (*callbac
 
 static int user_info_on_answer (std::shared_ptr<query> q, void *D) {
   TGL_UNUSED(q);
-  //struct tgl_user *U = tglf_fetch_alloc_user_full ((struct tl_ds_user_full *)D);
-  //if (q->callback) {
-    //((void (*)(std::shared_ptr<void>, int, struct tgl_user *))q->callback) (q->callback_extra, 1, U);
-  //}
+  std::shared_ptr<struct tgl_user> U = tglf_fetch_alloc_user_full ((struct tl_ds_user_full *)D);
+  if (q->callback) {
+    ((void (*)(std::shared_ptr<void>, int, std::shared_ptr<struct tgl_user>))q->callback) (q->callback_extra, 1, U);
+  }
   return 0;
 }
 
@@ -4509,7 +4509,7 @@ struct sign_up_extra {
 };
 
 void tgl_sign_in_code (const void *code, std::shared_ptr<void> _T);
-void tgl_sign_in_result (std::shared_ptr<void> _T, bool success) {
+void tgl_sign_in_result (std::shared_ptr<void> _T, bool success, struct tgl_user *U) {
     TGL_ERROR(".....tgl_sign_in_result");
     std::shared_ptr<sign_up_extra> E = std::static_pointer_cast<sign_up_extra>(_T);
     if (success) {
