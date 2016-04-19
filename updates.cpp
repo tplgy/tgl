@@ -497,14 +497,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_channel_group:
     break;
   case CODE_update_new_channel_message:
-    {
-      int new_msg = 0;
-      struct tgl_message *M = tglf_fetch_alloc_message (DS_U->message, &new_msg);
-      if (M && new_msg) {
-        //bl_do_msg_update (&M->permanent_id);
-        tgl_state::instance()->callback()->new_message(M);
-      }
-    }
+    tglf_fetch_alloc_message (DS_U->message, &new_msg);
     break;
   case CODE_update_read_channel_inbox:
     break;

@@ -326,8 +326,6 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(struct tl_ds_user_full *DS_
   );
 #endif
 
-    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user->id), "", "", "", "", 0);
-
     if (DS_UF->user->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_UF->user->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location(DS_UF->user->photo->photo_small);
