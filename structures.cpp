@@ -1473,9 +1473,6 @@ struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *n
     msg_id = tgl_peer_id_to_msg_id (to_id, DS_LVAL (DS_M->id));
   }
 
-  //struct tgl_message *M = (struct tgl_message *)talloc0 (sizeof (*M));
-  //M->permanent_id = msg_id;
-
   if (new_msg) {
     *new_msg = 1;
   }

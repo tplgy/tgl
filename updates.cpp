@@ -497,7 +497,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_channel_group:
     break;
   case CODE_update_new_channel_message:
-    tglf_fetch_alloc_message (DS_U->message, &new_msg);
+    tglf_fetch_alloc_message (DS_U->message, NULL);
     break;
   case CODE_update_read_channel_inbox:
     break;
