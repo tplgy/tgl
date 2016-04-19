@@ -374,7 +374,7 @@ void tgl_do_send_encr_msg_action (struct tgl_message *M, void (*callback)(std::s
   }
   encr_finish (secret_chat.get());
   
-  std::shared_ptr<msg_callback_extra> extra = std::make_shared<msg_callback_extra>(M->permanent_id.id, tgl_get_peer_id(M->to_id));
+  std::shared_ptr<msg_callback_extra> extra = std::make_shared<msg_callback_extra>(M->permanent_id.id, M->to_id);
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_encr_methods, extra, (void*)callback, callback_extra);
 }
 
@@ -424,7 +424,7 @@ void tgl_do_send_encr_msg (struct tgl_message *M, void (*callback)(std::shared_p
   }
   encr_finish (secret_chat.get());
   
-  std::shared_ptr<msg_callback_extra> extra = std::make_shared<msg_callback_extra>(M->permanent_id.id, tgl_get_peer_id(M->to_id));
+  std::shared_ptr<msg_callback_extra> extra = std::make_shared<msg_callback_extra>(M->permanent_id.id, M->to_id);
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_encr_methods, extra, (void*)callback, callback_extra);
 }
 

@@ -609,9 +609,9 @@ static int q_list_on_error (std::shared_ptr<query> q, int error_code, const std:
 
 struct msg_callback_extra
 {
-    msg_callback_extra(long long old_msg_id, int to_id) : old_msg_id(old_msg_id), to_id(to_id) {}
+    msg_callback_extra(long long old_msg_id, tgl_peer_id_t to_id) : old_msg_id(old_msg_id), to_id(to_id) {}
     long long old_msg_id;
-    int to_id;
+    tgl_peer_id_t to_id;
 };
 
 #include "queries-encrypted.cpp"
@@ -1147,7 +1147,7 @@ void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<vo
   //*x = M->id;
   //*(int*)(x+1) = M->to_id.id;
 
-  std::shared_ptr<msg_callback_extra> extra = std::make_shared<msg_callback_extra>(M->permanent_id.id, tgl_get_peer_id(M->to_id));
+  std::shared_ptr<msg_callback_extra> extra = std::make_shared<msg_callback_extra>(M->permanent_id.id, M->to_id);
 
   if (M->reply_markup) {
     if (M->reply_markup->rows) {
