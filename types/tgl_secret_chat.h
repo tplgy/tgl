@@ -4,6 +4,8 @@
 #include "crypto/bn.h"
 #include "tgl-layout.h"
 #include "types/tgl_file_location.h"
+
+#include <algorithm>
 #include <string.h>
 #include <memory>
 
@@ -64,9 +66,25 @@ struct tgl_secret_chat {
     long long exchange_key_fingerprint;
 
     int encr_root;
-    std::vector<unsigned char> encr_prime;
-    std::unique_ptr<TGLC_bn, TGLC_bn_deleter> encr_prime_bn;
     int encr_param_version;
+
+    TGLC_bn* encr_prime_bn()
+    {
+        return m_encr_prime_bn.get();
+    }
+
+    const std::vector<unsigned char>& encr_prime() const
+    {
+        return m_encr_prime;
+    }
+
+    void set_encr_prime(const unsigned char* prime, size_t length)
+    {
+        m_encr_prime.resize(length);
+        m_encr_prime_bn.reset(TGLC_bn_new());
+        std::copy(prime, prime + length, m_encr_prime.begin());
+        TGLC_bn_bin2bn(m_encr_prime.data(), length, m_encr_prime_bn.get());
+    }
 
     tgl_secret_chat()
         : id({0, 0, 0})
@@ -95,14 +113,18 @@ struct tgl_secret_chat {
         , exchange_state(tgl_sce_none)
         , exchange_key_fingerprint(0)
         , encr_root(0)
-        , encr_prime()
-        , encr_prime_bn(nullptr)
         , encr_param_version(0)
+        , m_encr_prime()
+        , m_encr_prime_bn(nullptr)
     {
         memset(key, 0, sizeof(key));
         memset(first_key_sha, 0, sizeof(first_key_sha));
         memset(exchange_key, 0, sizeof(exchange_key));
     }
+
+private:
+    std::vector<unsigned char> m_encr_prime;
+    std::unique_ptr<TGLC_bn, TGLC_bn_deleter> m_encr_prime_bn;
 };
 
 #endif

@@ -95,15 +95,10 @@ static void encr_finish (struct tgl_secret_chat *E) {
 static void do_set_dh_params(const std::shared_ptr<tgl_secret_chat>& secret_chat, int root, unsigned char prime[], int version)
 {
     secret_chat->encr_root = root;
-
-    secret_chat->encr_prime.resize(256);
-    memcpy(secret_chat->encr_prime.data(), prime, 256);
-    secret_chat->encr_prime_bn.reset(TGLC_bn_new());
-    TGLC_bn_bin2bn(secret_chat->encr_prime.data(), 256, secret_chat->encr_prime_bn.get());
-
+    secret_chat->set_encr_prime(prime, 256);
     secret_chat->encr_param_version = version;
 
-    auto res = tglmp_check_DH_params(secret_chat->encr_prime_bn.get(), secret_chat->encr_root);
+    auto res = tglmp_check_DH_params(secret_chat->encr_prime_bn(), secret_chat->encr_root);
     assert(res >= 0);
 }
 
@@ -727,12 +722,13 @@ void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
   ensure_ptr (b);
   TGLC_bn *g_a = TGLC_bn_bin2bn (secret_chat->g_key.data(), 256, 0);
   ensure_ptr (g_a);
-  assert (tglmp_check_g_a (secret_chat->encr_prime_bn.get(), g_a) >= 0);
+  auto res = tglmp_check_g_a(secret_chat->encr_prime_bn(), g_a);
+  assert(res >= 0);
   //if (!ctx) {
   //  ctx = TGLC_bn_ctx_new ();
   //  ensure_ptr (ctx);
   //}
-  TGLC_bn *p = secret_chat->encr_prime_bn.get();
+  TGLC_bn *p = secret_chat->encr_prime_bn();
   TGLC_bn *r = TGLC_bn_new ();
   ensure_ptr (r);
   ensure (TGLC_bn_mod_exp (r, g_a, b, p, tgl_state::instance()->bn_ctx));
@@ -787,13 +783,13 @@ void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
 }
 
 void tgl_do_create_keys_end (struct tgl_secret_chat* secret_chat) {
-  assert (!secret_chat->encr_prime.empty());
+  assert (!secret_chat->encr_prime().empty());
   TGLC_bn *g_b = TGLC_bn_bin2bn (secret_chat->g_key.data(), 256, 0);
   ensure_ptr (g_b);
-  auto res = tglmp_check_g_a (secret_chat->encr_prime_bn.get(), g_b);
+  auto res = tglmp_check_g_a (secret_chat->encr_prime_bn(), g_b);
   assert(res >= 0);
   
-  TGLC_bn *p = secret_chat->encr_prime_bn.get();
+  TGLC_bn *p = secret_chat->encr_prime_bn();
   ensure_ptr (p);
   TGLC_bn *r = TGLC_bn_new ();
   ensure_ptr (r);
@@ -836,7 +832,7 @@ void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
   }
   TGLC_bn *a = TGLC_bn_bin2bn (random, 256, 0);
   ensure_ptr (a);
-  TGLC_bn *p = TGLC_bn_bin2bn (secret_chat->encr_prime.data(), 256, 0);
+  TGLC_bn *p = TGLC_bn_bin2bn (secret_chat->encr_prime().data(), 256, 0);
   ensure_ptr (p);
  
   TGLC_bn *g = TGLC_bn_new ();
