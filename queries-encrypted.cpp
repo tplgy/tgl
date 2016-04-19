@@ -240,6 +240,7 @@ void tgl_do_send_encr_action (struct tgl_secret_chat *E, struct tl_ds_decrypted_
 
   assert (M);
   tgl_do_send_msg (M, 0, 0);
+  tgls_free_message(M);
 }
 
 void tgl_do_send_encr_chat_layer (struct tgl_secret_chat *E) {
@@ -486,6 +487,10 @@ static int send_encr_file_on_answer (std::shared_ptr<query> q, void *D) {
     ((void (*)(void *, int, struct tgl_message *))q->callback)(q->callback_extra, 1, M);
   }
 #endif
+  std::shared_ptr<msg_callback_extra> callback_extra = std::static_pointer_cast<msg_callback_extra>(q->extra);
+  if (callback_extra) {
+    tgl_state::instance()->callback()->message_sent(callback_extra->old_msg_id, callback_extra->old_msg_id, callback_extra->to_id);
+  }
   return 0;
 }
 
@@ -547,7 +552,13 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, void *callback, std:
     out_int (f->duration);
     out_string (tg_mime_by_filename (f->file_name.c_str()));
   } else {
-    out_string ("");
+    // FIXME: for no '/' sepearator filesystems.
+    auto filename = f->file_name;
+    auto pos = filename.rfind('/');
+    if (pos != std::string::npos) {
+        filename = filename.substr(pos + 1);
+    }
+    out_string (filename.c_str());
     out_string (tg_mime_by_filename (f->file_name.c_str()));
     // document
   }
@@ -569,12 +580,12 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, void *callback, std:
   in_ptr = save_ptr;
   in_end = packet_ptr;
   
-  //struct tl_ds_decrypted_message_media *DS_DMM = fetch_ds_type_decrypted_message_media (&decrypted_message_media);
+  struct tl_ds_decrypted_message_media *DS_DMM = fetch_ds_type_decrypted_message_media (&decrypted_message_media);
   in_end = save_in_ptr;
   in_ptr = save_in_end;
 
 
-  //int date = time (NULL);
+  int date = time (NULL);
 
 
   encr_finish (secret_chat.get());
@@ -598,18 +609,29 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, void *callback, std:
 
   tfree_secure (f->iv, 32);
  
-#if 0 // FXIME
+  int ints = packet_ptr - packet_buffer;
+
   tgl_peer_id_t from_id = tgl_state::instance()->our_id();
   
-  struct tgl_message_id id = tgl_peer_id_to_msg_id (P->id, r);
-  bl_do_edit_message_encr (&id, &from_id, &f->to_id, &date, NULL, 0, DS_DMM, NULL, NULL, TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED | TGLMF_CREATE | TGLMF_CREATED);
+  struct tgl_message_id msg_id = tgl_peer_id_to_msg_id(secret_chat->id, r);
+  struct tgl_message* M = tglm_create_encr_message(&msg_id,
+      &from_id,
+      &f->to_id,
+      &date,
+      NULL,
+      0,
+      DS_DMM,
+      NULL,
+      NULL,
+      TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED | TGLMF_CREATE | TGLMF_CREATED);
 
-  free_ds_type_decrypted_message_media (DS_DMM, TYPE_TO_PARAM (decrypted_message_media));
-  struct tgl_message *M = tgl_message_get (&id);
+  free_ds_type_decrypted_message_media (DS_DMM, &decrypted_message_media);
   assert (M);
       
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_encr_file_methods, M, callback, callback_extra);
-#endif
+  std::shared_ptr<msg_callback_extra> extra = std::make_shared<msg_callback_extra>(M->permanent_id.id, M->to_id);
+  tglq_send_query (tgl_state::instance()->DC_working, ints, packet_buffer, &send_encr_file_methods, extra, callback, callback_extra);
+
+  tgls_free_message(M);
 }
 
 void tgl_do_send_location_encr (tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
