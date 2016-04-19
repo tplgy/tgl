@@ -109,7 +109,7 @@ private:
     void send_part(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra);
 
     void _tgl_do_send_photo(tgl_peer_id_t to_id, const std::string &file_name, int avatar, int w, int h, int duration,
-                                    const void *thumb_data, int thumb_len, const std::string &caption, unsigned long long flags,
+                                    const void *thumb_data, int thumb_len, const std::string& caption, unsigned long long flags,
                                     void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
     void _tgl_do_load_document(struct tgl_document *V, std::shared_ptr<download> D, void (*callback)(std::shared_ptr<void> callback_extra,
                                     bool success, const std::string &filename), std::shared_ptr<void> callback_extra);

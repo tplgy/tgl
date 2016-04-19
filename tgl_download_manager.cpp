@@ -333,7 +333,7 @@ void tgl_download_manager::send_file_thumb (std::shared_ptr<send_file> f, const 
 
 
 void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id_t to_id, const std::string &file_name, int avatar, int w, int h, int duration,
-                                const void *thumb_data, int thumb_len, const std::string &caption, unsigned long long flags,
+                                const void *thumb_data, int thumb_len, const std::string& caption, unsigned long long flags,
                                 void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
     int fd = -1;
     if (!boost::filesystem::exists(file_name)) {
@@ -415,13 +415,13 @@ void tgl_download_manager::set_chat_photo (tgl_peer_id_t chat_id, const std::str
         std::shared_ptr<void> callback_extra)
 {
     assert (tgl_get_peer_type (chat_id) == TGL_PEER_CHAT);
-    _tgl_do_send_photo (chat_id, file_name, tgl_get_peer_id (chat_id), 0, 0, 0, 0, 0, NULL, TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
+    _tgl_do_send_photo (chat_id, file_name, tgl_get_peer_id (chat_id), 0, 0, 0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
                         (void (*)(std::shared_ptr<void>, bool , struct tgl_message *))callback, callback_extra);
 }
 
 void tgl_download_manager::set_profile_photo (const std::string &file_name, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra)
 {
-    _tgl_do_send_photo (tgl_state::instance()->our_id(), file_name, -1, 0, 0, 0, 0, 0, NULL, TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
+    _tgl_do_send_photo (tgl_state::instance()->our_id(), file_name, -1, 0, 0, 0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
                         (void (*)(std::shared_ptr<void>, bool , struct tgl_message *))callback, callback_extra);
 }
 
