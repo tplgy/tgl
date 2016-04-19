@@ -218,20 +218,28 @@ void tgl_do_encr_chat(const tgl_peer_id_t& id,
 /* }}} */
 
 void tgl_do_send_encr_action (struct tgl_secret_chat *E, struct tl_ds_decrypted_message_action *A) {
-#if 0 // FIXME
   long long t;
   tglt_secure_random ((unsigned char*)&t, 8);
   int date = time (0);
 
-  struct tgl_message_id id = tgl_peer_id_to_random_msg_id (E->id);
+  struct tgl_message_id msg_id = tgl_peer_id_to_random_msg_id (E->id);
   
   tgl_peer_id_t from_id = tgl_state::instance()->our_id();
-  bl_do_edit_message_encr (tgl_state::instance(), &id, &from_id, &E->id, &date, NULL, 0, NULL, A, NULL, TGLMF_PENDING | TGLMF_OUT | TGLMF_UNREAD | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
+  //bl_do_edit_message_encr (tgl_state::instance(), &id, &from_id, &E->id, &date, NULL, 0, NULL, A, NULL, TGLMF_PENDING | TGLMF_OUT | TGLMF_UNREAD | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
+  //struct tgl_message *M = tgl_message_get (&id);
+  struct tgl_message* M = tglm_create_encr_message(&msg_id,
+      &from_id,
+      &E->id,
+      &date,
+      NULL,
+      0,
+      NULL,
+      A,
+      NULL,
+      TGLMF_PENDING | TGLMF_OUT | TGLMF_UNREAD | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
 
-  struct tgl_message *M = tgl_message_get (&id);
   assert (M);
   tgl_do_send_msg (M, 0, 0);
-#endif
 }
 
 void tgl_do_send_encr_chat_layer (struct tgl_secret_chat *E) {
@@ -254,26 +262,26 @@ void tgl_do_set_encr_chat_ttl (struct tgl_secret_chat *E, int ttl) {
 /* {{{ Seng msg (plain text, encrypted) */
 static int msg_send_encr_on_answer (std::shared_ptr<query> q, void *D) {
   //struct tl_ds_updates *DS_U = (struct tl_ds_updates *)D;
-  struct tgl_message* M = (struct tgl_message*)q->extra.get();
-  std::shared_ptr<msg_callback_extra> old_msg_id = std::static_pointer_cast<msg_callback_extra>(q->extra);
-  if (old_msg_id) {
-    tgl_state::instance()->callback()->message_sent(old_msg_id->old_msg_id, old_msg_id->old_msg_id, old_msg_id->to_id);
-  }
-#if 0
   //assert (M->flags & TGLMF_ENCRYPTED);
   
+#if 0
   if (M->flags & TGLMF_PENDING) {
     bl_do_edit_message_encr (&M->permanent_id, NULL, NULL,  
       &M->date,
       NULL, 0, NULL, NULL, NULL, M->flags ^ TGLMF_PENDING);
-    
-    //bl_do_msg_update (&M->permanent_id);
+    bl_do_msg_update (&M->permanent_id);
+  }
+
+  if (q->callback) {
+    ((void (*)(std::shared_ptr<void>, bool, struct tgl_message*))q->callback) (q->callback_extra, true, M);
   }
 #endif
 
-  if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, struct tgl_message*))q->callback) (q->callback_extra, 1, M);
+  std::shared_ptr<msg_callback_extra> callback_extra = std::static_pointer_cast<msg_callback_extra>(q->extra);
+  if (callback_extra) {
+    tgl_state::instance()->callback()->message_sent(callback_extra->old_msg_id, callback_extra->old_msg_id, callback_extra->to_id);
   }
+
   return 0;
 }
 
