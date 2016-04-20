@@ -1246,66 +1246,50 @@ void tglf_fetch_message_media_encrypted (struct tgl_message_media *M, struct tl_
   case CODE_decrypted_message_media_audio:
     //M->type = CODE_decrypted_message_media_video;
     M->type = tgl_message_media_document_encr;
-    
+
     M->encr_document = (struct tgl_encr_document *)talloc0 (sizeof (*M->encr_document));
-  
+
     switch (DS_DMM->magic) {
-    case CODE_decrypted_message_media_empty:
-        M->type = tgl_message_media_none;
-        //M->type = CODE_message_media_empty;
-        break;
     case CODE_decrypted_message_media_photo:
+        M->encr_document->flags = TGLDF_IMAGE;
+        break;
     case CODE_decrypted_message_media_video:
     case CODE_decrypted_message_media_video_l12:
+        M->encr_document->flags = TGLDF_VIDEO;
+        break;
     case CODE_decrypted_message_media_document:
+        //M->encr_document->flags = TGLDF_DOCUMENT;
+        break;
     case CODE_decrypted_message_media_audio:
-        //M->type = CODE_decrypted_message_media_video;
-        M->type = tgl_message_media_document_encr;
-
-        M->encr_document = (struct tgl_encr_document *)talloc0 (sizeof (*M->encr_document));
-
-        switch (DS_DMM->magic) {
-        case CODE_decrypted_message_media_photo:
-            M->encr_document->flags = TGLDF_IMAGE;
-            break;
-        case CODE_decrypted_message_media_video:
-        case CODE_decrypted_message_media_video_l12:
-            M->encr_document->flags = TGLDF_VIDEO;
-            break;
-        case CODE_decrypted_message_media_document:
-            //M->encr_document->flags = TGLDF_DOCUMENT;
-            break;
-        case CODE_decrypted_message_media_audio:
-            M->encr_document->flags = TGLDF_AUDIO;
-            break;
-        }
-
-        M->encr_document->w = DS_LVAL (DS_DMM->w);
-        M->encr_document->h = DS_LVAL (DS_DMM->h);
-        M->encr_document->size = DS_LVAL (DS_DMM->size);
-        M->encr_document->duration = DS_LVAL (DS_DMM->duration);
-        M->encr_document->mime_type = DS_STR_DUP (DS_DMM->mime_type);
-
-        M->encr_document->key = (unsigned char*)talloc (32);
-        str_to_32 (M->encr_document->key, DS_STR (DS_DMM->key));
-        M->encr_document->iv = (unsigned char*)talloc (32);
-        str_to_32 (M->encr_document->iv, DS_STR (DS_DMM->iv));
+        M->encr_document->flags = TGLDF_AUDIO;
         break;
-    case CODE_decrypted_message_media_geo_point:
-        M->type = tgl_message_media_geo;
-        M->geo.latitude = DS_LVAL (DS_DMM->latitude);
-        M->geo.longitude = DS_LVAL (DS_DMM->longitude);
-        break;
-    case CODE_decrypted_message_media_contact:
-        M->type = tgl_message_media_contact;
-        M->phone = DS_STR_DUP (DS_DMM->phone_number);
-        M->first_name = DS_STR_DUP (DS_DMM->first_name);
-        M->last_name = DS_STR_DUP (DS_DMM->last_name);
-        M->user_id = DS_LVAL (DS_DMM->user_id);
-        break;
-    default:
-        assert (0);
     }
+
+    M->encr_document->w = DS_LVAL (DS_DMM->w);
+    M->encr_document->h = DS_LVAL (DS_DMM->h);
+    M->encr_document->size = DS_LVAL (DS_DMM->size);
+    M->encr_document->duration = DS_LVAL (DS_DMM->duration);
+    M->encr_document->mime_type = DS_STR_DUP (DS_DMM->mime_type);
+
+    M->encr_document->key = (unsigned char*)talloc (32);
+    str_to_32 (M->encr_document->key, DS_STR (DS_DMM->key));
+    M->encr_document->iv = (unsigned char*)talloc (32);
+    str_to_32 (M->encr_document->iv, DS_STR (DS_DMM->iv));
+    break;
+  case CODE_decrypted_message_media_geo_point:
+    M->type = tgl_message_media_geo;
+    M->geo.latitude = DS_LVAL (DS_DMM->latitude);
+    M->geo.longitude = DS_LVAL (DS_DMM->longitude);
+    break;
+  case CODE_decrypted_message_media_contact:
+    M->type = tgl_message_media_contact;
+    M->phone = DS_STR_DUP (DS_DMM->phone_number);
+    M->first_name = DS_STR_DUP (DS_DMM->first_name);
+    M->last_name = DS_STR_DUP (DS_DMM->last_name);
+    M->user_id = DS_LVAL (DS_DMM->user_id);
+    break;
+  default:
+        assert (0);
   }
 }
 

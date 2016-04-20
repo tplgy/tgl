@@ -650,21 +650,24 @@ void tgl_do_send_location_encr (tgl_peer_id_t peer_id, double latitude, double l
   std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
   assert(secret_chat);
   
-  struct tgl_message_id msg_id = tgl_peer_id_to_random_msg_id (secret_chat->id);;
+  struct tgl_message_id msg_id = tgl_peer_id_to_random_msg_id (peer_id);;
   struct tgl_message* M = tglm_create_encr_message(&msg_id,
       &from_id,
       &peer_id,
-      &date, NULL,
+      &date,
+      NULL,
       0,
       &TDSM,
       NULL,
       NULL,
       TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
 
-  free (TDSM.latitude);
-  free (TDSM.longitude);
+  free(TDSM.latitude);
+  free(TDSM.longitude);
 
   tgl_do_send_encr_msg (M, callback, callback_extra);
+
+  tgls_free_message(M);
 }
 
 /* {{{ Encr accept */
