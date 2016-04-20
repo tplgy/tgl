@@ -113,88 +113,37 @@ tgl_file_location tglf_fetch_file_location (struct tl_ds_file_location *DS_FL) {
   return location;
 }
 
-int tglf_fetch_user_status (struct tgl_user_status *S, struct tgl_user *U, struct tl_ds_user_status *DS_US) {
-  if (!DS_US) { return 0; }
-#if 0
-  switch (DS_US->magic) {
-  case CODE_user_status_empty:
-    if (S->online) {
-      tgl_insert_status_update (U);
-      if (S->online == 1) {
-        tgl_remove_status_expire (U);
-      }
-    }
-    S->online = 0;
-    S->when = 0;
-    break;
-  case CODE_user_status_online:
+tgl_user_status tglf_fetch_user_status(struct tl_ds_user_status *DS_US) {
+    tgl_user_status new_status;
+    if (!DS_US) { return new_status; }
+    switch (DS_US->magic) {
+    case CODE_user_status_empty:
+        new_status.online = tgl_user_online_status::unknown;
+        new_status.when = 0;
+        break;
+    case CODE_user_status_online:
     {
-      if (S->online != 1) {
-        S->when = DS_LVAL (DS_US->expires);
-        if (S->online) {
-          tgl_insert_status_update (U);
-        }
-        tgl_insert_status_expire (U);
-        S->online = 1;
-      } else {
-        if (DS_LVAL (DS_US->expires) != S->when) {
-          S->when = DS_LVAL (DS_US->expires);
-          tgl_remove_status_expire (U);
-          tgl_insert_status_expire (U);
-        }
-      }
+        new_status.online = tgl_user_online_status::online;
+        new_status.when = DS_LVAL (DS_US->expires);
     }
-    break;
-  case CODE_user_status_offline:
-    if (S->online != -1) {
-      if (S->online) {
-        tgl_insert_status_update (TLS, U);
-      }
-      if (S->online == 1) {
-        tgl_remove_status_expire (TLS, U);
-      }
+        break;
+    case CODE_user_status_offline:
+        new_status.online = tgl_user_online_status::offline;
+        new_status.when = DS_LVAL (DS_US->was_online);
+        break;
+    case CODE_user_status_recently:
+        new_status.online = tgl_user_online_status::recent;
+        break;
+    case CODE_user_status_last_week:
+        new_status.online = tgl_user_online_status::last_week;
+        break;
+    case CODE_user_status_last_month:
+        new_status.online = tgl_user_online_status::last_month;
+        break;
+    default:
+        assert (0);
     }
-    S->online = -1;
-    S->when = DS_LVAL (DS_US->was_online);
-    break;
-  case CODE_user_status_recently:
-    if (S->online != -2) {
-      if (S->online) {
-        tgl_insert_status_update (TLS, U);
-      }
-      if (S->online == 1) {
-        tgl_remove_status_expire (TLS, U);
-      }
-    }
-    S->online = -2;
-    break;
-  case CODE_user_status_last_week:
-    if (S->online != -3) {
-      if (S->online) {
-        tgl_insert_status_update (TLS, U);
-      }
-      if (S->online == 1) {
-        tgl_remove_status_expire (TLS, U);
-      }
-    }
-    S->online = -3;
-    break;
-  case CODE_user_status_last_month:
-    if (S->online != -4) {
-      if (S->online) {
-        tgl_insert_status_update (TLS, U);
-      }
-      if (S->online == 1) {
-        tgl_remove_status_expire (TLS, U);
-      }
-    }
-    S->online = -4;
-    break;
-  default:
-    assert (0);
-  }
-#endif
-  return 0;
+    return new_status;
 }
 
 std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U) {
@@ -280,8 +229,9 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U) {
     DS_CSTR(phone, DS_U->phone);
     DS_CSTR(username, DS_U->username);
 
+    tgl_user_status status = tglf_fetch_user_status(DS_U->status);
     tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username,
-            DS_U->access_hash ? * DS_U->access_hash : 0, (DS_U->status && DS_U->status->was_online ? *DS_U->status->was_online : 0));
+            DS_U->access_hash ? * DS_U->access_hash : 0, status);
 
     free(firstname);
     free(lastname);

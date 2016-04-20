@@ -10,11 +10,19 @@
 class tgl_timer;
 struct tgl_message;
 
+enum class tgl_user_online_status: int {
+    unknown = 0,
+    online = 1,
+    offline = 2,
+    recent = 3,
+    last_week = 4,
+    last_month
+};
+
 struct tgl_user_status {
-    int online;
+    tgl_user_online_status online;
     int when;
-    std::shared_ptr<tgl_timer> ev;
-    tgl_user_status(): online(0), when(0) { }
+    tgl_user_status(): online(tgl_user_online_status::unknown), when(0) { }
 };
 
 struct tgl_user {

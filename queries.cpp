@@ -1419,15 +1419,6 @@ static int mark_read_on_receive (std::shared_ptr<query> q, void *D) {
   }
 
   std::shared_ptr<mark_read_extra> E = std::static_pointer_cast<mark_read_extra>(q->extra);
-
-  if (tgl_get_peer_type (E->id) == TGL_PEER_USER) {
-    //bl_do_user (tgl_get_peer_id (E->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, &E->max_id, NULL, NULL, TGL_FLAGS_UNCHANGED);
-    tgl_state::instance()->callback()->new_user(tgl_get_peer_id (E->id), "", "", "", "", 0, 0);
-  } else {
-    assert (tgl_get_peer_type (E->id) == TGL_PEER_CHAT);
-    //bl_do_chat (tgl_get_peer_id (E->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &E->max_id, NULL, TGL_FLAGS_UNCHANGED);
-    //tgl_state::instance()->callback()->chat_update (tgl_get_peer_id (E->id), &E->max_id, 0);
-  }
   if (q->callback) {
     ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 1);
   }
@@ -2804,7 +2795,7 @@ static struct query_methods add_contact_methods = {
   .timeout = 0,
 };
 
-void tgl_do_add_contact (const char *phone, const char *first_name, const char *last_name, int force, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_user>>& users), std::shared_ptr<void> callback_extra) {
+void tgl_do_add_contact (const std::string& phone, const std::string& first_name, const std::string& last_name, int force, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_user>>& users), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_contacts_import_contacts);
     out_int (CODE_vector);
@@ -2813,9 +2804,9 @@ void tgl_do_add_contact (const char *phone, const char *first_name, const char *
     long long r;
     tglt_secure_random ((unsigned char*)&r, 8);
     out_long (r);
-    out_cstring (phone, strlen(phone));
-    out_cstring (first_name, strlen(first_name));
-    out_cstring (last_name, strlen(last_name));
+    out_cstring (phone.c_str(), phone.length());
+    out_cstring (first_name.c_str(), first_name.length());
+    out_cstring (last_name.c_str(), last_name.length());
     out_int (force ? CODE_bool_true : CODE_bool_false);
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &add_contact_methods, 0, (void*)callback, callback_extra);
 }

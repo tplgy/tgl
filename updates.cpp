@@ -269,22 +269,21 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     break;
   case CODE_update_user_status:
     {
-      //tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      //tglf_fetch_user_status (&U->user.status, &U->user, DS_U->status);
-
-      //int expires = 0;
-      //enum tgl_user_status_type status = tglf_fetch_user_status(DS_U->status, &expires);
-      //tgl_state::instance()->callback()->status_notification(tgl_get_peer_id(user_id), status, expires);
+      tgl_user_status status = tglf_fetch_user_status(DS_U->status);
+      tgl_state::instance()->callback()->status_notification(DS_LVAL (DS_U->user_id), status);
     }
     break;
   case CODE_update_user_name:
     {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      //bl_do_user (tgl_get_peer_id (user_id), NULL, DS_STR (DS_U->first_name), DS_STR (DS_U->last_name), NULL, 0, DS_STR (DS_U->username), NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
       DS_CSTR (firstname, DS_U->first_name);
       DS_CSTR (lastname, DS_U->last_name);
       DS_CSTR (username, DS_U->username);
-      tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), "", firstname, lastname, username, 0, 0);
+
+      //TODO make that one call with a map or vector of changes
+      tgl_state::instance()->callback()->user_update(tgl_get_peer_id(user_id), username, tgl_update_username);
+      tgl_state::instance()->callback()->user_update(tgl_get_peer_id(user_id), username, tgl_update_firstname);
+      tgl_state::instance()->callback()->user_update(tgl_get_peer_id(user_id), username, tgl_update_last_name);
       free(firstname);
       free(lastname);
       free(username);
@@ -292,9 +291,6 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     }
   case CODE_update_user_photo:
     {
-      tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, DS_U->photo, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-      tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), "", "", "", "", 0, 0);
       if (DS_U->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
@@ -794,54 +790,4 @@ void tglu_work_any_updates_buf () {
   tglu_work_any_updates (1, DS_U, NULL);
   tglu_work_any_updates (0, DS_U, NULL);
   free_ds_type_updates (DS_U, &type);
-}
-
-//#define user_cmp(a,b) (tgl_get_peer_id ((a)->id) - tgl_get_peer_id ((b)->id))
-//DEFINE_TREE(user, struct tgl_user *,user_cmp,0)
-
-#if 0
-static void notify_status (struct tgl_user *U, void *ex) {
-    if (tgl_state::instance()->callback.user_status_update) {
-        tgl_state::instance()->callback.user_status_update (U);
-    }
-}
-
-static void status_notify (void *arg) {
-    tree_act_ex_user (tgl_state::instance()->online_updates, notify_status);
-    tree_clear_user (tgl_state::instance()->online_updates);
-    tgl_state::instance()->online_updates = NULL;
-    tgl_state::instance()->timer_methods->free (tgl_state::instance()->online_updates_timer);
-    tgl_state::instance()->online_updates_timer = NULL;
-}
-#endif
-
-void tgl_insert_status_update (struct tgl_user *U) {
-  //if (!tree_lookup_user (tgl_state::instance()->online_updates, U)) {
-    //tgl_state::instance()->online_updates = tree_insert_user (tgl_state::instance()->online_updates, U, rand ());
-  //}
-  //if (!tgl_state::instance()->online_updates_timer) {
-    //tgl_state::instance()->online_updates_timer = tgl_state::instance()->timer_methods->alloc (status_notify, 0);
-    //tgl_state::instance()->timer_methods->insert (tgl_state::instance()->online_updates_timer, 0);
-  //}
-}
-
-static void user_expire (void *arg) {
-    struct tgl_user *U = (struct tgl_user *)arg;
-    U->status.ev->cancel();
-    U->status.ev = nullptr;
-    U->status.online = -1;
-    U->status.when = tglt_get_double_time ();
-    tgl_insert_status_update (U);
-}
-
-void tgl_insert_status_expire (struct tgl_user *U) {
-    assert (!U->status.ev);
-    U->status.ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&user_expire, U));
-
-    U->status.ev->start(U->status.when - tglt_get_double_time ());
-}
-
-void tgl_remove_status_expire (struct tgl_user *U) {
-    U->status.ev->cancel();
-    U->status.ev = nullptr;
 }

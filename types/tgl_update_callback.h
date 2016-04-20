@@ -3,6 +3,8 @@
 
 #include "types/tgl_secret_chat.h"
 
+struct tgl_user_status;
+
 class tgl_update_callback {
 public:
     virtual void new_message(struct tgl_message *M) = 0;
@@ -16,11 +18,11 @@ public:
     virtual void type_notification(int user_id, enum tgl_typing_status status) = 0;
     virtual void type_in_chat_notification(int user_id, int chat_id, enum tgl_typing_status status) = 0;
     virtual void type_in_secret_chat_notification(int chat_id) = 0;
-    virtual void status_notification(int user_id, enum tgl_user_status_type, int expires) = 0;
+    virtual void status_notification(int user_id, const tgl_user_status& status) = 0;
     virtual void user_registered(int user_id) = 0;
     virtual void new_authorization(const std::string& device, const std::string& location) = 0;
     virtual void new_user(int user_id, const std::string &phone, const std::string &firstname,
-                     const std::string &lastname, const std::string &username, long long access_hash, int last_seen) = 0;
+                     const std::string &lastname, const std::string &username, long long access_hash, const tgl_user_status& status) = 0;
     virtual void user_update(int user_id, void *value, enum tgl_user_update_type update_type) = 0;
     virtual void user_deleted(int id) = 0;
     virtual void avatar_update(int peer_id, const tgl_file_location &photo_small, const tgl_file_location &photo_big) = 0;

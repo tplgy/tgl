@@ -50,7 +50,7 @@ void tglf_fetch_message_media_encrypted (struct tgl_message_media *M, struct tl_
 void tglf_fetch_message_action_encrypted (struct tgl_message_action *M, struct tl_ds_decrypted_message_action *DS_DMA);
 #endif
 
-int tglf_fetch_user_status (struct tgl_user_status *S, struct tgl_user *U, struct tl_ds_user_status *DS_US);
+tgl_user_status tglf_fetch_user_status(tl_ds_user_status *DS_US);
 enum tgl_typing_status tglf_fetch_typing (struct tl_ds_send_message_action *DS_SMA);
 void tglf_fetch_chat_participants (const std::shared_ptr<tgl_chat>& C, struct tl_ds_chat_participants *DS_CP);
 
