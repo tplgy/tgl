@@ -2364,17 +2364,18 @@ void tgls_messages_mark_read (struct tgl_message *M, int out, int seq) {
         return;
       }
     }
-    while (M) {
-        if ((M->flags & TGLMF_OUT) == out) {
-            if (M->flags & TGLMF_UNREAD) {
-                M->flags &= ~TGLMF_UNREAD;
-                //tgl_state::instance()->callback()->marked_read (1, &M);
-            } else {
-                return;
-            }
-        }
-        M = M->next;
+    M = M->next; 
+  }
+  while (M) {
+    if ((M->flags & TGLMF_OUT) == out) {
+      if (M->flags & TGLMF_UNREAD) {
+        M->flags &= ~TGLMF_UNREAD;
+        //tgl_state::instance()->callback()->marked_read (1, &M);
+      } else {
+        return;
+      }
     }
+    M = M->next;
   }
 }
  
