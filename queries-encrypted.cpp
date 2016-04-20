@@ -635,7 +635,6 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, void *callback, std:
 }
 
 void tgl_do_send_location_encr (tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
-#if 0 // FIXME
   struct tl_ds_decrypted_message_media TDSM;
   TDSM.magic = CODE_decrypted_message_media_geo_point;
   TDSM.latitude = (double*)talloc (sizeof (double));
@@ -647,18 +646,25 @@ void tgl_do_send_location_encr (tgl_peer_id_t peer_id, double latitude, double l
 
   tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 
-  tgl_peer_t *P = tgl_peer_get (peer_id);
+  //tgl_peer_t *P = tgl_peer_get (peer_id);
+  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
+  assert(secret_chat);
   
-  struct tgl_message_id id = tgl_peer_id_to_random_msg_id (P->id);;
-  bl_do_edit_message_encr (&id, &from_id, &peer_id, &date, NULL, 0, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
+  struct tgl_message_id msg_id = tgl_peer_id_to_random_msg_id (secret_chat->id);;
+  struct tgl_message* M = tglm_create_encr_message(&msg_id,
+      &from_id,
+      &peer_id,
+      &date, NULL,
+      0,
+      &TDSM,
+      NULL,
+      NULL,
+      TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
 
   free (TDSM.latitude);
   free (TDSM.longitude);
 
-  struct tgl_message *M = tgl_message_get (&id);
-
   tgl_do_send_encr_msg (M, callback, callback_extra);
-#endif
 }
 
 /* {{{ Encr accept */
