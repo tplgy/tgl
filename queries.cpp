@@ -3336,8 +3336,8 @@ void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, void 
 /* {{{ Create secret chat */
 
 #ifdef ENABLE_SECRET_CHAT
-void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, void (*callback)(std::shared_ptr<void>, bool success, std::shared_ptr<tgl_secret_chat> E), std::shared_ptr<void> callback_extra) {
-    tgl_do_create_encr_chat_request (user_id, callback, callback_extra);
+int tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_secret_chat>& E), std::shared_ptr<void> callback_extra) {
+    return tgl_do_create_encr_chat_request (user_id, callback, callback_extra);
 }
 #endif
 /* }}} */
