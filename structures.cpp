@@ -280,7 +280,8 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U) {
     DS_CSTR(phone, DS_U->phone);
     DS_CSTR(username, DS_U->username);
 
-    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username, DS_U->access_hash ? * DS_U->access_hash : 0);
+    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username,
+            DS_U->access_hash ? * DS_U->access_hash : 0, (DS_U->status && DS_U->status->was_online ? *DS_U->status->was_online : 0));
 
     free(firstname);
     free(lastname);

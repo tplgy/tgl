@@ -284,7 +284,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       DS_CSTR (firstname, DS_U->first_name);
       DS_CSTR (lastname, DS_U->last_name);
       DS_CSTR (username, DS_U->username);
-      tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), "", firstname, lastname, username, 0);
+      tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), "", firstname, lastname, username, 0, 0);
       free(firstname);
       free(lastname);
       free(username);
@@ -294,7 +294,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     {
       tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, DS_U->photo, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-      tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), "", "", "", "", 0);
+      tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), "", "", "", "", 0, 0);
       if (DS_U->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
