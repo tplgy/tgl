@@ -115,7 +115,7 @@ void tgl_do_get_user_info (int id, void (*callback)(std::shared_ptr<void> callba
 // adds contact to contact list by phone number
 // user will be named  *first_name* *last_name* in contact list
 // force should be set to 0
-void tgl_do_add_contact (const char *phone, const char *first_name, const char *last_name, int force, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::vector<std::shared_ptr<tgl_user>>& users), std::shared_ptr<void> callback_extra);
+void tgl_do_add_contact (const std::string& phone, const std::string& first_name, const std::string& last_name, bool replace, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::vector<int>& user_ids), std::shared_ptr<void> callback_extra);
 
 // deletes user *id* from contact listus
 void tgl_do_del_contact (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);

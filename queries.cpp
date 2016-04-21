@@ -2775,13 +2775,13 @@ static int add_contact_on_answer (std::shared_ptr<query> q, void *D) {
 
   int n = DS_LVAL (DS_CIC->users->cnt);
 
-  std::vector<std::shared_ptr<tgl_user>> users(n);
+  std::vector<int> users(n);
   for (int i = 0; i < n; i++) {
-    users[i] = tglf_fetch_alloc_user (DS_CIC->users->data[i]);
+    users[i] = tglf_fetch_alloc_user (DS_CIC->users->data[i])->id.peer_id;
   }
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool, const std::vector<std::shared_ptr<tgl_user>>&))q->callback) (q->callback_extra, true, users);
+    ((void (*)(std::shared_ptr<void>, bool, const std::vector<int>&))q->callback) (q->callback_extra, true, users);
   }
   return 0;
 }
@@ -2795,11 +2795,11 @@ static struct query_methods add_contact_methods = {
   .timeout = 0,
 };
 
-void tgl_do_add_contact (const std::string& phone, const std::string& first_name, const std::string& last_name, int force, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_user>>& users), std::shared_ptr<void> callback_extra) {
+void tgl_do_add_contact (const std::string& phone, const std::string& first_name, const std::string& last_name, bool replace, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<int>& user_ids), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_contacts_import_contacts);
     out_int (CODE_vector);
-    out_int (1);
+    out_int (1); // TODO allow adding multiple contacts
     out_int (CODE_input_phone_contact);
     long long r;
     tglt_secure_random ((unsigned char*)&r, 8);
@@ -2807,7 +2807,7 @@ void tgl_do_add_contact (const std::string& phone, const std::string& first_name
     out_cstring (phone.c_str(), phone.length());
     out_cstring (first_name.c_str(), first_name.length());
     out_cstring (last_name.c_str(), last_name.length());
-    out_int (force ? CODE_bool_true : CODE_bool_false);
+    out_int (replace ? CODE_bool_true : CODE_bool_false);
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &add_contact_methods, 0, (void*)callback, callback_extra);
 }
 /* }}} */
