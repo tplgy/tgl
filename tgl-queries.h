@@ -63,13 +63,13 @@ void tgl_do_send_broadcast (int num, int id[], const char *text, unsigned long l
 /* {{{ EDITING SELF PROFILE */
 
 // rename self account
-void tgl_do_set_profile_name (const char *first_name, const char *last_name);
+void tgl_do_set_profile_name (const std::string& first_name, const std::string& last_name, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra);
 
 // sets self username
-void tgl_do_set_username (const char *username, int username_len, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_user *U), std::shared_ptr<void> callback_extra);
+void tgl_do_set_username (const std::string& username, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
 
 // updates online/offline status
-void tgl_do_update_status (int online, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
+void tgl_do_update_status (bool online, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
 
 // exports card. This card can be later be used by another user to add you to dialog list.
 void tgl_do_export_card (void (*callback)(std::shared_ptr<void> callback_extra, bool success, int size, int *card), std::shared_ptr<void> callback_extra);

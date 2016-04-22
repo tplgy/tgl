@@ -593,7 +593,7 @@ static int q_void_on_error (std::shared_ptr<query> q, int error_code, const std:
 static int q_ptr_on_error (std::shared_ptr<query> q, int error_code, const std::string &error) {
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error));
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, bool, void *))(q->callback))(q->callback_extra, false, NULL);
+        ((void (*)(std::shared_ptr<void>, bool))(q->callback))(q->callback_extra, false);
     }
     return 0;
 }
@@ -1834,10 +1834,9 @@ void out_peer_id (tgl_peer_id_t id) {
 
 int set_profile_name_on_answer (std::shared_ptr<query> q, void *D) {
   TGL_UNUSED(q);
-  struct tl_ds_user *DS_U = (struct tl_ds_user *)D;
-  std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user (DS_U);
+  tglf_fetch_alloc_user((struct tl_ds_user *)D);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_user>&))q->callback) (q->callback_extra, true, user);
+    ((void (*)(std::shared_ptr<void>, bool))q->callback) (q->callback_extra, true);
   }
   return 0;
 }
@@ -1851,19 +1850,19 @@ static struct query_methods set_profile_name_methods = {
   .timeout = 0,
 };
 
-void tgl_do_set_profile_name (const char *first_name, const char *last_name) {
+void tgl_do_set_profile_name (const std::string& first_name, const std::string& last_name, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_account_update_profile);
-    out_cstring (first_name, strlen(last_name));
-    out_cstring (last_name, strlen(last_name));
+    out_cstring (first_name.c_str(), last_name.length());
+    out_cstring (last_name.c_str(), last_name.length());
 
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_profile_name_methods, 0, NULL, NULL);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_profile_name_methods, 0, (void*)callback, callback_extra);
 }
 
-void tgl_do_set_username (const char *username, int username_len, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_user *U), std::shared_ptr<void> callback_extra) {
+void tgl_do_set_username (const std::string& username, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_account_update_username);
-    out_cstring (username, username_len);
+    out_cstring (username.c_str(), username.length());
 
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_profile_name_methods, 0, (void*)callback, callback_extra);
 }
@@ -4412,7 +4411,7 @@ static struct query_methods update_status_methods = {
   .timeout = 0,
 };
 
-void tgl_do_update_status (int online, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_update_status (bool online, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
     clear_packet ();
     out_int (CODE_account_update_status);
     out_int (online ? CODE_bool_false : CODE_bool_true);
