@@ -24,11 +24,11 @@ static int check_prime (TGLC_bn *p) {
 int tglmp_check_DH_params (TGLC_bn *p, int g) {
   if (g < 2 || g > 7) { return -1; }
   if (TGLC_bn_num_bits (p) != 2048) { return -1; }
-  
+
   TGLC_bn *t = TGLC_bn_new ();
-  
+
   TGLC_bn *dh_g = TGLC_bn_new ();
-  
+
   ensure (TGLC_bn_set_word (dh_g, 4 * g));
   ensure (TGLC_bn_mod (t, p, dh_g, tgl_state::instance()->bn_ctx));
   int x = TGLC_bn_get_word (t);
@@ -84,7 +84,7 @@ int tglmp_check_g_a (TGLC_bn *p, TGLC_bn *g_a) {
   if (TGLC_bn_cmp (p, g_a) <= 0) {
     return -1;
   }
-  
+
   TGLC_bn *dif = TGLC_bn_new ();
   TGLC_bn_sub (dif, p, g_a);
   if (TGLC_bn_num_bits (dif) < 2048 - 64) {
@@ -114,7 +114,7 @@ static void ull2BN (TGLC_bn *b, unsigned long long val) {
     TGLC_bn_set_word (b, val);
   } else if (sizeof (unsigned long long) == 8) {
     assert (0); // As long as nobody ever uses this code, assume it is broken.
-    htobe64(val);
+    (void)htobe64(val);
     /* Here be dragons, but it should be okay due to htobe64 */
     TGLC_bn_bin2bn ((unsigned char *) &val, 8, b);
   } else {
@@ -128,7 +128,7 @@ int bn_factorize (TGLC_bn *pq, TGLC_bn *p, TGLC_bn *q) {
   unsigned long long what = BN2ull (pq);
 
   int it = 0;
-  
+
   unsigned long long g = 0;
   int i;
   for (i = 0; i < 3 || it < 1000; i++) {

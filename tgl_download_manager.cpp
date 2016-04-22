@@ -74,7 +74,9 @@ bool tgl_download_manager::file_exists(const tgl_file_location &location)
 
 std::string tgl_download_manager::get_file_path(long long int secret)
 {
-    return download_directory() + "/download_" + std::to_string(secret);
+    std::ostringstream stream;
+    stream << download_directory() << "/download_" << secret;
+    return stream.str();
 }
 
 int tgl_download_manager::download_error (std::shared_ptr<query> q, int error_code, const std::string &error)
