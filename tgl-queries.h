@@ -140,7 +140,7 @@ void tgl_do_unblock_user (int user_id, long long int access_hash, void (*callbac
 void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& E, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::shared_ptr<tgl_secret_chat>& E), std::shared_ptr<void> callback_extra);
 
 // sets ttl of secret chat
-void tgl_do_set_encr_chat_ttl (struct tgl_secret_chat *E, int ttl);
+void tgl_do_set_encr_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_chat, int ttl);
 
 // returns secret chat fingerprint
 //int tgl_do_visualize_key (int id, unsigned char buf[16]);
@@ -193,7 +193,6 @@ void tgl_do_delete_msg (long long msg_id, void (*callback)(std::shared_ptr<void>
 void tgl_do_get_message (long long id, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
 
 /* }}} */
-
 
 /* {{{ EXTENDED QUERIES USE WITH CAUTION */
 // sends query with extended text syntax

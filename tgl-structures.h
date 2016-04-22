@@ -31,18 +31,18 @@ void tgls_free_bot_info (struct tgl_bot_info *B);
 struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *from_id,
                                         tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const char *message,
-                                        struct tl_ds_message_media *media, struct tl_ds_message_action *action,
+                                        const tl_ds_message_media *media, const tl_ds_message_action *action,
                                         int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags);
 
 struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
         const tgl_peer_id_t* from_id,
         const tgl_peer_id_t* to_id,
-        const int *date,
-        const char *message,
+        const int* date,
+        const char* message,
         int message_len,
-        tl_ds_decrypted_message_media* media,
-        tl_ds_decrypted_message_action* action,
-        tl_ds_encrypted_file* file,
+        const tl_ds_decrypted_message_media* media,
+        const tl_ds_decrypted_message_action* action,
+        const tl_ds_encrypted_file* file,
         int flags);
 
 struct tgl_message *tglm_message_alloc (tgl_message_id_t *id);

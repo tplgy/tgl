@@ -346,10 +346,12 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_encryption:
     {
 #ifdef ENABLE_SECRET_CHAT
-      std::shared_ptr<tgl_secret_chat> E = tglf_fetch_alloc_encrypted_chat (DS_U->encr_chat);
-      TGL_DEBUG("Secret chat state = " << E->state);
-      if (E->state == sc_ok) {
-        tgl_do_send_encr_chat_layer (E.get());
+      std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat (DS_U->encr_chat);
+      if (!secret_chat) {
+          break;
+      }
+      if (secret_chat->state == sc_ok) {
+        tgl_do_send_encr_chat_layer(secret_chat);
       }
 #endif
     }

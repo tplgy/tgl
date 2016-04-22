@@ -46,5 +46,7 @@ void tgl_do_request_exchange (struct tgl_secret_chat *E);
 
 void tgl_do_create_keys_end (struct tgl_secret_chat *U);
 
-void tgl_do_send_encr_chat_layer (struct tgl_secret_chat *E);
+void tgl_do_send_encr_chat_layer(const std::shared_ptr<tgl_secret_chat>& secret_chat);
+
+void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>& secret_chat, int start_seq_no, int end_seq_no);
 #endif

@@ -1058,7 +1058,7 @@ static int msg_send_on_answer (std::shared_ptr<query> q, void *D) {
   std::shared_ptr<msg_callback_extra> old_msg_id = std::static_pointer_cast<msg_callback_extra>(q->extra);
 
   if (old_msg_id) {
-    tgl_state::instance()->callback()->message_sent(old_msg_id->old_msg_id, DS_LVAL(DS_U->id), old_msg_id->to_id);
+    tgl_state::instance()->callback()->message_sent(old_msg_id->old_msg_id, DS_LVAL(DS_U->id), old_msg_id->to_id, -1);
   }
 
 #if 0

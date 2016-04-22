@@ -97,19 +97,15 @@ void tgl_do_encr_chat(const tgl_peer_id_t& id,
         int* date,
         int* admin,
         const int* user_id,
-        void* key,
-        unsigned char* g_key,
-        void* first_key_id,
+        const unsigned char* key,
+        const unsigned char* g_key,
         tgl_secret_chat_state* state,
         int* ttl,
         int* layer,
         int* in_seq_no,
         int* last_in_seq_no,
         int* out_seq_no,
-        long long* key_fingerprint,
-        int flags,
-        const char* print_name,
-        int print_name_len);
+        int flags);
 #endif
 
 // For binlog
