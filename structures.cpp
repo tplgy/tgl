@@ -1783,6 +1783,7 @@ void tglf_fetch_encrypted_message_file (struct tgl_message_media *M, const tl_ds
 }
 #endif
 
+#if 0
 static int id_cmp (struct tgl_message *M1, struct tgl_message *M2) {
   if (M1->permanent_id.peer_type < M2->permanent_id.peer_type) { return -1; }
   if (M1->permanent_id.peer_type > M2->permanent_id.peer_type) { return 1; }
@@ -1793,7 +1794,6 @@ static int id_cmp (struct tgl_message *M1, struct tgl_message *M2) {
   else { return 0; }
 }
 
-#if 0
 static void increase_peer_size () {
     if (tgl_state::instance()->peer_num == tgl_state::instance()->peer_size) {
         int new_size = tgl_state::instance()->peer_size ? 2 * tgl_state::instance()->peer_size : 10;
@@ -2174,6 +2174,7 @@ void tgls_free_message (struct tgl_message *M) {
 
 /* Messages {{{ */
 
+#if 0
 void tglm_message_add_peer ( struct tgl_message *M) {
   tgl_peer_id_t id;
   if (!tgl_cmp_peer_id (M->to_id, tgl_state::instance()->our_id())) {
@@ -2221,19 +2222,18 @@ void tglm_message_del_peer (struct tgl_message *M) {
   } else {
     id = M->to_id;
   }
-  //tgl_peer_t *P = tgl_peer_get (id);
+  tgl_peer_t *P = tgl_peer_get (id);
   if (M->prev) {
     M->prev->next = M->next;
   }
   if (M->next) {
     M->next->prev = M->prev;
   }
-#if 0
   if (P && P->last == M) {
     P->last = M->next;
   }
-#endif
 }
+#endif
 
 struct tgl_message *tglm_message_alloc (tgl_message_id_t *id) {
   struct tgl_message *M = (struct tgl_message *)calloc(1, sizeof (struct tgl_message));
@@ -2349,6 +2349,7 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
     assert (flags & TGLMF_CREATED);
     assert (flags & TGLMF_ENCRYPTED);
 
+#if 0
     if ((M->flags & TGLMF_PENDING) && !(flags & TGLMF_PENDING)){
         tglm_message_remove_unsent(M);
     }
@@ -2356,6 +2357,7 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
     if (!(M->flags & TGLMF_PENDING) && (flags & TGLMF_PENDING)){
         tglm_message_insert_unsent(M);
     }
+#endif
 
     M->flags = flags & 0xffff;
 
@@ -2404,9 +2406,11 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
         E->out_seq_no++;
     }
 
+#if 0
     if (flags & 0x10000) {
         tglm_message_insert(M);
     }
+#endif
 
     tgl_state::instance()->callback()->new_message(M);
 
@@ -2415,6 +2419,7 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
 
 #endif
 
+#if 0
 void tglm_message_insert_tree (struct tgl_message *M) {
   assert (M->permanent_id.id);
   //tgl_state::instance()->message_tree = tree_insert_message (tgl_state::instance()->message_tree, M, rand ());
@@ -2426,7 +2431,7 @@ void tglm_message_remove_tree (struct tgl_message *M) {
 }
 
 void tglm_message_insert (struct tgl_message *M) {
-  //tglm_message_add_use (M);
+  tglm_message_add_use (M);
   tglm_message_add_peer (M);
 }
 
@@ -2442,6 +2447,7 @@ void tglm_message_remove_unsent (struct tgl_message *M) {
     }
   }
 }
+#endif
 
 static void __send_msg (struct tgl_message *M) {
   TGL_NOTICE("Resending message...");
@@ -2478,6 +2484,7 @@ void tglf_fetch_int_tuple (int *dst, int **src, int len) {
     }
 }
 
+#if 0
 void tgls_messages_mark_read (struct tgl_message *M, int out, int seq) {
   while (M && M->permanent_id.id > seq) { 
     if ((M->flags & TGLMF_OUT) == out) {
@@ -2499,7 +2506,6 @@ void tgls_messages_mark_read (struct tgl_message *M, int out, int seq) {
   }
 }
  
-/*
 void tgls_insert_random2local (long long random_id, tgl_message_id_t *msg_id) {
   struct random2local *X = talloc (sizeof (*X));
   X->random_id = random_id;
@@ -2555,8 +2561,8 @@ tgl_message_id_t *tgls_get_local_by_temp (int temp_id) {
     return NULL;
   }
 }
+#endif
 
-*/
 tgl_message_id_t tgl_convert_temp_msg_id (tgl_message_id_t msg_id) {
   //struct tgl_message M;
   //M.temp_id = msg_id.id;
@@ -2568,7 +2574,7 @@ tgl_message_id_t tgl_convert_temp_msg_id (tgl_message_id_t msg_id) {
   //}
 }
 
-/*
+#if 0
 void tgls_message_change_temp_id (struct tgl_message *M, int temp_id) {
   if (M->temp_id == temp_id) { return; }
   assert (!M->temp_id);
@@ -2593,4 +2599,5 @@ void tglm_message_del_random_id (struct tgl_message *M) {
   if (M->random_id) {
     tgl_state::instance()->random_id_tree = tree_delete_random_id (tgl_state::instance()->random_id_tree, M);
   }
-}*/
+}
+#endif

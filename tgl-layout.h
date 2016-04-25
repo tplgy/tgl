@@ -256,7 +256,7 @@ struct tgl_encr_document {
   int duration;
 };
 
-// FIXME: We may be able to remove this after evaluate the usage.
+#if 0
 typedef struct tgl_peer {
   tgl_peer_id_t id;
   int flags;
@@ -272,6 +272,7 @@ typedef struct tgl_peer {
   long long photo_id;
   void *extra;
 } tgl_peer_t;
+#endif
 
 struct tgl_document {
   long long id;
@@ -391,9 +392,9 @@ typedef struct tgl_message_id {
 } tgl_message_id_t;
 
 struct tgl_message {
-  struct tgl_message *next_use, *prev_use;
-  struct tgl_message *next, *prev;
-  int temp_id;
+  //struct tgl_message *next_use, *prev_use;
+  //struct tgl_message *next, *prev;
+  //int temp_id;
   long long server_id;
   long long random_id;
   struct tgl_message_id permanent_id;

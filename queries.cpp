@@ -1884,13 +1884,11 @@ int contact_search_on_answer (std::shared_ptr<query> q, void *D) {
     tglf_fetch_alloc_chat (DS_CRU->chats->data[i]);
   }
 
-#if 0
-  tgl_peer_t *P = tgl_peer_get (peer_id);
+  //tgl_peer_t *P = tgl_peer_get (peer_id);
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, tgl_peer_t *))q->callback) (q->callback_extra, 1, P);
+    ((void (*)(std::shared_ptr<void>, bool))q->callback) (q->callback_extra, true);
   }
-#endif
 
   return 0;
 }
@@ -1904,7 +1902,7 @@ static struct query_methods contact_search_methods = {
   .timeout = 0,
 };
 
-void tgl_do_contact_search (const char *name, int name_len, void (*callback)(std::shared_ptr<void>, bool success, tgl_peer_t *U), std::shared_ptr<void> callback_extra) {
+void tgl_do_contact_search (const char *name, int name_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
   clear_packet ();
   out_int (CODE_contacts_resolve_username);
   out_cstring (name, name_len);
@@ -3142,13 +3140,14 @@ void tgl_do_get_channel_difference (int id, void (*callback)(std::shared_ptr<voi
 static int get_channel_difference_on_answer (std::shared_ptr<struct query> q, void *D) {
   struct tl_ds_updates_channel_difference *DS_UD = (struct tl_ds_updates_channel_difference *)D;
 
-  std::shared_ptr<tgl_peer_t> E = std::static_pointer_cast<tgl_peer_t>(q->extra);
+  //std::shared_ptr<tgl_peer_t> E = std::static_pointer_cast<tgl_peer_t>(q->extra);
+  std::shared_ptr<tgl_channel> channel = std::static_pointer_cast<tgl_channel>(q->extra);
 
-  assert (E->flags & TGLCHF_DIFF);
-  E->flags ^= TGLCHF_DIFF;
+  assert (channel->flags & TGLCHF_DIFF);
+  channel->flags ^= TGLCHF_DIFF;
 
   if (DS_UD->magic == CODE_updates_channel_difference_empty) {
-    //bl_do_set_channel_pts (tgl_get_peer_id (E->id), DS_LVAL (DS_UD->channel_pts));
+    //bl_do_set_channel_pts (tgl_get_peer_id (channel->id), DS_LVAL (DS_UD->channel_pts));
 
     TGL_DEBUG("Empty difference. Seq = " << tgl_state::instance()->seq());
     if (q->callback) {
@@ -3184,13 +3183,13 @@ static int get_channel_difference_on_answer (std::shared_ptr<struct query> q, vo
 
     tfree (ML, ml_pos * sizeof (void *));
 
-    //bl_do_set_channel_pts (tgl_get_peer_id (E->id), DS_LVAL (DS_UD->channel_pts));
+    //bl_do_set_channel_pts (tgl_get_peer_id (channel->id), DS_LVAL (DS_UD->channel_pts));
     if (DS_UD->magic != CODE_updates_channel_difference_too_long) {
       if (q->callback) {
         ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
       }
     } else {
-      tgl_do_get_channel_difference (tgl_get_peer_id (E->id), (void(*)(std::shared_ptr<void>, bool))q->callback, q->callback_extra);
+      tgl_do_get_channel_difference (tgl_get_peer_id (channel->id), (void(*)(std::shared_ptr<void>, bool))q->callback, q->callback_extra);
     }
   }
   return 0;
@@ -3207,11 +3206,11 @@ static struct query_methods get_channel_difference_methods = {
 };
 
 void tgl_do_get_channel_difference (int id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
-  tgl_peer_id_t channel_id = TGL_MK_CHANNEL (id);
   //tgl_peer_t *E = tgl_peer_get (TGL_MK_CHANNEL (id));
+  std::shared_ptr<struct tgl_channel> channel = std::make_shared<struct tgl_channel>();
+  channel->id = TGL_MK_CHANNEL(id);
 
-#if 0
-  if (!E || !(E->flags & TGLPF_CREATED) || !E->channel.pts) { 
+  if (!channel || !(channel->flags & TGLPF_CREATED) || !channel->pts) {
     if (callback) {
       callback (callback_extra, 0);
     }
@@ -3219,28 +3218,27 @@ void tgl_do_get_channel_difference (int id, void (*callback)(std::shared_ptr<voi
   }
   //get_difference_active = 1;
   //difference_got = 0;
-  if (E->flags & TGLCHF_DIFF) {
+  if (channel->flags & TGLCHF_DIFF) {
     if (callback) {
       callback (callback_extra, 0);
     }
     return;
   }
-  E->flags |= TGLCHF_DIFF;
-#endif
+  channel->flags |= TGLCHF_DIFF;
+
   clear_packet ();
   tgl_do_insert_header ();
 
   out_int (CODE_updates_get_channel_difference);
   out_int (CODE_input_channel);
-  out_int (tgl_get_peer_id (channel_id));
-  out_long (channel_id.access_hash);
+  out_int (tgl_get_peer_id (channel->id));
+  out_long (channel->id.access_hash);
 
   out_int (CODE_channel_messages_filter_empty);
-  out_int (0); //out_int (E->channel.pts);
+  out_int (channel->pts);
   out_int (100);
 
-  //std::shared_ptr<struct tgl_channel> C = std::make_shared<struct tgl_channel>(E->channel);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_channel_difference_methods, /*C*/0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_channel_difference_methods, channel, (void*)callback, callback_extra);
 }
 /* }}} */
 

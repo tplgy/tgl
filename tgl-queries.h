@@ -157,7 +157,7 @@ int tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, void (*callback)(std
 void tgl_do_get_dialog_list (int limit, int offset, void (*callback)(std::shared_ptr<void> callback_extra, bool success, int size, tgl_peer_id_t peers[], int last_msg_id[], int unread_count[]), std::shared_ptr<void> callback_extra);
 
 // resolves username
-void tgl_do_contact_search(const char *name, void (*callback)(std::shared_ptr<void> callback_extra, int user_id), std::shared_ptr<void> callback_extra);
+void tgl_do_contact_search(const char *name, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
 
 // requests contact list
 void tgl_do_update_contact_list ();

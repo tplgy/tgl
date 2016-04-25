@@ -46,21 +46,25 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
         int flags);
 
 struct tgl_message *tglm_message_alloc (tgl_message_id_t *id);
-void tglm_message_insert_tree (struct tgl_message *M);
+//void tglm_message_insert_tree (struct tgl_message *M);
 void tglm_update_message_id (struct tgl_message *M, long long id);
+#if 0
 void tglm_message_insert (struct tgl_message *M);
 void tglm_message_insert_unsent (struct tgl_message *M);
 void tglm_message_remove_unsent (struct tgl_message *M);
+#endif
 void tglm_send_all_unsent ();
+#if 0
 void tglm_message_remove_tree (struct tgl_message *M);
 void tglm_message_add_peer (struct tgl_message *M);
 void tglm_message_del_peer (struct tgl_message *M);
 void tglm_message_del_temp_id (struct tgl_message *M);
 void tglm_message_del_random_id (struct tgl_message *M);
+#endif
 
 #ifdef ENABLE_SECRET_CHAT
 //enum tgl_typing_status tglf_fetch_typing_buf (void);
-void tgls_messages_mark_read (struct tgl_message *M, int out, int seq);
+//void tgls_messages_mark_read (struct tgl_message *M, int out, int seq);
 #endif
 
 //void tgls_insert_random2local (long long random_id, tgl_message_id_t *local_id);
