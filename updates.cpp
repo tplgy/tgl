@@ -294,7 +294,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       if (DS_U->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
-        tgl_state::instance()->callback()->avatar_update(DS_LVAL (DS_U->user_id), photo_small, photo_big);
+        tgl_state::instance()->callback()->avatar_update(DS_LVAL (DS_U->user_id), TGL_PEER_USER, photo_small, photo_big);
       }
       break;
     }

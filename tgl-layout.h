@@ -278,7 +278,7 @@ typedef struct tgl_peer {
 struct tgl_document {
   long long id;
   long long access_hash;
-  int refcnt;
+  //int refcnt;
   //int user_id;
   int date;
   int size;

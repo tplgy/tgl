@@ -242,7 +242,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U) {
       tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
       tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
 
-      tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(user_id), photo_small, photo_big);
+      tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(user_id), user_id.peer_type, photo_small, photo_big);
     }
     return user;
   }
@@ -280,7 +280,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(struct tl_ds_user_full *DS_
     if (DS_UF->user->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_UF->user->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location(DS_UF->user->photo->photo_small);
-        tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(user->id), photo_small, photo_big);
+        tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(user->id), user->id.peer_type,photo_small, photo_big);
     }
 
   return user;
@@ -485,7 +485,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
 
   tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, std::string(DS_C->title->data, DS_C->title->len), *(DS_C->date), creator,
         admin, admins_enabled, kicked, left, deactivated);
-  tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), C->photo_big, C->photo_small);
+  tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), C->id.peer_type, C->photo_big, C->photo_small);
 
   return C;
 }

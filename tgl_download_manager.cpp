@@ -12,7 +12,7 @@
 
 extern struct query_methods send_msgs_methods;
 
-download::download(int type, tgl_document *doc) : size(doc->size)
+download::download(int type, std::shared_ptr<tgl_document> doc) : size(doc->size)
 {
     this->type = type;
     location.set_dc(doc->dc_id);
@@ -21,7 +21,7 @@ download::download(int type, tgl_document *doc) : size(doc->size)
     location.set_volume(0);
 }
 
-download::download(int type, tgl_encr_document *doc) : size(doc->size)
+download::download(int type, std::shared_ptr<tgl_encr_document> doc) : size(doc->size)
 {
     this->type = type;
     location.set_dc(doc->dc_id);
@@ -651,29 +651,28 @@ void tgl_download_manager::download_document_thumb (struct tgl_document *video, 
     download_photo_size(&video->thumb, callback, callback_extra);
 }
 
-void tgl_download_manager::_tgl_do_load_document (struct tgl_document *V, std::shared_ptr<download> D, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
+void tgl_download_manager::_tgl_do_load_document(std::shared_ptr<tgl_document> doc, std::shared_ptr<download> D, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
 {
-    assert (V);
+    assert(doc);
 
-    if (V->mime_type) {
-        const char *r = tg_extension_by_mime (V->mime_type);
-        if (r) {
-            D->ext = std::string(r);
+    if (doc->mime_type) {
+        const char *ext = tg_extension_by_mime(doc->mime_type);
+        if (ext) {
+            D->ext = std::string(ext);
         }
     }
     load_next_part(D, (void*)callback, callback_extra);
 }
 
-void tgl_download_manager::download_document (struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+void tgl_download_manager::download_document(std::shared_ptr<tgl_document> document, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
         std::shared_ptr<void> callback_extra)
 {
+    std::shared_ptr<download> D = std::make_shared<download>(CODE_input_document_file_location, document);
 
-    std::shared_ptr<download> D = std::make_shared<download>(CODE_input_document_file_location, V);
-
-    _tgl_do_load_document (V, D, callback, callback_extra);
+    _tgl_do_load_document (document, D, callback, callback_extra);
 }
 
-void tgl_download_manager::download_video (struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+void tgl_download_manager::download_video (std::shared_ptr<tgl_document> V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
         std::shared_ptr<void> callback_extra)
 {
     std::shared_ptr<download> D = std::make_shared<download>(CODE_input_video_file_location, V);
@@ -681,7 +680,7 @@ void tgl_download_manager::download_video (struct tgl_document *V, void (*callba
     _tgl_do_load_document (V, D, callback, callback_extra);
 }
 
-void tgl_download_manager::download_audio (struct tgl_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+void tgl_download_manager::download_audio(std::shared_ptr<tgl_document> V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
         std::shared_ptr<void> callback_extra)
 {
     std::shared_ptr<download> D = std::make_shared<download>(CODE_input_audio_file_location, V);
@@ -689,7 +688,7 @@ void tgl_download_manager::download_audio (struct tgl_document *V, void (*callba
     _tgl_do_load_document (V, D, callback, callback_extra);
 }
 
-void tgl_download_manager::download_encr_document (struct tgl_encr_document *V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
+void tgl_download_manager::download_encr_document(std::shared_ptr<tgl_encr_document> V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
 {
     assert (V);
     std::shared_ptr<download> D = std::make_shared<download>(V->size, V);
