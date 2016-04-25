@@ -2146,6 +2146,9 @@ void tgls_clear_message (struct tgl_message *M) {
 
 void tgls_free_message (struct tgl_message *M) {
     tgls_clear_message(M);
+    if (M->reply_markup) {
+        M->reply_markup = nullptr;
+    }
     free (M);
 }
 
