@@ -1340,56 +1340,59 @@ void tglf_fetch_message_action_encrypted (struct tgl_message_action *M, const tl
   }
 }
 
-void tglf_fetch_message_entity (struct tgl_message_entity *E, struct tl_ds_message_entity *DS_ME) {
-  E->start = DS_LVAL (DS_ME->offset);
-  E->length = DS_LVAL (DS_ME->length);
+static std::shared_ptr<tgl_message_entity> tglf_fetch_message_entity(const tl_ds_message_entity* DS_ME) {
+  auto entity = std::make_shared<tgl_message_entity>();
+  entity->start = DS_LVAL(DS_ME->offset);
+  entity->length = DS_LVAL(DS_ME->length);
   switch (DS_ME->magic) {
   case CODE_message_entity_unknown:
-    E->type = tgl_message_entity_unknown;
+    entity->type = tgl_message_entity_unknown;
     break;
   case CODE_message_entity_mention:
-    E->type = tgl_message_entity_mention;
+    entity->type = tgl_message_entity_mention;
     break;
   case CODE_message_entity_hashtag:
-    E->type = tgl_message_entity_hashtag;
+    entity->type = tgl_message_entity_hashtag;
     break;
   case CODE_message_entity_bot_command:
-    E->type = tgl_message_entity_bot_command;
+    entity->type = tgl_message_entity_bot_command;
     break;
   case CODE_message_entity_url:
-    E->type = tgl_message_entity_url;
+    entity->type = tgl_message_entity_url;
     break;
   case CODE_message_entity_email:
-    E->type = tgl_message_entity_email;
+    entity->type = tgl_message_entity_email;
     break;
   case CODE_message_entity_bold:
-    E->type = tgl_message_entity_bold;
+    entity->type = tgl_message_entity_bold;
     break;
   case CODE_message_entity_italic:
-    E->type = tgl_message_entity_italic;
+    entity->type = tgl_message_entity_italic;
     break;
   case CODE_message_entity_code:
-    E->type = tgl_message_entity_code;
+    entity->type = tgl_message_entity_code;
     break;
   case CODE_message_entity_pre:
-    E->type = tgl_message_entity_pre;
+    entity->type = tgl_message_entity_pre;
     break;
   case CODE_message_entity_text_url:
-    E->type = tgl_message_entity_text_url;
-    E->extra = DS_STR_DUP (DS_ME->url);
+    entity->type = tgl_message_entity_text_url;
+    if (DS_ME->url && DS_ME->url->data) {
+        entity->text_url = std::string(DS_ME->url->data, DS_ME->url->len);
+    }
     break;
   default:
     assert (0);
   }
+  return entity;
 }
 
 void tglf_fetch_message_entities (struct tgl_message *M, struct tl_ds_vector *DS) {
-  M->entities_num = DS_LVAL (DS->f1);
-  M->entities = (struct tgl_message_entity *)talloc0 (M->entities_num * sizeof (struct tgl_message_entity));
-  int i;
-  for (i = 0; i < M->entities_num; i++) {
+  int entities_num = DS_LVAL (DS->f1);
+  M->entities.resize(entities_num);
+  for (int i = 0; i < entities_num; i++) {
     struct tl_ds_message_entity *D = (struct tl_ds_message_entity *)DS->f2[i];
-    tglf_fetch_message_entity (&M->entities[i], D);
+    M->entities[i] = tglf_fetch_message_entity(D);
   }
 }
 
@@ -2124,12 +2127,6 @@ void tgls_free_message_action (struct tgl_message_action *M) {
   }
 }
 
-void tgls_free_message_entity (struct tgl_message_entity *E) {
-  if (E->extra) {
-    tfree_str (E->extra);
-  }
-}
-
 void tgls_clear_message (struct tgl_message *M) {
   if (!(M->flags & TGLMF_SERVICE)) {
     if (M->message) { tfree (M->message, M->message_len + 1); }
@@ -2137,18 +2134,21 @@ void tgls_clear_message (struct tgl_message *M) {
   } else {
     tgls_free_message_action (&M->action);
   }
-  int i;
-  for (i = 0; i < M->entities_num; i++) {
-    tgls_free_message_entity (&M->entities[i]);
-  }
-  tfree (M->entities, M->entities_num * sizeof (struct tgl_message_entity));
+
+  // FIXME: Once we transform tgl_message to a std::shared_ptr managable class
+  // we can remove this.
+  M->entities.~vector<std::shared_ptr<tgl_message_entity>>();
 }
 
 void tgls_free_message (struct tgl_message *M) {
     tgls_clear_message(M);
+
+    // FIXME: Once we transform tgl_message to a std::shared_ptr managable class
+    // we can remove this.
     if (M->reply_markup) {
         M->reply_markup = nullptr;
     }
+
     free (M);
 }
 
@@ -2220,7 +2220,12 @@ void tglm_message_del_peer (struct tgl_message *M) {
 struct tgl_message *tglm_message_alloc (tgl_message_id_t *id) {
   struct tgl_message *M = (struct tgl_message *)calloc(1, sizeof (struct tgl_message));
   M->permanent_id = *id;
+
+  // FIXME: Once we transform tgl_message to a std::shared_ptr managable class
+  // we can remove this.
   M->reply_markup = nullptr;
+  M->entities = std::vector<std::shared_ptr<tgl_message_entity>>();
+
   //tglm_message_insert_tree (M);
   //tgl_state::instance()->messages_allocated ++;
   return M;

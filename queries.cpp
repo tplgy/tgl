@@ -1130,7 +1130,7 @@ void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<vo
   clear_packet ();
   out_int (CODE_messages_send_message);
 
-  unsigned f = ((M->flags & TGLMF_DISABLE_PREVIEW) ? 2 : 0) | (M->reply_id ? 1 : 0) | (M->reply_markup ? 4 : 0) | (M->entities_num > 0 ? 8 : 0);
+  unsigned f = ((M->flags & TGLMF_DISABLE_PREVIEW) ? 2 : 0) | (M->reply_id ? 1 : 0) | (M->reply_markup ? 4 : 0) | (M->entities.size() > 0 ? 8 : 0);
   if (tgl_get_peer_type (M->from_id) == TGL_PEER_CHANNEL) {
     f |= 16;
   }
@@ -1169,33 +1169,32 @@ void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<vo
     }
   }
 
-  if (M->entities_num > 0) {
+  if (M->entities.size() > 0) {
     out_int (CODE_vector);
-    out_int (M->entities_num);
-    int i;
-    for (i = 0; i < M->entities_num; i++) {
-      struct tgl_message_entity *E = &M->entities[i];
-      switch (E->type) {
+    out_int (M->entities.size());
+    for (size_t i = 0; i < M->entities.size(); i++) {
+      auto entity = M->entities[i];
+      switch (entity->type) {
       case tgl_message_entity_bold:
         out_int (CODE_message_entity_bold);
-        out_int (E->start);
-        out_int (E->length);
+        out_int (entity->start);
+        out_int (entity->length);
         break;
       case tgl_message_entity_italic:
         out_int (CODE_message_entity_italic);
-        out_int (E->start);
-        out_int (E->length);
+        out_int (entity->start);
+        out_int (entity->length);
         break;
       case tgl_message_entity_code:
         out_int (CODE_message_entity_code);
-        out_int (E->start);
-        out_int (E->length);
+        out_int (entity->start);
+        out_int (entity->length);
         break;
       case tgl_message_entity_text_url:
         out_int (CODE_message_entity_text_url);
-        out_int (E->start);
-        out_int (E->length);
-        out_string (E->extra);
+        out_int (entity->start);
+        out_int (entity->length);
+        out_string (entity->text_url.c_str());
         break;
       default:
         assert (0);

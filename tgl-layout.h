@@ -148,7 +148,8 @@ struct tgl_message_entity {
   enum tgl_message_entity_type type;
   int start;
   int length;
-  char *extra;
+  std::string text_url;
+  tgl_message_entity(): type(tgl_message_entity_unknown) { }
 };
 
 enum tgl_message_media_type {
@@ -404,8 +405,7 @@ struct tgl_message {
   tgl_peer_id_t to_id;
   int date;
   std::shared_ptr<tgl_message_reply_markup> reply_markup;
-  int entities_num;
-  struct tgl_message_entity *entities;
+  std::vector<std::shared_ptr<tgl_message_entity>> entities;
   union {
     struct tgl_message_action action;
     struct {
