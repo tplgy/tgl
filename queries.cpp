@@ -1150,20 +1150,18 @@ void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<vo
   std::shared_ptr<msg_callback_extra> extra = std::make_shared<msg_callback_extra>(M->permanent_id.id, M->to_id);
 
   if (M->reply_markup) {
-    if (M->reply_markup->rows) {
+    if (!M->reply_markup->button_matrix.empty()) {
       out_int (CODE_reply_keyboard_markup);
       out_int (M->reply_markup->flags);
       out_int (CODE_vector);
-      out_int (M->reply_markup->rows);
-      int i;
-      for (i = 0; i < M->reply_markup->rows; i++) {
+      out_int (M->reply_markup->button_matrix.size());
+      for (size_t i = 0; i < M->reply_markup->button_matrix.size(); ++i) {
         out_int (CODE_keyboard_button_row);
         out_int (CODE_vector);
-        out_int (M->reply_markup->row_start[i + 1] - M->reply_markup->row_start[i]);
-        int j;
-        for (j = 0; j < M->reply_markup->row_start[i + 1] - M->reply_markup->row_start[i]; j++) {
+        out_int (M->reply_markup->button_matrix[i].size());
+        for (size_t j = 0; j < M->reply_markup->button_matrix[i].size(); ++j) {
           out_int (CODE_keyboard_button);
-          out_string (M->reply_markup->buttons[j + M->reply_markup->row_start[i]]);
+          out_string (M->reply_markup->button_matrix[i][j].c_str());
         }
       }
     } else {

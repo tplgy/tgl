@@ -1909,36 +1909,32 @@ std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info (struct tl_ds_bot_info *
     return B;
 }
 
-struct tgl_message_reply_markup *tglf_fetch_alloc_reply_markup (struct tgl_message *M, struct tl_ds_reply_markup *DS_RM) {
-    if (!DS_RM) { return NULL; }
-
-    struct tgl_message_reply_markup *R = (struct tgl_message_reply_markup *)talloc0(sizeof (struct tgl_message_reply_markup));
-    R->flags = DS_LVAL (DS_RM->flags);
-    R->refcnt = 1;
-
-    R->rows = DS_RM->rows ? DS_LVAL (DS_RM->rows->cnt) : 0;
-
-    int total = 0;
-    R->row_start = (int *)malloc ((R->rows + 1) * 4);
-    R->row_start[0] = 0;
-    int i;
-    for (i = 0; i < R->rows; i++) {
-        struct tl_ds_keyboard_button_row *DS_K = DS_RM->rows->data[i];
-        total += DS_LVAL (DS_K->buttons->cnt);
-        R->row_start[i + 1] = total;
+std::shared_ptr<tgl_message_reply_markup> tglf_fetch_alloc_reply_markup(const tl_ds_reply_markup *DS_RM) {
+    if (!DS_RM) {
+        return nullptr;
     }
-    R->buttons = (char **)malloc (sizeof (void *) * total);
-    int r = 0;
-    for (i = 0; i < R->rows; i++) {
-        struct tl_ds_keyboard_button_row *DS_K = DS_RM->rows->data[i];
-        int j;
-        for (j = 0; j < DS_LVAL (DS_K->buttons->cnt); j++) {
-            struct tl_ds_keyboard_button *DS_KB = DS_K->buttons->data[j];
-            R->buttons[r ++] = DS_STR_DUP (DS_KB->text);
+
+    auto reply_markup = std::make_shared<tgl_message_reply_markup>();
+    reply_markup->flags = DS_LVAL(DS_RM->flags);
+    int rows = DS_RM->rows ? DS_LVAL(DS_RM->rows->cnt) : 0;
+    if (rows <= 0) {
+        return reply_markup;
+    }
+
+    reply_markup->button_matrix.resize(rows);
+    for (int i = 0; i < rows; ++i) {
+        const tl_ds_keyboard_button_row* row = DS_RM->rows->data[i];
+        int button_count = DS_LVAL(row->buttons->cnt);
+        reply_markup->button_matrix[i].resize(button_count);
+        for (int j = 0; j < button_count; ++j) {
+            const tl_ds_keyboard_button* button = row->buttons->data[j];
+            if (button && button->text && button->text->data) {
+                reply_markup->button_matrix[i][j] = std::string(button->text->data, button->text->len);
+            }
         }
     }
-    assert (r == total);
-    return R;
+
+    return reply_markup;
 }
 /* }}} */
 
@@ -2148,25 +2144,8 @@ void tgls_clear_message (struct tgl_message *M) {
   tfree (M->entities, M->entities_num * sizeof (struct tgl_message_entity));
 }
 
-void tgls_free_reply_markup (struct tgl_message_reply_markup *R) {
-  if (!--R->refcnt) {
-    int i;
-    for (i = 0; i < R->row_start[R->rows]; i++) {
-      tfree_str (R->buttons[i]);
-    }
-    tfree (R->buttons, R->row_start[R->rows] * sizeof (void *));
-    tfree (R->row_start, 4 * (R->rows + 1));
-    tfree (R, sizeof (*R));
-  } else {
-    assert (R->refcnt > 0);
-  }
-}
-
 void tgls_free_message (struct tgl_message *M) {
     tgls_clear_message(M);
-    if (M->reply_markup) {
-        tgls_free_reply_markup (M->reply_markup);
-    }
     free (M);
 }
 
@@ -2238,6 +2217,7 @@ void tglm_message_del_peer (struct tgl_message *M) {
 struct tgl_message *tglm_message_alloc (tgl_message_id_t *id) {
   struct tgl_message *M = (struct tgl_message *)calloc(1, sizeof (struct tgl_message));
   M->permanent_id = *id;
+  M->reply_markup = nullptr;
   //tglm_message_insert_tree (M);
   //tgl_state::instance()->messages_allocated ++;
   return M;
@@ -2249,7 +2229,6 @@ struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *fro
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
                                         int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags)
 {
-    TGL_UNUSED(reply_markup);
     struct tgl_message *M = tglm_message_alloc(id);
 
     assert (!(M->flags & TGLMF_ENCRYPTED));
@@ -2311,9 +2290,9 @@ struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *fro
         M->reply_id = DS_LVAL (reply_id);
     }
 
-    //    if (reply_markup) {
-    //        M->reply_markup = tglf_fetch_alloc_reply_markup (M->next, reply_markup);
-    //    }
+    if (reply_markup) {
+        M->reply_markup = tglf_fetch_alloc_reply_markup (reply_markup);
+    }
     tgl_state::instance()->callback()->new_message(M);
     return M;
 }

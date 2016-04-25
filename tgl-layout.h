@@ -377,11 +377,9 @@ struct tgl_message_media {
 };
 
 struct tgl_message_reply_markup {
-  int refcnt;
   int flags;
-  int rows;
-  int *row_start;
-  char **buttons;
+  std::vector<std::vector<std::string>> button_matrix;
+  tgl_message_reply_markup(): flags(0) { }
 };
 
 typedef struct tgl_message_id {
@@ -405,7 +403,7 @@ struct tgl_message {
   tgl_peer_id_t from_id;
   tgl_peer_id_t to_id;
   int date;
-  struct tgl_message_reply_markup *reply_markup;
+  std::shared_ptr<tgl_message_reply_markup> reply_markup;
   int entities_num;
   struct tgl_message_entity *entities;
   union {

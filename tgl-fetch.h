@@ -65,6 +65,6 @@ void tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U);
 void tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U);
 struct tgl_photo *tglf_fetch_alloc_photo (struct tl_ds_photo *DS_P);
 std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info (struct tl_ds_bot_info *DS_BI);
-struct tgl_message_reply_markup *tglf_fetch_alloc_reply_markup (struct tgl_message *M, struct tl_ds_reply_markup *DS_RM);
+std::shared_ptr<tgl_message_reply_markup> tglf_fetch_alloc_reply_markup(const tl_ds_reply_markup *DS_RM);
 void tglf_fetch_message_entities (struct tgl_message *M, struct tl_ds_vector *DS);
 #endif
