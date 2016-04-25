@@ -397,7 +397,7 @@ ssize_t tgl_connection_asio::read(void* buffer, size_t len) {
     size_t x = 0;
     while (len) {
         size_t y = m_in_head->wptr - m_in_head->rptr;
-        if (y > len) {
+        if (y > len || (y == len && m_in_head->wptr < m_in_head->end)) {
             memcpy (data, m_in_head->rptr, len);
             m_in_head->rptr += len;
             m_in_bytes -= len;

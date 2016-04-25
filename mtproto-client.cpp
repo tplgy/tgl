@@ -198,6 +198,9 @@ static int rpc_send_message (const std::shared_ptr<tgl_connection>& c, void *dat
 
 
 static int check_unauthorized_header () {
+    if (in_end - in_ptr < 5) {
+      return -1;
+    }
     long long auth_key_id = fetch_long ();
     if (auth_key_id) {
         TGL_ERROR("ERROR: auth_key_id should be NULL");
