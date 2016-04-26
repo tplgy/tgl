@@ -34,7 +34,7 @@
 
 #include <assert.h>
 
-void tgl_do_get_channel_difference (int channel_id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra);
+void tgl_do_get_channel_difference (int channel_id, std::function<void(bool success)> callback);
 
 static void fetch_dc_option (struct tl_ds_dc_option *DS_DO) {
   TGL_DEBUG("id = " << DS_LVAL (DS_DO->id) << ", ip = " << std::string(DS_DO->ip_address->data, DS_DO->ip_address->len) << ", port = " << DS_LVAL (DS_DO->port));
@@ -55,7 +55,7 @@ int tgl_check_pts_diff (int pts, int pts_count) {
     }
     if (pts > tgl_state::instance()->pts() + pts_count) {
         TGL_NOTICE("Hole in pts: pts = "<< pts <<", count = "<< pts_count <<", cur_pts = "<< tgl_state::instance()->pts());
-        tgl_do_get_difference(0, 0, 0);
+        tgl_do_get_difference(0, 0);
         return -1;
     }
     if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
@@ -74,7 +74,7 @@ int tgl_check_qts_diff (int qts, int qts_count) {
     }
     if (qts > tgl_state::instance()->qts() + qts_count) {
         TGL_NOTICE("Hole in qts (qts = " << qts << ", count = " << qts_count << ", cur_qts = " << tgl_state::instance()->qts() << ")");
-        tgl_do_get_difference (0, 0, 0);
+        tgl_do_get_difference (0, 0);
         return -1;
     }
     if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
@@ -124,7 +124,7 @@ static int do_skip_seq (int seq) {
         if (seq > tgl_state::instance()->seq() + 1) {
             TGL_NOTICE("Hole in seq (seq = " << seq <<", cur_seq = " << tgl_state::instance()->seq() << ")");
             //vlogprintf (E_NOTICE, "lock_diff = %s", (TLS->locks & TGL_LOCK_DIFF) ? "true" : "false");
-            tgl_do_get_difference (0, 0, 0);
+            tgl_do_get_difference (0, 0);
             return -1;
         }
         if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
@@ -483,7 +483,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     break;
   case CODE_update_channel_too_long:
     {
-      tgl_do_get_channel_difference (DS_LVAL (DS_U->channel_id), NULL, NULL);
+      tgl_do_get_channel_difference (DS_LVAL (DS_U->channel_id), NULL);
     }
     break;
   case CODE_update_channel:
@@ -681,7 +681,7 @@ void tglu_work_updates_too_long (int check_only, struct tl_ds_updates *DS_U) {
   }
   TGL_NOTICE("updates too long... Getting difference");
   if (check_only) { return; }
-  tgl_do_get_difference (0, 0, 0);
+  tgl_do_get_difference (0, 0);
 }
 
 void tglu_work_update_short (int check_only, struct tl_ds_updates *DS_U) {

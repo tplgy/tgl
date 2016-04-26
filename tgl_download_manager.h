@@ -67,31 +67,24 @@ public:
 
     std::string get_file_path(long long int secret);  // parameter is either secret or access hash depending on file type
 
-    void download_encr_document(std::shared_ptr<tgl_encr_document> V, void (*callback)(std::shared_ptr<void> callback_extra,
-            bool success, const std::string &filename), std::shared_ptr<void> callback_extra);
-    void download_audio(std::shared_ptr<tgl_document> V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
-            std::shared_ptr<void> callback_extra);
-    void download_video(std::shared_ptr<tgl_document> V, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
-            std::shared_ptr<void> callback_extra);
-    void download_document_thumb(struct tgl_document *video, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
-            std::shared_ptr<void> callback_extra);
-    void download_photo(struct tgl_photo *photo, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra);
+    void download_encr_document(std::shared_ptr<tgl_encr_document> V, std::function<void(bool success, const std::string &filename)> callback);
+    void download_audio(std::shared_ptr<tgl_document> V, std::function<void(bool success, const std::string &filename)> callback);
+    void download_video(std::shared_ptr<tgl_document> V, std::function<void(bool success, const std::string &filename)> callback);
+    void download_document_thumb(struct tgl_document *video, std::function<void(bool success, const std::string &filename)> callback);
+    void download_photo(struct tgl_photo *photo, std::function<void(bool success, const std::string &filename)> callback);
 
-    void download_photo_size(const std::shared_ptr<tgl_photo_size>& P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
-            std::shared_ptr<void> callback_extra);
+    void download_photo_size(const std::shared_ptr<tgl_photo_size>& P, std::function<void(bool success, const std::string &filename)> callback);
 
-    void download_file_location(const tgl_file_location& P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
-            std::shared_ptr<void> callback_extra);
+    void download_file_location(const tgl_file_location& P, std::function<void(bool success, const std::string &filename)> callback);
 
-    void download_document(std::shared_ptr<tgl_document> document, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
-            std::shared_ptr<void> callback_extra);
+    void download_document(std::shared_ptr<tgl_document> document, std::function<void(bool success, const std::string &filename)>);
 
     void send_document(tgl_peer_id_t to_id, const std::string &file_name, const std::string &caption, unsigned long long flags,
-            void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+            std::function<void(bool success, struct tgl_message *M)> callback);
     // sets self profile photo
     // server will cut central square from this photo
-    void set_profile_photo(const std::string &file_name, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
-    void set_chat_photo(tgl_peer_id_t chat_id, const std::string &file_name, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
+    void set_profile_photo(const std::string &file_name, std::function<void(bool success)> callback);
+    void set_chat_photo(tgl_peer_id_t chat_id, const std::string &file_name, std::function<void(bool success)> callback);
 
 private:
     // Callbacks
@@ -102,22 +95,22 @@ private:
     int set_photo_on_answer(std::shared_ptr<query> q, void *D);
     int download_error(std::shared_ptr<query> q, int error_code, const std::string &error);
 
-    void send_avatar_end(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void>callback_extra);
-    void send_file_end(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void>callback_extra);
-    void send_file_unencrypted_end (std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra);
-    void send_file_thumb(std::shared_ptr<send_file> f, const void *thumb_data, int thumb_len, void *callback, std::shared_ptr<void>callback_extra);
+    void send_avatar_end(std::shared_ptr<send_file> f, std::shared_ptr<void> callback);
+    void send_file_end(std::shared_ptr<send_file> f, std::shared_ptr<void> callback);
+    void send_file_unencrypted_end(std::shared_ptr<send_file> f, std::shared_ptr<void> callback);
+    void send_file_thumb(std::shared_ptr<send_file> f, const void *thumb_data, int thumb_len, std::shared_ptr<void> callback);
 
-    void send_part(std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra);
+    void send_part(std::shared_ptr<send_file> f, std::shared_ptr<void> callback);
 
     void _tgl_do_send_photo(tgl_peer_id_t to_id, const std::string &file_name, int avatar, int w, int h, int duration,
-                                    const void *thumb_data, int thumb_len, const std::string& caption, unsigned long long flags,
-                                    void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
-    void _tgl_do_load_document(std::shared_ptr<tgl_document> V, std::shared_ptr<download> D, void (*callback)(std::shared_ptr<void> callback_extra,
-                                    bool success, const std::string &filename), std::shared_ptr<void> callback_extra);
+            const void *thumb_data, int thumb_len, const std::string& caption, unsigned long long flags,
+            std::shared_ptr<void> callback);
+    void _tgl_do_load_document(std::shared_ptr<tgl_document> V, std::shared_ptr<download> D,
+             std::function<void(bool success, const std::string &filename)> callback);
 
     void begin_download(std::shared_ptr<download>);
-    void load_next_part(std::shared_ptr<download>, void *callback, std::shared_ptr<void> callback_extra);
-    void end_load(std::shared_ptr<download>, void *callback, std::shared_ptr<void>callback_extra);
+    void load_next_part(std::shared_ptr<download>, std::function<void(bool, const std::string &)> callback);
+    void end_load(std::shared_ptr<download>, std::function<void(bool, const std::string &)> callback);
 
     std::vector<std::shared_ptr<download>> m_downloads;
 

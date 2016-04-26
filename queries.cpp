@@ -202,10 +202,10 @@ static void alarm_query_gateway(std::shared_ptr<query> q) {
     alarm_query(q);
 }
 
-void tgl_transfer_auth_callback (std::shared_ptr<void> arg, bool success);
-void tgl_do_transfer_auth (int num, void (*callback) (std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra);
+void tgl_transfer_auth_callback (std::shared_ptr<tgl_dc> arg, bool success);
+void tgl_do_transfer_auth (int num, std::function<void(bool success)> callback);
 
-std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, void *data, struct query_methods *methods, std::shared_ptr<void> extra, void *callback, std::shared_ptr<void> callback_extra, int flags) {
+std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, void *data, struct query_methods *methods, std::shared_ptr<void> extra, std::shared_ptr<void> callback, int flags) {
   assert (DC);
   bool pending = false;
   if (!DC->sessions[0]) {
@@ -218,7 +218,7 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
   if (!tgl_signed_dc(DC) && !(flags & QUERY_LOGIN) && !(flags & QUERY_FORCE_SEND)) {
     pending = true;
     if (DC != tgl_state::instance()->DC_working && !(flags & QUERY_FORCE_SEND)) {
-      tgl_do_transfer_auth(DC->id, tgl_transfer_auth_callback, DC);
+      tgl_do_transfer_auth(DC->id, std::bind(tgl_transfer_auth_callback, DC, std::placeholders::_1));
     }
   }
   TGL_DEBUG("Sending query \"" << (methods->name ? methods->name : "") << "\" of size " << 4 * ints << " to DC " << DC->id << (pending ? " (pending)" : ""));
@@ -251,7 +251,6 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
 
   q->extra = extra;
   q->callback = callback;
-  q->callback_extra = callback_extra;
   tgl_state::instance()->active_queries ++;
   DC->add_query(q);
 
@@ -261,8 +260,8 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
   return q;
 }
 
-std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int ints, void *data, struct query_methods *methods, std::shared_ptr<void> extra, void *callback, std::shared_ptr<void> callback_extra) {
-  return tglq_send_query_ex(DC, ints, data, methods, extra, (void*)callback, callback_extra, 0);
+std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int ints, void *data, struct query_methods *methods, std::shared_ptr<void> extra, std::shared_ptr<void> callback) {
+  return tglq_send_query_ex(DC, ints, data, methods, extra, callback, 0);
 }
 
 static int fail_on_error(std::shared_ptr<query> q, int error_code, const std::string &error) {
@@ -297,7 +296,7 @@ void tglq_query_delete(long long id) {
     q->DC->remove_query(q);
 }
 
-static void resend_query_cb (std::shared_ptr<void> _q, bool success);
+static void resend_query_cb (std::shared_ptr<query> _q, bool success);
 
 void tglq_free_query (std::shared_ptr<query> q) {
     free (q->data);
@@ -387,7 +386,7 @@ int tglq_query_error (long long id) {
         if (!mystreq1 ("SESSION_PASSWORD_NEEDED", error.data(), error_len)) {
           if (!(tgl_state::instance()->locks & TGL_LOCK_PASSWORD)) {
             tgl_state::instance()->locks |= TGL_LOCK_PASSWORD;
-            tgl_do_check_password(resend_query_cb, q); // TODO make that a shared_ptr
+            tgl_do_check_password(std::bind(resend_query_cb, q, std::placeholders::_1)); // TODO make that a shared_ptr
           }
           res = 1;
           error_handled = 1;
@@ -585,7 +584,7 @@ void tgl_set_query_error (int error_code, const char *format, ...) {
 static int q_void_on_error (std::shared_ptr<query> q, int error_code, const std::string &error) {
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error));
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))(q->callback))(q->callback_extra, 0);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback))(0);
     }
     return 0;
 }
@@ -593,7 +592,7 @@ static int q_void_on_error (std::shared_ptr<query> q, int error_code, const std:
 static int q_ptr_on_error (std::shared_ptr<query> q, int error_code, const std::string &error) {
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error));
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, bool))(q->callback))(q->callback_extra, false);
+        (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (false);
     }
     return 0;
 }
@@ -601,7 +600,7 @@ static int q_ptr_on_error (std::shared_ptr<query> q, int error_code, const std::
 static int q_list_on_error (std::shared_ptr<query> q, int error_code, const std::string &error) {
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error));
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int, int, void *))(q->callback))(q->callback_extra, 0, 0, NULL);
+        (*std::static_pointer_cast<std::function<void(int, int, void *)>>(q->callback)) (0, 0, NULL);
     }
     return 0;
 }
@@ -842,7 +841,7 @@ static int help_get_config_on_answer (std::shared_ptr<query> q, void *DS) {
   TGL_DEBUG("chat_size = " << max_chat_size << ", bcast_size = " << max_bcast_size);
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool))(q->callback))(q->callback_extra, 1);
+    (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (true);
   }
   return 0;
 }
@@ -856,11 +855,12 @@ static struct query_methods help_get_config_methods  = {
   .timeout = 1
 };
 
-void tgl_do_help_get_config (void (*callback)(std::shared_ptr<void>, bool), std::shared_ptr<void> callback_extra) {
+void tgl_do_help_get_config(std::function<void(bool)> callback) {
     clear_packet ();
     tgl_do_insert_header ();
     out_int (CODE_help_get_config);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0,
+            callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 static void set_dc_configured (std::shared_ptr<void> _D, bool success);
@@ -868,7 +868,7 @@ void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D) {
     clear_packet ();
     tgl_do_insert_header();
     out_int (CODE_help_get_config);
-    tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0, (void*)set_dc_configured, D, QUERY_FORCE_SEND);
+    tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0, std::make_shared<std::function<void(bool)>>(std::bind(set_dc_configured, D, std::placeholders::_1)), QUERY_FORCE_SEND);
 }
 /* }}} */
 
@@ -880,7 +880,7 @@ static int send_code_on_answer (std::shared_ptr<query> q, void *D) {
     int registered = DS_BVAL (DS_ASC->phone_registered);;
 
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int, int, const char *))(q->callback)) (q->callback_extra, 1, registered, phone_code_hash);
+        (*std::static_pointer_cast<std::function<void(int, int, const char *)>>(q->callback)) (1, registered, phone_code_hash);
     }
     free (phone_code_hash);
     return 0;
@@ -895,7 +895,7 @@ static struct query_methods send_code_methods  = {
   .timeout = 0,
 };
 
-void tgl_do_send_code (const char *phone, int phone_len, void (*callback)(std::shared_ptr<void>, bool success, int registered, const char *hash), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_code (const char *phone, int phone_len, std::function<void(bool, int, const char *)> callback) {
     TGL_NOTICE("requesting confirmation code from dc " << tgl_state::instance()->DC_working->id);
 
     clear_packet ();
@@ -907,14 +907,15 @@ void tgl_do_send_code (const char *phone, int phone_len, void (*callback)(std::s
     out_string (tgl_state::instance()->app_hash().c_str());
     out_string ("en");
 
-    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_code_methods, NULL, (void*)callback, callback_extra, QUERY_LOGIN);
+    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_code_methods, NULL,
+            std::make_shared<std::function<void(bool, int, const char *)>>(callback), QUERY_LOGIN);
 }
 
 
 static int phone_call_on_answer(std::shared_ptr<query> q, void *D) {
     TGL_UNUSED(D);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))(q->callback))(q->callback_extra, 1);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
     }
     return 0;
 }
@@ -928,7 +929,7 @@ static struct query_methods phone_call_methods  = {
   .timeout = 0,
 };
 
-void tgl_do_phone_call (const char *phone, int phone_len, const char *hash, int hash_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_phone_call (const char *phone, int phone_len, const char *hash, int hash_len, std::function<void(bool)> callback) {
     TGL_DEBUG("calling user");
 
     clear_packet ();
@@ -937,7 +938,7 @@ void tgl_do_phone_call (const char *phone, int phone_len, const char *hash, int 
     out_cstring (phone, phone_len);
     out_cstring (hash, hash_len);
 
-    tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &phone_call_methods, NULL, (void*)callback, callback_extra);
+    tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &phone_call_methods, NULL, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -951,7 +952,7 @@ static int sign_in_on_answer (std::shared_ptr<query> q, void *D) {
     tgl_state::instance()->set_dc_signed (tgl_state::instance()->DC_working->id);
 
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int, std::shared_ptr<struct tgl_user>))q->callback)(q->callback_extra, 1, U);
+        (*std::static_pointer_cast<std::function<void(int, std::shared_ptr<struct tgl_user>)>>(q->callback)) (1, U);
     }
 
     return 0;
@@ -960,7 +961,7 @@ static int sign_in_on_answer (std::shared_ptr<query> q, void *D) {
 static int sign_in_on_error (std::shared_ptr<query> q, int error_code, const std::string &error) {
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 0);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (0);
     }
     return 0;
 }
@@ -974,17 +975,18 @@ static struct query_methods sign_in_methods  = {
   .timeout = 0,
 };
 
-int tgl_do_send_code_result (const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_user *U), std::shared_ptr<void> callback_extra) {
+int tgl_do_send_code_result (const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, std::function<void(bool success, struct tgl_user *U)> callback) {
     clear_packet ();
     out_int (CODE_auth_sign_in);
     out_cstring (phone, phone_len);
     out_cstring (hash, hash_len);
     out_cstring (code, code_len);
-    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, (void*)callback, callback_extra, QUERY_LOGIN);
+    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, callback ? std::make_shared<std::function<void(bool success, struct tgl_user *U)>>(callback) : nullptr, QUERY_LOGIN);
     return 0;
 }
 
-int tgl_do_send_code_result_auth (const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, const char *first_name, int first_name_len, const char *last_name, int last_name_len, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_user *Self), std::shared_ptr<void> callback_extra) {
+int tgl_do_send_code_result_auth (const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, const char *first_name, int first_name_len,
+        const char *last_name, int last_name_len, std::function<void(bool, struct tgl_user *)> callback) {
     clear_packet ();
     out_int (CODE_auth_sign_up);
     out_cstring (phone, phone_len);
@@ -992,18 +994,19 @@ int tgl_do_send_code_result_auth (const char *phone, int phone_len, const char *
     out_cstring (code, code_len);
     out_cstring (first_name, first_name_len);
     out_cstring (last_name, last_name_len);
-    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, (void*)callback, callback_extra, QUERY_LOGIN);
+    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, callback ? std::make_shared<std::function<void(bool, struct tgl_user *)>>(callback) : nullptr, QUERY_LOGIN);
     return 0;
 }
 
-int tgl_do_send_bot_auth (const char *code, int code_len, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_user *Self), std::shared_ptr<void> callback_extra) {
+int tgl_do_send_bot_auth (const char *code, int code_len, std::function<void(bool, struct tgl_user *)> callback) {
     clear_packet ();
     out_int (CODE_auth_import_bot_authorization);
     out_int (0);
     out_int (tgl_state::instance()->app_id());
     out_string (tgl_state::instance()->app_hash().c_str());
     out_cstring (code, code_len);
-    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0, (void*)callback, callback_extra, QUERY_LOGIN);
+    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &sign_in_methods, 0,
+            std::make_shared<std::function<void(bool, struct tgl_user *)>>(callback), QUERY_LOGIN);
     return 0;
 }
 /* }}} */
@@ -1021,7 +1024,7 @@ static int get_contacts_on_answer (std::shared_ptr<query> q, void *D) {
     users[i] = tglf_fetch_alloc_user (DS_CC->users->data[i]);
   }
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, int, const std::vector<std::shared_ptr<tgl_user>>&))q->callback) (q->callback_extra, 1, n, users);
+    (*std::static_pointer_cast<std::function<void(int, int, const std::vector<std::shared_ptr<tgl_user>>&)>>(q->callback)) (1, n, users);
   }
   return 0;
 }
@@ -1040,7 +1043,7 @@ void tgl_do_update_contact_list () {
     clear_packet ();
     out_int (CODE_contacts_get_contacts);
     out_string ("");
-    tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_contacts_methods, NULL, NULL, NULL);
+    tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_contacts_methods, NULL, NULL);
 }
 /* }}} */
 
@@ -1098,7 +1101,7 @@ static int msg_send_on_error (std::shared_ptr<query> q, int error_code, const st
 
   std::shared_ptr<tgl_message> message = std::static_pointer_cast<tgl_message>(q->extra);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, const std::shared_ptr<tgl_message>&))q->callback) (q->callback_extra, 0, NULL);
+    (*std::static_pointer_cast<std::function<void(int, const std::shared_ptr<tgl_message>&)>>(q->callback)) (0, NULL);
   }
   tgl_state::instance()->callback()->message_deleted(message->permanent_id.id);
   return 0;
@@ -1113,10 +1116,10 @@ static struct query_methods msg_send_methods = {
   .timeout = 0,
 };
 
-void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M)> callback) {
 #ifdef ENABLE_SECRET_CHAT
     if (tgl_get_peer_type (M->to_id) == TGL_PEER_ENCR_CHAT) {
-        tgl_do_send_encr_msg (M, callback, callback_extra);
+        tgl_do_send_encr_msg(M, callback);
         return;
     }
 #endif
@@ -1193,24 +1196,26 @@ void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M, void (*callback)(std
     }
   }
 
-  tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_methods, M, (void*)callback, callback_extra);
+  tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_methods, M,
+        std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_message>&)>>(callback));
 }
 
-void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+{
   if (tgl_get_peer_type (peer_id) == TGL_PEER_ENCR_CHAT) {
 #ifdef ENABLE_SECRET_CHAT
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
     if (!secret_chat) {
       tgl_set_query_error (EINVAL, "unknown secret chat");
       if (callback) {
-        callback (callback_extra, 0, 0);
+        callback(0, 0);
       }
       return;
     }
     if (secret_chat->state != sc_ok) {
       tgl_set_query_error (EINVAL, "secret chat not in ok state");
       if (callback) {
-        callback (callback_extra, 0, 0);
+        callback(0, 0);
       }
       return;
     }
@@ -1252,7 +1257,7 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
       if (!text) {
         tfree (ent, ent_size);
         if (callback) {
-          callback (callback_extra, 0, 0);
+          callback(0, 0);
         }
         return;    
       }
@@ -1289,10 +1294,11 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
     M = tglm_create_encr_message(&id, &from_id, &peer_id, &date, text, text_len, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
   }
 
-  tgl_do_send_msg (M, callback, callback_extra);
+  tgl_do_send_msg(M, callback);
 }
 
-void tgl_do_reply_message (tgl_message_id_t *_reply_id, const char *text, int text_len, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+void tgl_do_reply_message (tgl_message_id_t *_reply_id, const char *text, int text_len, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+{
   tgl_message_id_t reply_id = *_reply_id;
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     reply_id = tgl_convert_temp_msg_id (reply_id);
@@ -1300,30 +1306,31 @@ void tgl_do_reply_message (tgl_message_id_t *_reply_id, const char *text, int te
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
   if (reply_id.peer_type == TGL_PEER_ENCR_CHAT) {
     tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
 
     tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id (reply_id);
 
-    tgl_do_send_message (peer_id, text, text_len, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), NULL, callback, callback_extra);
+    tgl_do_send_message (peer_id, text, text_len, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), NULL, callback);
   }
 }
 /* }}} */
 
 /* {{{ Send text file */
-void tgl_do_send_text (tgl_peer_id_t id, const char *file_name, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_text (tgl_peer_id_t id, const char *file_name, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+{
   int fd = open (file_name, O_RDONLY | O_BINARY);
   if (fd < 0) {
     tgl_set_query_error (EBADF, "Can not open file: %s", strerror(errno));
     if (callback) {
-      callback (callback_extra, 0, NULL);
+      callback(0, NULL);
     }
     return;
   }
@@ -1333,7 +1340,7 @@ void tgl_do_send_text (tgl_peer_id_t id, const char *file_name, unsigned long lo
     tgl_set_query_error (EBADF, "Can not read from file: %s", strerror(errno));
     close (fd);
     if (callback) {
-      callback (callback_extra, 0, NULL);
+      callback(0, NULL);
     }
 
     assert (x >= 0);
@@ -1341,15 +1348,16 @@ void tgl_do_send_text (tgl_peer_id_t id, const char *file_name, unsigned long lo
     if (x == (1 << 20) + 1) {
         tgl_set_query_error (E2BIG, "text file is too big");
         if (callback) {
-            callback (callback_extra, 0, NULL);
+            callback(0, NULL);
         }
     } else {
-        tgl_do_send_message (id, buf, x, flags, NULL, callback, callback_extra);
+        tgl_do_send_message (id, buf, x, flags, NULL, callback);
     }
   }
 }
 
-void tgl_do_reply_text (tgl_message_id_t *_reply_id, const char *file_name, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+void tgl_do_reply_text (tgl_message_id_t *_reply_id, const char *file_name, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+{
   tgl_message_id_t reply_id = *_reply_id;
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     reply_id = tgl_convert_temp_msg_id (reply_id);
@@ -1357,19 +1365,19 @@ void tgl_do_reply_text (tgl_message_id_t *_reply_id, const char *file_name, unsi
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
   if (reply_id.peer_type == TGL_PEER_ENCR_CHAT) {
     tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
 
     tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id (reply_id);
 
-    tgl_do_send_text (peer_id, file_name, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), callback, callback_extra);
+    tgl_do_send_text (peer_id, file_name, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), callback);
   }
 }
 /* }}} */
@@ -1390,7 +1398,7 @@ static int mark_read_channels_on_receive (std::shared_ptr<query> q, void *D) {
     //&E->max_id, TGL_FLAGS_UNCHANGED);
   
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool))q->callback)(q->callback_extra, 1);
+    (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (1);
   }
   return 0;
 }
@@ -1407,7 +1415,7 @@ static int mark_read_on_receive (std::shared_ptr<query> q, void *D) {
 
   std::shared_ptr<mark_read_extra> E = std::static_pointer_cast<mark_read_extra>(q->extra);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 1);
+    (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
   }
 
   return 0;
@@ -1418,7 +1426,7 @@ static int mark_read_on_error (std::shared_ptr<query> q, int error_code, const s
 
     std::shared_ptr<mark_read_extra> E = std::static_pointer_cast<mark_read_extra>(q->extra);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 0);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (0);
     }
     return 0;
 }
@@ -1441,7 +1449,7 @@ static struct query_methods mark_read_channels_methods = {
   .timeout = 0,
 };
 
-void tgl_do_messages_mark_read (tgl_peer_id_t id, int max_id, int offset, void (*callback)(std::shared_ptr<void>, bool), std::shared_ptr<void> callback_extra) {
+void tgl_do_messages_mark_read (tgl_peer_id_t id, int max_id, int offset, std::function<void(bool)> callback) {
   //if (tgl_state::instance()->is_bot) { return; }
   if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
     //tgl_do_mark_read (id, callback, callback_extra);
@@ -1458,7 +1466,7 @@ void tgl_do_messages_mark_read (tgl_peer_id_t id, int max_id, int offset, void (
     E->id = id;
     E->max_id = max_id;
 
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &mark_read_methods, E, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &mark_read_methods, E, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
   } else {
     out_int (CODE_channels_read_history);
 
@@ -1472,13 +1480,13 @@ void tgl_do_messages_mark_read (tgl_peer_id_t id, int max_id, int offset, void (
     E->id = id;
     E->max_id = max_id;
     
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &mark_read_channels_methods, E, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &mark_read_channels_methods, E, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
   }
 }
 
-void tgl_do_mark_read (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_mark_read (tgl_peer_id_t id, std::function<void(bool success)> callback) {
   if (tgl_get_peer_type (id) == TGL_PEER_USER || tgl_get_peer_type (id) == TGL_PEER_CHAT || tgl_get_peer_type (id) == TGL_PEER_CHANNEL) {
-    tgl_do_messages_mark_read (id, 0, 0, callback, callback_extra);
+    tgl_do_messages_mark_read (id, 0, 0, callback);
     return;
   }
 #ifdef ENABLE_SECRET_CHAT
@@ -1487,14 +1495,14 @@ void tgl_do_mark_read (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>,
   if (!secret_chat) {
     tgl_set_query_error (EINVAL, "unknown secret chat");
     if (callback) {
-      callback (callback_extra, 0);
+      callback(0);
     }
     return;
   }
   if (secret_chat->last) {
-    tgl_do_messages_mark_read_encr (id, secret_chat->access_hash, secret_chat->last->date, callback, callback_extra);
+    tgl_do_messages_mark_read_encr (id, secret_chat->access_hash, secret_chat->last->date, callback);
   } else {
-    tgl_do_messages_mark_read_encr (id, secret_chat->access_hash, time (0) - 10, callback, callback_extra);
+    tgl_do_messages_mark_read_encr (id, secret_chat->access_hash, time (0) - 10, callback);
   }
 #endif
 }
@@ -1509,8 +1517,7 @@ struct get_history_extra {
     int max_id;
 };
 
-static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> );
-
+static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& list)> callback);
 
 static int get_history_on_answer (std::shared_ptr<query> q, void *D) {
   struct tl_ds_messages_messages *DS_MM = (struct tl_ds_messages_messages *)D;
@@ -1544,7 +1551,7 @@ static int get_history_on_answer (std::shared_ptr<query> q, void *D) {
 
   if (E->limit <= 0 || DS_MM->magic == CODE_messages_messages || DS_MM->magic == CODE_messages_channel_messages) {
     if (q->callback) {
-      ((void (*)(std::shared_ptr<void>, int, const std::vector<std::shared_ptr<tgl_message>> &))q->callback) (q->callback_extra, 1, E->ML);
+      (*std::static_pointer_cast<std::function<void(int, const std::vector<std::shared_ptr<tgl_message>> &)>>(q->callback)) (1, E->ML);
     }
     /*if (E->ML.size() > 0) {
       tgl_do_messages_mark_read (E->id, E->ML[0]->id, 0, 0, 0);
@@ -1552,7 +1559,7 @@ static int get_history_on_answer (std::shared_ptr<query> q, void *D) {
   } else {
     E->offset = 0;
     E->max_id = E->ML[E->ML.size()-1]->permanent_id.id;
-    _tgl_do_get_history (E, (void (*)(std::shared_ptr<void>, bool, const std::vector<std::shared_ptr<tgl_message>>& list))q->callback, q->callback_extra);
+    _tgl_do_get_history (E, (*std::static_pointer_cast<std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>& list)>>(q->callback)));
   }
   return 0;
 }
@@ -1564,7 +1571,7 @@ static int get_history_on_error (std::shared_ptr<query> q, int error_code, const
 
     if (q->callback) {
         std::vector<std::shared_ptr<tgl_message>> messages;
-        ((void (*)(std::shared_ptr<void>, int, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 0, 0, messages);
+        (*std::static_pointer_cast<std::function<void(int, int, const std::vector<std::shared_ptr<tgl_message>>&)>>(q->callback)) (0, 0, messages);
     }
     return 0;
 }
@@ -1579,7 +1586,7 @@ static struct query_methods get_history_methods = {
 };
 
 
-static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> callback_extra) {
+static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>& list)> callback) {
   clear_packet ();
   //tgl_peer_t *C = tgl_peer_get (E->id);
   if (tgl_get_peer_type (E->id) != TGL_PEER_CHANNEL) {// || (C && (C->flags & TGLCHF_MEGAGROUP))) {
@@ -1597,11 +1604,12 @@ static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, void (*ca
   out_int (E->limit);
   out_int (0);
   out_int (0);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_history_methods, E, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_history_methods, E,
+        std::make_shared<std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>>(callback));
 }
 
 void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, int offline_mode,
-    void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> callback_extra) {
+    std::function<void( bool success, const std::vector<std::shared_ptr<tgl_message>>& list)> callback) {
   if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT || offline_mode) {
 #ifdef ENABLE_SECRET_CHAT
     // FIXME
@@ -1614,7 +1622,7 @@ void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, int offline_mo
   E->id = id;
   E->limit = limit;
   E->offset = offset;
-  _tgl_do_get_history (E, callback, callback_extra);
+  _tgl_do_get_history (E, callback);
 }
 /* }}} */
 
@@ -1637,7 +1645,7 @@ struct get_dialogs_extra {
   int channels;
 };
 
-static void _tgl_do_get_dialog_list (std::shared_ptr<get_dialogs_extra> E, void (*callback)(std::shared_ptr<void>, bool success, int size, tgl_peer_id_t peers[], tgl_message_id_t *last_msg_id[], int unread_count[]), std::shared_ptr<void> );
+static void _tgl_do_get_dialog_list (std::shared_ptr<get_dialogs_extra> E, std::function<void( bool success, int size, tgl_peer_id_t peers[], tgl_message_id_t *last_msg_id[], int unread_count[])> callback);
 
 static int get_dialogs_on_answer (std::shared_ptr<query> q, void *D) {
   struct tl_ds_messages_dialogs *DS_MD = (struct tl_ds_messages_dialogs *)D;
@@ -1713,10 +1721,10 @@ static int get_dialogs_on_answer (std::shared_ptr<query> q, void *D) {
         p --;
       }
     }
-    _tgl_do_get_dialog_list(E, (void (*)(std::shared_ptr<void>, bool , int , tgl_peer_id_t [], tgl_message_id_t *[], int []))q->callback, q->callback_extra);
+    _tgl_do_get_dialog_list(E, *std::static_pointer_cast<std::function<void(bool , int , tgl_peer_id_t [], tgl_message_id_t *[], int [])>>(q->callback));
   } else {
     if (q->callback) {
-      ((void (*)(std::shared_ptr<void>, int, int, tgl_peer_id_t *, tgl_message_id_t **, int *))q->callback) (q->callback_extra, 1, E->list_offset, E->PL, E->LM, E->UC);
+      (*std::static_pointer_cast<std::function<void(int, int, tgl_peer_id_t *, tgl_message_id_t **, int *)>>(q->callback)) (1, E->list_offset, E->PL, E->LM, E->UC);
     }
     tfree (E->PL, sizeof (tgl_peer_id_t) * E->list_size);
     tfree (E->UC, 4 * E->list_size);
@@ -1738,7 +1746,7 @@ static int get_dialogs_on_error (std::shared_ptr<query> q, int error_code, const
   tfree (E->LMD, sizeof (tgl_message_id_t) * E->list_size);
   tfree (E->LRM, 4 * E->list_size);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, int, tgl_peer_id_t *, tgl_message_id_t **, int *))q->callback) (q->callback_extra, 0, 0, NULL, NULL, NULL);
+    (*std::static_pointer_cast<std::function<void(int, int, tgl_peer_id_t *, tgl_message_id_t **, int *)>>(q->callback)) (0, 0, NULL, NULL, NULL);
   }
   return 0;
 }
@@ -1752,7 +1760,7 @@ static struct query_methods get_dialogs_methods = {
   .timeout = 0,
 };
 
-static void _tgl_do_get_dialog_list (std::shared_ptr<get_dialogs_extra> E,  void (*callback)(std::shared_ptr<void>, bool success, int size, tgl_peer_id_t peers[], tgl_message_id_t *last_msg_id[], int unread_count[]), std::shared_ptr<void> callback_extra) {
+static void _tgl_do_get_dialog_list (std::shared_ptr<get_dialogs_extra> E, std::function<void(bool, int, tgl_peer_id_t [], tgl_message_id_t *[], int [])> callback) {
   clear_packet ();
   if (E->channels) {
     out_int (CODE_channels_get_dialogs);
@@ -1771,25 +1779,26 @@ static void _tgl_do_get_dialog_list (std::shared_ptr<get_dialogs_extra> E,  void
     out_int (E->limit - E->list_offset);
   }
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dialogs_methods, E, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dialogs_methods, E,
+        std::make_shared<std::function<void(bool, int, tgl_peer_id_t [], tgl_message_id_t *[], int [])>>(callback));
 }
 
-void tgl_do_get_dialog_list (int limit, int offset, void (*callback)(std::shared_ptr<void>, bool success, int size, tgl_peer_id_t peers[], tgl_message_id_t *last_msg_id[], int unread_count[]), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_dialog_list (int limit, int offset, std::function<void(bool success, int size, tgl_peer_id_t peers[], tgl_message_id_t *last_msg_id[], int unread_count[])> callback) {
   std::shared_ptr<get_dialogs_extra> E = std::make_shared<get_dialogs_extra>();
   E->limit = limit;
   E->offset = offset;
   E->channels = 0;
-  _tgl_do_get_dialog_list (E, callback, callback_extra);
+  _tgl_do_get_dialog_list (E, callback);
 }
 
-void tgl_do_get_channels_dialog_list (int limit, int offset, void (*callback)(std::shared_ptr<void>, bool success, int size, tgl_peer_id_t peers[], tgl_message_id_t *last_msg_id[], int unread_count[]), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_channels_dialog_list (int limit, int offset, std::function<void(bool success, int size, tgl_peer_id_t peers[], tgl_message_id_t *last_msg_id[], int unread_count[])> callback) {
   std::shared_ptr<get_dialogs_extra> E = std::make_shared<get_dialogs_extra>();
   E->limit = limit;
   E->offset = offset;
   E->channels = 1;
   E->offset_date = 0;
   E->offset_peer.peer_type = 0;
-  _tgl_do_get_dialog_list (E, callback, callback_extra);
+  _tgl_do_get_dialog_list (E, callback);
 }
 /* }}} */
 
@@ -1824,7 +1833,7 @@ int set_profile_name_on_answer (std::shared_ptr<query> q, void *D) {
   TGL_UNUSED(q);
   tglf_fetch_alloc_user((struct tl_ds_user *)D);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool))q->callback) (q->callback_extra, true);
+    (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (true);
   }
   return 0;
 }
@@ -1838,21 +1847,21 @@ static struct query_methods set_profile_name_methods = {
   .timeout = 0,
 };
 
-void tgl_do_set_profile_name (const std::string& first_name, const std::string& last_name, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_set_profile_name (const std::string& first_name, const std::string& last_name, std::function<void(bool)> callback) {
     clear_packet ();
     out_int (CODE_account_update_profile);
     out_cstring (first_name.c_str(), last_name.length());
     out_cstring (last_name.c_str(), last_name.length());
 
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_profile_name_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_profile_name_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
-void tgl_do_set_username (const std::string& username, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_set_username (const std::string& username, std::function<void(bool success)> callback) {
     clear_packet ();
     out_int (CODE_account_update_username);
     out_cstring (username.c_str(), username.length());
 
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_profile_name_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_profile_name_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -1875,7 +1884,7 @@ int contact_search_on_answer (std::shared_ptr<query> q, void *D) {
   //tgl_peer_t *P = tgl_peer_get (peer_id);
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool))q->callback) (q->callback_extra, true);
+    (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (true);
   }
 
   return 0;
@@ -1890,12 +1899,12 @@ static struct query_methods contact_search_methods = {
   .timeout = 0,
 };
 
-void tgl_do_contact_search (const char *name, int name_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_contact_search (const char *name, int name_len, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_contacts_resolve_username);
   out_cstring (name, name_len);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &contact_search_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &contact_search_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -1909,7 +1918,7 @@ static int send_msgs_on_answer (std::shared_ptr<query> q, void *D) {
 
     if (!E) {
         if (q->callback) {
-            ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+            (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
         }
     } else if (E->multi) {
         //struct tgl_message **ML = (struct tgl_message **)malloc (sizeof (void *) * E->count);
@@ -1922,7 +1931,7 @@ static int send_msgs_on_answer (std::shared_ptr<query> q, void *D) {
 //        }
         free (E->list);
         if (q->callback) {
-            ((void (*)(std::shared_ptr<void>, int, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 1, count, ML);
+            (*std::static_pointer_cast<std::function<void(int, int, const std::vector<std::shared_ptr<tgl_message>>&)>>(q->callback)) (1, count, ML);
         }
         //free (ML);
     } else {
@@ -1930,7 +1939,7 @@ static int send_msgs_on_answer (std::shared_ptr<query> q, void *D) {
         //struct tgl_message *M = tgl_message_get (y);
         std::shared_ptr<tgl_message> M;
         if (q->callback) {
-            ((void (*)(std::shared_ptr<void>, int, const std::shared_ptr<tgl_message>&))q->callback) (q->callback_extra, 1, M);
+            (*std::static_pointer_cast<std::function<void(int, const std::shared_ptr<tgl_message>&)>>(q->callback)) (1, M);
         }
     }
   return 0;
@@ -1942,18 +1951,18 @@ static int send_msgs_on_error (std::shared_ptr<query> q, int error_code, const s
 
     if (!E) {
         if (q->callback) {
-            ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 0);
+            (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (0);
         }
     } else if (E->multi) {
         free (E->list);
         if (q->callback) {
             std::vector<std::shared_ptr<tgl_message>> messages;
-            ((void (*)(std::shared_ptr<void>, int, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 0, 0, messages);
+            (*std::static_pointer_cast<std::function<void(int, int, const std::vector<std::shared_ptr<tgl_message>>&)>>(q->callback)) (0, 0, messages);
         }
     } else {
         if (q->callback) {
-            std::vector<std::shared_ptr<tgl_message>> messages;
-            ((void (*)(std::shared_ptr<void>, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 0, messages);
+            std::vector<std::shared_ptr<tgl_message>> message;
+            (*std::static_pointer_cast<std::function<void(int, const std::vector<std::shared_ptr<tgl_message>>&)>>(q->callback)) (0, message);
         }
     }
     return 0;
@@ -1968,11 +1977,13 @@ struct query_methods send_msgs_methods = {
   .timeout = 0,
 };
 
-void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_ids[], unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, int count, const std::vector<std::shared_ptr<tgl_message>>& ML), std::shared_ptr<void> callback_extra) {
+void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_ids[], unsigned long long flags,
+        std::function<void(bool success, int count, const std::vector<std::shared_ptr<tgl_message>>& ML)> callback)
+{
   if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
     TGL_ERROR("can not forward messages to secret chats");
     if (callback) {
-      callback (callback_extra, 0, 0, std::vector<std::shared_ptr<tgl_message>>());
+      callback(0, 0, std::vector<std::shared_ptr<tgl_message>>());
     }
     return;
   }
@@ -1987,7 +1998,7 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
     if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
       tgl_set_query_error (EINVAL, "unknown message");
       if (callback) {
-        callback (callback_extra, 0, 0, std::vector<std::shared_ptr<tgl_message>>());
+        callback(0, 0, std::vector<std::shared_ptr<tgl_message>>());
       }
       tfree (ids, n * sizeof (tgl_message_id_t));
       return;
@@ -1996,7 +2007,7 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
     if (msg_id.peer_type == TGL_PEER_ENCR_CHAT) {
       tgl_set_query_error (EINVAL, "can not forward message from secret chat");
       if (callback) {
-        callback (callback_extra, 0, 0, std::vector<std::shared_ptr<tgl_message>>());
+        callback(0, 0, std::vector<std::shared_ptr<tgl_message>>());
       }
       tfree (ids, n * sizeof (tgl_message_id_t));
       return;
@@ -2010,7 +2021,7 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
       if (tgl_cmp_peer_id (from_id, tgl_msg_id_to_peer_id (msg_id))) {
         tgl_set_query_error (EINVAL, "can not forward messages from different dialogs");
         if (callback) {
-          callback (callback_extra, 0, 0, std::vector<std::shared_ptr<tgl_message>>());
+          callback(0, 0, std::vector<std::shared_ptr<tgl_message>>());
         }
         tfree (ids, n * sizeof (tgl_message_id_t));
         return;
@@ -2050,12 +2061,14 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
 
   out_peer_id (id);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E,
+        callback ? std::make_shared<std::function<void(bool, int , const std::vector<std::shared_ptr<tgl_message>>&)>>(callback) : nullptr);
         
   tfree (ids, n * sizeof (tgl_message_id_t));
 }
 
-void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+{
   tgl_message_id_t msg_id = *_msg_id;
   if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
     msg_id = tgl_convert_temp_msg_id (msg_id);
@@ -2063,21 +2076,21 @@ void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, u
   if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
   if (msg_id.peer_type == TGL_PEER_ENCR_CHAT) {
     tgl_set_query_error (EINVAL, "can not forward messages from secret chat");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
   if (peer_id.peer_type == TGL_PEER_ENCR_CHAT) {
     TGL_ERROR("can not forward messages to secret chats");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
@@ -2093,16 +2106,18 @@ void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, u
   out_long (E->id.id);
 
   out_peer_id (peer_id);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E,
+        callback ? std::make_shared<std::function<void(bool , const std::shared_ptr<tgl_message>&)>>(callback) : nullptr);
 }
 
 void tgl_do_send_contact (tgl_peer_id_t id, const char *phone, int phone_len,
     const char *first_name, int first_name_len, const char *last_name, int last_name_len,
-    unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+    unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+{
   if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
     TGL_ERROR("can not send contact to secret chat");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
@@ -2123,11 +2138,13 @@ void tgl_do_send_contact (tgl_peer_id_t id, const char *phone, int phone_len,
   tglt_secure_random ((unsigned char*)&E->id, 8);
   out_long (E->id.id);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E,
+        callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_message>&)>>(callback) : nullptr);
 }
 
-
-void tgl_do_reply_contact (tgl_message_id_t *_reply_id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name, int last_name_len, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+void tgl_do_reply_contact (tgl_message_id_t *_reply_id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name,
+        int last_name_len, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+{
   tgl_message_id_t reply_id = *_reply_id;
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     reply_id = tgl_convert_temp_msg_id (reply_id);
@@ -2135,27 +2152,28 @@ void tgl_do_reply_contact (tgl_message_id_t *_reply_id, const char *phone, int p
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
   if (reply_id.peer_type == TGL_PEER_ENCR_CHAT) {
     tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
 
     tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id (reply_id);
 
-    tgl_do_send_contact (peer_id, phone, phone_len, first_name, first_name_len, last_name, last_name_len, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), callback, callback_extra);
+    tgl_do_send_contact (peer_id, phone, phone_len, first_name, first_name_len, last_name, last_name_len, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), callback);
   }
 }
 
-void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+{
   if (tgl_get_peer_type (peer_id) == TGL_PEER_ENCR_CHAT) {
     tgl_set_query_error (EINVAL, "can not forward messages to secret chats");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
@@ -2166,14 +2184,14 @@ void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, uns
   if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
   if (msg_id.peer_type == TGL_PEER_ENCR_CHAT) {
     tgl_set_query_error (EINVAL, "can not forward message from secret chat");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
@@ -2186,14 +2204,14 @@ void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, uns
       tgl_set_query_error (EINVAL, "can not forward message from secret chat");
     }
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
   if (M->media.type != tgl_message_media_photo && M->media.type != tgl_message_media_document && M->media.type != tgl_message_media_audio && M->media.type != tgl_message_media_video) {
     tgl_set_query_error (EINVAL, "can only forward photo/document");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
@@ -2235,16 +2253,18 @@ void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, uns
   E->id = tgl_peer_id_to_random_msg_id (peer_id);
   out_long (E->id.id);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E,
+        std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_message>&)>>(callback));
 }
 /* }}} */
 
 /* {{{ Send location */
 
-void tgl_do_send_location (tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_location (tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+{
   if (tgl_get_peer_type (peer_id) == TGL_PEER_ENCR_CHAT) {
 #ifdef ENABLE_SECRET_CHAT
-    tgl_do_send_location_encr (peer_id, latitude, longitude, flags, callback, callback_extra);
+    tgl_do_send_location_encr (peer_id, latitude, longitude, flags, callback);
 #endif
   } else {
     int reply_id = flags >> 32;
@@ -2266,12 +2286,13 @@ void tgl_do_send_location (tgl_peer_id_t peer_id, double latitude, double longit
     E->id = tgl_peer_id_to_random_msg_id (peer_id);
     out_long (E->id.id);
 
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E,
+            callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_message>&)>>(callback) : nullptr);
   }
 }
 
 #if 0
-void tgl_do_reply_location (tgl_message_id_t *_reply_id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_reply_location (tgl_message_id_t *_reply_id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, struct tgl_message *M)> callback) {
   tgl_message_id_t reply_id = *_reply_id;
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     reply_id = tgl_convert_temp_msg_id (reply_id);
@@ -2279,14 +2300,14 @@ void tgl_do_reply_location (tgl_message_id_t *_reply_id, double latitude, double
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
     return;
   }
   if (reply_id.peer_type == TGL_PEER_ENCR_CHAT) {
     tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
     if (callback) {
-      callback (callback_extra, 0, 0);
+      callback(0, 0);
     }
 
   tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id (reply_id);
@@ -2298,19 +2319,19 @@ void tgl_do_reply_location (tgl_message_id_t *_reply_id, double latitude, double
 
 /* {{{ Rename chat */
 
-void tgl_do_rename_chat (tgl_peer_id_t id, const char *name, int name_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_rename_chat (tgl_peer_id_t id, const char *name, int name_len, std::function<void(bool success)> callback) {
     clear_packet ();
     out_int (CODE_messages_edit_chat_title);
     assert (tgl_get_peer_type (id) == TGL_PEER_CHAT);
     out_int (tgl_get_peer_id (id));
     out_cstring (name, name_len);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
  /* {{{ Rename channel */
 
-void tgl_do_rename_channel (tgl_peer_id_t id, const char *name, int name_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_rename_channel (tgl_peer_id_t id, const char *name, int name_len, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_channels_edit_title);
   assert (tgl_get_peer_type (id) == TGL_PEER_CHANNEL);
@@ -2318,33 +2339,33 @@ void tgl_do_rename_channel (tgl_peer_id_t id, const char *name, int name_len, vo
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
   out_cstring (name, name_len);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
  /* {{{ Join channel */
 
-void tgl_do_join_channel (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_join_channel (tgl_peer_id_t id, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_channels_join_channel);
   assert (tgl_get_peer_type (id) == TGL_PEER_CHANNEL);
   out_int (CODE_input_channel);
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
 /* {{{ Leave channel */
 
-void tgl_do_leave_channel (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_leave_channel (tgl_peer_id_t id, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_channels_leave_channel);
   assert (tgl_get_peer_type (id) == TGL_PEER_CHANNEL);
   out_int (CODE_input_channel);
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -2352,7 +2373,7 @@ void tgl_do_leave_channel (tgl_peer_id_t id, void (*callback)(std::shared_ptr<vo
 
 static int channels_set_about_on_answer (std::shared_ptr<query> q, void *D) {
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool))q->callback)(q->callback_extra, 1);
+    (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (true);
   }
   return 0;
 }
@@ -2366,7 +2387,7 @@ static struct query_methods channels_set_about_methods = {
   .timeout = 0,
 };
 
-void tgl_do_channel_set_about (tgl_peer_id_t id, const char *about, int about_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_channel_set_about (tgl_peer_id_t id, const char *about, int about_len, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_channels_edit_about);
   assert (tgl_get_peer_type (id) == TGL_PEER_CHANNEL);
@@ -2374,12 +2395,12 @@ void tgl_do_channel_set_about (tgl_peer_id_t id, const char *about, int about_le
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
   out_cstring (about, about_len);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &channels_set_about_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &channels_set_about_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
 /* {{{ Channel set username */
-void tgl_do_channel_set_username (tgl_peer_id_t id, const char *username, int username_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_channel_set_username (tgl_peer_id_t id, const char *username, int username_len, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_channels_update_username);
   assert (tgl_get_peer_type (id) == TGL_PEER_CHANNEL);
@@ -2387,12 +2408,12 @@ void tgl_do_channel_set_username (tgl_peer_id_t id, const char *username, int us
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
   out_cstring (username, username_len);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &channels_set_about_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &channels_set_about_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
 /* {{{ Channel set admin */
-void tgl_do_channel_set_admin (tgl_peer_id_t channel_id, tgl_peer_id_t user_id, int type, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_channel_set_admin (tgl_peer_id_t channel_id, tgl_peer_id_t user_id, int type, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_channels_edit_admin);
   assert (tgl_get_peer_type (channel_id) == TGL_PEER_CHANNEL);
@@ -2414,7 +2435,7 @@ void tgl_do_channel_set_admin (tgl_peer_id_t channel_id, tgl_peer_id_t user_id, 
     out_int (CODE_channel_role_empty);
     break;
   }
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -2429,7 +2450,7 @@ struct channel_get_members_extra {
   tgl_peer_id_t id;
 };
 
-void _tgl_do_channel_get_members  (std::shared_ptr<struct channel_get_members_extra> E, void (*callback)(std::shared_ptr<void>, bool success, int size, struct tgl_user *UL[]), std::shared_ptr<void> callback_extra);
+void _tgl_do_channel_get_members  (std::shared_ptr<struct channel_get_members_extra> E, std::function<void(bool success, int size, struct tgl_user *UL[])> callback);
 
 static int channels_get_members_on_answer (std::shared_ptr<query> q, void *D) {
   struct tl_ds_channels_channel_participants *DS_CP = (struct tl_ds_channels_channel_participants *)D;
@@ -2454,18 +2475,18 @@ static int channels_get_members_on_answer (std::shared_ptr<query> q, void *D) {
   E->offset += count;
   
   if (!count || E->count == E->limit) {
-    ((void (*)(std::shared_ptr<void>, int, int, tgl_peer_id_t *))q->callback)(q->callback_extra, 1, E->count, E->UL);
+    (*std::static_pointer_cast<std::function<void(int, int, tgl_peer_id_t *)>>(q->callback)) (1, E->count, E->UL);
     tfree (E->UL, E->size * sizeof (void *));
     return 0;
   }
-  _tgl_do_channel_get_members (E, (void (*)(std::shared_ptr<void>, bool, int, struct tgl_user **))q->callback, q->callback_extra);
+  _tgl_do_channel_get_members (E, *std::static_pointer_cast<std::function<void(bool, int, struct tgl_user **)>>(q->callback));
   return 0;
 }
 
 static int channels_get_members_on_error (std::shared_ptr<struct query> q, int error_code, const std::string &error) {
   TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error));
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool, int, struct tgl_user **))(q->callback))(q->callback_extra, 0, 0, NULL);
+    (*std::static_pointer_cast<std::function<void(bool, int, struct tgl_user **)>>(q->callback)) (0, 0, NULL);
   }
   
   std::shared_ptr<channel_get_members_extra> E = std::static_pointer_cast<channel_get_members_extra>(q->extra);
@@ -2483,7 +2504,7 @@ static struct query_methods channels_get_members_methods = {
   .timeout = 0,
 };
 
-void _tgl_do_channel_get_members  (std::shared_ptr<struct channel_get_members_extra> E, void (*callback)(std::shared_ptr<void>, bool success, int size, struct tgl_user *UL[]), std::shared_ptr<void> callback_extra) {
+void _tgl_do_channel_get_members  (std::shared_ptr<struct channel_get_members_extra> E, std::function<void(bool success, int size, struct tgl_user *UL[])> callback) {
   clear_packet ();
   out_int (CODE_channels_get_participants);
   assert (tgl_get_peer_type (E->id) == TGL_PEER_CHANNEL);
@@ -2506,16 +2527,17 @@ void _tgl_do_channel_get_members  (std::shared_ptr<struct channel_get_members_ex
   out_int (E->offset);
   out_int (E->limit);
   
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &channels_get_members_methods, E, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &channels_get_members_methods, E,
+        std::make_shared<std::function<void(bool, int, struct tgl_user *[])>>(callback));
 }
 
-void tgl_do_channel_get_members  (tgl_peer_id_t channel_id, int limit, int offset, int type, void (*callback)(std::shared_ptr<void>, bool success, int size, struct tgl_user *UL[]), std::shared_ptr<void> callback_extra) {
+void tgl_do_channel_get_members  (tgl_peer_id_t channel_id, int limit, int offset, int type, std::function<void(bool success, int size, struct tgl_user *UL[])> callback) {
   std::shared_ptr<channel_get_members_extra> E = std::make_shared<channel_get_members_extra>();
   E->type = type;
   E->id = channel_id;
   E->limit = limit;
   E->offset = offset;
-  _tgl_do_channel_get_members (E, callback, callback_extra);
+  _tgl_do_channel_get_members (E, callback);
 }
 /* }}} */
 
@@ -2525,7 +2547,7 @@ static int chat_info_on_answer (std::shared_ptr<query> q, void *D) {
   std::shared_ptr<tgl_chat> C = tglf_fetch_alloc_chat_full ((struct tl_ds_messages_chat_full *)D);
   //print_chat_info (C);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_chat>&))q->callback) (q->callback_extra, true, C);
+    (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_chat>&)>>(q->callback)) (true, C);
   }
   return 0;
 }
@@ -2539,18 +2561,18 @@ static struct query_methods chat_info_methods = {
   .timeout = 0,
 };
 
-void tgl_do_get_chat_info (int id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_chat>& C), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_chat_info (int id, int offline_mode, std::function<void(bool success, const std::shared_ptr<tgl_chat>& C)> callback) {
   if (offline_mode) {
 #if 0
     tgl_peer_t *C = tgl_peer_get (id);
     if (!C) {
       tgl_set_query_error (EINVAL, "unknown chat id");
       if (callback) {
-        callback (callback_extra, 0, 0);
+        callback(0, 0);
       }
     } else {
       if (callback) {
-        callback (callback_extra, 1, &C->chat);
+        callback(1, &C->chat);
       }
     }
 #endif
@@ -2559,7 +2581,8 @@ void tgl_do_get_chat_info (int id, int offline_mode, void (*callback)(std::share
   clear_packet ();
   out_int (CODE_messages_get_full_chat);
   out_int (id);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &chat_info_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &chat_info_methods, 0,
+        callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_chat>&)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -2569,7 +2592,7 @@ static int channel_info_on_answer (std::shared_ptr<query> q, void *D) {
   std::shared_ptr<tgl_channel> C = tglf_fetch_alloc_channel_full ((struct tl_ds_messages_chat_full *)D);
   //print_chat_info (C);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_channel>&))q->callback) (q->callback_extra, true, C);
+    (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_channel>&)>>(q->callback)) (true, C);
   }
   return 0;
 }
@@ -2583,18 +2606,18 @@ static struct query_methods channel_info_methods = {
   .timeout = 0,
 };
 
-void tgl_do_get_channel_info (tgl_peer_id_t id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_channel>& C), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_channel_info (tgl_peer_id_t id, int offline_mode, std::function<void(bool success, const std::shared_ptr<tgl_channel>& C)> callback) {
   if (offline_mode) {
 #if 0
     tgl_peer_t *C = tgl_peer_get (id);
     if (!C) {
       tgl_set_query_error (EINVAL, "unknown chat id");
       if (callback) {
-        callback (callback_extra, 0, 0);
+        callback(0, 0);
       }
     } else {
       if (callback) {
-        callback (callback_extra, 1, &C->channel);
+        callback(1, &C->channel);
       }
     }
 #endif
@@ -2606,7 +2629,8 @@ void tgl_do_get_channel_info (tgl_peer_id_t id, int offline_mode, void (*callbac
   out_int (CODE_input_channel);
   out_int (id.peer_id);
   out_long (id.access_hash);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &channel_info_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &channel_info_methods, 0,
+        std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_channel>&)>>(callback));
 }
 /* }}} */
 
@@ -2616,7 +2640,7 @@ static int user_info_on_answer (std::shared_ptr<query> q, void *D) {
   TGL_UNUSED(q);
   std::shared_ptr<struct tgl_user> U = tglf_fetch_alloc_user_full ((struct tl_ds_user_full *)D);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, std::shared_ptr<struct tgl_user>))q->callback) (q->callback_extra, 1, U);
+    (*std::static_pointer_cast<std::function<void(int, std::shared_ptr<struct tgl_user>)>>(q->callback)) (1, U);
   }
   return 0;
 }
@@ -2630,11 +2654,11 @@ static struct query_methods user_info_methods = {
   .timeout = 0,
 };
 
-void tgl_do_get_user_info (tgl_peer_id_t id, int offline_mode, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_user *U), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_user_info (tgl_peer_id_t id, int offline_mode, std::function<void(bool success, tgl_user *U)> callback) {
   if (tgl_get_peer_type (id) != TGL_PEER_USER) {
     tgl_set_query_error (EINVAL, "id should be user id");
     if (callback) {
-      callback (callback_extra, 0, NULL);
+      callback(0, NULL);
     }
     return;
   }
@@ -2644,11 +2668,11 @@ void tgl_do_get_user_info (tgl_peer_id_t id, int offline_mode, void (*callback)(
     if (!C) {
       tgl_set_query_error (EINVAL, "unknown user id");
       if (callback) {
-        callback (callback_extra, 0, 0);
+        callback(0, 0);
       }
     } else {
       if (callback) {
-        callback (callback_extra, 1, &C->user);
+        callback(1, &C->user);
       }
     }
 #endif
@@ -2660,21 +2684,19 @@ void tgl_do_get_user_info (tgl_peer_id_t id, int offline_mode, void (*callback)(
   out_int (CODE_input_user);
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &user_info_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &user_info_methods, 0, callback ? std::make_shared<std::function<void(bool, tgl_user *)>>(callback) : nullptr);
 }
 
-static void resend_query_cb(std::shared_ptr<void> _q, bool success) {
+static void resend_query_cb(std::shared_ptr<query> q, bool success) {
     assert (success);
 
     TGL_DEBUG2("resend_query_cb");
     tgl_state::instance()->set_dc_signed (tgl_state::instance()->DC_working->id);
 
-    std::shared_ptr<query> q = std::static_pointer_cast<query>(_q);
-
     clear_packet ();
     out_int (CODE_users_get_full_user);
     out_int (CODE_input_user_self);
-    tglq_send_query (q->DC, packet_ptr - packet_buffer, packet_buffer, &user_info_methods, 0, q->callback, q->callback_extra);
+    tglq_send_query (q->DC, packet_ptr - packet_buffer, packet_buffer, &user_info_methods, 0, q->callback);
 
     free (q->data);
     if (q->ev) {
@@ -2698,7 +2720,7 @@ static int import_auth_on_answer (std::shared_ptr<query> q, void *D) {
   tgl_state::instance()->set_dc_signed(DC->id);
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+    (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
   }
   return 0;
 }
@@ -2724,7 +2746,7 @@ static int export_auth_on_answer (std::shared_ptr<query> q, void *D) {
   out_int (CODE_auth_import_authorization);
   out_int (tgl_get_peer_id (tgl_state::instance()->our_id()));
   out_cstring (DS_STR (DS_EA->bytes));
-  tglq_send_query_ex(std::static_pointer_cast<tgl_dc>(q->extra), packet_ptr - packet_buffer, packet_buffer, &import_auth_methods, q->extra, q->callback, q->callback_extra, QUERY_LOGIN);
+  tglq_send_query_ex(std::static_pointer_cast<tgl_dc>(q->extra), packet_ptr - packet_buffer, packet_buffer, &import_auth_methods, q->extra, q->callback, QUERY_LOGIN);
   return 0;
 }
 
@@ -2738,7 +2760,7 @@ static struct query_methods export_auth_methods = {
 };
 
 // export auth from working DC and import to DC "num"
-void tgl_do_transfer_auth (int num, void (*callback) (std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_transfer_auth (int num, std::function<void(bool success)> callback) {
     std::shared_ptr<tgl_dc> DC = tgl_state::instance()->DC_list[num];
     if (DC->auth_transfer_in_process) {
         return;
@@ -2748,7 +2770,7 @@ void tgl_do_transfer_auth (int num, void (*callback) (std::shared_ptr<void>, boo
     clear_packet ();
     out_int (CODE_auth_export_authorization);
     out_int (num);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &export_auth_methods, DC, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &export_auth_methods, DC, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -2770,7 +2792,7 @@ static int add_contact_on_answer (std::shared_ptr<query> q, void *D) {
   }
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool, const std::vector<int>&))q->callback) (q->callback_extra, true, users);
+    (*std::static_pointer_cast<std::function<void(bool, const std::vector<int>&)>>(q->callback)) (true, users);
   }
   return 0;
 }
@@ -2784,7 +2806,7 @@ static struct query_methods add_contact_methods = {
   .timeout = 0,
 };
 
-void tgl_do_add_contact (const std::string& phone, const std::string& first_name, const std::string& last_name, bool replace, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<int>& user_ids), std::shared_ptr<void> callback_extra) {
+void tgl_do_add_contact (const std::string& phone, const std::string& first_name, const std::string& last_name, bool replace, std::function<void(bool success, const std::vector<int>& user_ids)> callback) {
     clear_packet ();
     out_int (CODE_contacts_import_contacts);
     out_int (CODE_vector);
@@ -2797,7 +2819,8 @@ void tgl_do_add_contact (const std::string& phone, const std::string& first_name
     out_cstring (first_name.c_str(), first_name.length());
     out_cstring (last_name.c_str(), last_name.length());
     out_int (replace ? CODE_bool_true : CODE_bool_false);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &add_contact_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &add_contact_methods, 0,
+            std::make_shared<std::function<void(bool, const std::vector<int>&)>>(callback));
 }
 /* }}} */
 
@@ -2805,7 +2828,7 @@ void tgl_do_add_contact (const std::string& phone, const std::string& first_name
 static int del_contact_on_answer (std::shared_ptr<query> q, void *D) {
     TGL_UNUSED(D);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
     }
     return 0;
 }
@@ -2819,14 +2842,14 @@ static struct query_methods del_contact_methods = {
   .timeout = 0,
 };
 
-void tgl_do_del_contact (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_del_contact (tgl_peer_id_t id, std::function<void(bool success)> callback) {
     clear_packet ();
     out_int (CODE_contacts_delete_contact);
 
   out_int (CODE_input_user);
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &del_contact_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &del_contact_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -2845,9 +2868,10 @@ struct msg_search_extra {
     std::string query;
 };
 
-static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> );
+static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& list)> callback);
 
-static int msg_search_on_answer (std::shared_ptr<query> q, void *D) {
+static int msg_search_on_answer(std::shared_ptr<query> q, void *D)
+{
   struct tl_ds_messages_messages *DS_MM = (struct tl_ds_messages_messages *)D;
   
   int i;
@@ -2875,12 +2899,12 @@ static int msg_search_on_answer (std::shared_ptr<query> q, void *D) {
 
   if (E->limit <= 0 || DS_MM->magic == CODE_messages_messages) {
     if (q->callback) {
-      ((void (*)(std::shared_ptr<void>, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 1, E->ML);
+      (*std::static_pointer_cast<std::function<void(int, const std::vector<std::shared_ptr<tgl_message>>&)>>(q->callback)) (1, E->ML);
     }
   } else {
     E->max_id = E->ML[E->ML.size()-1]->permanent_id.id;
     E->offset = 0;
-    _tgl_do_msg_search (E, (void (*)(std::shared_ptr<void>, bool, const std::vector<std::shared_ptr<tgl_message>>&))q->callback, q->callback_extra);
+    _tgl_do_msg_search (E, *std::static_pointer_cast<std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>>(q->callback));
   }
   return 0;
 }
@@ -2890,7 +2914,7 @@ static int msg_search_on_error (std::shared_ptr<query> q, int error_code, const 
 
     std::shared_ptr<msg_search_extra> E = std::static_pointer_cast<msg_search_extra>(q->extra);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 0, std::vector<std::shared_ptr<tgl_message>>());
+        (*std::static_pointer_cast<std::function<void(int, const std::vector<std::shared_ptr<tgl_message>>&)>>(q->callback)) (0, std::vector<std::shared_ptr<tgl_message>>());
     }
     return 0;
 }
@@ -2904,7 +2928,8 @@ static struct query_methods msg_search_methods = {
   .timeout = 0,
 };
 
-static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> callback_extra) {
+static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& list)> callback)
+{
   clear_packet ();
   if (tgl_get_peer_type (E->id) == TGL_PEER_UNKNOWN) {
     out_int (CODE_messages_search_global);
@@ -2926,21 +2951,22 @@ static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, void (*callb
     out_int (E->max_id); // max_id
     out_int (E->limit);
   }
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_search_methods, E, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_search_methods, E,
+        std::make_shared<std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>>(callback));
 }
 
 //untested
-void tgl_do_msg_search (tgl_peer_id_t id, int from, int to, int limit, int offset, const std::string &query, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> callback_extra) {
+void tgl_do_msg_search (tgl_peer_id_t id, int from, int to, int limit, int offset, const std::string &query, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& list)> callback) {
     if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
         TGL_ERROR("can not search in secret chats");
         if (callback) {
-            callback (callback_extra, 0, std::vector<std::shared_ptr<tgl_message>>());
+            callback(0, std::vector<std::shared_ptr<tgl_message>>());
         }
         return;
     }
     std::shared_ptr<msg_search_extra> E = std::make_shared<msg_search_extra>(id, from, to, limit, offset, query);
 
-    _tgl_do_msg_search (E, callback, callback_extra);
+    _tgl_do_msg_search(E, callback);
 }
 /* }}} */
 
@@ -2958,7 +2984,7 @@ static int get_state_on_answer (std::shared_ptr<query> q, void *D) {
     tgl_state::instance()->set_seq (DS_LVAL (DS_US->seq));
 
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
     }
     return 0;
 }
@@ -2971,7 +2997,7 @@ static int lookup_state_on_answer (std::shared_ptr<query> q, void *D) {
     int seq = DS_LVAL (DS_US->seq);
 
     if (pts > tgl_state::instance()->pts() || qts > tgl_state::instance()->qts() || seq > tgl_state::instance()->seq()) {
-        tgl_do_get_difference (0, 0, 0);
+        tgl_do_get_difference (0, 0);
     }
     return 0;
 }
@@ -2991,7 +3017,7 @@ static int get_difference_on_answer (std::shared_ptr<query> q, void *D) {
 
     TGL_DEBUG("Empty difference. Seq = " << tgl_state::instance()->seq());
     if (q->callback) {
-      ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+      (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
     }
   } else {
     int i;
@@ -3045,14 +3071,14 @@ static int get_difference_on_answer (std::shared_ptr<query> q, void *D) {
       tgl_state::instance()->set_seq (DS_LVAL (DS_UD->state->seq));
 
       if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
       }
     } else {
       tgl_state::instance()->set_pts (DS_LVAL (DS_UD->intermediate_state->pts));
       tgl_state::instance()->set_qts (DS_LVAL (DS_UD->intermediate_state->qts));
       tgl_state::instance()->set_date (DS_LVAL (DS_UD->intermediate_state->date));
 
-      tgl_do_get_difference (0, (void (*)(std::shared_ptr<void>, bool))q->callback, q->callback_extra);
+      tgl_do_get_difference (0, q->callback ? *std::static_pointer_cast<std::function<void(bool)>>(q->callback) : 0);
     }
   }
   return 0;
@@ -3092,15 +3118,15 @@ void tgl_do_lookup_state () {
     clear_packet ();
     tgl_do_insert_header ();
     out_int (CODE_updates_get_state);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &lookup_state_methods, 0, 0, 0);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &lookup_state_methods, 0, 0);
 }
 
-void tgl_do_get_difference (int sync_from_start, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_difference (int sync_from_start, std::function<void(bool success)> callback) {
   //get_difference_active = 1;
   //difference_got = 0;
   if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
     if (callback) {
-      callback (callback_extra, 0);
+      callback(0);
     }
     return;
   }
@@ -3115,16 +3141,16 @@ void tgl_do_get_difference (int sync_from_start, void (*callback)(std::shared_pt
     out_int (tgl_state::instance()->pts());
     out_int (tgl_state::instance()->date());
     out_int (tgl_state::instance()->qts());
-	tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_difference_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_difference_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
   } else {
 	out_int (CODE_updates_get_state);
-	tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_state_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_state_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
   }
 }
 /* }}} */
 
 /* {{{ Get channel difference */
-void tgl_do_get_channel_difference (int id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra);
+void tgl_do_get_channel_difference (int id, std::function<void(bool success)> callback);
 
 static int get_channel_difference_on_answer (std::shared_ptr<struct query> q, void *D) {
   struct tl_ds_updates_channel_difference *DS_UD = (struct tl_ds_updates_channel_difference *)D;
@@ -3140,7 +3166,7 @@ static int get_channel_difference_on_answer (std::shared_ptr<struct query> q, vo
 
     TGL_DEBUG("Empty difference. Seq = " << tgl_state::instance()->seq());
     if (q->callback) {
-      ((void (*)(std::shared_ptr<void>, bool))q->callback) (q->callback_extra, 1);
+      (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (1);
     }
   } else {
     int i;
@@ -3174,10 +3200,10 @@ static int get_channel_difference_on_answer (std::shared_ptr<struct query> q, vo
     //bl_do_set_channel_pts (tgl_get_peer_id (channel->id), DS_LVAL (DS_UD->channel_pts));
     if (DS_UD->magic != CODE_updates_channel_difference_too_long) {
       if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
       }
     } else {
-      tgl_do_get_channel_difference (tgl_get_peer_id (channel->id), (void(*)(std::shared_ptr<void>, bool))q->callback, q->callback_extra);
+      tgl_do_get_channel_difference (tgl_get_peer_id (channel->id), *std::static_pointer_cast<std::function<void(bool)>>(q->callback));
     }
   }
   return 0;
@@ -3193,14 +3219,14 @@ static struct query_methods get_channel_difference_methods = {
   .timeout = 0,
 };
 
-void tgl_do_get_channel_difference (int id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_channel_difference (int id, std::function<void(bool success)> callback) {
   //tgl_peer_t *E = tgl_peer_get (TGL_MK_CHANNEL (id));
   std::shared_ptr<struct tgl_channel> channel = std::make_shared<struct tgl_channel>();
   channel->id = TGL_MK_CHANNEL(id);
 
   if (!channel || !(channel->flags & TGLPF_CREATED) || !channel->pts) {
     if (callback) {
-      callback (callback_extra, 0);
+      callback(0);
     }
     return;
   }
@@ -3208,7 +3234,7 @@ void tgl_do_get_channel_difference (int id, void (*callback)(std::shared_ptr<voi
   //difference_got = 0;
   if (channel->flags & TGLCHF_DIFF) {
     if (callback) {
-      callback (callback_extra, 0);
+      callback(0);
     }
     return;
   }
@@ -3226,7 +3252,7 @@ void tgl_do_get_channel_difference (int id, void (*callback)(std::shared_ptr<voi
   out_int (channel->pts);
   out_int (100);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_channel_difference_methods, channel, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_channel_difference_methods, channel, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -3246,7 +3272,7 @@ void tgl_do_get_channel_difference (int id, void (*callback)(std::shared_ptr<voi
 
 /* {{{ Add user to chat */
 
-void tgl_do_add_user_to_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, int limit, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_add_user_to_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, int limit, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_messages_add_chat_user);
   out_int (tgl_get_peer_id (chat_id));
@@ -3257,10 +3283,10 @@ void tgl_do_add_user_to_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, int limit
   out_long (id.access_hash);
   out_int (limit);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
-void tgl_do_del_user_from_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_del_user_from_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_messages_delete_chat_user);
   out_int (tgl_get_peer_id (chat_id));
@@ -3269,14 +3295,14 @@ void tgl_do_del_user_from_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, void (*
   out_int (CODE_input_user);
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 /* }}} */
 
 /* {{{ Add user to channel */
 
-void tgl_do_channel_invite_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_channel_invite_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_channels_invite_to_channel);
   out_int (CODE_input_channel);
@@ -3289,10 +3315,10 @@ void tgl_do_channel_invite_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, voi
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
-void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_channels_kick_from_channel);
   out_int (CODE_input_channel);
@@ -3304,7 +3330,7 @@ void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, void 
   out_long (id.access_hash);
 
   out_int (CODE_bool_true);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 /* }}} */
@@ -3312,15 +3338,15 @@ void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, void 
 /* {{{ Create secret chat */
 
 #ifdef ENABLE_SECRET_CHAT
-int tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_secret_chat>& E), std::shared_ptr<void> callback_extra) {
-    return tgl_do_create_encr_chat_request (user_id, callback, callback_extra);
+int tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)> callback) {
+    return tgl_do_create_encr_chat_request (user_id, callback);
 }
 #endif
 /* }}} */
 
 /* {{{ Create group chat */
 
-void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::string &chat_topic, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::string &chat_topic, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_messages_create_chat);
   out_int (CODE_vector);
@@ -3329,7 +3355,7 @@ void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::s
     if (tgl_get_peer_type (id) != TGL_PEER_USER) {
       tgl_set_query_error (EINVAL, "Can not create chat with unknown user");
       if (callback) {
-        callback (callback_extra, 0);
+        callback(0);
       }
       return;
     }
@@ -3339,13 +3365,13 @@ void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::s
   }
   TGL_NOTICE("sending out chat creat request users number:%d" << user_ids.size());
   out_cstring (chat_topic.c_str(), chat_topic.length());
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
 /* {{{ Create channel */
 
-void tgl_do_create_channel (int users_num, tgl_peer_id_t ids[], const char *chat_topic, int chat_topic_len, const char *about, int about_len, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_create_channel (int users_num, tgl_peer_id_t ids[], const char *chat_topic, int chat_topic_len, const char *about, int about_len, unsigned long long flags, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_channels_create_channel);
   out_int (flags); // looks like 2 is disable non-admin messages
@@ -3359,7 +3385,7 @@ void tgl_do_create_channel (int users_num, tgl_peer_id_t ids[], const char *chat
     if (tgl_get_peer_type (id) != TGL_PEER_USER) {
       tgl_set_query_error (EINVAL, "Can not create chat with unknown user");
       if (callback) {
-        callback (callback_extra, 0);
+        callback(0);
       }
       return;
     }
@@ -3367,7 +3393,7 @@ void tgl_do_create_channel (int users_num, tgl_peer_id_t ids[], const char *chat
     out_int (tgl_get_peer_id (id));
     out_long (id.access_hash);
   }
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -3397,7 +3423,7 @@ static int delete_msg_on_answer (std::shared_ptr<query> q, void *D) {
   }
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+    (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
   }
   return 0;
 }
@@ -3405,7 +3431,7 @@ static int delete_msg_on_answer (std::shared_ptr<query> q, void *D) {
 static int delete_msg_on_error (std::shared_ptr<struct query> q, int error_code, const std::string &error) {
   TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool))(q->callback))(q->callback_extra, 0);
+    (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (0);
   }
   std::shared_ptr<tgl_message_id_t> id = std::static_pointer_cast<tgl_message_id_t>(q->extra);
   q->extra = NULL;
@@ -3422,7 +3448,7 @@ static struct query_methods delete_msg_methods = {
   .timeout = 0,
 };
 
-void tgl_do_delete_msg (tgl_message_id_t *_msg_id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_delete_msg (tgl_message_id_t *_msg_id, std::function<void(bool success)> callback) {
   tgl_message_id_t msg_id = *_msg_id;
   if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
     msg_id = tgl_convert_temp_msg_id (msg_id);
@@ -3430,7 +3456,7 @@ void tgl_do_delete_msg (tgl_message_id_t *_msg_id, void (*callback)(std::shared_
   if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
-      callback (callback_extra, 0);
+      callback(0);
     }
     return;
   }
@@ -3453,7 +3479,7 @@ void tgl_do_delete_msg (tgl_message_id_t *_msg_id, void (*callback)(std::shared_
 
   std::shared_ptr<tgl_message_id_t> id = std::make_shared<tgl_message_id_t>();
   *id = msg_id;
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &delete_msg_methods, id, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &delete_msg_methods, id, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -3471,7 +3497,7 @@ static int export_card_on_answer (std::shared_ptr<query> q, void *D) {
     }
 
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int, int, int *))q->callback) (q->callback_extra, 1, n, r);
+        (*std::static_pointer_cast<std::function<void(int, int, int *)>>(q->callback)) (1, n, r);
     }
     free (r);
     return 0;
@@ -3490,10 +3516,11 @@ static struct query_methods export_card_methods = {
   .timeout = 0,
 };
 
-void tgl_do_export_card (void (*callback)(std::shared_ptr<void>, bool success, int size, int *card), std::shared_ptr<void> callback_extra) {
+void tgl_do_export_card(std::function<void(bool success, int size, int *card)> callback) {
     clear_packet ();
     out_int (CODE_contacts_export_card);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &export_card_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &export_card_methods, 0,
+            std::make_shared<std::function<void(bool, int, int *)>>(callback));
 }
 /* }}} */
 
@@ -3503,7 +3530,7 @@ static int import_card_on_answer (std::shared_ptr<query> q, void *D) {
   std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user((struct tl_ds_user *)D);
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_user>&))q->callback) (q->callback_extra, true, user);
+    (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_user>&)>>(q->callback)) (true, user);
   }
   return 0;
 }
@@ -3517,17 +3544,18 @@ static struct query_methods import_card_methods = {
   .timeout = 0,
 };
 
-void tgl_do_import_card (int size, int *card, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_user>& user), std::shared_ptr<void> callback_extra) {
+void tgl_do_import_card (int size, int *card, std::function<void(bool success, const std::shared_ptr<tgl_user>& user)> callback) {
     clear_packet ();
     out_int (CODE_contacts_import_card);
     out_int (CODE_vector);
     out_int (size);
     out_ints (card, size);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &import_card_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &import_card_methods, 0,
+            std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_user>&)>>(callback));
 }
 /* }}} */
 
-void tgl_do_start_bot (tgl_peer_id_t bot, tgl_peer_id_t chat, const char *str, int str_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_start_bot (tgl_peer_id_t bot, tgl_peer_id_t chat, const char *str, int str_len, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_messages_start_bot);
   out_int (CODE_input_user);
@@ -3538,14 +3566,14 @@ void tgl_do_start_bot (tgl_peer_id_t bot, tgl_peer_id_t chat, const char *str, i
   tglt_secure_random ((unsigned char*)&m, 8);
   out_long (m);
   out_cstring (str, str_len);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 /* {{{ Send typing */
 static int send_typing_on_answer (std::shared_ptr<query> q, void *D) {
     TGL_UNUSED(D);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 1);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
     }
     return 0;
 }
@@ -3559,7 +3587,7 @@ static struct query_methods send_typing_methods = {
   .timeout = 0,
 };
 
-void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, std::function<void(bool success)> callback) {
     if (tgl_get_peer_type (id) != TGL_PEER_ENCR_CHAT) {
         clear_packet ();
         out_int (CODE_messages_set_typing);
@@ -3597,10 +3625,10 @@ void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, void (
             out_int (CODE_send_message_choose_contact_action);
             break;
         }
-        tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_typing_methods, 0, (void*)callback, callback_extra);
+        tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_typing_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
     } else {
         if (callback) {
-            callback (callback_extra, 0);
+            callback(0);
         }
     }
 }
@@ -3628,17 +3656,17 @@ static struct query_methods ext_query_methods = {
   .timeout = 0,
 };
 
-void tgl_do_send_extf (const char *data, int data_len, void (*callback)(std::shared_ptr<void>, bool success, const char *buf), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_extf (const char *data, int data_len, std::function<void(bool success, const char *buf)> callback) {
   clear_packet ();
 
   ext_query_methods.type = tglf_extf_store (data, data_len);
 
   if (ext_query_methods.type) {
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &ext_query_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &ext_query_methods, 0, callback ? std::make_shared<std::function<void(bool, const char*)>>(callback));
   }
 }
 #else
-void tgl_do_send_extf (const char *data, int data_len, void (*callback)(std::shared_ptr<void>, bool success, const char *buf), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_extf (const char *data, int data_len, std::function<void(bool success, const char *buf)> callback) {
   assert (0);
 }
 #endif
@@ -3665,13 +3693,13 @@ static int get_messages_on_answer (std::shared_ptr<query> q, void *D) {
   }
   if (q->callback) {
     if (q->extra) {
-      ((void (*)(std::shared_ptr<void>, int, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback)(q->callback_extra, 1, DS_LVAL (DS_MM->messages->cnt), ML);
+      (*std::static_pointer_cast<std::function<void(bool, int, const std::vector<std::shared_ptr<tgl_message>>&)>>(q->callback)) (true, DS_LVAL (DS_MM->messages->cnt), ML);
     } else {
       if (DS_LVAL (DS_MM->messages->cnt) > 0) {
-        ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_message>&))q->callback)(q->callback_extra, true, ML[0]);
+        (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_message>&)>>(q->callback)) (true, ML[0]);
       } else {
         tgl_set_query_error (ENOENT, "no such message");
-        ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_message>&))q->callback)(q->callback_extra, false, nullptr);
+        (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_message>&)>>(q->callback)) (false, nullptr);
       }
     }
   }
@@ -3687,7 +3715,8 @@ static struct query_methods get_messages_methods = {
   .timeout = 0,
 };
 
-void tgl_do_get_message (tgl_message_id_t *_msg_id, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_message (tgl_message_id_t *_msg_id, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+{
   tgl_message_id_t msg_id = *_msg_id;
   if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
     msg_id = tgl_convert_temp_msg_id (msg_id);
@@ -3695,7 +3724,7 @@ void tgl_do_get_message (tgl_message_id_t *_msg_id, void (*callback)(std::shared
   if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
-      callback (callback_extra, 0, NULL);
+      callback(0, NULL);
     }
     return;
   }
@@ -3704,7 +3733,7 @@ void tgl_do_get_message (tgl_message_id_t *_msg_id, void (*callback)(std::shared
   struct tgl_message *M = tgl_message_get (&msg_id);
   if (M) {
     if (callback) {
-      callback (callback_extra, 1, M);
+      callback(1, M);
     }
     return;
   }
@@ -3719,7 +3748,8 @@ void tgl_do_get_message (tgl_message_id_t *_msg_id, void (*callback)(std::shared
   out_int (msg_id.id);
 
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_messages_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_messages_methods, 0,
+        callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_message>&)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -3730,7 +3760,7 @@ static int export_chat_link_on_answer (std::shared_ptr<query> q, void *D) {
     char *s = (char*)DS_STR_DUP (DS_ECI->link);
 
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int, const char *))q->callback)(q->callback_extra, s ? 1 : 0, s);
+        (*std::static_pointer_cast<std::function<void(int, const char *)>>(q->callback)) (s ? 1 : 0, s);
     }
     free (s);
     return 0;
@@ -3745,11 +3775,11 @@ static struct query_methods export_chat_link_methods = {
   .timeout = 0,
 };
 
-void tgl_do_export_chat_link (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success, const char *link), std::shared_ptr<void> callback_extra) {
+void tgl_do_export_chat_link (tgl_peer_id_t id, std::function<void(bool success, const char *link)> callback) {
     if (tgl_get_peer_type (id) != TGL_PEER_CHAT) {
         TGL_ERROR("Can only export chat link for chat");
         if (callback) {
-            callback (callback_extra, 0, NULL);
+            callback(0, NULL);
         }
         return;
     }
@@ -3758,10 +3788,11 @@ void tgl_do_export_chat_link (tgl_peer_id_t id, void (*callback)(std::shared_ptr
     out_int (CODE_messages_export_chat_invite);
     out_int (tgl_get_peer_id (id));
 
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &export_chat_link_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &export_chat_link_methods, 0,
+            std::make_shared<std::function<void(bool, const char *)>>(callback));
 }
 
-void tgl_do_import_chat_link (const char *link, int len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_import_chat_link (const char *link, int len, std::function<void(bool success)> callback) {
     const char *l = link + len - 1;
     while (l >= link && *l != '/') {
         l --;
@@ -3772,18 +3803,18 @@ void tgl_do_import_chat_link (const char *link, int len, void (*callback)(std::s
     out_int (CODE_messages_import_chat_invite);
     out_cstring (l, len - (l - link));
 
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 /* }}} */
 
 /* {{{ Export/import channel link */
 
-void tgl_do_export_channel_link (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success, const char *link), std::shared_ptr<void> callback_extra) {
+void tgl_do_export_channel_link (tgl_peer_id_t id, std::function<void(bool success, const char *link)> callback) {
   if (tgl_get_peer_type (id) != TGL_PEER_CHANNEL) {
     tgl_set_query_error (EINVAL, "Can only export chat link for chat");
     if (callback) {
-      callback (callback_extra, 0, NULL);
+      callback(0, NULL);
     }
     return;
   }
@@ -3794,7 +3825,7 @@ void tgl_do_export_channel_link (tgl_peer_id_t id, void (*callback)(std::shared_
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &export_chat_link_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &export_chat_link_methods, 0, callback ? std::make_shared<std::function<void(bool, const char *)>>(callback) : nullptr);
 }
 
 /* }}} */
@@ -3803,7 +3834,7 @@ void tgl_do_export_channel_link (tgl_peer_id_t id, void (*callback)(std::shared_
 static int set_password_on_answer (std::shared_ptr<query> q, void *D) {
     TGL_UNUSED(D);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 1);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
     }
     return 0;
 }
@@ -3813,28 +3844,28 @@ static int set_password_on_error (std::shared_ptr<query> q, int error_code, cons
         if (error == "PASSWORD_HASH_INVALID") {
             TGL_WARNING("Bad old password");
             if (q->callback) {
-                ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 0);
+                (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (0);
             }
             return 0;
         }
         if (error == "NEW_PASSWORD_BAD") {
             TGL_WARNING("Bad new password (unchanged or equals hint)");
             if (q->callback) {
-                ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 0);
+                (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (0);
             }
             return 0;
         }
         if (error == "NEW_SALT_INVALID") {
             TGL_WARNING("Bad new salt");
             if (q->callback) {
-                ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 0);
+                (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (0);
             }
             return 0;
         }
     }
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 0);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (0);
     }
     return 0;
 }
@@ -3848,7 +3879,7 @@ static struct query_methods set_password_methods = {
   .timeout = 0,
 };
 
-static void tgl_do_act_set_password(const char *current_password, int current_password_len, const char *new_password, int new_password_len, const char *current_salt, int current_salt_len, const char *new_salt, int new_salt_len, const std::string &hint, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+static void tgl_do_act_set_password(const char *current_password, int current_password_len, const char *new_password, int new_password_len, const char *current_salt, int current_salt_len, const char *new_salt, int new_salt_len, const std::string &hint, std::function<void(bool success)> callback) {
     clear_packet ();
     static char s[512];
     static unsigned char shab[32];
@@ -3896,7 +3927,7 @@ static void tgl_do_act_set_password(const char *current_password, int current_pa
     }
 
 
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_password_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_password_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 struct change_password_extra {
@@ -3909,19 +3940,17 @@ struct change_password_extra {
     int new_password_len = 0;
     int current_salt_len = 0;
     int new_salt_len = 0;
-    void (*callback)(std::shared_ptr<void>, bool) = NULL;
-    std::shared_ptr<void> callback_extra;
+    std::function<void(bool)> callback;
 };
 
-void tgl_on_new_pwd (const void *pwd, std::shared_ptr<void> _T);
-void tgl_on_new2_pwd (const void *pwd, std::shared_ptr<void> _T) {
-    std::shared_ptr<change_password_extra> E = std::static_pointer_cast<change_password_extra>(_T);
+void tgl_on_new_pwd(std::shared_ptr<change_password_extra> E, const void *pwd);
+void tgl_on_new2_pwd(std::shared_ptr<change_password_extra> E, const void *pwd) {
     if (strlen ((char*)pwd) != (size_t)E->new_password_len || memcmp (E->new_password, pwd, E->new_password_len)) {
         free (E->new_password);
         E->new_password = NULL;
         E->new_password_len = 0;
         TGL_ERROR("passwords do not match");
-        tgl_state::instance()->callback()->get_values(tgl_new_password, "new password: ", 2, tgl_on_new_pwd, E);
+        tgl_state::instance()->callback()->get_values(tgl_new_password, "new password: ", 2, std::bind(tgl_on_new_pwd, E, std::placeholders::_1));
         return;
     }
     tgl_do_act_set_password (E->current_password, E->current_password_len,
@@ -3929,7 +3958,7 @@ void tgl_on_new2_pwd (const void *pwd, std::shared_ptr<void> _T) {
                              E->current_salt, E->current_salt_len,
                              E->new_salt, E->new_salt_len,
                              E->hint,
-                             E->callback, E->callback_extra);
+                             E->callback);
 
     free (E->current_password);
     free (E->new_password);
@@ -3937,19 +3966,19 @@ void tgl_on_new2_pwd (const void *pwd, std::shared_ptr<void> _T) {
     free (E->new_salt);
 }
 
-void tgl_on_new_pwd (const void *pwd, std::shared_ptr<void> _T) {
-    std::shared_ptr<change_password_extra> E = std::static_pointer_cast<change_password_extra>(_T);
+void tgl_on_new_pwd (std::shared_ptr<change_password_extra> E, const void *pwd)
+{
     E->new_password_len = strlen ((const char*)pwd);
     E->new_password = (char*)tmemdup (pwd, E->new_password_len);
-    tgl_on_new2_pwd(pwd, E);
+    tgl_on_new2_pwd(E, pwd);
 }
 
-void tgl_on_old_pwd (const void *pwd, std::shared_ptr<void> _T) {
-    std::shared_ptr<change_password_extra> E = std::static_pointer_cast<change_password_extra>(_T);
+void tgl_on_old_pwd (std::shared_ptr<change_password_extra> E, const void *pwd)
+{
     const char **answer = (const char **)pwd;
     E->current_password_len = strlen (answer[0]);
     E->current_password = (char*)tmemdup (answer[0], E->current_password_len);
-    tgl_on_new_pwd(*(answer + 1), E);
+    tgl_on_new_pwd(E, *(answer + 1));
 }
 
 static int set_get_password_on_answer (std::shared_ptr<query> q, void *D) {
@@ -3972,15 +4001,14 @@ static int set_get_password_on_answer (std::shared_ptr<query> q, void *D) {
         E->hint = *new_hint;
     }
 
-    E->callback = (void (*)(std::shared_ptr<void>, bool))q->callback;
-    E->callback_extra = q->callback_extra;
+    E->callback = (*std::static_pointer_cast<std::function<void(bool)>>(q->callback));
 
     if (DS_AP->magic == CODE_account_no_password) {
-        tgl_state::instance()->callback()->get_values(tgl_new_password, "new password: ", 2, tgl_on_new_pwd, E);
+        tgl_state::instance()->callback()->get_values(tgl_new_password, "new password: ", 2, std::bind(tgl_on_new_pwd, E, std::placeholders::_1));
     } else {
         static char s[512];
         snprintf (s, 511, "old password (hint %.*s): ", DS_RSTR (DS_AP->hint));
-        tgl_state::instance()->callback()->get_values(tgl_cur_and_new_password, s, 3, tgl_on_old_pwd, E);
+        tgl_state::instance()->callback()->get_values(tgl_cur_and_new_password, s, 3, std::bind(tgl_on_old_pwd, E, std::placeholders::_1));
     }
     return 0;
 }
@@ -3994,11 +4022,12 @@ static struct query_methods set_get_password_methods = {
   .timeout = 0,
 };
 
-void tgl_do_set_password (const char *hint, int hint_len, void (*callback)(void *extra, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_set_password (const char *hint, int hint_len, std::function<void(bool success)> callback) {
     clear_packet ();
     out_int (CODE_account_get_password);
     std::shared_ptr<std::string> extra = hint ? std::make_shared<std::string>(hint, hint_len) : nullptr;
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_get_password_methods, extra, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_get_password_methods, extra,
+            callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 /* }}} */
@@ -4007,13 +4036,13 @@ void tgl_do_set_password (const char *hint, int hint_len, void (*callback)(void 
 static int check_password_on_error (std::shared_ptr<query> q, int error_code, const std::string &error) {
     if (error_code == 400) {
         TGL_ERROR("bad password");
-        tgl_do_check_password((void (*)(std::shared_ptr<void>, bool ))q->callback, q->callback_extra);
+        tgl_do_check_password((*std::static_pointer_cast<std::function<void(bool)>>(q->callback)));
         return 0;
     }
     tgl_state::instance()->locks ^= TGL_LOCK_PASSWORD;
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 0);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (0);
     }
     return 0;
 }
@@ -4022,7 +4051,7 @@ static int check_password_on_answer (std::shared_ptr<query> q, void *D) {
     TGL_UNUSED(D);
     tgl_state::instance()->locks ^= TGL_LOCK_PASSWORD;
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 1);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
     }
     return 0;
 }
@@ -4040,13 +4069,12 @@ static struct query_methods check_password_methods = {
 struct check_password_extra {
     char *current_salt = NULL;
     int current_salt_len = 0;
-    void (*callback)(std::shared_ptr<void>, int) = NULL;
+    std::function<void(int)> callback;
     std::shared_ptr<void> callback_extra;
 };
 
-static void tgl_pwd_got (const void *pwd, std::shared_ptr<void> _T) {
-    std::shared_ptr<check_password_extra> E = std::static_pointer_cast<check_password_extra>(_T);
-
+static void tgl_pwd_got(std::shared_ptr<check_password_extra> E, const void *pwd)
+{
     clear_packet ();
     static char s[512];
     static unsigned char shab[32];
@@ -4071,7 +4099,8 @@ static void tgl_pwd_got (const void *pwd, std::shared_ptr<void> _T) {
     out_string ("");
   }
 
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &check_password_methods, 0, (void*)E->callback, E->callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &check_password_methods, 0,
+            E->callback ? std::make_shared<std::function<void(int)>>(E->callback) : nullptr);
 
     free (E->current_salt);
 }
@@ -4080,7 +4109,7 @@ static int check_get_password_on_error (std::shared_ptr<query> q, int error_code
     tgl_state::instance()->locks ^= TGL_LOCK_PASSWORD;
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 0);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (0);
     }
     return 0;
 }
@@ -4103,10 +4132,9 @@ static int check_get_password_on_answer (std::shared_ptr<query> q, void *D) {
         E->current_salt = (char*)tmemdup (DS_AP->current_salt->data, E->current_salt_len);
     }
 
-    E->callback = (void (*)(std::shared_ptr<void>, int))q->callback;
-    E->callback_extra = q->callback_extra;
+    E->callback = (*std::static_pointer_cast<std::function<void(int)>>(q->callback));
 
-    tgl_state::instance()->callback()->get_values(tgl_cur_password, s, 1, tgl_pwd_got, E);
+    tgl_state::instance()->callback()->get_values(tgl_cur_password, s, 1, std::bind(tgl_pwd_got, E, std::placeholders::_1));
     return 0;
 }
 
@@ -4119,17 +4147,18 @@ static struct query_methods check_get_password_methods = {
   .timeout = 0,
 };
 
-void tgl_do_check_password (void (*callback)(std::shared_ptr<void> extra, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_check_password (std::function<void(bool success)> callback) {
     clear_packet ();
     out_int (CODE_account_get_password);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &check_get_password_methods, NULL, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &check_get_password_methods, NULL, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 /* }}} */
 
 /* {{{ send broadcast */
-void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, int text_len, unsigned long long flags, void (*callback)(std::shared_ptr<void> extra, bool success, int num, const std::vector<std::shared_ptr<tgl_message>>& ML), std::shared_ptr<void> callback_extra) {
-
+void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, int text_len, unsigned long long flags,
+        std::function<void(bool success, int num, const std::vector<std::shared_ptr<tgl_message>>& ML)> callback)
+{
   assert (num <= 1000);
 
   std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
@@ -4183,7 +4212,8 @@ void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, 
 
   out_int (CODE_message_media_empty);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E,
+        callback ? std::make_shared<std::function<void(bool, int, const std::vector<std::shared_ptr<tgl_message>>&)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -4191,7 +4221,7 @@ void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, 
 static int block_user_on_answer (std::shared_ptr<query> q, void *D) {
     TGL_UNUSED(D);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback)(q->callback_extra, 1);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
     }
     return 0;
 }
@@ -4205,11 +4235,11 @@ static struct query_methods block_user_methods = {
   .timeout = 0,
 };
 
-void tgl_do_block_user (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_block_user (tgl_peer_id_t id, std::function<void(bool success)> callback) {
   if (tgl_get_peer_type (id) != TGL_PEER_USER) {
     tgl_set_query_error (EINVAL, "id should be user id");
     if (callback) {
-      callback (callback_extra, 0);
+      callback(0);
     }
     return;
   }
@@ -4219,15 +4249,15 @@ void tgl_do_block_user (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>
   out_int (CODE_input_user);
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &block_user_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &block_user_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 
-void tgl_do_unblock_user (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_unblock_user (tgl_peer_id_t id, std::function<void(bool success)> callback) {
   if (tgl_get_peer_type (id) != TGL_PEER_USER) {
     tgl_set_query_error (EINVAL, "id should be user id");
     if (callback) {
-      callback (callback_extra, 0);
+      callback(0);
     }
     return;
   }
@@ -4239,7 +4269,8 @@ void tgl_do_unblock_user (tgl_peer_id_t id, void (*callback)(std::shared_ptr<voi
   out_int (CODE_input_user);
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &block_user_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &block_user_methods, 0,
+        callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 /* }}} */
 
@@ -4279,7 +4310,7 @@ static int get_tos_on_answer (std::shared_ptr<struct query> q, void *D) {
   s[pp] = 0;
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, char *))q->callback)(q->callback_extra, 1, s);
+    (*std::static_pointer_cast<std::function<void(int, char *)>>(q->callback)) (1, s);
   }
   tfree (s, l + 1);
   return 0;
@@ -4295,21 +4326,21 @@ static struct query_methods get_tos_methods = {
   .timeout = 0,
 };
 
-void tgl_do_get_terms_of_service (void (*callback)(std::shared_ptr<void>, bool success, const char *ans), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_terms_of_service(std::function<void(bool success, const char *ans)> callback) {
   clear_packet ();
 
   out_int (CODE_help_get_terms_of_service);
   out_string ("");
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_tos_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_tos_methods, 0, callback ? std::make_shared<std::function<void(bool, const char *)>>(callback) : nullptr);
 }
 /* }}} */
 
-void tgl_do_upgrade_group (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_upgrade_group (tgl_peer_id_t id, std::function<void(bool success)> callback) {
   clear_packet ();
 
   out_int (CODE_messages_migrate_chat);
   out_int (tgl_get_peer_id (id));
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, (void*)callback, callback_extra);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 
@@ -4327,7 +4358,7 @@ static void set_dc_configured (std::shared_ptr<void> _D, bool success) {
     if (D->auth_transfer_in_process) {
       D->send_pending_queries();
     } else {
-      tgl_do_transfer_auth(D->id, tgl_transfer_auth_callback, D);
+      tgl_do_transfer_auth(D->id, std::bind(tgl_transfer_auth_callback, D, std::placeholders::_1));
     }
   }
 }
@@ -4366,14 +4397,14 @@ void tgl_do_send_bind_temp_key (std::shared_ptr<tgl_dc> D, long long nonce, int 
     out_long (nonce);
     out_int (expires_at);
     out_cstring ((char*)data, len);
-    std::shared_ptr<query> q = tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &send_bind_temp_methods, D, 0, 0, QUERY_FORCE_SEND);
+    std::shared_ptr<query> q = tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &send_bind_temp_methods, D, 0, QUERY_FORCE_SEND);
     assert (q->msg_id == msg_id);
 }
 
 static int update_status_on_answer (std::shared_ptr<query> q, void *D) {
     TGL_UNUSED(D);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
+        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
     }
     return 0;
 }
@@ -4387,11 +4418,11 @@ static struct query_methods update_status_methods = {
   .timeout = 0,
 };
 
-void tgl_do_update_status (bool online, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
+void tgl_do_update_status (bool online, std::function<void(bool success)> callback) {
     clear_packet ();
     out_int (CODE_account_update_status);
     out_int (online ? CODE_bool_false : CODE_bool_true);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &update_status_methods, 0, (void*)callback, callback_extra);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &update_status_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 #ifdef ENABLE_SECRET_CHAT
@@ -4421,8 +4452,7 @@ void tgl_do_abort_exchange (struct tgl_secret_chat *E) {
 }
 #endif
 
-void tgl_started_cb(std::shared_ptr<void> arg, bool success) {
-  TGL_UNUSED(arg);
+void tgl_started_cb(bool success) {
   if (!success) {
     TGL_ERROR("login problem");
     tgl_state::instance()->callback()->on_failed_login();
@@ -4434,8 +4464,8 @@ void tgl_started_cb(std::shared_ptr<void> arg, bool success) {
   }
 }
 
-void tgl_transfer_auth_callback (std::shared_ptr<void> arg, bool success) {
-  std::shared_ptr<tgl_dc> DC = std::static_pointer_cast<tgl_dc>(arg);
+void tgl_transfer_auth_callback(std::shared_ptr<tgl_dc> DC, bool success)
+{
   assert(DC);
   DC->auth_transfer_in_process = false;
   if (!success) {
@@ -4449,7 +4479,7 @@ void tgl_transfer_auth_callback (std::shared_ptr<void> arg, bool success) {
 void tgl_export_all_auth () {
   for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) {
     if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
-      tgl_do_transfer_auth (i, tgl_transfer_auth_callback, tgl_state::instance()->DC_list[i]);
+      tgl_do_transfer_auth (i, std::bind(tgl_transfer_auth_callback, tgl_state::instance()->DC_list[i], std::placeholders::_1));
     }
   }
 }
@@ -4461,7 +4491,7 @@ void tgl_signed_in() {
 
   tgl_export_all_auth();
   tglm_send_all_unsent();
-  tgl_do_get_difference (0, tgl_started_cb, 0);
+  tgl_do_get_difference (0, tgl_started_cb);
 }
 
 struct sign_up_extra {
@@ -4475,36 +4505,35 @@ struct sign_up_extra {
     int last_name_len = 0;
 };
 
-void tgl_sign_in_code (const void *code, std::shared_ptr<void> _T);
-void tgl_sign_in_result (std::shared_ptr<void> _T, bool success, struct tgl_user *U) {
+void tgl_sign_in_code(std::shared_ptr<sign_up_extra> E, const void *code);
+void tgl_sign_in_result(std::shared_ptr<sign_up_extra> E, bool success, struct tgl_user *U) {
     TGL_ERROR(".....tgl_sign_in_result");
-    std::shared_ptr<sign_up_extra> E = std::static_pointer_cast<sign_up_extra>(_T);
     if (success) {
         free (E->phone);
         free (E->hash);
     } else {
         TGL_ERROR("incorrect code");
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_in_code, E);
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
         return;
     }
     tgl_signed_in();
 }
 
-void tgl_sign_in_code (const void *code, std::shared_ptr<void> _T) {
-    std::shared_ptr<sign_up_extra> E = std::static_pointer_cast<sign_up_extra>(_T);
+void tgl_sign_in_code(std::shared_ptr<sign_up_extra> E, const void *code)
+{
     if (!strcmp ((const char *)code, "call")) {
-        tgl_do_phone_call (E->phone, E->phone_len, E->hash, E->hash_len, 0, 0);
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_in_code, E);
+        tgl_do_phone_call (E->phone, E->phone_len, E->hash, E->hash_len, 0);
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
         return;
     }
 
-    tgl_do_send_code_result(E->phone, E->phone_len, E->hash, E->hash_len, (const char *)code, strlen ((const char *)code), tgl_sign_in_result, E);
+    tgl_do_send_code_result(E->phone, E->phone_len, E->hash, E->hash_len, (const char *)code, strlen ((const char *)code),
+            std::bind(tgl_sign_in_result, E, std::placeholders::_1, std::placeholders::_2));
 }
 
-void tgl_sign_up_code (const void *code, std::shared_ptr<void> _T);
-void tgl_sign_up_result (std::shared_ptr<void> _T, bool success, struct tgl_user *U) {
+void tgl_sign_up_code (std::shared_ptr<sign_up_extra> E, const void *code);
+void tgl_sign_up_result (std::shared_ptr<sign_up_extra> E, bool success, struct tgl_user *U) {
     TGL_UNUSED(U);
-    std::shared_ptr<sign_up_extra> E = std::static_pointer_cast<sign_up_extra>(_T);
     if (success) {
         free (E->phone);
         free (E->hash);
@@ -4512,21 +4541,21 @@ void tgl_sign_up_result (std::shared_ptr<void> _T, bool success, struct tgl_user
         free (E->last_name);
     } else {
         TGL_ERROR("incorrect code");
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_up_code, E);
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
         return;
     }
     tgl_signed_in();
 }
 
-void tgl_sign_up_code (const void *code, std::shared_ptr<void> _T) {
-    std::shared_ptr<sign_up_extra> E = std::static_pointer_cast<sign_up_extra>(_T);
+void tgl_sign_up_code (std::shared_ptr<sign_up_extra> E, const void *code) {
     if (!strcmp ((const char*)code, "call")) {
-        tgl_do_phone_call (E->phone, E->phone_len, E->hash, E->hash_len, 0, 0);
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_up_code, E);
+        tgl_do_phone_call (E->phone, E->phone_len, E->hash, E->hash_len, 0);
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
         return;
     }
 
-    tgl_do_send_code_result_auth (E->phone, E->phone_len, E->hash, E->hash_len, (const char*)code, strlen ((const char*)code), E->first_name, E->first_name_len, E->last_name, E->last_name_len, tgl_sign_up_result, E);
+    tgl_do_send_code_result_auth (E->phone, E->phone_len, E->hash, E->hash_len, (const char*)code, strlen ((const char*)code), E->first_name, E->first_name_len,
+            E->last_name, E->last_name_len, std::bind(tgl_sign_up_result, E, std::placeholders::_1, std::placeholders::_2));
 }
 
 
@@ -4545,16 +4574,16 @@ int tgl_set_first_name (const char *first_name, std::shared_ptr<sign_up_extra> E
     return 0;
 }
 
-void tgl_register_cb (const void *rinfo, std::shared_ptr<void> _T) {
-    std::shared_ptr<sign_up_extra> E = std::static_pointer_cast<sign_up_extra>(_T);
+void tgl_register_cb (std::shared_ptr<sign_up_extra> E, const void *rinfo)
+{
     const char **yn = (const char**)rinfo;
     if (yn[0]) {
         if (!tgl_set_first_name(yn[1], E)) {
             tgl_set_last_name(yn[2], E);
-            tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_up_code, E);
+            tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
         }
         else {
-            tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, tgl_register_cb, E);
+            tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, std::bind(tgl_register_cb, E, std::placeholders::_1));
         }
     } else {
         TGL_ERROR("stopping registration");
@@ -4564,15 +4593,14 @@ void tgl_register_cb (const void *rinfo, std::shared_ptr<void> _T) {
     }
 }
 
-void tgl_sign_in_phone (const void *phone, std::shared_ptr<void> arg);
-void tgl_sign_in_phone_cb (std::shared_ptr<void> extra, bool success, int registered, const char *mhash) {
+void tgl_sign_in_phone(const void *phone);
+void tgl_sign_in_phone_cb(std::shared_ptr<sign_up_extra> E, bool success, int registered, const char *mhash) {
     tgl_state::instance()->locks ^= TGL_LOCK_PHONE;
-    std::shared_ptr<sign_up_extra> E = std::static_pointer_cast<sign_up_extra>(extra);
     if (!success) {
         TGL_ERROR("Incorrect phone number");
 
         free (E->phone);
-        tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone, NULL);
+        tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone);
         return;
     }
 
@@ -4581,46 +4609,43 @@ void tgl_sign_in_phone_cb (std::shared_ptr<void> extra, bool success, int regist
 
     if (registered) {
         TGL_NOTICE("Already registered. Need code");
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, tgl_sign_in_code, E);
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
     } else {
         TGL_NOTICE("Not registered");
-        tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, tgl_register_cb, E);
+        tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, std::bind(tgl_register_cb, E, std::placeholders::_1));
     }
 }
 
-void tgl_sign_in_phone (const void *phone, std::shared_ptr<void> arg) {
-    TGL_UNUSED(arg);
+void tgl_sign_in_phone(const void *phone)
+{
     std::shared_ptr<sign_up_extra> E = std::make_shared<sign_up_extra>();
     E->phone_len = strlen((const char *)phone);
     E->phone = (char*)tmemdup (phone, E->phone_len);
 
     tgl_state::instance()->locks |= TGL_LOCK_PHONE;
 
-    tgl_do_send_code (E->phone, E->phone_len, tgl_sign_in_phone_cb, E);
+    tgl_do_send_code(E->phone, E->phone_len, std::bind(tgl_sign_in_phone_cb, E, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-void tgl_bot_hash_cb (const void *code, std::shared_ptr<void> arg);
+void tgl_bot_hash_cb (const void *code);
 
-void tgl_sign_in_bot_cb (std::shared_ptr<void> _T, bool success, struct tgl_user *U) {
-    TGL_UNUSED(_T);
-    TGL_UNUSED(U);
+void tgl_sign_in_bot_cb(bool success, struct tgl_user *U) {
     if (!success) {
         TGL_ERROR("incorrect bot hash");
-        tgl_state::instance()->callback()->get_values(tgl_bot_hash, "bot hash:", 1, tgl_bot_hash_cb, nullptr);
+        tgl_state::instance()->callback()->get_values(tgl_bot_hash, "bot hash:", 1, tgl_bot_hash_cb);
         return;
     }
     tgl_signed_in();
 }
 
-void tgl_bot_hash_cb (const void *code, std::shared_ptr<void> arg) {
-    TGL_UNUSED(arg);
-    tgl_do_send_bot_auth ((const char*)code, strlen ((const char*)code), tgl_sign_in_bot_cb, NULL);
+void tgl_bot_hash_cb (const void *code) {
+    tgl_do_send_bot_auth ((const char*)code, strlen ((const char*)code), tgl_sign_in_bot_cb);
 }
 
 void tgl_sign_in () {
   if (!tgl_signed_dc(tgl_state::instance()->DC_working)) {
     if (!(tgl_state::instance()->locks & TGL_LOCK_PHONE)) {
-      tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone, NULL);
+      tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone);
     }
   } else {
     tgl_signed_in();
@@ -4655,7 +4680,7 @@ void tgl_state::login () {
 
 static int callback (std::shared_ptr<struct query> q, void *D) {
    if (q->callback) {
-     ((void (*)(std::shared_ptr<void>))(q->callback)) (q->callback_extra);
+     (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
   }
   return 0;
 }
@@ -4667,7 +4692,7 @@ static int send_change_code_on_answer (std::shared_ptr<struct query> q, void *D)
   char *phone_code_hash = DS_STR_DUP (DS_ASCPC->phone_code_hash);
 
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, const char *))(q->callback)) (q->callback_extra, 1, phone_code_hash);
+    (*std::static_pointer_cast<std::function<void(int, const char*)>>(q->callback)) (1, phone_code_hash);
   }
   tfree_str (phone_code_hash);
   return 0;
@@ -4682,8 +4707,7 @@ struct change_phone_extra {
   int hash_len;
   int first_name_len;
   int last_name_len;
-  void (*callback)(std::shared_ptr<void> extra, bool success);
-  std::shared_ptr<void> callback_extra;
+  std::function<void(bool success)> callback;
 };
 
 static struct query_methods set_phone_methods  = {
@@ -4704,24 +4728,21 @@ static struct query_methods send_change_code_methods  = {
   .timeout = 0,
 };
 
-void tgl_set_number_code (const void *code, std::shared_ptr<void> _T);
-void tgl_set_number_result (std::shared_ptr<void> _T, bool success, struct tgl_user *U) {
-  std::shared_ptr<struct change_phone_extra> E = std::static_pointer_cast<change_phone_extra>(_T);
+void tgl_set_number_code(std::shared_ptr<change_phone_extra> E, const void *code);
+void tgl_set_number_result(std::shared_ptr<struct change_phone_extra> E, bool success, struct tgl_user *U) {
   if (success) {
     if (E->callback) {
-      E->callback (E->callback_extra, 1);
+      E->callback(1);
     }
     tfree (E->phone, E->phone_len);
     tfree (E->hash, E->hash_len);
   } else {
     TGL_ERROR("incorrect code");
-    tgl_state::instance()->callback()->get_values (tgl_code, "code:", 1, tgl_set_number_code, E);
+    tgl_state::instance()->callback()->get_values (tgl_code, "code:", 1, std::bind(tgl_set_number_code, E, std::placeholders::_1));
   }
 }
 
-void tgl_set_number_code (const void *code, std::shared_ptr<void> _T) {
-  std::shared_ptr<struct change_phone_extra> E = std::static_pointer_cast<change_phone_extra>(_T);
-
+void tgl_set_number_code(std::shared_ptr<struct change_phone_extra> E, const void *code) {
   const char **code_strings = (const char **)code;
 
   clear_packet ();
@@ -4729,16 +4750,16 @@ void tgl_set_number_code (const void *code, std::shared_ptr<void> _T) {
   out_cstring (E->phone, E->phone_len);
   out_cstring (E->hash, E->hash_len);
   out_cstring (code_strings[0], strlen (code_strings[0]));
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_phone_methods, 0, (void*)tgl_set_number_result, E);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &set_phone_methods, 0,
+        std::make_shared<std::function<void(bool, tgl_user *)>>(std::bind(tgl_set_number_result, E, std::placeholders::_1, std::placeholders::_2)));
 }
 
 
-void tgl_set_phone_number_cb (std::shared_ptr<void> extra, bool success, const char *mhash) {
-  std::shared_ptr<struct change_phone_extra> E = std::static_pointer_cast<change_phone_extra>(extra);
+void tgl_set_phone_number_cb (std::shared_ptr<struct change_phone_extra> E, bool success, const char *mhash) {
   if (!success) {
     TGL_ERROR("Incorrect phone number");
     if (E->callback) {
-      E->callback (E->callback_extra, 0);
+      E->callback(0);
     }
     tfree (E->phone, E->phone_len);
     return;
@@ -4747,11 +4768,11 @@ void tgl_set_phone_number_cb (std::shared_ptr<void> extra, bool success, const c
   E->hash_len = strlen (mhash);
   E->hash = (char *)tmemdup (mhash, E->hash_len);
 
-  tgl_state::instance()->callback()->get_values (tgl_code, "code:", 1, tgl_set_number_code, E);
+  tgl_state::instance()->callback()->get_values (tgl_code, "code:", 1, std::bind(tgl_set_number_code, E, std::placeholders::_1));
 }
 
-void tgl_do_set_phone_number (const char *phonenumber, int phonenumber_len, void (*callback)(std::shared_ptr<void>, bool success), std::shared_ptr<void> callback_extra) {
-  std::shared_ptr<struct change_phone_extra> E = std::make_shared<change_phone_extra>();
+void tgl_do_set_phone_number (const char *phonenumber, int phonenumber_len, std::function<void(bool success)> callback) {
+  std::shared_ptr<change_phone_extra> E = std::make_shared<change_phone_extra>();
   E->phone_len = phonenumber_len;
   E->phone = (char *)tmemdup (phonenumber, E->phone_len);
 
@@ -4760,7 +4781,7 @@ void tgl_do_set_phone_number (const char *phonenumber, int phonenumber_len, void
   out_int (CODE_account_send_change_phone_code);
   out_cstring (E->phone, E->phone_len);
   E->callback = callback;
-  E->callback_extra = callback_extra;
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_change_code_methods, NULL, (void*)tgl_set_phone_number_cb, E);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_change_code_methods, NULL,
+        std::make_shared<std::function<void(bool success, const char *mhash)>>(std::bind(tgl_set_phone_number_cb, E, std::placeholders::_1, std::placeholders::_2)));
 }

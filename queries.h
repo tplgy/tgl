@@ -26,6 +26,7 @@
 #include "tgl-layout.h"
 #include "types/query_methods.h"
 #include "types/tgl_secret_chat.h"
+#include <boost/variant.hpp>
 
 static const float DEFAULT_QUERY_TIMEOUT = 6.0;
 
@@ -48,8 +49,7 @@ struct query {
     std::shared_ptr<tgl_session> session;
     struct paramed_type *type;
     std::shared_ptr<void> extra;
-    void *callback;
-    std::shared_ptr<void> callback_extra;
+    std::shared_ptr<void> callback;
 };
 
 void out_peer_id (tgl_peer_id_t id);
@@ -61,7 +61,7 @@ struct messages_send_extra {
   tgl_message_id_t *list = NULL;
 };
 
-std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int len, void *data, struct query_methods *methods, std::shared_ptr<void> extra, void *callback, std::shared_ptr<void> callback_extra);
+std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int len, void *data, struct query_methods *methods, std::shared_ptr<void> extra, std::shared_ptr<void> callback);
 void tglq_query_ack (long long id);
 int tglq_query_error (long long id);
 int tglq_query_result (long long id);
@@ -75,7 +75,7 @@ void tglq_query_restart (long long id);
 double get_double_time (void);
 
 struct send_file;
-void send_file_encrypted_end (std::shared_ptr<send_file> f, void *callback, std::shared_ptr<void> callback_extra);
+void send_file_encrypted_end (std::shared_ptr<send_file> f, std::shared_ptr<void> callback);
 
 void tgl_do_send_bind_temp_key (std::shared_ptr<tgl_dc> D, long long nonce, int expires_at, void *data, int len, long long msg_id);
 

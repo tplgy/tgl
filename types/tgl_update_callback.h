@@ -13,7 +13,7 @@ public:
     virtual void message_deleted(long long msg_id) = 0;
     //virtual void marked_read(int num, struct tgl_message *list[]) =0
     virtual void get_values(enum tgl_value_type type, const char *prompt, int num_values,
-            void (*callback)(const void *answer, std::shared_ptr<void> arg), std::shared_ptr<void> arg) = 0;
+            std::function<void(const void *answer)>) = 0;
     virtual void logged_in() = 0;
     virtual void started() = 0;
     virtual void type_notification(int user_id, enum tgl_typing_status status) = 0;

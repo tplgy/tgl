@@ -2328,7 +2328,7 @@ static void __send_msg (const std::shared_ptr<tgl_message>& M) {
     //bl_do_message_delete (&M->permanent_id);
     tgl_state::instance()->callback()->message_deleted(M->permanent_id.id);
   } else {
-    tgl_do_send_msg (M, 0, 0);
+    tgl_do_send_msg (M, 0);
   }
 }
 

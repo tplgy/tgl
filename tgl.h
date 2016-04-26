@@ -200,7 +200,7 @@ private:
 };
 
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);
-int tgl_do_send_bot_auth (const char *code, int code_len, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_user *Self), std::shared_ptr<void> callback_extra);
+int tgl_do_send_bot_auth (const char *code, int code_len, std::function<void(bool success, struct tgl_user *Self)> callback);
 
 #define TGL_PEER_USER 1
 #define TGL_PEER_CHAT 2

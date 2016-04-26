@@ -876,7 +876,7 @@ static int work_new_session_created (const std::shared_ptr<tgl_connection>& c, l
   //tglq_regen_queries_from_old_session (DC, S);
 
   if (tgl_state::instance()->started && !(tgl_state::instance()->locks & TGL_LOCK_DIFF) && (tgl_state::instance()->DC_working->flags & TGLDCF_LOGGED_IN)) {
-    tgl_do_get_difference (0, 0, 0);
+    tgl_do_get_difference (0, 0);
   }
   return 0;
 }
