@@ -314,6 +314,8 @@ void tgl_do_send_encr_msg_action (struct tgl_message *M, void (*callback)(std::s
   }
  
   assert (M->flags & TGLMF_ENCRYPTED);
+  assert(M->action);
+
   clear_packet ();
   out_int (CODE_messages_send_encrypted_service);
   out_int (CODE_input_encrypted_chat);
@@ -329,43 +331,58 @@ void tgl_do_send_encr_msg_action (struct tgl_message *M, void (*callback)(std::s
   out_int (CODE_decrypted_message_service);
   out_long (M->permanent_id.id);
 
-  switch (M->action.type) {
-  case tgl_message_action_notify_layer:
+  switch (M->action->type()) {
+  case tgl_message_action_type_notify_layer:
     out_int (CODE_decrypted_message_action_notify_layer);
-    out_int (M->action.layer);
+    out_int (std::static_pointer_cast<tgl_message_action_notify_layer>(M->action)->layer);
     break;
-  case tgl_message_action_set_message_ttl:
+  case tgl_message_action_type_set_message_ttl:
     out_int (CODE_decrypted_message_action_set_message_t_t_l);
-    out_int (M->action.ttl);
+    out_int (std::static_pointer_cast<tgl_message_action_set_message_ttl>(M->action)->ttl);
     break;
-  case tgl_message_action_request_key:
+  case tgl_message_action_type_request_key:
+  {
+    auto action = std::static_pointer_cast<tgl_message_action_request_key>(M->action);
     out_int (CODE_decrypted_message_action_request_key);
-    out_long (M->action.exchange_id);
-    out_cstring (reinterpret_cast<char*>(M->action.g_a), 256);
+    out_long (action->exchange_id);
+    out_cstring (reinterpret_cast<char*>(action->g_a.data()), 256);
     break;
-  case tgl_message_action_accept_key:
+  }
+  case tgl_message_action_type_accept_key:
+  {
+    auto action = std::static_pointer_cast<tgl_message_action_accept_key>(M->action);
     out_int (CODE_decrypted_message_action_accept_key);
-    out_long (M->action.exchange_id);
-    out_cstring (reinterpret_cast<char*>(M->action.g_a), 256);    
-    out_long (M->action.key_fingerprint);
+    out_long (action->exchange_id);
+    out_cstring (reinterpret_cast<char*>(action->g_a.data()), 256);
+    out_long (action->key_fingerprint);
     break;
-  case tgl_message_action_commit_key:
+  }
+  case tgl_message_action_type_commit_key:
+  {
+    auto action = std::static_pointer_cast<tgl_message_action_commit_key>(M->action);
     out_int (CODE_decrypted_message_action_commit_key);
-    out_long (M->action.exchange_id);
-    out_long (M->action.key_fingerprint);
+    out_long (action->exchange_id);
+    out_long (action->key_fingerprint);
     break;
-  case tgl_message_action_abort_key:
+  }
+  case tgl_message_action_type_abort_key:
+  {
+    auto action = std::static_pointer_cast<tgl_message_action_abort_key>(M->action);
     out_int (CODE_decrypted_message_action_abort_key);
-    out_long (M->action.exchange_id);
+    out_long (action->exchange_id);
     break;
-  case tgl_message_action_noop:
+  }
+  case tgl_message_action_type_noop:
     out_int (CODE_decrypted_message_action_noop);
     break;
-  case tgl_message_action_resend:
+  case tgl_message_action_type_resend:
+  {
+    auto action = std::static_pointer_cast<tgl_message_action_resend>(M->action);
     out_int (CODE_decrypted_message_action_resend);
-    out_int (M->action.start_seq_no);
-    out_int (M->action.end_seq_no);
+    out_int (action->start_seq_no);
+    out_int (action->end_seq_no);
     break;
+  }
   default:
     assert (0);
   }
@@ -377,6 +394,9 @@ void tgl_do_send_encr_msg_action (struct tgl_message *M, void (*callback)(std::s
 
 void tgl_do_send_encr_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
   if (M->flags & TGLMF_SERVICE) {
+    if (!M->action) {
+      return;
+    }
     tgl_do_send_encr_msg_action (M, callback, callback_extra);
     return;
   }

@@ -41,13 +41,13 @@ tgl_peer_id_t tglf_fetch_peer_id (struct tl_ds_peer *DS_P);
 long long tglf_fetch_user_photo (struct tgl_user *U, struct tl_ds_user_profile_photo *DS_UPP);
 
 void tglf_fetch_message_media (struct tgl_message_media *M, const tl_ds_message_media *DS_MM);
-void tglf_fetch_message_action (struct tgl_message_action *M, const tl_ds_message_action *DS_MA);
+std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_message_action *DS_MA);
 //void tglf_fetch_chat_full (struct tgl_chat *C);
 
 #ifdef ENABLE_SECRET_CHAT
 void tglf_fetch_encrypted_message_file (struct tgl_message_media *M, const tl_ds_encrypted_file *DS_EF);
 void tglf_fetch_message_media_encrypted (struct tgl_message_media *M, const tl_ds_decrypted_message_media *DS_DMM);
-void tglf_fetch_message_action_encrypted (struct tgl_message_action *M, const tl_ds_decrypted_message_action *DS_DMA);
+std::shared_ptr<tgl_message_action> tglf_fetch_message_action_encrypted(const tl_ds_decrypted_message_action *DS_DMA);
 #endif
 
 tgl_user_status tglf_fetch_user_status(tl_ds_user_status *DS_US);

@@ -44,6 +44,14 @@
 
 //static void increase_peer_size ();
 
+// FIXME: Remove tgl_photo_wrapper when we can use std::shared_ptr to manage tgl_photo.
+void tgls_free_photo (struct tgl_photo *P);
+struct tgl_photo_wrapper {
+    explicit tgl_photo_wrapper(tgl_photo* photo): photo(photo) { }
+    ~tgl_photo_wrapper() { tgls_free_photo(photo); }
+    tgl_photo* photo;
+};
+
 enum tgl_typing_status tglf_fetch_typing (struct tl_ds_send_message_action *DS_SMA) {
   if (!DS_SMA) { return tgl_typing_none; }
   switch (DS_SMA->magic) {
@@ -901,14 +909,14 @@ struct tgl_webpage *tglf_fetch_alloc_webpage (struct tl_ds_web_page *DS_W) {
   return W;
 }
 
-void tglf_fetch_message_action (struct tgl_message_action *M, const tl_ds_message_action *DS_MA) {
-  if (!DS_MA) { return; }
-  memset (M, 0, sizeof (*M));
-  
+std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_message_action *DS_MA) {
+  if (!DS_MA) {
+    return nullptr;
+  }
+
   switch (DS_MA->magic) {
   case CODE_message_action_empty:
-    M->type = tgl_message_action_none;
-    break;
+    return std::make_shared<tgl_message_action_none>();
   /*case CODE_message_action_geo_chat_create:
     {
       M->type = tgl_message_action_geo_chat_create;
@@ -919,61 +927,62 @@ void tglf_fetch_message_action (struct tgl_message_action *M, const tl_ds_messag
     M->type = tgl_message_action_geo_chat_checkin;
     break;*/
   case CODE_message_action_chat_create:
-    {
-      M->type = tgl_message_action_chat_create;
-      M->title = DS_STR_DUP (DS_MA->title);
-    
-      M->user_num = DS_LVAL (DS_MA->users->cnt);
-      M->users = (int *)talloc (M->user_num * 4);
-      int i;
-      for (i = 0; i < M->user_num; i++) {
-        M->users[i] = DS_LVAL (DS_MA->users->data[i]);
-      }
+  {
+    auto action = std::make_shared<tgl_message_action_chat_create>();
+    if (DS_MA->title && DS_MA->title->data) {
+      action->title = std::string(DS_MA->title->data, DS_MA->title->len);
     }
-    break;
+    action->users.resize(DS_LVAL(DS_MA->users->cnt));
+    for (size_t i = 0; i < action->users.size(); ++i) {
+      action->users[i] = DS_LVAL(DS_MA->users->data[i]);
+    }
+    return action;
+  }
   case CODE_message_action_chat_edit_title:
-    M->type = tgl_message_action_chat_edit_title;
-    M->new_title = DS_STR_DUP (DS_MA->title);
-    break;
-  case CODE_message_action_chat_edit_photo:
-    M->type = tgl_message_action_chat_edit_photo;
-    M->photo = tglf_fetch_alloc_photo (DS_MA->photo);
-    break;
-  case CODE_message_action_chat_delete_photo:
-    M->type = tgl_message_action_chat_delete_photo;
-    break;
-  case CODE_message_action_chat_add_user:
-    M->type = tgl_message_action_chat_add_users;
-    M->user_num = DS_LVAL (DS_MA->users->cnt);
-    M->users = (int *)talloc (4 * M->user_num);
-    {
-      int i;
-      for (i = 0; i < M->user_num; i++) {
-        M->users[i] = DS_LVAL (DS_MA->users->data[i]);
-      }
+  {
+    auto action = std::make_shared<tgl_message_action_chat_edit_title>();
+    if (DS_MA->title && DS_MA->title->data) {
+      action->new_title = std::string(DS_MA->title->data, DS_MA->title->len);
     }
-    break;
+    return action;
+  }
+  case CODE_message_action_chat_edit_photo:
+    return std::make_shared<tgl_message_action_chat_edit_photo>(std::make_shared<tgl_photo_wrapper>(tglf_fetch_alloc_photo(DS_MA->photo)));
+  case CODE_message_action_chat_delete_photo:
+    return std::make_shared<tgl_message_action_chat_delete_photo>();
+  case CODE_message_action_chat_add_user:
+  {
+    auto action = std::make_shared<tgl_message_action_chat_add_users>();
+    action->users.resize(DS_LVAL(DS_MA->users->cnt));
+    for (size_t i = 0; i < action->users.size(); ++i) {
+      action->users[i] = DS_LVAL(DS_MA->users->data[i]);
+    }
+    return action;
+  }
   case CODE_message_action_chat_delete_user:
-    M->type = tgl_message_action_chat_delete_user;
-    M->user = DS_LVAL (DS_MA->user_id);
-    break;
+    return std::make_shared<tgl_message_action_chat_delete_user>(DS_LVAL(DS_MA->user_id));
   case CODE_message_action_chat_joined_by_link:
-    M->type = tgl_message_action_chat_add_user_by_link;
-    M->user = DS_LVAL (DS_MA->inviter_id);
-    break;
+    return std::make_shared<tgl_message_action_chat_add_user_by_link>(DS_LVAL(DS_MA->inviter_id));
   case CODE_message_action_channel_create:
-    M->type = tgl_message_action_channel_create;
-    M->title = DS_STR_DUP (DS_MA->title);
-    break;
+  {
+    auto action = std::make_shared<tgl_message_action_channel_create>();
+    if (DS_MA->title && DS_MA->title->data) {
+      action->title = std::string(DS_MA->title->data, DS_MA->title->len);
+    }
+  }
   case CODE_message_action_chat_migrate_to:
-    M->type = tgl_message_action_migrated_to;
-    break;
+    return std::make_shared<tgl_message_action_chat_migrate_to>();
   case CODE_message_action_channel_migrate_from:
-    M->type = tgl_message_action_migrated_from;
-    M->title = DS_STR_DUP (DS_MA->title);
-    break;
+  {
+    auto action = std::make_shared<tgl_message_action_channel_migrate_from>();
+    if (DS_MA->title && DS_MA->title->data) {
+      action->title = std::string(DS_MA->title->data, DS_MA->title->len);
+    }
+    return action;
+  }
   default:
     assert (0);
+    return nullptr;
   }
 }
 
@@ -1254,89 +1263,65 @@ void tglf_fetch_message_media_encrypted (struct tgl_message_media *M, const tl_d
   }
 }
 
-void tglf_fetch_message_action_encrypted (struct tgl_message_action *M, const tl_ds_decrypted_message_action *DS_DMA) {
-  if (!DS_DMA) { return; }
+std::shared_ptr<tgl_message_action> tglf_fetch_message_action_encrypted(const tl_ds_decrypted_message_action *DS_DMA) {
+  if (!DS_DMA) {
+    return nullptr;
+  }
   
   switch (DS_DMA->magic) {
   case CODE_decrypted_message_action_set_message_t_t_l:
-    M->type = tgl_message_action_set_message_ttl;
-    M->ttl = DS_LVAL (DS_DMA->ttl_seconds);
-    break;
+    return std::make_shared<tgl_message_action_set_message_ttl>(DS_LVAL(DS_DMA->ttl_seconds));
   case CODE_decrypted_message_action_read_messages: 
-    M->type = tgl_message_action_read_messages;
-    { 
-      M->read_cnt = DS_LVAL (DS_DMA->random_ids->cnt);
-      
+    return std::make_shared<tgl_message_action_read_messages>(DS_LVAL(DS_DMA->random_ids->cnt));
 #if 0 // FIXME
-      int i;
-      for (i = 0; i < M->read_cnt; i++) {
-        tgl_message_id_t id;
-        id.peer_type = TGL_PEER_RANDOM_ID;
-        id.id = DS_LVAL (DS_DMA->random_ids->data[i]);
-        struct tgl_message *N = tgl_message_get (&id);
-        if (N) {
-          N->flags &= ~TGLMF_UNREAD;
-        }
+    for (int i = 0; i < M->read_cnt; i++) {
+      tgl_message_id_t id;
+      id.peer_type = TGL_PEER_RANDOM_ID;
+      id.id = DS_LVAL (DS_DMA->random_ids->data[i]);
+      struct tgl_message *N = tgl_message_get (&id);
+      if (N) {
+        N->flags &= ~TGLMF_UNREAD;
       }
+    }
 #endif
-    }
-    break;
   case CODE_decrypted_message_action_delete_messages: 
-    M->type = tgl_message_action_delete_messages;
-    break;
+    return std::make_shared<tgl_message_action_delete_messages>();
   case CODE_decrypted_message_action_screenshot_messages: 
-    M->type = tgl_message_action_screenshot_messages;
-    { 
-      M->screenshot_cnt = DS_LVAL (DS_DMA->random_ids->cnt);
-    }
-    break;
+    return std::make_shared<tgl_message_action_screenshot_messages>(DS_LVAL(DS_DMA->random_ids->cnt));
   case CODE_decrypted_message_action_notify_layer: 
-    M->type = tgl_message_action_notify_layer;
-    M->layer = DS_LVAL (DS_DMA->layer);
-    break;
+    return std::make_shared<tgl_message_action_notify_layer>(DS_LVAL(DS_DMA->layer));
   case CODE_decrypted_message_action_flush_history:
-    M->type = tgl_message_action_flush_history;
-    break;
+    return std::make_shared<tgl_message_action_flush_history>();
   case CODE_decrypted_message_action_typing:
-    M->type = tgl_message_action_typing;
-    M->typing = tglf_fetch_typing (DS_DMA->action);
-    break;
+    return std::make_shared<tgl_message_action_typing>(tglf_fetch_typing(DS_DMA->action));
   case CODE_decrypted_message_action_resend:
-    M->type = tgl_message_action_resend;
-    M->start_seq_no = DS_LVAL (DS_DMA->start_seq_no);
-    M->end_seq_no = DS_LVAL (DS_DMA->end_seq_no);
-    break;
+    return std::make_shared<tgl_message_action_resend>(DS_LVAL(DS_DMA->start_seq_no), DS_LVAL(DS_DMA->end_seq_no));
   case CODE_decrypted_message_action_noop:
-    M->type = tgl_message_action_noop;
-    break;
+    return std::make_shared<tgl_message_action_noop>();
   case CODE_decrypted_message_action_request_key:
-    M->type = tgl_message_action_request_key;
-    
-    M->exchange_id = DS_LVAL (DS_DMA->exchange_id);
-    M->g_a = (unsigned char*)talloc (256);
-    str_to_256 (M->g_a, DS_STR (DS_DMA->g_a));
-    break;
+  {
+    auto action = std::make_shared<tgl_message_action_request_key>();
+    action->exchange_id = DS_LVAL(DS_DMA->exchange_id);
+    action->g_a.resize(256);
+    str_to_256(action->g_a.data(), DS_STR(DS_DMA->g_a));
+    return action;
+  }
   case CODE_decrypted_message_action_accept_key:
-    M->type = tgl_message_action_accept_key;
-    
-    M->exchange_id = DS_LVAL (DS_DMA->exchange_id);
-    M->g_a = (unsigned char*)talloc (256);
-    str_to_256 (M->g_a, DS_STR (DS_DMA->g_b));
-    M->key_fingerprint = DS_LVAL (DS_DMA->key_fingerprint);
-    break;
+  {
+    auto action = std::make_shared<tgl_message_action_accept_key>();
+    action->exchange_id = DS_LVAL(DS_DMA->exchange_id);
+    action->g_a.resize(256);
+    str_to_256(action->g_a.data(), DS_STR(DS_DMA->g_b));
+    action->key_fingerprint = DS_LVAL(DS_DMA->key_fingerprint);
+    return action;
+  }
   case CODE_decrypted_message_action_commit_key:
-    M->type = tgl_message_action_commit_key;
-    
-    M->exchange_id = DS_LVAL (DS_DMA->exchange_id);
-    M->key_fingerprint = DS_LVAL (DS_DMA->key_fingerprint);
-    break;
+    return std::make_shared<tgl_message_action_commit_key>(DS_LVAL(DS_DMA->exchange_id), DS_LVAL(DS_DMA->key_fingerprint));
   case CODE_decrypted_message_action_abort_key:
-    M->type = tgl_message_action_abort_key;
-    
-    M->exchange_id = DS_LVAL (DS_DMA->exchange_id);
-    break;
+    return std::make_shared<tgl_message_action_abort_key>(DS_LVAL(DS_DMA->exchange_id));
   default:
     assert (0);
+    return nullptr;
   }
 }
 
@@ -1819,35 +1804,41 @@ struct tgl_message *tglf_fetch_alloc_encrypted_message (struct tl_ds_encrypted_m
   if (M->flags & TGLMF_CREATED) {
     std::shared_ptr<tgl_secret_chat> E = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(M->permanent_id.peer_id));
     assert(E);
-    if (M->action.type == tgl_message_action_request_key) {
-      if (E->exchange_state == tgl_sce_none || (E->exchange_state == tgl_sce_requested && E->exchange_id > M->action.exchange_id )) {
-        tgl_do_accept_exchange (E.get(), M->action.exchange_id, M->action.g_a);
+    auto action_type = M->action ? M->action->type() : tgl_message_action_type_none;
+    if (action_type == tgl_message_action_type_request_key) {
+      auto action = std::static_pointer_cast<tgl_message_action_request_key>(M->action);
+      if (E->exchange_state == tgl_sce_none || (E->exchange_state == tgl_sce_requested && E->exchange_id > action->exchange_id )) {
+        tgl_do_accept_exchange (E.get(), action->exchange_id, action->g_a.data());
       } else {
         TGL_WARNING("Exchange: Incorrect state (received request, state = " << E->exchange_state << ")");
       }
     }
-    if (M->action.type == tgl_message_action_accept_key) {
-      if (E->exchange_state == tgl_sce_requested && E->exchange_id == M->action.exchange_id) {
-        tgl_do_commit_exchange (E.get(), M->action.g_a);
+    if (action_type == tgl_message_action_type_accept_key) {
+      auto action = std::static_pointer_cast<tgl_message_action_accept_key>(M->action);
+      if (E->exchange_state == tgl_sce_requested && E->exchange_id == action->exchange_id) {
+        tgl_do_commit_exchange (E.get(), action->g_a.data());
       } else {
         TGL_WARNING("Exchange: Incorrect state (received accept, state = " << E->exchange_state << ")");
       }
     }
-    if (M->action.type == tgl_message_action_commit_key) {
-      if (E->exchange_state == tgl_sce_accepted && E->exchange_id == M->action.exchange_id) {
+    if (action_type == tgl_message_action_type_commit_key) {
+      auto action = std::static_pointer_cast<tgl_message_action_commit_key>(M->action);
+      if (E->exchange_state == tgl_sce_accepted && E->exchange_id == action->exchange_id) {
         tgl_do_confirm_exchange (E.get(), 1);
       } else {
         TGL_WARNING("Exchange: Incorrect state (received commit, state = " << E->exchange_state << ")");
       }
     }
-    if (M->action.type == tgl_message_action_abort_key) {
-      if (E->exchange_state != tgl_sce_none && E->exchange_id == M->action.exchange_id) {
+    if (action_type == tgl_message_action_type_abort_key) {
+      auto action = std::static_pointer_cast<tgl_message_action_abort_key>(M->action);
+      if (E->exchange_state != tgl_sce_none && E->exchange_id == action->exchange_id) {
         tgl_do_abort_exchange (E.get());
       } else {
         TGL_WARNING("Exchange: Incorrect state (received abort, state = " << E->exchange_state << ")");
       }
     }
-    if (M->action.type == tgl_message_action_notify_layer) {
+    if (action_type == tgl_message_action_type_notify_layer) {
+      auto action = std::static_pointer_cast<tgl_message_action_notify_layer>(M->action);
       tgl_do_encr_chat(E->id,
               NULL,
               NULL,
@@ -1857,13 +1848,14 @@ struct tgl_message *tglf_fetch_alloc_encrypted_message (struct tl_ds_encrypted_m
               NULL,
               NULL,
               NULL,
-              &M->action.layer,
+              &(action->layer),
               NULL,
               NULL,
               NULL,
               TGL_FLAGS_UNCHANGED);
     }
-    if (M->action.type == tgl_message_action_set_message_ttl) {
+    if (action_type == tgl_message_action_type_set_message_ttl) {
+      auto action = std::static_pointer_cast<tgl_message_action_set_message_ttl>(M->action);
       //bl_do_encr_chat_set_ttl (E, M->action.ttl);      
       tgl_do_encr_chat(E->id,
               NULL,
@@ -1873,7 +1865,7 @@ struct tgl_message *tglf_fetch_alloc_encrypted_message (struct tl_ds_encrypted_m
               NULL,
               NULL,
               NULL,
-              &M->action.ttl,
+              &(action->ttl),
               NULL,
               NULL,
               NULL,
@@ -2077,67 +2069,12 @@ void tgls_free_message_media (struct tgl_message_media *M) {
   }
 }
 
-void tgls_free_message_action (struct tgl_message_action *M) {
-  switch (M->type) {
-  case tgl_message_action_none:
-    return;
-  case tgl_message_action_chat_create:
-    tfree_str (M->title);
-    tfree (M->users, M->user_num * 4);
-    return;
-  case tgl_message_action_chat_edit_title:
-    tfree_str (M->new_title);
-    return;
-  case tgl_message_action_chat_edit_photo:
-    tgls_free_photo (M->photo);
-    M->photo = NULL;
-    return;
-  case tgl_message_action_chat_add_users:
-    tfree (M->users, M->user_num * 4);
-    return;
-  case tgl_message_action_chat_delete_photo:
-  case tgl_message_action_chat_add_user_by_link:
-  case tgl_message_action_chat_delete_user:
-  case tgl_message_action_geo_chat_create:
-  case tgl_message_action_geo_chat_checkin:
-  case tgl_message_action_set_message_ttl:
-  case tgl_message_action_read_messages:
-  case tgl_message_action_delete_messages:
-  case tgl_message_action_screenshot_messages:
-  case tgl_message_action_flush_history:
-  case tgl_message_action_typing:
-  case tgl_message_action_resend:
-  case tgl_message_action_notify_layer:
-  case tgl_message_action_commit_key:
-  case tgl_message_action_abort_key:
-  case tgl_message_action_noop:
-  case tgl_message_action_migrated_to:
-    return;
-  case tgl_message_action_request_key:
-  case tgl_message_action_accept_key:
-    tfree (M->g_a, 256);
-    return;
-  case tgl_message_action_channel_create:
-  case tgl_message_action_migrated_from:
-    tfree_str (M->title);
-    return;
-  default:
-    TGL_ERROR("type = 0x" << std::hex << M->type);
-    assert (0);
-  }
-}
-
 void tgls_clear_message (struct tgl_message *M) {
   if (!(M->flags & TGLMF_SERVICE)) {
     if (M->message) { tfree (M->message, M->message_len + 1); }
     tgls_free_message_media (&M->media);
-  } else {
-    tgls_free_message_action (&M->action);
   }
 
-  // FIXME: Once we transform tgl_message to a std::shared_ptr managable class
-  // we can remove this.
-  M->entities.~vector<std::shared_ptr<tgl_message_entity>>();
 }
 
 void tgls_free_message (struct tgl_message *M) {
@@ -2145,9 +2082,9 @@ void tgls_free_message (struct tgl_message *M) {
 
     // FIXME: Once we transform tgl_message to a std::shared_ptr managable class
     // we can remove this.
-    if (M->reply_markup) {
-        M->reply_markup = nullptr;
-    }
+    M->action.~shared_ptr<tgl_message_action>();
+    M->reply_markup.~shared_ptr<tgl_message_reply_markup>();
+    M->entities.~vector<std::shared_ptr<tgl_message_entity>>();
 
     free (M);
 }
@@ -2223,8 +2160,9 @@ struct tgl_message *tglm_message_alloc (tgl_message_id_t *id) {
 
   // FIXME: Once we transform tgl_message to a std::shared_ptr managable class
   // we can remove this.
-  M->reply_markup = nullptr;
-  M->entities = std::vector<std::shared_ptr<tgl_message_entity>>();
+  new (&M->entities) std::vector<std::shared_ptr<tgl_message_entity>>();
+  new (&M->reply_markup) std::shared_ptr<tgl_message_reply_markup>();
+  new (&M->action) std::shared_ptr<tgl_message_action>();
 
   //tglm_message_insert_tree (M);
   //tgl_state::instance()->messages_allocated ++;
@@ -2278,7 +2216,7 @@ struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *fro
     }
 
     if (action) {
-        tglf_fetch_message_action(&M->action, action);
+        M->action = tglf_fetch_message_action(action);
         M->flags |= TGLMF_SERVICE;
     }
 
@@ -2365,7 +2303,7 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
     assert(E);
 
     if (action) {
-        tglf_fetch_message_action_encrypted(&M->action, action);
+        M->action = tglf_fetch_message_action_encrypted(action);
         M->flags |= TGLMF_SERVICE;
     }
 
@@ -2385,8 +2323,8 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
         //assert(!(M->flags & TGLMF_SERVICE));
     }
 
-    if (action && !(M->flags & TGLMF_OUT) && M->action.type == tgl_message_action_notify_layer) {
-        E->layer = M->action.layer;
+    if (action && !(M->flags & TGLMF_OUT) && M->action && M->action->type() == tgl_message_action_type_notify_layer) {
+        E->layer = std::static_pointer_cast<tgl_message_action_notify_layer>(M->action)->layer;
     }
 
     if ((flags & TGLMF_CREATE) && (flags & TGLMF_OUT)) {
