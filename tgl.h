@@ -116,7 +116,7 @@ struct tgl_state {
 
   TGLC_bn_ctx *bn_ctx;
 
-  std::vector<tgl_message*> unsent_messages;
+  std::vector<std::shared_ptr<tgl_message>> unsent_messages;
 
   std::vector<std::shared_ptr<query>> queries_tree;
 

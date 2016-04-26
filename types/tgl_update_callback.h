@@ -2,13 +2,14 @@
 #define __TGL_UPDATE_CALLBACK__
 
 #include "types/tgl_secret_chat.h"
+#include <memory>
 
 struct tgl_user_status;
 
 class tgl_update_callback {
 public:
-    virtual void new_message(struct tgl_message *M) = 0;
-    virtual void message_sent(long long old_msg_id, long long new_msg_id, tgl_peer_id_t chat_id, int seq_no) = 0;
+    virtual void new_message(const std::shared_ptr<tgl_message>& M) = 0;
+    virtual void message_sent(const std::shared_ptr<tgl_message>& M, long long new_msg_id, int seq_no) = 0;
     virtual void message_deleted(long long msg_id) = 0;
     //virtual void marked_read(int num, struct tgl_message *list[]) =0
     virtual void get_values(enum tgl_value_type type, const char *prompt, int num_values,

@@ -28,13 +28,14 @@
 
 void tgls_free_bot_info (struct tgl_bot_info *B);
 
-struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *from_id,
+std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *from_id,
                                         tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const char *message,
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
                                         int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags);
 
-struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
+#ifdef ENABLE_SECRET_CHAT
+std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
         const tgl_peer_id_t* from_id,
         const tgl_peer_id_t* to_id,
         const int* date,
@@ -44,8 +45,10 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
         const tl_ds_decrypted_message_action* action,
         const tl_ds_encrypted_file* file,
         int flags);
+#endif
 
-struct tgl_message *tglm_message_alloc (tgl_message_id_t *id);
+std::shared_ptr<tgl_message> tglm_message_alloc(const tgl_message_id_t* id);
+
 //void tglm_message_insert_tree (struct tgl_message *M);
 void tglm_update_message_id (struct tgl_message *M, long long id);
 #if 0
@@ -100,7 +103,5 @@ static inline tgl_message_id_t tgl_peer_id_to_random_msg_id (tgl_peer_id_t peer_
   tglt_secure_random ((unsigned char*)&id, 8);
   return tgl_peer_id_to_msg_id (peer_id, id);
 }
-
-void tgls_free_message (struct tgl_message *M);
 
 #endif

@@ -44,14 +44,6 @@
 
 //static void increase_peer_size ();
 
-// FIXME: Remove tgl_photo_wrapper when we can use std::shared_ptr to manage tgl_photo.
-void tgls_free_photo (struct tgl_photo *P);
-struct tgl_photo_wrapper {
-    explicit tgl_photo_wrapper(tgl_photo* photo): photo(photo) { }
-    ~tgl_photo_wrapper() { tgls_free_photo(photo); }
-    tgl_photo* photo;
-};
-
 enum tgl_typing_status tglf_fetch_typing (struct tl_ds_send_message_action *DS_SMA) {
   if (!DS_SMA) { return tgl_typing_none; }
   switch (DS_SMA->magic) {
@@ -710,18 +702,23 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full (struct tl_ds_message
   return C;
 }
 
-void tglf_fetch_photo_size (struct tgl_photo_size *S, struct tl_ds_photo_size *DS_PS) {
-  memset (S, 0, sizeof (*S));
+static std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const struct tl_ds_photo_size *DS_PS) {
+  auto photo_size = std::make_shared<tgl_photo_size>();
 
-  S->type = DS_STR_DUP (DS_PS->type);
-  S->w = DS_LVAL (DS_PS->w);
-  S->h = DS_LVAL (DS_PS->h);
-  S->size = DS_LVAL (DS_PS->size);
-  if (DS_PS->bytes) {
-    S->size = DS_PS->bytes->len;
+  if (DS_PS->type && DS_PS->type->data) {
+    photo_size->type = std::string(DS_PS->type->data, DS_PS->type->len);
   }
 
-  S->loc = tglf_fetch_file_location (DS_PS->location); 
+  photo_size->w = DS_LVAL(DS_PS->w);
+  photo_size->h = DS_LVAL(DS_PS->h);
+  photo_size->size = DS_LVAL(DS_PS->size);
+  if (DS_PS->bytes) {
+    photo_size->size = DS_PS->bytes->len;
+  }
+
+  photo_size->loc = tglf_fetch_file_location(DS_PS->location);
+
+  return photo_size;
 }
 
 void tglf_fetch_geo (struct tgl_geo *G, struct tl_ds_geo_point *DS_GP) {
@@ -729,78 +726,92 @@ void tglf_fetch_geo (struct tgl_geo *G, struct tl_ds_geo_point *DS_GP) {
   G->latitude = DS_LVAL (DS_GP->latitude);
 }
 
-struct tgl_photo *tglf_fetch_alloc_photo (struct tl_ds_photo *DS_P) {
-  if (!DS_P) { return NULL; }
-  if (DS_P->magic == CODE_photo_empty) { return NULL; }
+std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo *DS_P) {
+  if (!DS_P) {
+    return nullptr;
+  }
+  if (DS_P->magic == CODE_photo_empty) {
+    return nullptr;
+  }
 
-  struct tgl_photo *P = (struct tgl_photo *)talloc0 (sizeof (*P));
-  P->id = DS_LVAL (DS_P->id);
-  P->refcnt = 1;
+  auto photo = std::make_shared<tgl_photo>();
+  photo->id = DS_LVAL(DS_P->id);
+  //photo->refcnt = 1;
 
-  P->access_hash = DS_LVAL (DS_P->access_hash);
-  //P->user_id = DS_LVAL (DS_P->user_id);
-  P->date = DS_LVAL (DS_P->date);
-  P->caption = NULL;//DS_STR_DUP (DS_P->caption);
+  photo->access_hash = DS_LVAL(DS_P->access_hash);
+  //photo->user_id = DS_LVAL(DS_P->user_id);
+  photo->date = DS_LVAL(DS_P->date);
+  //photo->caption = NULL;//DS_STR_DUP (DS_P->caption);
   /*if (DS_P->geo) {
     tglf_fetch_geo (&P->geo, DS_P->geo);
   }*/
 
-  P->sizes_num = DS_LVAL (DS_P->sizes->cnt);
-  P->sizes = (struct tgl_photo_size *)talloc (sizeof (struct tgl_photo_size) * P->sizes_num);
-  int i;
-  for (i = 0; i < P->sizes_num; i++) {
-    tglf_fetch_photo_size (&P->sizes[i], DS_P->sizes->data[i]);
+  int sizes_num = DS_LVAL(DS_P->sizes->cnt);
+  photo->sizes.resize(sizes_num);
+  for (int i = 0; i < sizes_num; ++i) {
+    photo->sizes[i] = tglf_fetch_photo_size(DS_P->sizes->data[i]);
   }
 
-  return P;
+  return photo;
 }
 
-struct tgl_document *tglf_fetch_alloc_video (struct tl_ds_video *DS_V) {
-  if (!DS_V) { return NULL; }
+std::shared_ptr<tgl_document> tglf_fetch_alloc_video(const tl_ds_video *DS_V) {
+  if (!DS_V) {
+    return nullptr;
+  }
   
-  if (DS_V->magic == CODE_video_empty) { return NULL; }
+  if (DS_V->magic == CODE_video_empty) {
+    return nullptr;
+  }
 
-  struct tgl_document *D = (struct tgl_document *)calloc(1, sizeof(struct tgl_document));
-  D->id = DS_LVAL (DS_V->id);
+  auto document = std::make_shared<tgl_document>();
+  document->id = DS_LVAL(DS_V->id);
 
-  D->flags = TGLDF_VIDEO;
+  document->flags = TGLDF_VIDEO;
 
-  D->access_hash = DS_LVAL (DS_V->access_hash);
-  //D->user_id = DS_LVAL (DS_V->user_id);
-  D->date = DS_LVAL (DS_V->date);
-  D->caption = NULL;//DS_STR_DUP (DS_V->caption);
-  D->duration = DS_LVAL (DS_V->duration);
-  D->mime_type = tstrdup ("video/");//DS_STR_DUP (DS_V->mime_type);
-  D->size = DS_LVAL (DS_V->size);
-  tglf_fetch_photo_size (&D->thumb, DS_V->thumb);
+  document->access_hash = DS_LVAL(DS_V->access_hash);
+  //document->user_id = DS_LVAL(DS_V->user_id);
+  document->date = DS_LVAL(DS_V->date);
+  //document->caption = NULL;//DS_STR_DUP (DS_V->caption);
+  document->duration = DS_LVAL(DS_V->duration);
+  document->mime_type = "video/";//DS_STR_DUP (DS_V->mime_type);
+  document->size = DS_LVAL(DS_V->size);
+  document->thumb = tglf_fetch_photo_size(DS_V->thumb);
 
-  D->dc_id = DS_LVAL (DS_V->dc_id);
-  D->w = DS_LVAL (DS_V->w);
-  D->h = DS_LVAL (DS_V->h);
-  return D;
+  document->dc_id = DS_LVAL(DS_V->dc_id);
+  document->w = DS_LVAL(DS_V->w);
+  document->h = DS_LVAL(DS_V->h);
+
+  return document;
 }
 
-struct tgl_document *tglf_fetch_alloc_audio (struct tl_ds_audio *DS_A) {
-  if (!DS_A) { return NULL; }
+std::shared_ptr<tgl_document> tglf_fetch_alloc_audio(const tl_ds_audio *DS_A) {
+  if (!DS_A) {
+    return nullptr;
+  }
   
-  if (DS_A->magic == CODE_audio_empty) { return NULL; }
+  if (DS_A->magic == CODE_audio_empty) {
+    return nullptr;
+  }
 
-  struct tgl_document *D = (struct tgl_document *)talloc0(sizeof (struct tgl_document));
-  D->id = DS_LVAL (DS_A->id);
-  D->flags = TGLDF_AUDIO;
+  auto document = std::make_shared<tgl_document>();
+  document->id = DS_LVAL(DS_A->id);
+  document->flags = TGLDF_AUDIO;
 
-  D->access_hash = DS_LVAL (DS_A->access_hash);
-  //D->user_id = DS_LVAL (DS_A->user_id);
-  D->date = DS_LVAL (DS_A->date);
-  D->duration = DS_LVAL (DS_A->duration);
-  D->mime_type = DS_STR_DUP (DS_A->mime_type);
-  D->size = DS_LVAL (DS_A->size);
-  D->dc_id = DS_LVAL (DS_A->dc_id);
+  document->access_hash = DS_LVAL(DS_A->access_hash);
+  //document->user_id = DS_LVAL(DS_A->user_id);
+  document->date = DS_LVAL(DS_A->date);
+  document->duration = DS_LVAL(DS_A->duration);
+  if (DS_A->mime_type && DS_A->mime_type->data) {
+    document->mime_type = std::string(DS_A->mime_type->data, DS_A->mime_type->len);
+  }
+  document->size = DS_LVAL(DS_A->size);
+  document->dc_id = DS_LVAL(DS_A->dc_id);
 
-  return D;
+  return document;
 }
 
-void tglf_fetch_document_attribute (struct tgl_document *D, struct tl_ds_document_attribute *DS_DA) {
+void tglf_fetch_document_attribute (const std::shared_ptr<tgl_document>& D, struct tl_ds_document_attribute *DS_DA) {
   switch (DS_DA->magic) {
   case CODE_document_attribute_image_size:
     D->flags |= TGLDF_IMAGE;
@@ -831,82 +842,87 @@ void tglf_fetch_document_attribute (struct tgl_document *D, struct tl_ds_documen
   }
 }
 
-struct tgl_document *tglf_fetch_alloc_document (struct tl_ds_document *DS_D) {
-  if (!DS_D) { return NULL; }
+std::shared_ptr<tgl_document> tglf_fetch_alloc_document(const tl_ds_document *DS_D) {
+  if (!DS_D) {
+    return nullptr;
+  }
   
-  if (DS_D->magic == CODE_document_empty) { return NULL; }
+  if (DS_D->magic == CODE_document_empty) {
+    return nullptr;
+  }
 
-  struct tgl_document *D = (struct tgl_document *)talloc0 (sizeof (struct tgl_document));
-  D->id = DS_LVAL (DS_D->id);
-  D->access_hash = DS_LVAL (DS_D->access_hash);
+  auto document = std::make_shared<tgl_document>();
+  document->id = DS_LVAL (DS_D->id);
+  document->access_hash = DS_LVAL (DS_D->access_hash);
   //D->user_id = DS_LVAL (DS_D->user_id);
-  D->date = DS_LVAL (DS_D->date);
+  document->date = DS_LVAL (DS_D->date);
   //D->caption = DS_STR_DUP (DS_D->file_name);
-  D->mime_type = DS_STR_DUP (DS_D->mime_type);
-  D->size = DS_LVAL (DS_D->size);
-  D->dc_id = DS_LVAL (DS_D->dc_id);
+  if (DS_D->mime_type && DS_D->mime_type->data) {
+    document->mime_type = std::string(DS_D->mime_type->data, DS_D->mime_type->len);
+  }
+  document->size = DS_LVAL (DS_D->size);
+  document->dc_id = DS_LVAL (DS_D->dc_id);
 
-  tglf_fetch_photo_size (&D->thumb, DS_D->thumb);
+  document->thumb = tglf_fetch_photo_size (DS_D->thumb);
 
   if (DS_D->attributes) {
     int i;
     for (i = 0; i < DS_LVAL (DS_D->attributes->cnt); i++) {
-      tglf_fetch_document_attribute (D, DS_D->attributes->data[i]);
+      tglf_fetch_document_attribute (document, DS_D->attributes->data[i]);
     }
   }
-  return D;
+
+  return document;
 }
 
-struct tgl_webpage *tglf_fetch_alloc_webpage (struct tl_ds_web_page *DS_W) {
-  if (!DS_W) { return NULL; }
-
-  struct tgl_webpage *W = (struct tgl_webpage *)calloc(1, sizeof (struct tgl_webpage));
-  W->id = DS_LVAL (DS_W->id);
-  W->refcnt = 1;
-
-  // TODO make thos \0 terminated
-  if (!W->url) {
-    W->url = DS_STR_DUP (DS_W->url);
+static std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page *DS_W) {
+  if (!DS_W) {
+    return nullptr;
   }
 
-  if (!W->display_url) {
-    W->display_url = DS_STR_DUP (DS_W->display_url);
+  auto webpage = std::make_shared<tgl_webpage>();
+  webpage->id = DS_LVAL(DS_W->id);
+  //webpage->refcnt = 1;
+
+  if (DS_W->url && DS_W->url->data) {
+    webpage->url = std::string(DS_W->url->data, DS_W->url->len);
   }
 
-  if (!W->type) {
-    W->type = DS_STR_DUP (DS_W->type);
+  if (DS_W->display_url && DS_W->display_url->data) {
+    webpage->display_url = std::string(DS_W->display_url->data, DS_W->display_url->len);
   }
 
-  if (!W->title) {
-    W->title = DS_STR_DUP (DS_W->title);
+  if (DS_W->type && DS_W->type->data) {
+    webpage->type = std::string(DS_W->type->data, DS_W->type->len);
   }
 
-  if (!W->photo) {
-    W->photo = tglf_fetch_alloc_photo (DS_W->photo);
+  if (DS_W->title && DS_W->title->data) {
+    webpage->title = std::string(DS_W->title->data, DS_W->title->len);
   }
 
-  if (!W->description) {
-    W->description = DS_STR_DUP (DS_W->description);
+  webpage->photo = tglf_fetch_alloc_photo(DS_W->photo);
+
+  if (DS_W->description && DS_W->description->data) {
+    webpage->description = std::string(DS_W->description->data, DS_W->description->len);
   }
 
-  if (!W->embed_url) {
-    W->embed_url = DS_STR_DUP (DS_W->embed_url);
+  if (DS_W->embed_url && DS_W->embed_url->data) {
+    webpage->embed_url = std::string(DS_W->embed_url->data, DS_W->embed_url->len);
   }
 
-  if (!W->embed_type) {
-    W->embed_type = DS_STR_DUP (DS_W->embed_type);
+  if (DS_W->embed_type && DS_W->embed_type->data) {
+    webpage->embed_type = std::string(DS_W->embed_type->data, DS_W->embed_type->len);
   }
 
-  W->embed_width = DS_LVAL (DS_W->embed_width);
+  webpage->embed_width = DS_LVAL(DS_W->embed_width);
+  webpage->embed_height = DS_LVAL(DS_W->embed_height);
+  webpage->duration = DS_LVAL(DS_W->duration);
 
-  W->embed_height = DS_LVAL (DS_W->embed_height);
-
-  W->duration = DS_LVAL (DS_W->duration);
-
-  if (!W->author) {
-    W->author = DS_STR_DUP (DS_W->author);
+  if (DS_W->author && DS_W->author->data) {
+    webpage->author = std::string(DS_W->author->data, DS_W->author->len);
   }
-  return W;
+
+  return webpage;
 }
 
 std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_message_action *DS_MA) {
@@ -947,7 +963,7 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_messag
     return action;
   }
   case CODE_message_action_chat_edit_photo:
-    return std::make_shared<tgl_message_action_chat_edit_photo>(std::make_shared<tgl_photo_wrapper>(tglf_fetch_alloc_photo(DS_MA->photo)));
+    return std::make_shared<tgl_message_action_chat_edit_photo>(tglf_fetch_alloc_photo(DS_MA->photo));
   case CODE_message_action_chat_delete_photo:
     return std::make_shared<tgl_message_action_chat_delete_photo>();
   case CODE_message_action_chat_add_user:
@@ -1046,7 +1062,7 @@ void tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
 #endif
 
   DS_CSTR (msg_text, DS_U->message);
-  struct tgl_message* M = tglm_message_create (&msg_id,
+  tglm_message_create (&msg_id,
           (f & 2) ? &our_id : &peer_id,
           (f & 2) ? &peer_id : &our_id,
           DS_U->fwd_from_id ? &fwd_from_id : NULL,
@@ -1060,7 +1076,6 @@ void tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
           flags
           );
   free(msg_text);
-  tgls_free_message(M);
 }
 
 void tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
@@ -1122,7 +1137,7 @@ void tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
 #endif
 
   DS_CSTR (msg_text, DS_U->message);
-  struct tgl_message* M = tglm_message_create (&msg_id,
+  tglm_message_create (&msg_id,
       &from_id,
       &to_id,
       DS_U->fwd_from_id ? &fwd_from_id : NULL,
@@ -1136,130 +1151,182 @@ void tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
       flags
       );
   free(msg_text);
-  tgls_free_message(M);
 }
 
 
-void tglf_fetch_message_media (struct tgl_message_media *M, const tl_ds_message_media *DS_MM) {
-  if (!DS_MM) { return; }
-  memset (M, 0, sizeof (*M));
+std::shared_ptr<tgl_message_media> tglf_fetch_message_media(const tl_ds_message_media *DS_MM) {
+  if (!DS_MM) {
+    return nullptr;
+  }
+
   switch (DS_MM->magic) {
   case CODE_message_media_empty:
-    M->type = tgl_message_media_none;
-    break;
+    return std::make_shared<tgl_message_media_none>();
   case CODE_message_media_photo:
   case CODE_message_media_photo_l27:
-    M->type = tgl_message_media_photo;
-    M->photo = tglf_fetch_alloc_photo (DS_MM->photo);
-    M->caption = DS_STR_DUP (DS_MM->caption);
-    break;
+  {
+    auto media = std::make_shared<tgl_message_media_photo>();
+    media->photo = tglf_fetch_alloc_photo(DS_MM->photo);
+    if (DS_MM->caption && DS_MM->caption->data) {
+      media->caption = std::string(DS_MM->caption->data, DS_MM->caption->len);
+    }
+    return media;
+  }
   case CODE_message_media_video:
   case CODE_message_media_video_l27:
-    M->type = tgl_message_media_video;
-    M->document = tglf_fetch_alloc_video (DS_MM->video);
-    M->caption = DS_STR_DUP (DS_MM->caption);
-    break;
+  {
+    auto media = std::make_shared<tgl_message_media_video>();
+    media->document = tglf_fetch_alloc_video(DS_MM->video);
+    if (DS_MM->caption && DS_MM->caption->data) {
+      media->caption = std::string(DS_MM->caption->data, DS_MM->caption->len);
+    }
+    return media;
+  }
   case CODE_message_media_audio:
-    M->type = tgl_message_media_audio;
-    M->document = tglf_fetch_alloc_audio (DS_MM->audio);
-    M->caption = DS_STR_DUP (DS_MM->caption);
-    break;
+  {
+    auto media = std::make_shared<tgl_message_media_audio>();
+    media->document = tglf_fetch_alloc_audio(DS_MM->audio);
+    if (DS_MM->caption && DS_MM->caption->data) {
+      media->caption = std::string(DS_MM->caption->data, DS_MM->caption->len);
+    }
+    return media;
+  }
   case CODE_message_media_document:
-    M->type = tgl_message_media_document;
-    M->document = tglf_fetch_alloc_document (DS_MM->document);
-    M->caption = DS_STR_DUP (DS_MM->caption);
-    break;
+  {
+    auto media = std::make_shared<tgl_message_media_document>();
+    media->document = tglf_fetch_alloc_document(DS_MM->document);
+    if (DS_MM->caption && DS_MM->caption->data) {
+      media->caption = std::string(DS_MM->caption->data, DS_MM->caption->len);
+    }
+    return media;
+  }
   case CODE_message_media_geo:
-    M->type = tgl_message_media_geo;
-    tglf_fetch_geo (&M->geo, DS_MM->geo);
-    break;
+  {
+    auto media = std::make_shared<tgl_message_media_geo>();
+    tglf_fetch_geo(&media->geo, DS_MM->geo);
+    return media;
+  }
   case CODE_message_media_contact:
-    M->type = tgl_message_media_contact;
-    M->phone = DS_STR_DUP (DS_MM->phone_number);
-    M->first_name = DS_STR_DUP (DS_MM->first_name);
-    M->last_name = DS_STR_DUP (DS_MM->last_name);
-    M->user_id = DS_LVAL (DS_MM->user_id);
-    break;
+  {
+    auto media = std::make_shared<tgl_message_media_contact>();
+    if (DS_MM->phone_number && DS_MM->phone_number->data) {
+      media->phone = std::string(DS_MM->phone_number->data, DS_MM->phone_number->len);
+    }
+    if (DS_MM->first_name && DS_MM->first_name->data) {
+      media->first_name = std::string(DS_MM->first_name->data, DS_MM->first_name->len);
+    }
+    if (DS_MM->last_name && DS_MM->last_name->data) {
+      media->last_name = std::string(DS_MM->last_name->data, DS_MM->last_name->len);
+    }
+    media->user_id = DS_LVAL(DS_MM->user_id);
+    return media;
+  }
   case CODE_message_media_web_page:
-    M->type = tgl_message_media_webpage;
-    M->webpage = tglf_fetch_alloc_webpage (DS_MM->webpage);
-    break;
+  {
+    auto media = std::make_shared<tgl_message_media_webpage>();
+    media->webpage = tglf_fetch_alloc_webpage(DS_MM->webpage);
+    return media;
+  }
   case CODE_message_media_venue:
-    M->type = tgl_message_media_venue;
-    tglf_fetch_geo (&M->venue.geo, DS_MM->geo);
-    M->venue.title = DS_STR_DUP (DS_MM->title);
-    M->venue.address = DS_STR_DUP (DS_MM->address);
-    M->venue.provider = DS_STR_DUP (DS_MM->provider);
-    M->venue.venue_id = DS_STR_DUP (DS_MM->venue_id);   
-    break;
+  {
+    auto media = std::make_shared<tgl_message_media_venue>();
+    tglf_fetch_geo(&media->geo, DS_MM->geo);
+    if (DS_MM->title && DS_MM->title->data) {
+      media->title = std::string(DS_MM->title->data, DS_MM->title->len);
+    }
+    if (DS_MM->address && DS_MM->address->data) {
+      media->address = std::string(DS_MM->address->data, DS_MM->address->len);
+    }
+    if (DS_MM->provider && DS_MM->provider->data) {
+      media->provider = std::string(DS_MM->provider->data, DS_MM->provider->len);
+    }
+    if (DS_MM->venue_id && DS_MM->venue_id->data) {
+      media->venue_id = std::string(DS_MM->venue_id->data, DS_MM->venue_id->len);
+    }
+    return media;
+  }
   case CODE_message_media_unsupported:
-    M->type = tgl_message_media_unsupported;
-    break;
+    return std::make_shared<tgl_message_media_unsupported>();
   default:
     assert (0);
+    return nullptr;
   }
 }
 
-void tglf_fetch_message_media_encrypted (struct tgl_message_media *M, const tl_ds_decrypted_message_media *DS_DMM) {
-  if (!DS_DMM) { return; }
+std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_ds_decrypted_message_media *DS_DMM) {
+  if (!DS_DMM) {
+    return nullptr;
+  }
 
-  memset (M, 0, sizeof (*M));
   switch (DS_DMM->magic) {
   case CODE_decrypted_message_media_empty:
-    M->type = tgl_message_media_none;
-    //M->type = CODE_message_media_empty;
-    break;
+    return std::make_shared<tgl_message_media_none>();
   case CODE_decrypted_message_media_photo:
   case CODE_decrypted_message_media_video:
   case CODE_decrypted_message_media_video_l12:
   case CODE_decrypted_message_media_document:
   case CODE_decrypted_message_media_audio:
+  {
     //M->type = CODE_decrypted_message_media_video;
-    M->type = tgl_message_media_document_encr;
+    auto media = std::make_shared<tgl_message_media_document_encr>();
 
-    M->encr_document = (struct tgl_encr_document *)talloc0 (sizeof (*M->encr_document));
+    media->encr_document = std::make_shared<tgl_encr_document>();
 
     switch (DS_DMM->magic) {
     case CODE_decrypted_message_media_photo:
-        M->encr_document->flags = TGLDF_IMAGE;
+        media->encr_document->flags = TGLDF_IMAGE;
         break;
     case CODE_decrypted_message_media_video:
     case CODE_decrypted_message_media_video_l12:
-        M->encr_document->flags = TGLDF_VIDEO;
+        media->encr_document->flags = TGLDF_VIDEO;
         break;
     case CODE_decrypted_message_media_document:
-        //M->encr_document->flags = TGLDF_DOCUMENT;
+        //media->encr_document->flags = TGLDF_DOCUMENT;
         break;
     case CODE_decrypted_message_media_audio:
-        M->encr_document->flags = TGLDF_AUDIO;
+        media->encr_document->flags = TGLDF_AUDIO;
         break;
     }
 
-    M->encr_document->w = DS_LVAL (DS_DMM->w);
-    M->encr_document->h = DS_LVAL (DS_DMM->h);
-    M->encr_document->size = DS_LVAL (DS_DMM->size);
-    M->encr_document->duration = DS_LVAL (DS_DMM->duration);
-    M->encr_document->mime_type = DS_STR_DUP (DS_DMM->mime_type);
+    media->encr_document->w = DS_LVAL(DS_DMM->w);
+    media->encr_document->h = DS_LVAL(DS_DMM->h);
+    media->encr_document->size = DS_LVAL(DS_DMM->size);
+    media->encr_document->duration = DS_LVAL(DS_DMM->duration);
+    if (DS_DMM->mime_type && DS_DMM->mime_type->data) {
+      media->encr_document->mime_type = std::string(DS_DMM->mime_type->data, DS_DMM->mime_type->len);
+    }
 
-    M->encr_document->key = (unsigned char*)talloc (32);
-    str_to_32 (M->encr_document->key, DS_STR (DS_DMM->key));
-    M->encr_document->iv = (unsigned char*)talloc (32);
-    str_to_32 (M->encr_document->iv, DS_STR (DS_DMM->iv));
-    break;
+    media->encr_document->key.resize(32);
+    str_to_32 (media->encr_document->key.data(), DS_STR(DS_DMM->key));
+    media->encr_document->iv.resize(32);
+    str_to_32 (media->encr_document->iv.data(), DS_STR(DS_DMM->iv));
+    return media;
+  }
   case CODE_decrypted_message_media_geo_point:
-    M->type = tgl_message_media_geo;
-    M->geo.latitude = DS_LVAL (DS_DMM->latitude);
-    M->geo.longitude = DS_LVAL (DS_DMM->longitude);
-    break;
+  {
+    auto media = std::make_shared<tgl_message_media_geo>();
+    media->geo.latitude = DS_LVAL(DS_DMM->latitude);
+    media->geo.longitude = DS_LVAL(DS_DMM->longitude);
+    return media;
+  }
   case CODE_decrypted_message_media_contact:
-    M->type = tgl_message_media_contact;
-    M->phone = DS_STR_DUP (DS_DMM->phone_number);
-    M->first_name = DS_STR_DUP (DS_DMM->first_name);
-    M->last_name = DS_STR_DUP (DS_DMM->last_name);
-    M->user_id = DS_LVAL (DS_DMM->user_id);
-    break;
+  {
+    auto media = std::make_shared<tgl_message_media_contact>();
+    if (DS_DMM->phone_number && DS_DMM->phone_number->data) {
+      media->phone = std::string(DS_DMM->phone_number->data, DS_DMM->phone_number->len);
+    }
+    if (DS_DMM->first_name && DS_DMM->first_name->data) {
+      media->first_name = std::string(DS_DMM->first_name->data, DS_DMM->first_name->len);
+    }
+    if (DS_DMM->last_name && DS_DMM->last_name->data) {
+      media->last_name = std::string(DS_DMM->last_name->data, DS_DMM->last_name->len);
+    }
+    media->user_id = DS_LVAL(DS_DMM->user_id);
+    return media;
+  }
   default:
-        assert (0);
+    assert (0);
+    return nullptr;
   }
 }
 
@@ -1372,7 +1439,7 @@ static std::shared_ptr<tgl_message_entity> tglf_fetch_message_entity(const tl_ds
   return entity;
 }
 
-void tglf_fetch_message_entities (struct tgl_message *M, struct tl_ds_vector *DS) {
+void tglf_fetch_message_entities (const std::shared_ptr<tgl_message>& M, struct tl_ds_vector *DS) {
   int entities_num = DS_LVAL (DS->f1);
   M->entities.resize(entities_num);
   for (int i = 0; i < entities_num; i++) {
@@ -1381,7 +1448,7 @@ void tglf_fetch_message_entities (struct tgl_message *M, struct tl_ds_vector *DS
   }
 }
 
-struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *new_msg) {
+std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M, int *new_msg) {
   if (new_msg) {
     *new_msg = 0;
   }
@@ -1444,7 +1511,7 @@ struct tgl_message *tglf_fetch_alloc_message (struct tl_ds_message *DS_M, int *n
       );
 #endif
   DS_CSTR (msg_text, DS_M->message);
-  struct tgl_message* M = tglm_message_create (&msg_id,
+  std::shared_ptr<tgl_message> M = tglm_message_create(&msg_id,
       DS_M->from_id ? &from_id : NULL,
       &to_id,
       DS_M->fwd_from_id ? &fwd_from_id : NULL,
@@ -1526,7 +1593,7 @@ static int decrypt_encrypted_message (struct tgl_secret_chat* secret_chat) {
     return 0;
 }
 
-struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message *DS_EM) {
+std::shared_ptr<tgl_message> tglf_fetch_encrypted_message (struct tl_ds_encrypted_message *DS_EM) {
   if (!DS_EM) { return NULL; }
   
   //tgl_peer_t *P = tgl_peer_get (TGL_MK_ENCR_CHAT (DS_LVAL (DS_EM->chat_id)));
@@ -1582,7 +1649,7 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
   in_end = in_ptr + ll / 4 + 1;  
   assert (fetch_int () == ll);
 
-  struct tgl_message* M = NULL;
+  std::shared_ptr<tgl_message> M;
   if (*in_ptr == CODE_decrypted_message_layer) {
     struct paramed_type decrypted_message_layer = TYPE_TO_PARAM(decrypted_message_layer);
     if (skip_type_decrypted_message_layer (&decrypted_message_layer) < 0 || in_ptr != in_end) {
@@ -1753,20 +1820,23 @@ struct tgl_message *tglf_fetch_encrypted_message (struct tl_ds_encrypted_message
   return M;
 }
 
-void tglf_fetch_encrypted_message_file (struct tgl_message_media *M, const tl_ds_encrypted_file *DS_EF) {
+void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>& M, const tl_ds_encrypted_file *DS_EF) {
   if (DS_EF->magic == CODE_encrypted_file_empty) {
-    assert (M->type != tgl_message_media_document_encr);
+    assert (M->type() != tgl_message_media_type_document_encr);
   } else {
-    assert (M->type == tgl_message_media_document_encr);
-    assert (M->encr_document);
-
-    M->encr_document->id = DS_LVAL (DS_EF->id);
-    M->encr_document->access_hash = DS_LVAL (DS_EF->access_hash);
-    if (!M->encr_document->size) {
-      M->encr_document->size = DS_LVAL (DS_EF->size);
+    assert (M->type() == tgl_message_media_type_document_encr);
+    if (M->type() != tgl_message_media_type_document_encr) {
+        return;
     }
-    M->encr_document->dc_id = DS_LVAL (DS_EF->dc_id);
-    M->encr_document->key_fingerprint = DS_LVAL (DS_EF->key_fingerprint);
+
+    auto media = std::static_pointer_cast<tgl_message_media_document_encr>(M);
+
+    media->encr_document = std::make_shared<tgl_encr_document>();
+    media->encr_document->id = DS_LVAL (DS_EF->id);
+    media->encr_document->access_hash = DS_LVAL (DS_EF->access_hash);
+    media->encr_document->size = DS_LVAL (DS_EF->size);
+    media->encr_document->dc_id = DS_LVAL (DS_EF->dc_id);
+    media->encr_document->key_fingerprint = DS_LVAL (DS_EF->key_fingerprint);
   }
 }
 #endif
@@ -1797,8 +1867,8 @@ static void increase_peer_size () {
 #endif
 
 #ifdef ENABLE_SECRET_CHAT
-struct tgl_message *tglf_fetch_alloc_encrypted_message (struct tl_ds_encrypted_message *DS_EM) {
-  struct tgl_message *M = tglf_fetch_encrypted_message (DS_EM);
+std::shared_ptr<tgl_message> tglf_fetch_alloc_encrypted_message (struct tl_ds_encrypted_message *DS_EM) {
+  std::shared_ptr<tgl_message> M = tglf_fetch_encrypted_message (DS_EM);
   if (!M) { return M; }
 
   if (M->flags & TGLMF_CREATED) {
@@ -1978,119 +2048,6 @@ void tgl_insert_empty_chat (int cid) {
 }
 #endif
 
-/* {{{ Free */
-
-void tgls_free_photo_size (struct tgl_photo_size *S) {
-    tfree_str (S->type);
-    if (S->data) {
-        free (S->data);
-    }
-}
-
-void tgls_free_photo (struct tgl_photo *P) {
-    if (P->caption) { free (P->caption); }
-    if (P->sizes) {
-        int i;
-        for (i = 0; i < P->sizes_num; i++) {
-            tgls_free_photo_size (&P->sizes[i]);
-        }
-        free (P->sizes);
-    }
-    free (P);
-}
-
-void tgls_free_document (struct tgl_document *D) {
-    if (D->mime_type) { free (D->mime_type);}
-    if (D->caption) { free (D->caption);}
-    tgls_free_photo_size (&D->thumb);
-
-    free (D);
-}
-
-void tgls_free_webpage (struct tgl_webpage *W) {
-    if (--W->refcnt) {
-        assert (W->refcnt);
-        return;
-    }
-    if (W->url) { tfree_str (W->url); }
-    if (W->display_url) { tfree_str (W->display_url); }
-    if (W->title) { tfree_str (W->title); }
-    if (W->site_name) { tfree_str (W->site_name); }
-    if (W->type) { tfree_str (W->type); }
-    if (W->description) { tfree_str (W->description); }
-    if (W->photo) { tgls_free_photo (W->photo); }
-    if (W->embed_url) { tfree_str (W->embed_url); }
-    if (W->embed_type) { tfree_str (W->embed_type); }
-    if (W->author) { tfree_str (W->author); }
-
-    free (W);
-}
-
-void tgls_free_message_media (struct tgl_message_media *M) {
-  switch (M->type) {
-  case tgl_message_media_none:
-  case tgl_message_media_geo:
-    return;
-  case tgl_message_media_photo:
-    tgls_free_photo (M->photo);
-    if (M->caption) { tfree_str (M->caption); }
-    M->photo = NULL;
-    return;
-  case tgl_message_media_contact:
-    tfree_str (M->phone);
-    tfree_str (M->first_name);
-    tfree_str (M->last_name);
-    return;
-  case tgl_message_media_document:
-  case tgl_message_media_video:
-  case tgl_message_media_audio:
-    tgls_free_document (M->document);
-    if (M->caption) { tfree_str (M->caption); }
-    return;
-  case tgl_message_media_unsupported:
-    return;
-  case tgl_message_media_document_encr:
-    tfree_secure (M->encr_document->key, 32);
-    tfree_secure (M->encr_document->iv, 32);
-    tfree (M->encr_document, sizeof (*M->encr_document));
-    return;
-  case tgl_message_media_webpage:
-    tgls_free_webpage (M->webpage);
-    return;
-  case tgl_message_media_venue:
-    if (M->venue.title) { tfree_str (M->venue.title); }
-    if (M->venue.address) { tfree_str (M->venue.address); }
-    if (M->venue.provider) { tfree_str (M->venue.provider); }
-    if (M->venue.venue_id) { tfree_str (M->venue.venue_id); }
-    return;
-  default:
-    TGL_ERROR("type = 0x" << std::hex << M->type);
-    assert (0);
-  }
-}
-
-void tgls_clear_message (struct tgl_message *M) {
-  if (!(M->flags & TGLMF_SERVICE)) {
-    if (M->message) { tfree (M->message, M->message_len + 1); }
-    tgls_free_message_media (&M->media);
-  }
-
-}
-
-void tgls_free_message (struct tgl_message *M) {
-    tgls_clear_message(M);
-
-    // FIXME: Once we transform tgl_message to a std::shared_ptr managable class
-    // we can remove this.
-    M->action.~shared_ptr<tgl_message_action>();
-    M->reply_markup.~shared_ptr<tgl_message_reply_markup>();
-    M->entities.~vector<std::shared_ptr<tgl_message_entity>>();
-
-    free (M);
-}
-
-/* }}} */
-
 /* Messages {{{ */
 
 #if 0
@@ -2154,28 +2111,19 @@ void tglm_message_del_peer (struct tgl_message *M) {
 }
 #endif
 
-struct tgl_message *tglm_message_alloc (tgl_message_id_t *id) {
-  struct tgl_message *M = (struct tgl_message *)calloc(1, sizeof (struct tgl_message));
-  M->permanent_id = *id;
-
-  // FIXME: Once we transform tgl_message to a std::shared_ptr managable class
-  // we can remove this.
-  new (&M->entities) std::vector<std::shared_ptr<tgl_message_entity>>();
-  new (&M->reply_markup) std::shared_ptr<tgl_message_reply_markup>();
-  new (&M->action) std::shared_ptr<tgl_message_action>();
-
-  //tglm_message_insert_tree (M);
-  //tgl_state::instance()->messages_allocated ++;
-  return M;
+std::shared_ptr<tgl_message> tglm_message_alloc(const tgl_message_id_t *id) {
+    auto message = std::make_shared<tgl_message>();
+    message->permanent_id = *id;
+    return message;
 }
 
-struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *from_id,
+std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *from_id,
                                         tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const char *message,
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
                                         int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags)
 {
-    struct tgl_message *M = tglm_message_alloc(id);
+    std::shared_ptr<tgl_message> M = tglm_message_alloc(id);
 
     assert (!(M->flags & TGLMF_ENCRYPTED));
     assert (!(flags & TGLMF_ENCRYPTED));
@@ -2221,14 +2169,12 @@ struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *fro
     }
 
     if (message && strlen(message) != 0) {
-        M->message_len = strlen(message);
-        M->message = (char*)malloc(M->message_len*sizeof(char)+1);
-        strcpy(M->message, message);
+        M->message = message;
         assert (!(M->flags & TGLMF_SERVICE));
     }
 
     if (media) {
-        tglf_fetch_message_media (&M->media, media);
+        M->media = tglf_fetch_message_media(media);
         assert (!(M->flags & TGLMF_SERVICE));
     }
 
@@ -2244,7 +2190,7 @@ struct tgl_message *tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *fro
 }
 
 #ifdef ENABLE_SECRET_CHAT
-struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
+std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
         const tgl_peer_id_t* from_id,
         const tgl_peer_id_t* to_id,
         const int* date,
@@ -2258,7 +2204,7 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
     clear_packet ();
     assert (!(flags & 0xfffe0000));
 
-    struct tgl_message* M = tglm_message_alloc(id);
+    std::shared_ptr<tgl_message> M = tglm_message_alloc(id);
 
     if (flags & (1 << 16)) {
       //if (!M) {
@@ -2308,18 +2254,17 @@ struct tgl_message* tglm_create_encr_message(tgl_message_id* id,
     }
 
     if (message) {
-        M->message_len = message_len;
-        M->message = tstrndup (message, message_len);
+        M->message = std::string(message, message_len);
         assert(!(M->flags & TGLMF_SERVICE));
     }
 
     if (media) {
-        tglf_fetch_message_media_encrypted(&M->media, media);
+        M->media = tglf_fetch_message_media_encrypted(media);
         assert(!(M->flags & TGLMF_SERVICE));
     }
 
     if (file) {
-        tglf_fetch_encrypted_message_file(&M->media, file);
+        tglf_fetch_encrypted_message_file(M->media, file);
         //assert(!(M->flags & TGLMF_SERVICE));
     }
 
@@ -2374,11 +2319,11 @@ void tglm_message_remove_unsent (struct tgl_message *M) {
 }
 #endif
 
-static void __send_msg (struct tgl_message *M) {
+static void __send_msg (const std::shared_ptr<tgl_message>& M) {
   TGL_NOTICE("Resending message...");
   //print_message (M);
 
-  if (M->media.type != tgl_message_media_none) {
+  if (M->media->type() != tgl_message_media_type_none) {
     assert (M->flags & TGLMF_ENCRYPTED);
     //bl_do_message_delete (&M->permanent_id);
     tgl_state::instance()->callback()->message_deleted(M->permanent_id.id);

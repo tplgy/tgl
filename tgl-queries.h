@@ -22,41 +22,41 @@ struct tl_ds_reply_markup;
 // send plain text message to peer id
 // flags is combination of TGL_SEND_MSG_FLAG_*
 // reply markup can be NULL
-void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra);
 
 // sends plain text reply on message *reply_id*
 // message *reply_id* should be cached
-void tgl_do_reply_message (long long int reply_id, tgl_peer_id_t to_id, const char *text, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+void tgl_do_reply_message (long long int reply_id, tgl_peer_id_t to_id, const char *text, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra);
 
 // forward message *msg_id* to peer *id*
 // message can not be encrypted and peer can not be secret chat
-void tgl_do_forward_message (int id, int msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+void tgl_do_forward_message (int id, int msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra);
 
 // forward messages *ids* to peer *id*
 // messages can not be encrypted and peer can not be secret chat
-void tgl_do_forward_messages (int id, int size, const int ids[], void (*callback)(std::shared_ptr<void> callback_extra, bool success, int count, struct tgl_message *ML[]), std::shared_ptr<void> callback_extra);
+void tgl_do_forward_messages (int id, int size, const int ids[], void (*callback)(std::shared_ptr<void> callback_extra, bool success, int count, const std::vector<std::shared_ptr<tgl_message>>& ML), std::shared_ptr<void> callback_extra);
 
 // sends contact to another user.
 // This contact may be or may not be telegram user
 void tgl_do_send_contact (tgl_peer_id_t id, const char *phone, const char *first_name, const char *last_name,
-        unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+        unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra);
 
 // reply on message *reply_id* with contact
 void tgl_do_reply_contact (int reply_id, tgl_peer_id_t peer_id, const char *phone, const char *first_name, const char *last_name,
-        unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+        unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra);
 
 // sends media from message *msg_id* to another dialog
 // a bit different from forwarding message with media
 // secret message media can be forwarded to secret chats
 // and non-secret - to non-secret chats and users
-void tgl_do_forward_media (tgl_peer_id_t id, struct tgl_message_media *media, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+void tgl_do_forward_media (tgl_peer_id_t id, struct tgl_message_media *media, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra);
 
 // sends location to chat *id*
-void tgl_do_send_location (tgl_peer_id_t id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+void tgl_do_send_location (tgl_peer_id_t id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra);
 
 // sends broadcast (i.e. message to several users at once)
 // flags are same as in tgl_do_send_message
-void tgl_do_send_broadcast (int num, int id[], const char *text, unsigned long long flags, void (*callback)(void *extra, bool success, int num, struct tgl_message *ML[]), std::shared_ptr<void> callback_extra);
+void tgl_do_send_broadcast (int num, int id[], const char *text, unsigned long long flags, void (*callback)(void *extra, bool success, int num, const std::vector<std::shared_ptr<tgl_message>>& ML), std::shared_ptr<void> callback_extra);
 
 /* }}} */
 
@@ -170,7 +170,7 @@ void tgl_do_update_contact_list ();
 // if offline_mode=1 then no actual query is sent
 // only locally cached messages returned
 // also marks messages from this chat as read
-void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, void (*callback)(std::shared_ptr<void> callback_extra, bool success, int size, struct tgl_message *list[]), std::shared_ptr<void> callback_extra);
+void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, void (*callback)(std::shared_ptr<void> callback_extra, bool success, int size, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> callback_extra);
 
 // sends typing event to chat
 // set status=tgl_typing_typing for default typing event
@@ -184,13 +184,13 @@ void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, void (
 // id type of id is UNKNOWN uses global search (in all dialogs) instead
 // if *from* or *to* is means *from*=0 and *to*=+INF
 // return up to *limit* entries from offset=*offset*
-void tgl_do_msg_search (int id, int from, int to, int limit, int offset, const char *query, int query_len, void (*callback)(std::shared_ptr<void> callback_extra, bool success, int size, struct tgl_message *list[]), std::shared_ptr<void> callback_extra);
+void tgl_do_msg_search (int id, int from, int to, int limit, int offset, const char *query, int query_len, void (*callback)(std::shared_ptr<void> callback_extra, bool success, int size, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> callback_extra);
 
 // deletes message *id*
 void tgl_do_delete_msg (long long msg_id, void (*callback)(std::shared_ptr<void> callback_extra, bool success), std::shared_ptr<void> callback_extra);
 
 // gets message by *id*
-void tgl_do_get_message (long long id, void (*callback)(std::shared_ptr<void> callback_extra, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+void tgl_do_get_message (long long id, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra);
 
 /* }}} */
 

@@ -28,7 +28,7 @@ int tgl_do_send_code_result_auth (const char *phone, int phone_len, const char *
 
 /* }}} */
 
-void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra);
+void tgl_do_send_msg (const std::shared_ptr<tgl_message>& M, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra);
 
 void tgl_do_check_password (void (*callback)(std::shared_ptr<void> extra, bool success), std::shared_ptr<void> callback_extra);
 

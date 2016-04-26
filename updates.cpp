@@ -188,7 +188,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       //struct tgl_message *N = tgl_message_get (TLS, DS_LVAL (DS_U->id));
       //int new = (!N || !(N->flags & TGLMF_CREATED));
       int new_msg = 0;
-      struct tgl_message *M = tglf_fetch_alloc_message (DS_U->message, &new_msg);
+      std::shared_ptr<tgl_message> M = tglf_fetch_alloc_message (DS_U->message, &new_msg);
       assert (M);
       if (new_msg) {
         //bl_do_msg_update (&M->permanent_id);
@@ -335,11 +335,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_new_encrypted_message:
     {
 #ifdef ENABLE_SECRET_CHAT
-      struct tgl_message *M = tglf_fetch_alloc_encrypted_message (DS_U->encr_message);
-      if (M) {
-          //bl_do_msg_update (tgl_state::instance(), &M->permanent_id);
-          tgls_free_message(M);
-      }
+      tglf_fetch_alloc_encrypted_message (DS_U->encr_message);
 #endif
     }
     break;
@@ -695,7 +691,7 @@ void tglu_work_update_short (int check_only, struct tl_ds_updates *DS_U) {
   tglu_work_update (check_only, DS_U->update);
 }
 
-void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *DS_U, void *extra) {
+void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *DS_U, std::shared_ptr<void> extra) {
   if (DS_U->pts) {
     assert (DS_U->pts_count);
 
@@ -703,7 +699,7 @@ void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *
       return;
     }
   }
-  struct tgl_message *M = (struct tgl_message *)extra;
+  std::shared_ptr<tgl_message> M = std::static_pointer_cast<tgl_message>(extra);
 
   if (!M) { return; }
   
@@ -754,7 +750,7 @@ void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *
   }
 }
 
-void tglu_work_any_updates (int check_only, struct tl_ds_updates *DS_U, void *extra) {
+void tglu_work_any_updates (int check_only, struct tl_ds_updates *DS_U, std::shared_ptr<void> extra) {
   if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }

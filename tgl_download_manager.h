@@ -9,6 +9,7 @@
 
 struct tgl_document;
 struct tgl_encr_document;
+struct tgl_photo_size;
 
 struct send_file {
     int fd;
@@ -35,7 +36,7 @@ struct send_file {
 
 struct download {
     download(int size, tgl_file_location location)
-        : location(location), offset(0), size(size), fd(-1), iv(NULL), key(NULL), type(0), refcnt(0)
+        : location(location), offset(0), size(size), fd(-1), iv(), key(), type(0), refcnt(0)
     {
     }
 
@@ -49,8 +50,8 @@ struct download {
     std::string name;
     std::string ext;
     //encrypted documents
-    unsigned char *iv;
-    unsigned char *key;
+    std::vector<unsigned char> iv;
+    std::vector<unsigned char> key;
     // ---
     int type;
     int refcnt; //Probably intended for being able to load multiple file parts simultaniously...however downloading is done sequentially
@@ -76,7 +77,7 @@ public:
             std::shared_ptr<void> callback_extra);
     void download_photo(struct tgl_photo *photo, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra);
 
-    void download_photo_size(struct tgl_photo_size *P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+    void download_photo_size(const std::shared_ptr<tgl_photo_size>& P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
             std::shared_ptr<void> callback_extra);
 
     void download_file_location(const tgl_file_location& P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),

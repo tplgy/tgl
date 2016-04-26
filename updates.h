@@ -20,6 +20,9 @@
 
 #ifndef __UPDATES_H__
 #define __UPDATES_H__
+
+#include <memory>
+
 struct tl_ds_updates;
 struct tl_ds_update;
   
@@ -27,5 +30,5 @@ int tgl_check_pts_diff (int pts, int pts_count);
 void tglu_work_update (int check_only, struct tl_ds_update *DS_U);
 void tglu_work_updates (int check_only, struct tl_ds_updates *DS_U);
 void tglu_work_any_updates_buf ();
-void tglu_work_any_updates (int check_only, struct tl_ds_updates *DS_U, void *extra);
+void tglu_work_any_updates (int check_only, struct tl_ds_updates *DS_U, std::shared_ptr<void> extra);
 #endif

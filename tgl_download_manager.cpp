@@ -465,10 +465,6 @@ void tgl_download_manager::end_load (std::shared_ptr<download> D, void *callback
     if (callback) {
         ((void (*)(std::shared_ptr<void>, bool, const std::string&))callback) (callback_extra, true, D->name);
     }
-
-    if (D->iv) {
-        free(D->iv);
-    }
 }
 
 int tgl_download_manager::download_on_answer (std::shared_ptr<query> q, void *DD)
@@ -484,9 +480,6 @@ int tgl_download_manager::download_on_answer (std::shared_ptr<query> q, void *DD
                 ((void (*)(std::shared_ptr<void>, bool, const std::string&))q->callback) (q->callback_extra, false, NULL);
             }
 
-            if (D->iv) {
-                free(D->iv);
-            }
             return 0;
         }
     }
@@ -494,13 +487,13 @@ int tgl_download_manager::download_on_answer (std::shared_ptr<query> q, void *DD
     int len = DS_UF->bytes->len;
     cur_downloaded_bytes += len;
 
-    if (D->iv) {
+    if (!D->iv.empty()) {
         assert (!(len & 15));
         void *ptr = DS_UF->bytes->data;
 
         TGLC_aes_key aes_key;
-        TGLC_aes_set_decrypt_key (D->key, 256, &aes_key);
-        TGLC_aes_ige_encrypt ((unsigned char*)ptr, (unsigned char*)ptr, len, &aes_key, D->iv, 0);
+        TGLC_aes_set_decrypt_key (D->key.data(), 256, &aes_key);
+        TGLC_aes_ige_encrypt ((unsigned char*)ptr, (unsigned char*)ptr, len, &aes_key, D->iv.data(), 0);
         memset ((unsigned char*)&aes_key, 0, sizeof (aes_key));
         if (len > D->size - D->offset) {
             len = D->size - D->offset;
@@ -536,9 +529,6 @@ int tgl_download_manager::download_on_error (std::shared_ptr<query> q, int error
         ((void (*)(std::shared_ptr<void>, bool, const std::string&))q->callback)(q->callback_extra, false, D->name);
     }
 
-    if (D->iv) {
-        free (D->iv);
-    }
     return 0;
 }
 
@@ -580,7 +570,7 @@ void tgl_download_manager::load_next_part (std::shared_ptr<download> D, void *ca
         out_int (D->location.local_id());
         out_long (D->location.secret());
     } else {
-        if (D->iv) {
+        if (!D->iv.empty()) {
             out_int (CODE_input_encrypted_file_location);
         } else {
             out_int (D->type);
@@ -594,7 +584,7 @@ void tgl_download_manager::load_next_part (std::shared_ptr<download> D, void *ca
     tglq_send_query (tgl_state::instance()->DC_list[D->location.dc()], packet_ptr - packet_buffer, packet_buffer, &m_download_methods, D, callback, callback_extra);
 }
 
-void tgl_download_manager::download_photo_size (struct tgl_photo_size *P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
+void tgl_download_manager::download_photo_size (const std::shared_ptr<tgl_photo_size>& P, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename),
         std::shared_ptr<void> callback_extra)
 {
     if (!P->loc.dc()) {
@@ -627,7 +617,7 @@ void tgl_download_manager::download_file_location (const tgl_file_location& file
 
 void tgl_download_manager::download_photo(struct tgl_photo *photo, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
 {
-    if (!photo->sizes_num) {
+    if (!photo->sizes.size()) {
         TGL_ERROR("Bad photo (no photo sizes");
         if (callback) {
             callback (callback_extra, 0, 0);
@@ -637,26 +627,26 @@ void tgl_download_manager::download_photo(struct tgl_photo *photo, void (*callba
     int max = -1;
     int maxi = 0;
     int i;
-    for (i = 0; i < photo->sizes_num; i++) {
-        if (photo->sizes[i].w + photo->sizes[i].h > max) {
-            max = photo->sizes[i].w + photo->sizes[i].h;
+    for (i = 0; i < static_cast<int>(photo->sizes.size()); i++) {
+        if (photo->sizes[i]->w + photo->sizes[i]->h > max) {
+            max = photo->sizes[i]->w + photo->sizes[i]->h;
             maxi = i;
         }
     }
-    download_photo_size(&photo->sizes[maxi], callback, callback_extra);
+    download_photo_size(photo->sizes[maxi], callback, callback_extra);
 }
 
 void tgl_download_manager::download_document_thumb (struct tgl_document *video, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
 {
-    download_photo_size(&video->thumb, callback, callback_extra);
+    download_photo_size(video->thumb, callback, callback_extra);
 }
 
 void tgl_download_manager::_tgl_do_load_document(std::shared_ptr<tgl_document> doc, std::shared_ptr<download> D, void (*callback)(std::shared_ptr<void> callback_extra, bool success, const std::string &filename), std::shared_ptr<void> callback_extra)
 {
     assert(doc);
 
-    if (doc->mime_type) {
-        const char *ext = tg_extension_by_mime(doc->mime_type);
+    if (!doc->mime_type.empty()) {
+        const char *ext = tg_extension_by_mime(doc->mime_type.c_str());
         if (ext) {
             D->ext = std::string(ext);
         }
@@ -693,10 +683,9 @@ void tgl_download_manager::download_encr_document(std::shared_ptr<tgl_encr_docum
     assert (V);
     std::shared_ptr<download> D = std::make_shared<download>(V->size, V);
     D->key = V->key;
-    D->iv = (unsigned char *)malloc (32);
-    memcpy (D->iv, V->iv, 32);
-    if (V->mime_type) {
-        const char *r = tg_extension_by_mime (V->mime_type);
+    D->iv = V->iv;
+    if (!V->mime_type.empty()) {
+        const char *r = tg_extension_by_mime (V->mime_type.c_str());
         if (r) {
             D->ext = std::string(r);
         }
@@ -705,8 +694,8 @@ void tgl_download_manager::download_encr_document(std::shared_ptr<tgl_encr_docum
 
     unsigned char md5[16];
     unsigned char str[64];
-    memcpy (str, V->key, 32);
-    memcpy (str + 32, V->iv, 32);
+    memcpy (str, V->key.data(), 32);
+    memcpy (str + 32, V->iv.data(), 32);
     TGLC_md5 (str, 64, md5);
     assert (V->key_fingerprint == ((*(int *)md5) ^ (*(int *)(md5 + 4))));
 }

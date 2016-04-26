@@ -607,13 +607,6 @@ static int q_list_on_error (std::shared_ptr<query> q, int error_code, const std:
 }
 /* }}} */
 
-struct msg_callback_extra
-{
-    msg_callback_extra(long long old_msg_id, tgl_peer_id_t to_id) : old_msg_id(old_msg_id), to_id(to_id) {}
-    long long old_msg_id;
-    tgl_peer_id_t to_id;
-};
-
 #include "queries-encrypted.cpp"
 
 static void increase_ent (int *ent_size, int **ent, int s) {
@@ -1055,10 +1048,10 @@ void tgl_do_update_contact_list () {
 static int msg_send_on_answer (std::shared_ptr<query> q, void *D) {
   struct tl_ds_updates *DS_U = (struct tl_ds_updates *)D;
 
-  std::shared_ptr<msg_callback_extra> old_msg_id = std::static_pointer_cast<msg_callback_extra>(q->extra);
+  std::shared_ptr<tgl_message> message = std::static_pointer_cast<tgl_message>(q->extra);
 
-  if (old_msg_id) {
-    tgl_state::instance()->callback()->message_sent(old_msg_id->old_msg_id, DS_LVAL(DS_U->id), old_msg_id->to_id, -1);
+  if (message) {
+    tgl_state::instance()->callback()->message_sent(message, DS_LVAL(DS_U->id), -1);
   }
 
 #if 0
@@ -1103,11 +1096,11 @@ static int msg_send_on_error (std::shared_ptr<query> q, int error_code, const st
   }
 #endif
 
-  auto x = std::static_pointer_cast<msg_callback_extra>(q->extra);
+  std::shared_ptr<tgl_message> message = std::static_pointer_cast<tgl_message>(q->extra);
   if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, int, struct tgl_message *))q->callback) (q->callback_extra, 0, NULL);
+    ((void (*)(std::shared_ptr<void>, int, const std::shared_ptr<tgl_message>&))q->callback) (q->callback_extra, 0, NULL);
   }
-  tgl_state::instance()->callback()->message_deleted(x->old_msg_id);
+  tgl_state::instance()->callback()->message_deleted(message->permanent_id.id);
   return 0;
 }
 
@@ -1120,7 +1113,7 @@ static struct query_methods msg_send_methods = {
   .timeout = 0,
 };
 
-void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
 #ifdef ENABLE_SECRET_CHAT
     if (tgl_get_peer_type (M->to_id) == TGL_PEER_ENCR_CHAT) {
         tgl_do_send_encr_msg (M, callback, callback_extra);
@@ -1139,15 +1132,13 @@ void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<vo
   if (M->reply_id) {
     out_int (M->reply_id);
   }
-  out_cstring (M->message, M->message_len);
+  out_cstring (M->message.c_str(), M->message.size());
   out_long (M->permanent_id.id);
 
   //TODO
   //long long *x = (long long *)malloc (12);
   //*x = M->id;
   //*(int*)(x+1) = M->to_id.id;
-
-  std::shared_ptr<msg_callback_extra> extra = std::make_shared<msg_callback_extra>(M->permanent_id.id, M->to_id);
 
   if (M->reply_markup) {
     if (!M->reply_markup->button_matrix.empty()) {
@@ -1202,10 +1193,10 @@ void tgl_do_send_msg (struct tgl_message *M, void (*callback)(std::shared_ptr<vo
     }
   }
 
-  tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_methods, extra, (void*)callback, callback_extra);
+  tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_methods, M, (void*)callback, callback_extra);
 }
 
-void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
   if (tgl_get_peer_type (peer_id) == TGL_PEER_ENCR_CHAT) {
 #ifdef ENABLE_SECRET_CHAT
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
@@ -1230,7 +1221,7 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
 
   struct tgl_message_id id = tgl_peer_id_to_random_msg_id (peer_id);
 
-  struct tgl_message *M = NULL;
+  std::shared_ptr<tgl_message> M;
 
   if (tgl_get_peer_type (peer_id) != TGL_PEER_ENCR_CHAT) {
     //int reply = (flags >> 32);
@@ -1299,10 +1290,9 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
   }
 
   tgl_do_send_msg (M, callback, callback_extra);
-  tgls_free_message(M);
 }
 
-void tgl_do_reply_message (tgl_message_id_t *_reply_id, const char *text, int text_len, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_reply_message (tgl_message_id_t *_reply_id, const char *text, int text_len, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
   tgl_message_id_t reply_id = *_reply_id;
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     reply_id = tgl_convert_temp_msg_id (reply_id);
@@ -1328,7 +1318,7 @@ void tgl_do_reply_message (tgl_message_id_t *_reply_id, const char *text, int te
 /* }}} */
 
 /* {{{ Send text file */
-void tgl_do_send_text (tgl_peer_id_t id, const char *file_name, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_text (tgl_peer_id_t id, const char *file_name, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
   int fd = open (file_name, O_RDONLY | O_BINARY);
   if (fd < 0) {
     tgl_set_query_error (EBADF, "Can not open file: %s", strerror(errno));
@@ -1359,7 +1349,7 @@ void tgl_do_send_text (tgl_peer_id_t id, const char *file_name, unsigned long lo
   }
 }
 
-void tgl_do_reply_text (tgl_message_id_t *_reply_id, const char *file_name, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_reply_text (tgl_message_id_t *_reply_id, const char *file_name, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
   tgl_message_id_t reply_id = *_reply_id;
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     reply_id = tgl_convert_temp_msg_id (reply_id);
@@ -1512,14 +1502,14 @@ void tgl_do_mark_read (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void>,
 
 /* {{{ Get history */
 struct get_history_extra {
-    std::vector<tgl_message*> ML;
+    std::vector<std::shared_ptr<tgl_message>> ML;
     tgl_peer_id_t id;
     int limit;
     int offset;
     int max_id;
 };
 
-static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, void (*callback)(std::shared_ptr<void>, bool success, std::vector<tgl_message*> list), std::shared_ptr<void> );
+static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> );
 
 
 static int get_history_on_answer (std::shared_ptr<query> q, void *D) {
@@ -1554,7 +1544,7 @@ static int get_history_on_answer (std::shared_ptr<query> q, void *D) {
 
   if (E->limit <= 0 || DS_MM->magic == CODE_messages_messages || DS_MM->magic == CODE_messages_channel_messages) {
     if (q->callback) {
-      ((void (*)(std::shared_ptr<void>, int, const std::vector<tgl_message*> &))q->callback) (q->callback_extra, 1, E->ML);
+      ((void (*)(std::shared_ptr<void>, int, const std::vector<std::shared_ptr<tgl_message>> &))q->callback) (q->callback_extra, 1, E->ML);
     }
     /*if (E->ML.size() > 0) {
       tgl_do_messages_mark_read (E->id, E->ML[0]->id, 0, 0, 0);
@@ -1562,7 +1552,7 @@ static int get_history_on_answer (std::shared_ptr<query> q, void *D) {
   } else {
     E->offset = 0;
     E->max_id = E->ML[E->ML.size()-1]->permanent_id.id;
-    _tgl_do_get_history (E, (void (*)(std::shared_ptr<void>, bool, std::vector<tgl_message*> list))q->callback, q->callback_extra);
+    _tgl_do_get_history (E, (void (*)(std::shared_ptr<void>, bool, const std::vector<std::shared_ptr<tgl_message>>& list))q->callback, q->callback_extra);
   }
   return 0;
 }
@@ -1573,7 +1563,8 @@ static int get_history_on_error (std::shared_ptr<query> q, int error_code, const
     std::shared_ptr<get_history_extra> E = std::static_pointer_cast<get_history_extra>(q->extra);
 
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int, int, struct tgl_message **))q->callback) (q->callback_extra, 0, 0, NULL);
+        std::vector<std::shared_ptr<tgl_message>> messages;
+        ((void (*)(std::shared_ptr<void>, int, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 0, 0, messages);
     }
     return 0;
 }
@@ -1588,7 +1579,7 @@ static struct query_methods get_history_methods = {
 };
 
 
-static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, void (*callback)(std::shared_ptr<void>, bool success, std::vector<tgl_message*> list), std::shared_ptr<void> callback_extra) {
+static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> callback_extra) {
   clear_packet ();
   //tgl_peer_t *C = tgl_peer_get (E->id);
   if (tgl_get_peer_type (E->id) != TGL_PEER_CHANNEL) {// || (C && (C->flags & TGLCHF_MEGAGROUP))) {
@@ -1610,7 +1601,7 @@ static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, void (*ca
 }
 
 void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, int offline_mode,
-    void (*callback)(std::shared_ptr<void>, bool success, std::vector<tgl_message*> list), std::shared_ptr<void> callback_extra) {
+    void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> callback_extra) {
   if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT || offline_mode) {
 #ifdef ENABLE_SECRET_CHAT
     // FIXME
@@ -1921,7 +1912,8 @@ static int send_msgs_on_answer (std::shared_ptr<query> q, void *D) {
             ((void (*)(std::shared_ptr<void>, int))q->callback) (q->callback_extra, 1);
         }
     } else if (E->multi) {
-        struct tgl_message **ML = 0;//(struct tgl_message **)malloc (sizeof (void *) * E->count);
+        //struct tgl_message **ML = (struct tgl_message **)malloc (sizeof (void *) * E->count);
+        std::vector<std::shared_ptr<tgl_message>> ML;
         int count = E->count;
         //int i;
 //        for (i = 0; i < count; i++) {
@@ -1930,14 +1922,15 @@ static int send_msgs_on_answer (std::shared_ptr<query> q, void *D) {
 //        }
         free (E->list);
         if (q->callback) {
-            ((void (*)(std::shared_ptr<void>, int, int, struct tgl_message **))q->callback) (q->callback_extra, 1, count, ML);
+            ((void (*)(std::shared_ptr<void>, int, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 1, count, ML);
         }
         //free (ML);
     } else {
 //        int y = tgls_get_local_by_random (E->id);
-        struct tgl_message *M = 0;//tgl_message_get (y);
+        //struct tgl_message *M = tgl_message_get (y);
+        std::shared_ptr<tgl_message> M;
         if (q->callback) {
-            ((void (*)(std::shared_ptr<void>, int, struct tgl_message *))q->callback) (q->callback_extra, 1, M);
+            ((void (*)(std::shared_ptr<void>, int, const std::shared_ptr<tgl_message>&))q->callback) (q->callback_extra, 1, M);
         }
     }
   return 0;
@@ -1954,11 +1947,13 @@ static int send_msgs_on_error (std::shared_ptr<query> q, int error_code, const s
     } else if (E->multi) {
         free (E->list);
         if (q->callback) {
-            ((void (*)(std::shared_ptr<void>, int, int, struct tgl_message **))q->callback) (q->callback_extra, 0, 0, NULL);
+            std::vector<std::shared_ptr<tgl_message>> messages;
+            ((void (*)(std::shared_ptr<void>, int, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 0, 0, messages);
         }
     } else {
         if (q->callback) {
-            ((void (*)(std::shared_ptr<void>, int, struct tgl_message *))q->callback) (q->callback_extra, 0, NULL);
+            std::vector<std::shared_ptr<tgl_message>> messages;
+            ((void (*)(std::shared_ptr<void>, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 0, messages);
         }
     }
     return 0;
@@ -1973,11 +1968,11 @@ struct query_methods send_msgs_methods = {
   .timeout = 0,
 };
 
-void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_ids[], unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, int count, struct tgl_message *ML[]), std::shared_ptr<void> callback_extra) {
+void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_ids[], unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, int count, const std::vector<std::shared_ptr<tgl_message>>& ML), std::shared_ptr<void> callback_extra) {
   if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
     TGL_ERROR("can not forward messages to secret chats");
     if (callback) {
-      callback (callback_extra, 0, 0, 0);
+      callback (callback_extra, 0, 0, std::vector<std::shared_ptr<tgl_message>>());
     }
     return;
   }
@@ -1992,7 +1987,7 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
     if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
       tgl_set_query_error (EINVAL, "unknown message");
       if (callback) {
-        callback (callback_extra, 0, 0, NULL);
+        callback (callback_extra, 0, 0, std::vector<std::shared_ptr<tgl_message>>());
       }
       tfree (ids, n * sizeof (tgl_message_id_t));
       return;
@@ -2001,7 +1996,7 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
     if (msg_id.peer_type == TGL_PEER_ENCR_CHAT) {
       tgl_set_query_error (EINVAL, "can not forward message from secret chat");
       if (callback) {
-        callback (callback_extra, 0, 0, NULL);
+        callback (callback_extra, 0, 0, std::vector<std::shared_ptr<tgl_message>>());
       }
       tfree (ids, n * sizeof (tgl_message_id_t));
       return;
@@ -2015,7 +2010,7 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
       if (tgl_cmp_peer_id (from_id, tgl_msg_id_to_peer_id (msg_id))) {
         tgl_set_query_error (EINVAL, "can not forward messages from different dialogs");
         if (callback) {
-          callback (callback_extra, 0, 0, NULL);
+          callback (callback_extra, 0, 0, std::vector<std::shared_ptr<tgl_message>>());
         }
         tfree (ids, n * sizeof (tgl_message_id_t));
         return;
@@ -2060,7 +2055,7 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
   tfree (ids, n * sizeof (tgl_message_id_t));
 }
 
-void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
   tgl_message_id_t msg_id = *_msg_id;
   if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
     msg_id = tgl_convert_temp_msg_id (msg_id);
@@ -2103,7 +2098,7 @@ void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, u
 
 void tgl_do_send_contact (tgl_peer_id_t id, const char *phone, int phone_len,
     const char *first_name, int first_name_len, const char *last_name, int last_name_len,
-    unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+    unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
   if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
     TGL_ERROR("can not send contact to secret chat");
     if (callback) {
@@ -2132,7 +2127,7 @@ void tgl_do_send_contact (tgl_peer_id_t id, const char *phone, int phone_len,
 }
 
 
-void tgl_do_reply_contact (tgl_message_id_t *_reply_id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name, int last_name_len, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_reply_contact (tgl_message_id_t *_reply_id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name, int last_name_len, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
   tgl_message_id_t reply_id = *_reply_id;
   if (reply_id.peer_type == TGL_PEER_TEMP_ID) {
     reply_id = tgl_convert_temp_msg_id (reply_id);
@@ -2156,7 +2151,7 @@ void tgl_do_reply_contact (tgl_message_id_t *_reply_id, const char *phone, int p
   }
 }
 
-void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
   if (tgl_get_peer_type (peer_id) == TGL_PEER_ENCR_CHAT) {
     tgl_set_query_error (EINVAL, "can not forward messages to secret chats");
     if (callback) {
@@ -2246,7 +2241,7 @@ void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, uns
 
 /* {{{ Send location */
 
-void tgl_do_send_location (tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_location (tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
   if (tgl_get_peer_type (peer_id) == TGL_PEER_ENCR_CHAT) {
 #ifdef ENABLE_SECRET_CHAT
     tgl_do_send_location_encr (peer_id, latitude, longitude, flags, callback, callback_extra);
@@ -2840,7 +2835,7 @@ void tgl_do_del_contact (tgl_peer_id_t id, void (*callback)(std::shared_ptr<void
 struct msg_search_extra {
     msg_search_extra(tgl_peer_id_t id, int from, int to, int limit, int offset, const std::string &query) :
         id(id), from(from), to(to), limit(limit), offset(offset), query(query) {}
-    std::vector<tgl_message*> ML;
+    std::vector<std::shared_ptr<tgl_message>> ML;
     tgl_peer_id_t id;
     int from;
     int to;
@@ -2850,7 +2845,7 @@ struct msg_search_extra {
     std::string query;
 };
 
-static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, void (*callback)(std::shared_ptr<void>, bool success, std::vector<tgl_message*> list), std::shared_ptr<void> );
+static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> );
 
 static int msg_search_on_answer (std::shared_ptr<query> q, void *D) {
   struct tl_ds_messages_messages *DS_MM = (struct tl_ds_messages_messages *)D;
@@ -2880,12 +2875,12 @@ static int msg_search_on_answer (std::shared_ptr<query> q, void *D) {
 
   if (E->limit <= 0 || DS_MM->magic == CODE_messages_messages) {
     if (q->callback) {
-      ((void (*)(std::shared_ptr<void>, int, std::vector<tgl_message *>))q->callback) (q->callback_extra, 1, E->ML);
+      ((void (*)(std::shared_ptr<void>, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 1, E->ML);
     }
   } else {
     E->max_id = E->ML[E->ML.size()-1]->permanent_id.id;
     E->offset = 0;
-    _tgl_do_msg_search (E, (void (*)(std::shared_ptr<void>, bool, std::vector<tgl_message*>))q->callback, q->callback_extra);
+    _tgl_do_msg_search (E, (void (*)(std::shared_ptr<void>, bool, const std::vector<std::shared_ptr<tgl_message>>&))q->callback, q->callback_extra);
   }
   return 0;
 }
@@ -2895,7 +2890,7 @@ static int msg_search_on_error (std::shared_ptr<query> q, int error_code, const 
 
     std::shared_ptr<msg_search_extra> E = std::static_pointer_cast<msg_search_extra>(q->extra);
     if (q->callback) {
-        ((void (*)(std::shared_ptr<void>, int, std::vector<tgl_message*>))q->callback) (q->callback_extra, 0, std::vector<tgl_message*>());
+        ((void (*)(std::shared_ptr<void>, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback) (q->callback_extra, 0, std::vector<std::shared_ptr<tgl_message>>());
     }
     return 0;
 }
@@ -2909,7 +2904,7 @@ static struct query_methods msg_search_methods = {
   .timeout = 0,
 };
 
-static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, void (*callback)(std::shared_ptr<void>, bool success, std::vector<tgl_message*> list), std::shared_ptr<void> callback_extra) {
+static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> callback_extra) {
   clear_packet ();
   if (tgl_get_peer_type (E->id) == TGL_PEER_UNKNOWN) {
     out_int (CODE_messages_search_global);
@@ -2935,11 +2930,11 @@ static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, void (*callb
 }
 
 //untested
-void tgl_do_msg_search (tgl_peer_id_t id, int from, int to, int limit, int offset, const std::string &query, void (*callback)(std::shared_ptr<void>, bool success, std::vector<tgl_message*> list), std::shared_ptr<void> callback_extra) {
+void tgl_do_msg_search (tgl_peer_id_t id, int from, int to, int limit, int offset, const std::string &query, void (*callback)(std::shared_ptr<void>, bool success, const std::vector<std::shared_ptr<tgl_message>>& list), std::shared_ptr<void> callback_extra) {
     if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT) {
         TGL_ERROR("can not search in secret chats");
         if (callback) {
-            callback (callback_extra, 0, std::vector<tgl_message*>());
+            callback (callback_extra, 0, std::vector<std::shared_ptr<tgl_message>>());
         }
         return;
     }
@@ -3009,13 +3004,14 @@ static int get_difference_on_answer (std::shared_ptr<query> q, void *D) {
     }
 
     int ml_pos = DS_LVAL (DS_UD->new_messages->cnt);
-    std::vector<tgl_message*> ML;
+    std::vector<std::shared_ptr<tgl_message>> ML;
+    ML.resize(ml_pos);
     for (i = 0; i < ml_pos; i++) {
-      ML.push_back(tglf_fetch_alloc_message (DS_UD->new_messages->data[i], NULL));
+      ML[i] = tglf_fetch_alloc_message (DS_UD->new_messages->data[i], NULL);
     }
 
     int el_pos = DS_LVAL (DS_UD->new_encrypted_messages->cnt);
-    std::vector<tgl_message*> EL;
+    std::vector<std::shared_ptr<tgl_message>> EL;
     for (i = 0; i < el_pos; i++) {
 #ifdef ENABLE_SECRET_CHAT
       EL.push_back(tglf_fetch_alloc_encrypted_message (DS_UD->new_encrypted_messages->data[i]));
@@ -3033,16 +3029,12 @@ static int get_difference_on_answer (std::shared_ptr<query> q, void *D) {
     for (i = 0; i < ml_pos; i++) {
       //bl_do_msg_update (&ML[i]->permanent_id);
       //tgl_state::instance()->callback()->new_message(ML[i]);
-      if (ML[i]) {
-        tgls_free_message(ML[i]);
-      }
     }
     for (i = 0; i < el_pos; i++) {
       // messages to secret chats that no longer exist are not initialized and NULL
       if (EL[i]) {
         //bl_do_msg_update (&EL[i]->permanent_id);
         tgl_state::instance()->callback()->new_message(EL[i]);
-        tgls_free_message(EL[i]);
       }
     }
 
@@ -3161,7 +3153,8 @@ static int get_channel_difference_on_answer (std::shared_ptr<struct query> q, vo
     }
 
     int ml_pos = DS_LVAL (DS_UD->new_messages->cnt);
-    struct tgl_message **ML = (struct tgl_message **)talloc (ml_pos * sizeof (void *));
+    std::vector<std::shared_ptr<tgl_message>> ML;
+    ML.resize(ml_pos);
     for (i = 0; i < ml_pos; i++) {
       ML[i] = tglf_fetch_alloc_message (DS_UD->new_messages->data[i], NULL);
     }
@@ -3177,8 +3170,6 @@ static int get_channel_difference_on_answer (std::shared_ptr<struct query> q, vo
     for (i = 0; i < ml_pos; i++) {
       //bl_do_msg_update (&ML[i]->permanent_id);
     }
-
-    tfree (ML, ml_pos * sizeof (void *));
 
     //bl_do_set_channel_pts (tgl_get_peer_id (channel->id), DS_LVAL (DS_UD->channel_pts));
     if (DS_UD->magic != CODE_updates_channel_difference_too_long) {
@@ -3666,32 +3657,23 @@ static int get_messages_on_answer (std::shared_ptr<query> q, void *D) {
     tglf_fetch_alloc_chat (DS_MM->chats->data[i]);
   }
 
-  struct tgl_message **ML;
-  if (q->extra) {
-    ML = (struct tgl_message **)calloc (1,sizeof (void *) * DS_LVAL (DS_MM->messages->cnt));
-  } else {
-    static struct tgl_message *M;
-    M = NULL;
-    ML = &M;
-    assert (DS_LVAL (DS_MM->messages->cnt) <= 1);
-  }
+  std::vector<std::shared_ptr<tgl_message>> ML;
+  assert (DS_LVAL (DS_MM->messages->cnt) <= 1);
+  ML.resize(DS_LVAL (DS_MM->messages->cnt));
   for (i = 0; i < DS_LVAL (DS_MM->messages->cnt); i++) {
     ML[i] = tglf_fetch_alloc_message (DS_MM->messages->data[i], NULL);
   }
   if (q->callback) {
     if (q->extra) {
-      ((void (*)(std::shared_ptr<void>, int, int, struct tgl_message **))q->callback)(q->callback_extra, 1, DS_LVAL (DS_MM->messages->cnt), ML);
+      ((void (*)(std::shared_ptr<void>, int, int, const std::vector<std::shared_ptr<tgl_message>>&))q->callback)(q->callback_extra, 1, DS_LVAL (DS_MM->messages->cnt), ML);
     } else {
       if (DS_LVAL (DS_MM->messages->cnt) > 0) {
-        ((void (*)(std::shared_ptr<void>, int, struct tgl_message *))q->callback)(q->callback_extra, 1, *ML);
+        ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_message>&))q->callback)(q->callback_extra, true, ML[0]);
       } else {
         tgl_set_query_error (ENOENT, "no such message");
-        ((void (*)(std::shared_ptr<void>, int, struct tgl_message *))q->callback)(q->callback_extra, 0, NULL);
+        ((void (*)(std::shared_ptr<void>, bool, const std::shared_ptr<tgl_message>&))q->callback)(q->callback_extra, false, nullptr);
       }
     }
-  }
-  if (q->extra) {
-    free (ML);
   }
   return 0;
 }
@@ -3705,7 +3687,7 @@ static struct query_methods get_messages_methods = {
   .timeout = 0,
 };
 
-void tgl_do_get_message (tgl_message_id_t *_msg_id, void (*callback)(std::shared_ptr<void>, bool success, struct tgl_message *M), std::shared_ptr<void> callback_extra) {
+void tgl_do_get_message (tgl_message_id_t *_msg_id, void (*callback)(std::shared_ptr<void>, bool success, const std::shared_ptr<tgl_message>& M), std::shared_ptr<void> callback_extra) {
   tgl_message_id_t msg_id = *_msg_id;
   if (msg_id.peer_type == TGL_PEER_TEMP_ID) {
     msg_id = tgl_convert_temp_msg_id (msg_id);
@@ -4146,7 +4128,7 @@ void tgl_do_check_password (void (*callback)(std::shared_ptr<void> extra, bool s
 /* }}} */
 
 /* {{{ send broadcast */
-void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, int text_len, unsigned long long flags, void (*callback)(std::shared_ptr<void> extra, bool success, int num, struct tgl_message *ML[]), std::shared_ptr<void> callback_extra) {
+void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, int text_len, unsigned long long flags, void (*callback)(std::shared_ptr<void> extra, bool success, int num, const std::vector<std::shared_ptr<tgl_message>>& ML), std::shared_ptr<void> callback_extra) {
 
   assert (num <= 1000);
 
@@ -4177,8 +4159,7 @@ void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, 
     struct tl_ds_message_media TDSM;
     TDSM.magic = CODE_message_media_empty;
 
-    struct tgl_message* M = tglm_message_create (&id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
-    tgls_free_message(M);
+    tglm_message_create (&id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
   }
 
   clear_packet ();

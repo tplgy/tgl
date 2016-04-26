@@ -131,148 +131,161 @@ class tgl_connection;
 class tgl_timer;
 
 enum tgl_message_entity_type {
-tgl_message_entity_unknown,
-tgl_message_entity_mention,
-tgl_message_entity_hashtag,
-tgl_message_entity_bot_command,
-tgl_message_entity_url,
-tgl_message_entity_email,
-tgl_message_entity_bold,
-tgl_message_entity_italic,
-tgl_message_entity_code,
-tgl_message_entity_pre,
-tgl_message_entity_text_url
+    tgl_message_entity_unknown,
+    tgl_message_entity_mention,
+    tgl_message_entity_hashtag,
+    tgl_message_entity_bot_command,
+    tgl_message_entity_url,
+    tgl_message_entity_email,
+    tgl_message_entity_bold,
+    tgl_message_entity_italic,
+    tgl_message_entity_code,
+    tgl_message_entity_pre,
+    tgl_message_entity_text_url
 };
 
 struct tgl_message_entity {
-  enum tgl_message_entity_type type;
-  int start;
-  int length;
-  std::string text_url;
-  tgl_message_entity(): type(tgl_message_entity_unknown) { }
+    enum tgl_message_entity_type type;
+    int start;
+    int length;
+    std::string text_url;
+    tgl_message_entity()
+        : type(tgl_message_entity_unknown)
+        , start(0)
+        , length(0)
+    { }
 };
 
 enum tgl_message_media_type {
-  tgl_message_media_none,
-  tgl_message_media_photo,
-  tgl_message_media_document,
-  tgl_message_media_geo,
-  tgl_message_media_contact,
-  tgl_message_media_unsupported,
-  //tgl_message_media_photo_encr,
-  //tgl_message_media_video_encr,
-  //tgl_message_media_audio_encr,
-  tgl_message_media_document_encr,
-  tgl_message_media_webpage,
-  tgl_message_media_venue,
-  tgl_message_media_video,
-  tgl_message_media_audio
+    tgl_message_media_type_none,
+    tgl_message_media_type_photo,
+    tgl_message_media_type_document,
+    tgl_message_media_type_geo,
+    tgl_message_media_type_contact,
+    tgl_message_media_type_unsupported,
+    //tgl_message_media_type_photo_encr,
+    //tgl_message_media_type_video_encr,
+    //tgl_message_media_type_audio_encr,
+    tgl_message_media_type_document_encr,
+    tgl_message_media_type_webpage,
+    tgl_message_media_type_venue,
+    tgl_message_media_type_video,
+    tgl_message_media_type_audio
 };
 
 enum tgl_message_action_type {
-  tgl_message_action_type_none,
-  tgl_message_action_type_geo_chat_create,
-  tgl_message_action_type_geo_chat_checkin,
-  tgl_message_action_type_chat_create,
-  tgl_message_action_type_chat_edit_title,
-  tgl_message_action_type_chat_edit_photo,
-  tgl_message_action_type_chat_delete_photo,
-  tgl_message_action_type_chat_add_users,
-  tgl_message_action_type_chat_add_user_by_link,
-  tgl_message_action_type_chat_delete_user,
-  tgl_message_action_type_set_message_ttl,
-  tgl_message_action_type_read_messages,
-  tgl_message_action_type_delete_messages,
-  tgl_message_action_type_screenshot_messages,
-  tgl_message_action_type_flush_history,
-  tgl_message_action_type_resend,
-  tgl_message_action_type_notify_layer,
-  tgl_message_action_type_typing,
-  tgl_message_action_type_noop,
-  tgl_message_action_type_commit_key,
-  tgl_message_action_type_abort_key,
-  tgl_message_action_type_request_key,
-  tgl_message_action_type_accept_key,
-  tgl_message_action_type_channel_create,
-  tgl_message_action_type_chat_migrate_to,
-  tgl_message_action_type_channel_migrate_from
+    tgl_message_action_type_none,
+    tgl_message_action_type_geo_chat_create,
+    tgl_message_action_type_geo_chat_checkin,
+    tgl_message_action_type_chat_create,
+    tgl_message_action_type_chat_edit_title,
+    tgl_message_action_type_chat_edit_photo,
+    tgl_message_action_type_chat_delete_photo,
+    tgl_message_action_type_chat_add_users,
+    tgl_message_action_type_chat_add_user_by_link,
+    tgl_message_action_type_chat_delete_user,
+    tgl_message_action_type_set_message_ttl,
+    tgl_message_action_type_read_messages,
+    tgl_message_action_type_delete_messages,
+    tgl_message_action_type_screenshot_messages,
+    tgl_message_action_type_flush_history,
+    tgl_message_action_type_resend,
+    tgl_message_action_type_notify_layer,
+    tgl_message_action_type_typing,
+    tgl_message_action_type_noop,
+    tgl_message_action_type_commit_key,
+    tgl_message_action_type_abort_key,
+    tgl_message_action_type_request_key,
+    tgl_message_action_type_accept_key,
+    tgl_message_action_type_channel_create,
+    tgl_message_action_type_chat_migrate_to,
+    tgl_message_action_type_channel_migrate_from
 };
 
 enum tgl_typing_status {
-  tgl_typing_none,
-  tgl_typing_typing,
-  tgl_typing_cancel,
-  tgl_typing_record_video,
-  tgl_typing_upload_video,
-  tgl_typing_record_audio,
-  tgl_typing_upload_audio,
-  tgl_typing_upload_photo,
-  tgl_typing_upload_document,
-  tgl_typing_geo,
-  tgl_typing_choose_contact
+    tgl_typing_none,
+    tgl_typing_typing,
+    tgl_typing_cancel,
+    tgl_typing_record_video,
+    tgl_typing_upload_video,
+    tgl_typing_record_audio,
+    tgl_typing_upload_audio,
+    tgl_typing_upload_photo,
+    tgl_typing_upload_document,
+    tgl_typing_geo,
+    tgl_typing_choose_contact
 };
 
 struct tgl_photo_size {
-  char *type;
-  struct tgl_file_location loc;
-  int w;
-  int h;
-  int size;
-  char *data;
+    std::string type;
+    struct tgl_file_location loc;
+    int w;
+    int h;
+    int size;
+    //char *data;
+    //std::vector<char> data;
+    tgl_photo_size()
+        : w(0)
+        , h(0)
+        , size(0)
+    { }
 };
 
 struct tgl_geo {
-  double longitude;
-  double latitude;
+    double longitude;
+    double latitude;
+    tgl_geo(): longitude(0), latitude(0) { }
 };
 
 struct tgl_photo {
-  long long id;
-  long long access_hash;
-  int refcnt;
-  //int user_id;
-  int date;
-  char *caption;
-  //struct tgl_geo geo;
-  int sizes_num;
-  struct tgl_photo_size *sizes;
-};
-
-struct tgl_encr_document {
-  long long id;
-  long long access_hash;
-  int refcnt;
-
-  int dc_id;
-  int size;
-  int key_fingerprint;
-  int flags;
-  
-  unsigned char *key;
-  unsigned char *iv;
-  int w;
-  int h;
-  char *caption;
-  char *mime_type;
-  int duration;
+    long long id;
+    long long access_hash;
+    //int user_id;
+    int date;
+    std::string caption;
+    //struct tgl_geo geo;
+    std::vector<std::shared_ptr<tgl_photo_size>> sizes;
+    tgl_photo()
+        : id(0)
+        , access_hash(0)
+        , date(0)
+    { }
 };
 
 struct tgl_document {
-  long long id;
-  long long access_hash;
-  //int refcnt;
-  //int user_id;
-  int date;
-  int size;
-  int dc_id;
-  struct tgl_photo_size thumb;
-  char *caption;
-  char *mime_type;
+    long long id;
+    long long access_hash;
+    //int user_id;
+    int date;
+    int size;
+    int dc_id;
+    std::shared_ptr<tgl_photo_size> thumb;
+    std::string caption;
+    std::string mime_type;
 
-  int w;
-  int h;
-  int flags;
-  int duration;
+    int w;
+    int h;
+    int flags;
+    int duration;
+
+    tgl_document()
+        : id(0)
+        , access_hash(0)
+        , date(0)
+        , size(0)
+        , dc_id(0)
+        , w(0)
+        , h(0)
+        , flags(0)
+        , duration(0)
+    { }
+};
+
+struct tgl_encr_document: public tgl_document {
+    std::vector<unsigned char> key;
+    std::vector<unsigned char> iv;
+    int key_fingerprint;
+    tgl_encr_document() : key_fingerprint(0) { }
 };
 
 struct tgl_message_action {
@@ -291,13 +304,11 @@ struct tgl_message_action_chat_edit_title: public tgl_message_action {
     std::string new_title;
 };
 
-// FIXME: Remove tgl_photo_wrapper when we can use std::shared_ptr to manage tgl_photo.
-struct tgl_photo_wrapper;
 struct tgl_message_action_chat_edit_photo: public tgl_message_action {
     tgl_message_action_chat_edit_photo() { }
-    explicit tgl_message_action_chat_edit_photo(const std::shared_ptr<tgl_photo_wrapper>& wrapper): photo_wrapper(wrapper) { }
+    explicit tgl_message_action_chat_edit_photo(const std::shared_ptr<tgl_photo>& photo): photo(photo) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_chat_edit_photo; }
-    std::shared_ptr<tgl_photo_wrapper> photo_wrapper;
+    std::shared_ptr<tgl_photo> photo;
 };
 
 struct tgl_message_action_chat_delete_photo: public tgl_message_action {
@@ -315,7 +326,6 @@ struct tgl_message_action_chat_delete_user: public tgl_message_action {
     virtual tgl_message_action_type type() override { return tgl_message_action_type_chat_delete_user; }
     int user_id;
 };
-
 
 struct tgl_message_action_chat_add_user_by_link: public tgl_message_action {
     tgl_message_action_chat_add_user_by_link(): inviter_id(0) { }
@@ -428,57 +438,96 @@ struct tgl_message_action_none: public tgl_message_action {
 };
 
 struct tgl_webpage {
-  long long id;
-  int refcnt;
-  char *url;
-  char *display_url;
-  char *type;
-  char *site_name;
-  char *title;
-  char *description;
-  struct tgl_photo *photo;
-  char *embed_url;
-  char *embed_type;
-  int embed_width;
-  int embed_height;
-  int duration;
-  char *author;
+    long long id;
+    std::string url;
+    std::string display_url;
+    std::string type;
+    std::string site_name;
+    std::string title;
+    std::string description;
+    std::shared_ptr<tgl_photo> photo;
+    std::string embed_url;
+    std::string embed_type;
+    std::string author;
+    int embed_width;
+    int embed_height;
+    int duration;
+    tgl_webpage()
+        : id(0)
+        , embed_width(0)
+        , embed_height(0)
+        , duration(0)
+    { }
 };
 
 struct tgl_message_media {
-  enum tgl_message_media_type type;
-  union {
-    struct {
-      union {
-        struct tgl_photo *photo;
-        struct tgl_document *document;
-      };
-      char *caption;
-    };
-    
-    struct tgl_encr_document *encr_document;
-    struct tgl_webpage *webpage;
+    virtual tgl_message_media_type type() = 0;
+    virtual ~tgl_message_media() { }
+};
 
+struct tgl_message_media_none: public tgl_message_media {
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_none; }
+};
+
+struct tgl_message_media_photo: public tgl_message_media {
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_photo; }
+    std::shared_ptr<tgl_photo> photo;
+    std::string caption;
+};
+
+struct tgl_message_media_document: public tgl_message_media {
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_document; }
+    std::shared_ptr<tgl_document> document;
+    std::string caption;
+};
+
+struct tgl_message_media_geo: public tgl_message_media {
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_geo; }
+    tgl_geo geo;
+};
+
+struct tgl_message_media_contact: public tgl_message_media {
+    tgl_message_media_contact(): user_id(0) { }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_contact; }
+    std::string phone;
+    std::string first_name;
+    std::string last_name;
+    int user_id;
+};
+
+struct tgl_message_media_unsupported: public tgl_message_media {
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_unsupported; }
+};
+
+struct tgl_message_media_document_encr: public tgl_message_media {
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_document_encr; }
+    std::shared_ptr<tgl_encr_document> encr_document;
+};
+
+struct tgl_message_media_webpage: public tgl_message_media {
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_webpage; }
+    std::shared_ptr<tgl_webpage> webpage;
+};
+
+struct tgl_message_media_venue: public tgl_message_media {
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_venue; }
     struct tgl_geo geo;
-    struct {
-      char *phone;
-      char *first_name;
-      char *last_name;
-      int user_id;
-    };
-    
-    struct {
-      void *data;
-      int data_size;
-    };
-    struct {
-      struct tgl_geo geo;
-      char *title;
-      char *address;
-      char *provider;
-      char *venue_id;
-    } venue;
-  };
+    std::string title;
+    std::string address;
+    std::string provider;
+    std::string venue_id;
+};
+
+struct tgl_message_media_video: public tgl_message_media {
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_video; }
+    std::shared_ptr<tgl_document> document;
+    std::string caption;
+};
+
+struct tgl_message_media_audio: public tgl_message_media {
+    virtual tgl_message_media_type type() override { return tgl_message_media_type_audio; }
+    std::shared_ptr<tgl_document> document;
+    std::string caption;
 };
 
 struct tgl_message_reply_markup {
@@ -488,33 +537,42 @@ struct tgl_message_reply_markup {
 };
 
 typedef struct tgl_message_id {
-  unsigned peer_type;
-  unsigned peer_id;
-  long long id;
-  long long access_hash;
+    unsigned peer_type;
+    unsigned peer_id;
+    long long id;
+    long long access_hash;
 } tgl_message_id_t;
 
 struct tgl_message {
-  long long server_id;
-  long long random_id;
-  struct tgl_message_id permanent_id;
-  int flags;
-  tgl_peer_id_t fwd_from_id;
-  int fwd_date;
-  int reply_id;
-  tgl_peer_id_t from_id;
-  tgl_peer_id_t to_id;
-  int date;
-  std::vector<std::shared_ptr<tgl_message_entity>> entities;
-  std::shared_ptr<tgl_message_reply_markup> reply_markup;
-  std::shared_ptr<tgl_message_action> action;
-  union {
-    struct {
-      char *message;
-      int message_len;
-      struct tgl_message_media media;
-    };
-  };
+    long long server_id;
+    long long random_id;
+    struct tgl_message_id permanent_id;
+    int flags;
+    tgl_peer_id_t fwd_from_id;
+    int fwd_date;
+    int reply_id;
+    tgl_peer_id_t from_id;
+    tgl_peer_id_t to_id;
+    int date;
+    std::vector<std::shared_ptr<tgl_message_entity>> entities;
+    std::shared_ptr<tgl_message_reply_markup> reply_markup;
+    std::shared_ptr<tgl_message_action> action;
+    std::shared_ptr<tgl_message_media> media;
+    std::string message;
+    tgl_message()
+        : server_id(0)
+        , random_id(0)
+        , permanent_id({0, 0, 0, 0})
+        , flags(0)
+        , fwd_from_id({0, 0, 0})
+        , fwd_date(0)
+        , reply_id(0)
+        , from_id({0, 0, 0})
+        , to_id({0, 0, 0})
+        , date(0)
+        , action(std::make_shared<tgl_message_action_none>())
+        , media(std::make_shared<tgl_message_media_none>())
+    { }
 };
 
 #pragma pack(pop)
