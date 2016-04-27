@@ -26,14 +26,7 @@
 
 #include <boost/asio.hpp>
 #include <mutex>
-
-struct connection_buffer {
-    unsigned char *start;
-    unsigned char *end;
-    unsigned char *rptr;
-    unsigned char *wptr;
-    struct connection_buffer *next;
-};
+#include <deque>
 
 enum conn_state {
     conn_none,
@@ -75,10 +68,10 @@ public:
 
 private:
     void start_read();
-    void handle_read(const boost::system::error_code&, size_t);
+    void handle_read(const std::shared_ptr<std::vector<char>>& buffer, const boost::system::error_code&, size_t);
 
     void start_write();
-    void handle_write(const boost::system::error_code&, size_t);
+    void handle_write(const std::vector<std::shared_ptr<std::vector<char>>>& buffers, const boost::system::error_code&, size_t);
 
     void stop_ping_timer();
     void ping_alarm(const boost::system::error_code&);
@@ -90,7 +83,7 @@ private:
     void try_rpc_read();
 
     void handle_connect(const boost::system::error_code&);
-    void free_buffers();
+    void clear_buffers();
 
     bool m_closed;
 
@@ -103,12 +96,10 @@ private:
     boost::asio::deadline_timer m_fail_timer;
 
     size_t m_out_packet_num;
-    connection_buffer* m_in_head;
-    connection_buffer* m_in_tail;
-    connection_buffer* m_out_head;
-    connection_buffer* m_out_tail;
+    std::deque<std::shared_ptr<std::vector<char>>> m_write_buffer_queue;
+    std::deque<std::shared_ptr<std::vector<char>>> m_read_buffer_queue;
+    std::shared_ptr<std::vector<char>> m_temp_read_buffer;
     size_t m_in_bytes;
-    size_t m_bytes_to_write;
     std::weak_ptr<tgl_dc> m_dc;
     std::weak_ptr<tgl_session> m_session;
     std::shared_ptr<mtproto_client> m_mtproto_client;

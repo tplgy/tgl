@@ -19,8 +19,6 @@
     Copyright Topology LP 2016
 */
 
-#include <boost/bind.hpp>
-
 #include "tgl-net-asio.h"
 
 #include "tgl-log.h"
@@ -29,6 +27,8 @@
 #include "tools.h"
 
 #define PING_TIMEOUT 10
+
+constexpr size_t TEMP_READ_BUFFER_SIZE = (1 << 20);
 
 tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
         const std::string& host, int port,
@@ -44,12 +44,7 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     , m_ping_timer(io_service)
     , m_fail_timer(io_service)
     , m_out_packet_num(0)
-    , m_in_head(nullptr)
-    , m_in_tail(nullptr)
-    , m_out_head(nullptr)
-    , m_out_tail(nullptr)
     , m_in_bytes(0)
-    , m_bytes_to_write(0)
     , m_dc(dc)
     , m_session(session)
     , m_mtproto_client(client)
@@ -62,7 +57,7 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
 
 tgl_connection_asio::~tgl_connection_asio()
 {
-    free_buffers();
+    clear_buffers();
 }
 
 void tgl_connection_asio::ping_alarm(const boost::system::error_code& error) {
@@ -95,7 +90,7 @@ void tgl_connection_asio::stop_ping_timer() {
 void tgl_connection_asio::start_ping_timer() {
     std::lock_guard<std::recursive_mutex> guard(m_mutex);
     m_ping_timer.expires_from_now(boost::posix_time::seconds(PING_TIMEOUT));
-    m_ping_timer.async_wait(boost::bind(&tgl_connection_asio::ping_alarm, shared_from_this(), boost::asio::placeholders::error));
+    m_ping_timer.async_wait(std::bind(&tgl_connection_asio::ping_alarm, shared_from_this(), std::placeholders::_1));
 }
 
 void tgl_connection_asio::fail_alarm(const boost::system::error_code& error) {
@@ -115,46 +110,38 @@ void tgl_connection_asio::start_fail_timer() {
     m_in_fail_timer = true;
 
     m_fail_timer.expires_from_now(boost::posix_time::seconds(10));
-    m_fail_timer.async_wait(boost::bind(&tgl_connection_asio::fail_alarm, shared_from_this(), boost::asio::placeholders::error));
+    m_fail_timer.async_wait(std::bind(&tgl_connection_asio::fail_alarm, shared_from_this(), std::placeholders::_1));
 }
 
-static connection_buffer *new_connection_buffer(int size) {
-    connection_buffer *b = (connection_buffer *)talloc0(sizeof(connection_buffer));
-    b->start = (unsigned char*)malloc(size);
-    b->end = b->start + size;
-    b->rptr = b->wptr = b->start;
-    return b;
-}
-
-static void delete_connection_buffer(connection_buffer *b) {
-    free(b->start);
-    free(b);
-}
-
-ssize_t tgl_connection_asio::read_in_lookup(void *_data, size_t len) {
+ssize_t tgl_connection_asio::read_in_lookup(void* data_out, size_t len) {
     std::lock_guard<std::recursive_mutex> guard(m_mutex);
-    unsigned char *data = (unsigned char *)_data;
-    if (!len || !m_in_bytes) { return 0; }
+    unsigned char* data = static_cast<unsigned char*>(data_out);
+    if (!len || !m_in_bytes) {
+        return 0;
+    }
     assert (len > 0);
     if (len > m_in_bytes) {
         len = m_in_bytes;
     }
-    int x = 0;
-    connection_buffer *b = m_in_head;
+
+    int read_bytes = 0;
+    size_t i = 0;
+    auto buffer = m_read_buffer_queue[i];
     while (len) {
-        size_t y = b->wptr - b->rptr;
-        if (y >= len) {
-            memcpy(data, b->rptr, len);
-            return x + len;
+        size_t buffer_size = buffer->size();
+        if (buffer_size >= len) {
+            memcpy(data, buffer->data(), len);
+            return read_bytes + len;
         } else {
-            memcpy(data, b->rptr, y);
-            x += y;
-            data += y;
-            len -= y;
-            b = b->next;
+            memcpy(data, buffer->data(), buffer_size);
+            read_bytes += buffer_size;
+            data += buffer_size;
+            len -= buffer_size;
+            buffer = m_read_buffer_queue[++i];
         }
     }
-    return x;
+
+    return read_bytes;
 }
 
 static int rotate_port(int port) {
@@ -228,22 +215,10 @@ void tgl_connection_asio::fail() {
         m_socket.close();
     }
 
+    clear_buffers();
+
     m_port = rotate_port(m_port);
-    connection_buffer* b = m_out_head;
-    while (b) {
-        connection_buffer *d = b;
-        b = b->next;
-        delete_connection_buffer(d);
-    }
-    b = m_in_head;
-    while (b) {
-        connection_buffer *d = b;
-        b = b->next;
-        delete_connection_buffer(d);
-    }
-    m_out_head = m_out_tail = m_in_head = m_in_tail = nullptr;
     m_state = conn_failed;
-    m_bytes_to_write = m_in_bytes = 0;
     TGL_NOTICE("Lost connection to server... " << m_ip << ":" << m_port);
     restart();
 }
@@ -254,12 +229,11 @@ void tgl_connection_asio::try_rpc_read() {
         return;
     }
 
-    TGL_ASSERT(m_in_head);
-
-    while (1) {
-        if (m_in_bytes < 1) { return; }
+    while (true) {
+        if (m_in_bytes < 1) {
+            return;
+        }
         unsigned len = 0;
-        unsigned t = 0;
         ssize_t result = read_in_lookup(&len, 1);
         TGL_ASSERT_UNUSED(result, result == 1);
         if (len >= 1 && len <= 0x7e) {
@@ -278,6 +252,7 @@ void tgl_connection_asio::try_rpc_read() {
         }
 
         if (len >= 1 && len <= 0x7e) {
+            unsigned t = 0;
             result = read(&t, 1);
             TGL_ASSERT_UNUSED(result, result == 1);
             TGL_ASSERT(t == len);
@@ -312,30 +287,14 @@ void tgl_connection_asio::close()
     m_ping_timer.cancel();
     m_fail_timer.cancel();
     m_socket.close();
-    free_buffers();
+    clear_buffers();
 }
 
-void tgl_connection_asio::free_buffers()
+void tgl_connection_asio::clear_buffers()
 {
     std::lock_guard<std::recursive_mutex> guard(m_mutex);
-    connection_buffer* b = m_out_head;
-    while (b) {
-        connection_buffer *d = b;
-        b = b->next;
-        delete_connection_buffer(d);
-    }
-    m_out_head = nullptr;
-    m_out_tail = nullptr;
-    m_bytes_to_write = 0;
-
-    b = m_in_head;
-    while (b) {
-        connection_buffer *d = b;
-        b = b->next;
-        delete_connection_buffer(d);
-    }
-    m_in_head = nullptr;
-    m_in_tail = nullptr;
+    m_write_buffer_queue.clear();
+    m_read_buffer_queue.clear();
     m_in_bytes = 0;
 }
 
@@ -364,6 +323,7 @@ bool tgl_connection_asio::connect() {
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_ip), m_port);
     m_socket.async_connect(endpoint, std::bind(&tgl_connection_asio::handle_connect, shared_from_this(), std::placeholders::_1));
     m_state = conn_connecting;
+    m_write_pending = false;
     m_last_receive_time = tglt_get_double_time();
     return true;
 }
@@ -380,12 +340,12 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
     TGL_NOTICE("connected to " << m_ip << ":" << m_port);
 
     m_last_receive_time = tglt_get_double_time();
-    m_io_service.post(boost::bind(&tgl_connection_asio::start_read, shared_from_this()));
+    m_io_service.post(std::bind(&tgl_connection_asio::start_read, shared_from_this()));
 }
 
-ssize_t tgl_connection_asio::read(void* buffer, size_t len) {
+ssize_t tgl_connection_asio::read(void* data_out, size_t len) {
     std::lock_guard<std::recursive_mutex> guard(m_mutex);
-    unsigned char* data = static_cast<unsigned char*>(buffer);
+    unsigned char* data = static_cast<unsigned char*>(data_out);
     if (!len) {
         return 0;
     }
@@ -394,29 +354,33 @@ ssize_t tgl_connection_asio::read(void* buffer, size_t len) {
     if (len > m_in_bytes) {
         len = m_in_bytes;
     }
-    size_t x = 0;
+
+    size_t read_bytes = 0;
+    auto buffer = m_read_buffer_queue.front();
     while (len) {
-        size_t y = m_in_head->wptr - m_in_head->rptr;
-        if (y > len || (y == len && m_in_head->wptr < m_in_head->end)) {
-            memcpy (data, m_in_head->rptr, len);
-            m_in_head->rptr += len;
-            m_in_bytes -= len;
-            return x + len;
-        } else {
-            memcpy(data, m_in_head->rptr, y);
-            m_in_bytes -= y;
-            x += y;
-            data += y;
-            len -= y;
-            connection_buffer *old = m_in_head;
-            m_in_head = m_in_head->next;
-            if (!m_in_head) {
-                m_in_tail = nullptr;
+        size_t buffer_size = buffer->size();
+        if (buffer_size >= len) {
+            memcpy(data, buffer->data(), len);
+            if (buffer_size == len) {
+                m_read_buffer_queue.pop_front();
+            } else {
+                memmove(buffer->data(), buffer->data() + len, buffer_size - len);
+                buffer->resize(buffer_size - len);
             }
-            delete_connection_buffer(old);
+            m_in_bytes -= len;
+            return read_bytes + len;
+        } else {
+            memcpy(data, buffer->data(), buffer_size);
+            m_in_bytes -= buffer_size;
+            read_bytes += buffer_size;
+            data += buffer_size;
+            len -= buffer_size;
+            m_read_buffer_queue.pop_front();
+            buffer = m_read_buffer_queue.front();
         }
     }
-    return x;
+
+    return read_bytes;
 }
 
 void tgl_connection_asio::start_read() {
@@ -425,14 +389,10 @@ void tgl_connection_asio::start_read() {
         return;
     }
 
-    if (!m_in_tail) {
-        m_in_head = m_in_tail = new_connection_buffer(1 << 20);
-    }
+    m_temp_read_buffer = std::make_shared<std::vector<char>>(TEMP_READ_BUFFER_SIZE);
 
-    m_socket.async_receive(boost::asio::buffer(m_in_tail->wptr, m_in_tail->end - m_in_tail->wptr),
-            boost::bind(&tgl_connection_asio::handle_read, shared_from_this(),
-                boost::asio::placeholders::error,
-                boost::asio::placeholders::bytes_transferred));
+    m_socket.async_read_some(boost::asio::buffer(m_temp_read_buffer->data(), m_temp_read_buffer->size()),
+            std::bind(&tgl_connection_asio::handle_read, shared_from_this(), m_temp_read_buffer, std::placeholders::_1, std::placeholders::_2));
 }
 
 ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
@@ -442,37 +402,16 @@ ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
     if (!len) {
         return 0;
     }
-    assert (len > 0);
-    size_t x = 0;
-    if (!m_out_head) {
-        connection_buffer *b = new_connection_buffer(1 << 20);
-        m_out_head = m_out_tail = b;
+
+    auto buffer = std::make_shared<std::vector<char>>(len);
+    memcpy(buffer->data(), data, len);
+    m_write_buffer_queue.push_back(buffer);
+
+    if (!m_write_pending) {
+        m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));
     }
-    while (len) {
-        if (static_cast<size_t>(m_out_tail->end - m_out_tail->wptr) >= len) {
-            memcpy(m_out_tail->wptr, data, len);
-            m_out_tail->wptr += len;
-            m_bytes_to_write += len;
-            x += len;
-            break;
-        } else {
-            size_t y = m_out_tail->end - m_out_tail->wptr;
-            TGL_ASSERT(y < len);
-            memcpy(m_out_tail->wptr, data, y);
-            x += y;
-            len -= y;
-            data += y;
-            connection_buffer *b = new_connection_buffer (1 << 20);
-            m_out_tail->next = b;
-            b->next = nullptr;
-            m_out_tail = b;
-            m_bytes_to_write += y;
-        }
-    }
-    if (m_bytes_to_write) {
-        m_io_service.post(boost::bind(&tgl_connection_asio::start_write, shared_from_this()));
-    }
-    return x;
+
+    return len;
 }
 
 void tgl_connection_asio::start_write() {
@@ -486,21 +425,31 @@ void tgl_connection_asio::start_write() {
         m_mtproto_client->ready(shared_from_this());
     }
 
-    if (!m_write_pending && m_bytes_to_write > 0) {
+    if (!m_write_pending && m_write_buffer_queue.size() > 0) {
         m_write_pending = true;
-        TGL_ASSERT(m_out_head);
-        m_socket.async_send(boost::asio::buffer(m_out_head->rptr, m_out_head->wptr - m_out_head->rptr),
-                boost::bind(&tgl_connection_asio::handle_write, shared_from_this(),
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred));
+        std::vector<boost::asio::const_buffer> buffers;
+        std::vector<std::shared_ptr<std::vector<char>>> pending_buffers;
+        for (const auto& buffer: m_write_buffer_queue) {
+            buffers.push_back(boost::asio::buffer(buffer->data(), buffer->size()));
+            pending_buffers.push_back(buffer);
+        }
+        boost::asio::async_write(m_socket, buffers,
+                std::bind(&tgl_connection_asio::handle_write, shared_from_this(), pending_buffers, std::placeholders::_1, std::placeholders::_2));
     }
 }
 
 void tgl_connection_asio::flush() {
 }
 
-void tgl_connection_asio::handle_read(const boost::system::error_code& ec, size_t bytes_transferred) {
+void tgl_connection_asio::handle_read(const std::shared_ptr<std::vector<char>>& buffer,
+        const boost::system::error_code& ec, size_t bytes_transferred) {
     std::lock_guard<std::recursive_mutex> guard(m_mutex);
+
+    if (m_temp_read_buffer != buffer) {
+        TGL_DEBUG("the temp reading buffer has changed due to connection restart");
+        return;
+    }
+
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
             TGL_WARNING("read error: " << ec << " (" << ec.message() << ")");
@@ -520,26 +469,51 @@ void tgl_connection_asio::handle_read(const boost::system::error_code& ec, size_
         m_last_receive_time = tglt_get_double_time();
         stop_ping_timer();
         start_ping_timer();
-    }
 
-    m_in_tail->wptr += bytes_transferred;
-    if (m_in_tail->wptr == m_in_tail->end) {
-        connection_buffer *b = new_connection_buffer(1 << 20);
-        m_in_tail->next = b;
-        m_in_tail = b;
+        if (bytes_transferred != buffer->size()) {
+            assert(bytes_transferred < buffer->size());
+            buffer->resize(bytes_transferred);
+        }
+        m_read_buffer_queue.push_back(buffer);
     }
 
     m_in_bytes += bytes_transferred;
-    if (bytes_transferred) {
+    if (m_read_buffer_queue.size()) {
         try_rpc_read();
     }
 
     start_read();
 }
 
-void tgl_connection_asio::handle_write(const boost::system::error_code& ec, size_t bytes_transferred) {
+static inline bool starts_with_buffers(const std::deque<std::shared_ptr<std::vector<char>>>& queue,
+        const std::vector<std::shared_ptr<std::vector<char>>>& buffers)
+{
+    if (queue.size() < buffers.size()) {
+        return false;
+    }
+
+    size_t i = 0;
+    for (const auto& buffer: buffers) {
+        if (buffer != queue[i++]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::vector<char>>>& buffers,
+        const boost::system::error_code& ec, size_t bytes_transferred) {
     std::lock_guard<std::recursive_mutex> guard(m_mutex);
+
+    if (!starts_with_buffers(m_write_buffer_queue, buffers)) {
+        TGL_DEBUG("the front writing buffers have changed due to connection restart");
+        return;
+    }
+
     m_write_pending = false;
+    m_write_buffer_queue.erase(m_write_buffer_queue.begin(), m_write_buffer_queue.begin() + buffers.size());
+
     if (ec) {
         TGL_WARNING("write error: " << ec << " (" << ec.message() << ")");
         fail();
@@ -553,20 +527,7 @@ void tgl_connection_asio::handle_write(const boost::system::error_code& ec, size
 
     TGL_DEBUG("wrote " << bytes_transferred << " bytes to DC " << m_dc.lock()->id);
 
-    if (m_out_head) {
-        m_out_head->rptr += bytes_transferred;
-        if (m_out_head->rptr == m_out_head->wptr) {
-            connection_buffer* b = m_out_head;
-            m_out_head = b->next;
-            if (!m_out_head) {
-                m_out_tail = nullptr;
-            }
-            delete_connection_buffer(b);
-        }
-    }
-
-    m_bytes_to_write -= bytes_transferred;
-    if (m_bytes_to_write > 0) {
-        m_io_service.post(boost::bind(&tgl_connection_asio::start_write, shared_from_this()));
+    if (m_write_buffer_queue.size() > 0) {
+        m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));
     }
 }
