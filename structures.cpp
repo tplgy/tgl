@@ -835,7 +835,9 @@ void tglf_fetch_document_attribute (const std::shared_ptr<tgl_document>& D, stru
     D->duration = DS_LVAL (DS_DA->duration);
     return;
   case CODE_document_attribute_filename:
-    D->caption = DS_STR_DUP (DS_DA->file_name);
+    if (DS_DA->file_name && DS_DA->file_name->data) {
+        D->caption = std::string(DS_DA->file_name->data, DS_DA->file_name->len);
+    }
     return;
   default:
     assert (0);
