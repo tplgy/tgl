@@ -30,7 +30,7 @@ struct tgl_user {
     int flags;
     long long access_hash;
     struct tgl_user_status status;
-    tgl_user(): id({0, 0, 0}), flags(0) { }
+    tgl_user(): flags(0), access_hash(0) { }
 };
 
 #endif

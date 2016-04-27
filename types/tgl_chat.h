@@ -8,6 +8,7 @@ struct tgl_chat_user {
     int user_id;
     int inviter_id;
     int date;
+    tgl_chat_user(): user_id(0), inviter_id(0), date(0) { }
 };
 
 struct tgl_chat {
@@ -28,6 +29,7 @@ struct tgl_chat {
     //int date;
     //int version;
     //int admin_id;
+    tgl_chat(): flags(0) { }
 };
 
 #endif

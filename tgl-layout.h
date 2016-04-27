@@ -541,6 +541,7 @@ typedef struct tgl_message_id {
     unsigned peer_id;
     long long id;
     long long access_hash;
+    tgl_message_id(): peer_type(0), peer_id(0), id(0), access_hash(0) { }
 } tgl_message_id_t;
 
 struct tgl_message {
@@ -562,13 +563,13 @@ struct tgl_message {
     tgl_message()
         : server_id(0)
         , random_id(0)
-        , permanent_id({0, 0, 0, 0})
+        , permanent_id()
         , flags(0)
-        , fwd_from_id({0, 0, 0})
+        , fwd_from_id()
         , fwd_date(0)
         , reply_id(0)
-        , from_id({0, 0, 0})
-        , to_id({0, 0, 0})
+        , from_id()
+        , to_id()
         , date(0)
         , action(std::make_shared<tgl_message_action_none>())
         , media(std::make_shared<tgl_message_media_none>())

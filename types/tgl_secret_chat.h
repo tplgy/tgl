@@ -100,8 +100,7 @@ struct tgl_secret_chat {
     static size_t key_sha_size() { return 20; }
 
     tgl_secret_chat()
-        : id({0, 0, 0})
-        , flags(0)
+        : flags(0)
         , last(nullptr)
         , print_name()
         , username()

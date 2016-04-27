@@ -24,6 +24,7 @@ struct tgl_file_location {
     long long document_id() const { return m_volume; }
     long long access_hash() const { return m_secret; }
 
+private:
     int m_dc;
     long long m_volume; // == id in documents
     int m_local_id;  // not used for documents
