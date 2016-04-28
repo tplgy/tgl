@@ -34,8 +34,6 @@ void tgl_do_check_password (std::function<void(bool success)> callback);
 
 void tgl_do_export_auth (int num, std::function<void(bool success)> callback);
 
-void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, std::function<void(bool success, std::shared_ptr<tgl_secret_chat> E)> callback);
-
 void tgl_do_get_difference (int sync_from_start, std::function<void(bool success)> callback);
 
 void tgl_do_lookup_state ();
