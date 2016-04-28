@@ -25,6 +25,7 @@
 #include "auto/auto-free-ds.h"
 #include "auto/auto-store-ds.h"
 #include "mtproto-common.h"
+#include "queries-encrypted.h"
 #include "tgl-log.h"
 #include "tgl-structures.h"
 #include "tgl-methods-in.h"

@@ -39,12 +39,4 @@ void tgl_do_get_difference (int sync_from_start, std::function<void(bool success
 void tgl_do_lookup_state ();
 
 void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D);
-
-void tgl_do_request_exchange (struct tgl_secret_chat *E);
-
-void tgl_do_create_keys_end (struct tgl_secret_chat *U);
-
-void tgl_do_send_encr_chat_layer(const std::shared_ptr<tgl_secret_chat>& secret_chat);
-
-void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>& secret_chat, int start_seq_no, int end_seq_no);
 #endif

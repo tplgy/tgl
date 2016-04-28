@@ -24,6 +24,7 @@
 #include <strings.h>
 #include "tgl-structures.h"
 #include "queries.h"
+#include "queries-encrypted.h"
 #include "tgl-methods-in.h"
 #include "updates.h"
 #include "mtproto-client.h"
@@ -1626,7 +1627,7 @@ std::shared_ptr<tgl_message> tglf_fetch_encrypted_message (struct tl_ds_encrypte
   decr_end = decr_ptr + (DS_EM->bytes->len / 4);
   
   if (secret_chat->exchange_state == tgl_sce_committed && secret_chat->key_fingerprint() == *(long long *)decr_ptr) {
-    tgl_do_confirm_exchange (secret_chat.get(), 0);
+    tgl_do_confirm_exchange(secret_chat, 0);
     assert (secret_chat->exchange_state == tgl_sce_none);
   }
   
@@ -1874,44 +1875,44 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_encrypted_message (struct tl_ds_en
   if (!M) { return M; }
 
   if (M->flags & TGLMF_CREATED) {
-    std::shared_ptr<tgl_secret_chat> E = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(M->permanent_id.peer_id));
-    assert(E);
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(M->permanent_id.peer_id));
+    assert(secret_chat);
     auto action_type = M->action ? M->action->type() : tgl_message_action_type_none;
     if (action_type == tgl_message_action_type_request_key) {
       auto action = std::static_pointer_cast<tgl_message_action_request_key>(M->action);
-      if (E->exchange_state == tgl_sce_none || (E->exchange_state == tgl_sce_requested && E->exchange_id > action->exchange_id )) {
-        tgl_do_accept_exchange (E.get(), action->exchange_id, action->g_a.data());
+      if (secret_chat->exchange_state == tgl_sce_none || (secret_chat->exchange_state == tgl_sce_requested && secret_chat->exchange_id > action->exchange_id )) {
+        tgl_do_accept_exchange(secret_chat, action->exchange_id, action->g_a);
       } else {
-        TGL_WARNING("Exchange: Incorrect state (received request, state = " << E->exchange_state << ")");
+        TGL_WARNING("secret_chatxchange: Incorrect state (received request, state = " << secret_chat->exchange_state << ")");
       }
     }
     if (action_type == tgl_message_action_type_accept_key) {
       auto action = std::static_pointer_cast<tgl_message_action_accept_key>(M->action);
-      if (E->exchange_state == tgl_sce_requested && E->exchange_id == action->exchange_id) {
-        tgl_do_commit_exchange (E.get(), action->g_a.data());
+      if (secret_chat->exchange_state == tgl_sce_requested && secret_chat->exchange_id == action->exchange_id) {
+        tgl_do_commit_exchange(secret_chat, action->g_a);
       } else {
-        TGL_WARNING("Exchange: Incorrect state (received accept, state = " << E->exchange_state << ")");
+        TGL_WARNING("secret_chatxchange: Incorrect state (received accept, state = " << secret_chat->exchange_state << ")");
       }
     }
     if (action_type == tgl_message_action_type_commit_key) {
       auto action = std::static_pointer_cast<tgl_message_action_commit_key>(M->action);
-      if (E->exchange_state == tgl_sce_accepted && E->exchange_id == action->exchange_id) {
-        tgl_do_confirm_exchange (E.get(), 1);
+      if (secret_chat->exchange_state == tgl_sce_accepted && secret_chat->exchange_id == action->exchange_id) {
+        tgl_do_confirm_exchange(secret_chat, 1);
       } else {
-        TGL_WARNING("Exchange: Incorrect state (received commit, state = " << E->exchange_state << ")");
+        TGL_WARNING("secret_chatxchange: Incorrect state (received commit, state = " << secret_chat->exchange_state << ")");
       }
     }
     if (action_type == tgl_message_action_type_abort_key) {
       auto action = std::static_pointer_cast<tgl_message_action_abort_key>(M->action);
-      if (E->exchange_state != tgl_sce_none && E->exchange_id == action->exchange_id) {
-        tgl_do_abort_exchange (E.get());
+      if (secret_chat->exchange_state != tgl_sce_none && secret_chat->exchange_id == action->exchange_id) {
+        tgl_do_abort_exchange(secret_chat);
       } else {
-        TGL_WARNING("Exchange: Incorrect state (received abort, state = " << E->exchange_state << ")");
+        TGL_WARNING("secret_chatxchange: Incorrect state (received abort, state = " << secret_chat->exchange_state << ")");
       }
     }
     if (action_type == tgl_message_action_type_notify_layer) {
       auto action = std::static_pointer_cast<tgl_message_action_notify_layer>(M->action);
-      tgl_do_encr_chat(E->id,
+      tgl_do_encr_chat(secret_chat->id,
               NULL,
               NULL,
               NULL,
@@ -1928,8 +1929,8 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_encrypted_message (struct tl_ds_en
     }
     if (action_type == tgl_message_action_type_set_message_ttl) {
       auto action = std::static_pointer_cast<tgl_message_action_set_message_ttl>(M->action);
-      //bl_do_encr_chat_set_ttl (E, M->action.ttl);      
-      tgl_do_encr_chat(E->id,
+      //bl_do_encr_chat_set_ttl (secret_chat, M->action.ttl);
+      tgl_do_encr_chat(secret_chat->id,
               NULL,
               NULL,
               NULL,

@@ -34,6 +34,7 @@
 
 #include "mtproto-client.h"
 #include "queries.h"
+#include "queries-encrypted.h"
 #include "tgl-log.h"
 #include "tgl-structures.h"
 #include "tgl_download_manager.h"
@@ -79,7 +80,7 @@
 
 #define memcmp8(a,b) memcmp ((a), (b), 8)
 
-struct paramed_type bool_type = TYPE_TO_PARAM(bool);
+static const struct paramed_type bool_type = TYPE_TO_PARAM(bool);
 
 static int mystreq1 (const char *a, const char *b, int l) {
     if ((int)strlen (a) != l) { return 1; }
@@ -605,8 +606,6 @@ static int q_list_on_error (std::shared_ptr<query> q, int error_code, const std:
     return 0;
 }
 /* }}} */
-
-#include "queries-encrypted.cpp"
 
 static void increase_ent (int *ent_size, int **ent, int s) {
   *ent = (int *)trealloc (*ent, (*ent_size) * 4, (*ent_size) * 4 + 4 * s);
@@ -4438,33 +4437,6 @@ void tgl_do_update_status (bool online, std::function<void(bool success)> callba
     out_int (online ? CODE_bool_false : CODE_bool_true);
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &update_status_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
-
-#ifdef ENABLE_SECRET_CHAT
-void tgl_do_request_exchange (struct tgl_secret_chat *E) {
-  assert (0);
-  exit (2);
-}
-
-void tgl_do_accept_exchange (struct tgl_secret_chat *E, long long exchange_id, unsigned char ga[]) {
-  assert (0);
-  exit (2);
-}
-
-void tgl_do_confirm_exchange (struct tgl_secret_chat *E, int sen_nop) {
-  assert (0);
-  exit (2);
-}
-
-void tgl_do_commit_exchange (struct tgl_secret_chat *E, unsigned char gb[]) {
-  assert (0);
-  exit (2);
-}
-
-void tgl_do_abort_exchange (struct tgl_secret_chat *E) {
-  assert (0);
-  exit (2);
-}
-#endif
 
 void tgl_started_cb(bool success) {
   if (!success) {
