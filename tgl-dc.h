@@ -72,6 +72,8 @@ struct tgl_dc_option {
 struct tgl_dc {
     tgl_dc();
 
+    void reset();
+
     int id;
     int flags = 0;
     int rsa_key_idx = 0;

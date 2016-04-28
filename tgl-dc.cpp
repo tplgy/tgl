@@ -65,6 +65,32 @@ tgl_dc::tgl_dc()
 {
 }
 
+void tgl_dc::reset()
+{
+    TGL_DEBUG("resetting DC " << id);
+    for (size_t i = 0; i < sessions.size(); ++i) {
+        std::shared_ptr<tgl_session> session = sessions[i];
+        if (session) {
+            session->c->close();
+            session->ev->cancel();
+            session->c = nullptr;
+            session->ev = nullptr;
+            sessions[i] = nullptr;
+        }
+    }
+    flags = 0;
+    rsa_key_idx = 0;
+    state = st_init;
+    memset(auth_key, 0, 256);
+    memset(temp_auth_key, 0, 256);
+    memset(nonce, 0, 256);
+    memset(new_nonce, 0, 256);
+    memset(server_nonce, 0, 256);
+    auth_key_id = 0;
+    temp_auth_key_id = 0;
+    server_salt = 0;
+}
+
 void tgl_dc::send_pending_queries() {
     TGL_NOTICE("sending pending queries for DC " << id);
     std::list<std::shared_ptr<query>> queries = pending_queries; // make a copy since queries can get re-enqueued

@@ -1287,6 +1287,7 @@ static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int le
     case st_authorized:
         if (op < 0 && op >= -999) {
             TGL_WARNING("Server error " << op << " from DC " << DC->id);
+            DC->reset();
             return -1;
         } else {
             return process_rpc_message(c, (struct encrypted_message *)(Response/* + 8*/), Response_len/* - 12*/);
