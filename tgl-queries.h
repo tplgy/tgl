@@ -7,12 +7,16 @@
 
 #include <vector>
 
-void tgl_do_get_terms_of_service (struct tgl_state *TLS, std::function<void(bool success, const char *ans)> callback);
+void tgl_do_get_terms_of_service(std::function<void(bool success, const char *ans)> callback);
+
+// Registers the device for push notifications
+void tgl_do_register_device(int token_type, const std::string& token, const std::string& device_model, const std::string& system_version, const std::string& lang_code,
+        std::function<void(bool success)> callback);
 
 /* {{{ WORK WITH ACCOUNT */
 // sets account password
 // user will be requested to type his current password and new password (twice)
-void tgl_do_set_password (const char *hint, int hint_len, void (*callback)(void *extra, bool success), void *extra);
+void tgl_do_set_password (const char *hint, int hint_len, std::function<void(bool success)> callback);
 /* }}} */
 
 /* {{{ SENDING MESSAGES */

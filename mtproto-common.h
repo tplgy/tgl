@@ -183,6 +183,13 @@ static inline void out_string (const char *str) {
   out_cstring (str, strlen (str));
 }
 
+#ifdef __cplusplus
+static inline void out_string (const std::string& str)
+{
+  out_cstring(str.c_str(), str.length());
+}
+#endif
+
 static inline void out_bignum (TGLC_bn *n) {
   int l = tgl_serialize_bignum (n, (char *)packet_ptr, (PACKET_BUFFER_SIZE - (packet_ptr - packet_buffer)) * 4);
   assert (l > 0);

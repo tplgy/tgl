@@ -1918,7 +1918,7 @@ static int send_msgs_on_answer (std::shared_ptr<query> q, void *D) {
 
     if (!E) {
         if (q->callback) {
-            (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
+            (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (true);
         }
     } else if (E->multi) {
         //struct tgl_message **ML = (struct tgl_message **)malloc (sizeof (void *) * E->count);
@@ -1931,7 +1931,7 @@ static int send_msgs_on_answer (std::shared_ptr<query> q, void *D) {
 //        }
         free (E->list);
         if (q->callback) {
-            (*std::static_pointer_cast<std::function<void(int, int, const std::vector<std::shared_ptr<tgl_message>>&)>>(q->callback)) (1, count, ML);
+            (*std::static_pointer_cast<std::function<void(bool, int, const std::vector<std::shared_ptr<tgl_message>>&)>>(q->callback)) (true, count, ML);
         }
         //free (ML);
     } else {
@@ -1939,7 +1939,7 @@ static int send_msgs_on_answer (std::shared_ptr<query> q, void *D) {
         //struct tgl_message *M = tgl_message_get (y);
         std::shared_ptr<tgl_message> M;
         if (q->callback) {
-            (*std::static_pointer_cast<std::function<void(int, const std::shared_ptr<tgl_message>&)>>(q->callback)) (1, M);
+            (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_message>&)>>(q->callback)) (true, M);
         }
     }
   return 0;
@@ -4334,6 +4334,20 @@ void tgl_do_get_terms_of_service(std::function<void(bool success, const char *an
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_tos_methods, 0, callback ? std::make_shared<std::function<void(bool, const char *)>>(callback) : nullptr);
 }
 /* }}} */
+
+void tgl_do_register_device(int token_type, const std::string& token, const std::string& device_model, const std::string& system_version, const std::string& lang_code,
+        std::function<void(bool success)> callback)
+{
+  clear_packet ();
+  out_int (CODE_account_register_device);
+  out_int(token_type);
+  out_string(token);
+  out_string(device_model);
+  out_string(system_version);
+  out_int (CODE_bool_false); // app sandbox
+  out_string(lang_code);
+  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
+}
 
 void tgl_do_upgrade_group (tgl_peer_id_t id, std::function<void(bool success)> callback) {
   clear_packet ();
