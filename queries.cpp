@@ -4340,11 +4340,11 @@ void tgl_do_register_device(int token_type, const std::string& token, const std:
   clear_packet ();
   out_int (CODE_account_register_device);
   out_int(token_type);
-  out_string(token);
-  out_string(device_model);
-  out_string(system_version);
+  out_std_string(token);
+  out_std_string(device_model);
+  out_std_string(system_version);
   out_int (CODE_bool_false); // app sandbox
-  out_string(lang_code);
+  out_std_string(lang_code);
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 

@@ -184,7 +184,7 @@ static inline void out_string (const char *str) {
 }
 
 #ifdef __cplusplus
-static inline void out_string (const std::string& str)
+static inline void out_std_string (const std::string& str)
 {
   out_cstring(str.c_str(), str.length());
 }
