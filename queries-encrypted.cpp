@@ -15,12 +15,6 @@ struct secret_msg_callback_extra
     int out_seq_no;
 };
 
-struct secret_chat_extra {
-   std::function<void(const std::shared_ptr<tgl_secret_chat>&, unsigned char *random, std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>)> callback;
-   std::shared_ptr<tgl_secret_chat> secret_chat;
-};
-
-
 /* {{{ Encrypt decrypted */
 static int *encr_extra;
 static int *encr_ptr;
@@ -122,11 +116,8 @@ static void do_set_dh_params(const std::shared_ptr<tgl_secret_chat>& secret_chat
 static int encr_chat_on_error(std::shared_ptr<query> q, int error_code, const std::string &error) {
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error));
 
-    assert(q->extra);
-
     if (q->callback) {
-        auto extra = std::static_pointer_cast<secret_chat_extra>(q->extra);
-        (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(q->callback)) (false, extra->secret_chat);
+        (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(q->callback)) (false, std::static_pointer_cast<tgl_secret_chat>(q->extra));
     }
 
     return 0;
@@ -1009,11 +1000,16 @@ void tgl_do_discard_secret_chat (const std::shared_ptr<tgl_secret_chat>& E, std:
         callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(callback) : nullptr);
 }
 
+struct encr_chat_extra {
+   std::function<void(const std::shared_ptr<tgl_secret_chat>&, unsigned char *random, std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>)> callback;
+   std::shared_ptr<tgl_secret_chat> secret_chat;
+};
+
 static int get_dh_config_on_answer (std::shared_ptr<query> q, void *D) {
     struct tl_ds_messages_dh_config *DS_MDC = (struct tl_ds_messages_dh_config *)D;
 
     assert(q->extra);
-    auto extra = std::static_pointer_cast<secret_chat_extra>(q->extra);
+    auto extra = std::static_pointer_cast<encr_chat_extra>(q->extra);
 
     if (DS_MDC->magic == CODE_messages_dh_config) {
         assert (DS_MDC->p->len == 256);
@@ -1031,10 +1027,23 @@ static int get_dh_config_on_answer (std::shared_ptr<query> q, void *D) {
     return 0;
 }
 
+static int get_dh_config_on_error(std::shared_ptr<query> q, int error_code, const std::string &error) {
+    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error));
+
+    assert(q->extra);
+
+    if (q->callback) {
+        auto extra = std::static_pointer_cast<encr_chat_extra>(q->extra);
+        (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(q->callback)) (false, extra->secret_chat);
+    }
+
+    return 0;
+}
+
 struct paramed_type dh_config_type = TYPE_TO_PARAM(messages_dh_config);
 static struct query_methods get_dh_config_methods  = {
   .on_answer = get_dh_config_on_answer,
-  .on_error = encr_chat_on_error,
+  .on_error = get_dh_config_on_error,
   .on_timeout = nullptr,
   .type = dh_config_type,
   .name = "dh config",
@@ -1054,7 +1063,7 @@ void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& sec
     out_int (CODE_messages_get_dh_config);
     out_int (secret_chat->encr_param_version);
     out_int (256);
-    auto extra = std::make_shared<secret_chat_extra>();
+    auto extra = std::make_shared<encr_chat_extra>();
     extra->callback = tgl_do_send_accept_encr_chat;
     extra->secret_chat = secret_chat;
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dh_config_methods, extra,
@@ -1076,7 +1085,7 @@ int tgl_do_create_encr_chat_request(const tgl_peer_id_t& user_id, std::function<
     out_int (CODE_messages_get_dh_config);
     out_int (0);
     out_int (256);
-    auto extra = std::make_shared<secret_chat_extra>();
+    auto extra = std::make_shared<encr_chat_extra>();
     extra->callback = tgl_do_send_create_encr_chat;
     extra->secret_chat = secret_chat;
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dh_config_methods, extra,
