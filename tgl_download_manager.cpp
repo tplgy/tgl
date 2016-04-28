@@ -407,9 +407,9 @@ void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id_t to_id, const std::s
 
     if (!f->encr && f->flags != -1 && thumb_len > 0) {
         TGL_NOTICE("send_file_thumb");
-        send_file_thumb (f, thumb_data, thumb_len, callback);
+        send_file_thumb (f, thumb_data, thumb_len, 0);
     } else {
-        send_part(f, callback);
+        send_part(f, 0);
     }
 }
 
@@ -430,8 +430,10 @@ void tgl_download_manager::set_profile_photo (const std::string &file_name, std:
 void tgl_download_manager::send_document (tgl_peer_id_t to_id, const std::string &file_name, const std::string &caption, unsigned long long flags,
         std::function<void(bool success, tgl_message *M)> callback)
 {
+    TGL_DEBUG("send_document - file_name: " + file_name);
     if (flags & TGL_SEND_MSG_FLAG_DOCUMENT_AUTO) {
         const char *mime_type = tg_mime_by_filename (file_name.c_str());
+        TGL_DEBUG("send_document - detected mime_type: " + std::string(mime_type));
         if (strcmp (mime_type, "image/gif") == 0) {
             flags |= TGL_SEND_MSG_FLAG_DOCUMENT_ANIMATED;
         } else if (!memcmp (mime_type, "image/", 6)) {
