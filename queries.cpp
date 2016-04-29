@@ -4334,18 +4334,36 @@ void tgl_do_get_terms_of_service(std::function<void(bool success, const char *an
 }
 /* }}} */
 
+static int register_device_on_answer(std::shared_ptr<query> q, void *D) {
+    TGL_UNUSED(D);
+    if (q->callback) {
+        (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (true);
+    }
+    return 0;
+}
+    
+static struct query_methods register_device_methods = {
+    .on_answer = register_device_on_answer,
+    .on_error = q_void_on_error,
+    .on_timeout = NULL,
+    .type = bool_type,
+    .name = "regster device",
+    .timeout = 0,
+};
+    
 void tgl_do_register_device(int token_type, const std::string& token, const std::string& device_model, const std::string& system_version, const std::string& lang_code,
-        std::function<void(bool success)> callback)
+                                std::function<void(bool success)> callback)
 {
-  clear_packet ();
-  out_int (CODE_account_register_device);
-  out_int(token_type);
-  out_std_string(token);
-  out_std_string(device_model);
-  out_std_string(system_version);
-  out_int (CODE_bool_false); // app sandbox
-  out_std_string(lang_code);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
+    clear_packet ();
+    out_int (CODE_account_register_device);
+    out_int(token_type);
+    out_std_string(token);
+    out_std_string(device_model);
+    out_std_string(system_version);
+    out_string("0.1");
+    out_int (CODE_bool_true); // app sandbox
+    out_std_string(lang_code);
+    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &register_device_methods, 0, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
 }
 
 void tgl_do_upgrade_group (tgl_peer_id_t id, std::function<void(bool success)> callback) {
