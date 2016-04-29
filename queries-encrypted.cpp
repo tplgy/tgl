@@ -144,7 +144,7 @@ static void do_set_dh_params(const std::shared_ptr<tgl_secret_chat>& secret_chat
     secret_chat->encr_param_version = version;
 
     auto res = tglmp_check_DH_params(secret_chat->encr_prime_bn(), secret_chat->encr_root);
-    assert(res >= 0);
+    TGL_ASSERT_UNUSED(res, res >= 0);
 }
 
 static int encr_chat_on_error(std::shared_ptr<query> q, int error_code, const std::string &error) {
@@ -648,7 +648,8 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, std::shared_ptr<void
   in_end = packet_ptr;
 
   struct paramed_type decrypted_message_media = TYPE_TO_PARAM(decrypted_message_media);
-  assert (skip_type_any (&decrypted_message_media) >= 0);
+  auto result = skip_type_any (&decrypted_message_media);
+  TGL_ASSERT_UNUSED(result, result >= 0);
   assert (in_ptr == in_end);
   
   in_ptr = save_ptr;
@@ -841,7 +842,7 @@ void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
   TGLC_bn *g_a = TGLC_bn_bin2bn (secret_chat->g_key.data(), 256, 0);
   ensure_ptr (g_a);
   auto res = tglmp_check_g_a(secret_chat->encr_prime_bn(), g_a);
-  assert(res >= 0);
+  TGL_ASSERT_UNUSED(res, res >= 0);
   //if (!ctx) {
   //  ctx = TGLC_bn_ctx_new ();
   //  ensure_ptr (ctx);
@@ -898,7 +899,7 @@ void tgl_do_create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat)
   TGLC_bn *g_b = TGLC_bn_bin2bn (secret_chat->g_key.data(), 256, 0);
   ensure_ptr (g_b);
   auto res = tglmp_check_g_a (secret_chat->encr_prime_bn(), g_b);
-  assert(res >= 0);
+  TGL_ASSERT_UNUSED(res, res >= 0);
   
   TGLC_bn *p = secret_chat->encr_prime_bn();
   ensure_ptr (p);

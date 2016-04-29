@@ -64,6 +64,7 @@
 #include "tools.h"
 #include "tgl-methods-in.h"
 #include "types/tgl_rsa_key.h"
+#include "tgl-log.h"
 
 #define MAX_NET_RES        (1L << 16)
 //extern int log_level;
@@ -269,7 +270,8 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
 
   TGLC_bn *p = TGLC_bn_new ();
   TGLC_bn *q = TGLC_bn_new ();
-  assert (bn_factorize (pq, p, q) >= 0);
+  auto result = bn_factorize (pq, p, q);
+  TGL_ASSERT_UNUSED(result, result >= 0);
 
   clear_packet ();
   packet_ptr += 5;
@@ -342,7 +344,8 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   ensure (TGLC_bn_mod_exp (auth_key_num, g_a, dh_power, dh_prime, tgl_state::instance()->bn_ctx));
   int l = TGLC_bn_num_bytes (auth_key_num);
   assert (l >= 250 && l <= 256);
-  assert (TGLC_bn_bn2bin (auth_key_num, (unsigned char *)(temp_key ? DC->temp_auth_key : DC->auth_key)));
+  auto result = TGLC_bn_bn2bin (auth_key_num, (unsigned char *)(temp_key ? DC->temp_auth_key : DC->auth_key));
+  TGL_ASSERT_UNUSED(result, result);
   if (l < 256) {
     unsigned char *key = temp_key ? DC->temp_auth_key : DC->auth_key;
     memmove (key + 256 - l, key, l);
@@ -393,7 +396,8 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
     return -1;
   }
 
-  assert (fetch_int() == CODE_res_p_q);
+  auto result = fetch_int();
+  TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_res_p_q));
 
   static int tmp[4];
   fetch_ints (tmp, 4);
@@ -404,11 +408,13 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
   fetch_ints (DC->server_nonce, 4);
 
   TGLC_bn *pq = TGLC_bn_new ();
-  assert (fetch_bignum (pq) >= 0);
+  result = fetch_bignum (pq);
+  TGL_ASSERT_UNUSED(result, result >= 0);
 
-  assert (fetch_int ()  == CODE_vector);
+  result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_vector));
   int fingerprints_num = fetch_int ();
-  assert (fingerprints_num >= 0);
+  assert(fingerprints_num >= 0);
   DC->rsa_key_idx = -1;
 
   for (int i = 0; i < fingerprints_num; i++) {
@@ -469,13 +475,11 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
     TGL_ERROR("nonce mismatch");
     return -1;
   }
-  assert (!memcmp (tmp, DC->nonce, 16));
   fetch_ints (tmp, 4);
   if (memcmp (tmp, DC->server_nonce, 16)) {
     TGL_ERROR("nonce mismatch");
     return -1;
   }
-  assert (!memcmp (tmp, DC->server_nonce, 16));
 
   if (op == CODE_server__d_h_params_fail) {
     TGL_ERROR("DH params fail");
@@ -502,25 +506,26 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   }
   in_ptr = decrypt_buffer + 5;
 
-  assert (fetch_int ()  == (int)CODE_server_DH_inner_data);
+  auto result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_server_DH_inner_data));
   fetch_ints (tmp, 4);
   if (memcmp (tmp, DC->nonce, 16)) {
     TGL_ERROR("nonce mismatch");
     return -1;
   }
-  assert (!memcmp (tmp, DC->nonce, 16));
   fetch_ints (tmp, 4);
   if (memcmp (tmp, DC->server_nonce, 16)) {
     TGL_ERROR("nonce mismatch");
     return -1;
   }
-  assert (!memcmp (tmp, DC->server_nonce, 16));
   int g = fetch_int ();
 
   TGLC_bn *dh_prime = TGLC_bn_new ();
   TGLC_bn *g_a = TGLC_bn_new ();
-  assert (fetch_bignum (dh_prime) > 0);
-  assert (fetch_bignum (g_a) > 0);
+  result = fetch_bignum (dh_prime);
+  TGL_ASSERT_UNUSED(result, result > 0);
+  result = fetch_bignum (g_a);
+  TGL_ASSERT_UNUSED(result, result > 0);
 
   if (tglmp_check_DH_params (dh_prime, g) < 0) {
     TGL_ERROR("bad DH params");
@@ -832,7 +837,8 @@ static int rpc_execute_answer (const std::shared_ptr<tgl_connection>& c, long lo
 
 static int work_container (const std::shared_ptr<tgl_connection>& c, long long msg_id) {
   TGL_DEBUG("work_container: msg_id = " << msg_id);
-  assert (fetch_int () == CODE_msg_container);
+  auto result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_msg_container));
   int n = fetch_int ();
   int i;
   for (i = 0; i < n; i++) {
@@ -868,7 +874,8 @@ static int work_new_session_created (const std::shared_ptr<tgl_connection>& c, l
     return -1;
   }
   TGL_DEBUG("work_new_session_created: msg_id = " << msg_id << ", DC " << DC->id);
-  assert (fetch_int () == (int)CODE_new_session_created);
+  auto result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_new_session_created));
   fetch_long (); // first message id
   fetch_long (); // unique_id
   DC->server_salt = fetch_long ();
@@ -884,8 +891,10 @@ static int work_new_session_created (const std::shared_ptr<tgl_connection>& c, l
 static int work_msgs_ack (const std::shared_ptr<tgl_connection>& c, long long msg_id) {
   TGL_UNUSED(c);
   TGL_DEBUG("work_msgs_ack: msg_id = " << msg_id);
-  assert (fetch_int () == CODE_msgs_ack);
-  assert (fetch_int () == CODE_vector);
+  auto result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_msgs_ack));
+  result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_vector));
   int n = fetch_int ();
   int i;
   for (i = 0; i < n; i++) {
@@ -899,7 +908,8 @@ static int work_msgs_ack (const std::shared_ptr<tgl_connection>& c, long long ms
 static int work_rpc_result (const std::shared_ptr<tgl_connection>& c, long long msg_id) {
   TGL_UNUSED(c);
   TGL_DEBUG("work_rpc_result: msg_id = " << msg_id);
-  assert (fetch_int () == (int)CODE_rpc_result);
+  auto result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_rpc_result));
   long long id = fetch_long ();
   int op = prefetch_int ();
   if (op == CODE_rpc_error) {
@@ -911,11 +921,15 @@ static int work_rpc_result (const std::shared_ptr<tgl_connection>& c, long long 
 
 #define MAX_PACKED_SIZE (1 << 24)
 static int work_packed (const std::shared_ptr<tgl_connection>& c, long long msg_id) {
-    assert (fetch_int () == CODE_gzip_packed);
-    static int in_gzip;
+    auto result = fetch_int ();
+    TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_gzip_packed));
+    static volatile bool in_gzip;
     static int buf[MAX_PACKED_SIZE >> 2];
-    assert (!in_gzip);
-    in_gzip = 1;
+    if (in_gzip) {
+        TGL_CRASH();
+    }
+
+    in_gzip = true;
 
     int l = prefetch_strlen ();
     char *s = fetch_str (l);
@@ -929,13 +943,14 @@ static int work_packed (const std::shared_ptr<tgl_connection>& c, long long msg_
     int r = rpc_execute_answer(c, msg_id);
     in_ptr = end;
     in_end = eend;
-    in_gzip = 0;
+    in_gzip = false;
     return r;
 }
 
 static int work_bad_server_salt (const std::shared_ptr<tgl_connection>& c, long long msg_id) {
   TGL_UNUSED(msg_id);
-  assert (fetch_int () == (int)CODE_bad_server_salt);
+  auto result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_bad_server_salt));
   long long id = fetch_long ();
   int seq_no = fetch_int (); // seq_no
   int error_code = fetch_int (); // error_code
@@ -951,14 +966,16 @@ static int work_bad_server_salt (const std::shared_ptr<tgl_connection>& c, long 
 }
 
 static int work_pong () {
-    assert (fetch_int () == CODE_pong);
+    auto result = fetch_int ();
+    TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_pong));
     fetch_long (); // msg_id
     fetch_long (); // ping_id
     return 0;
 }
 
 static int work_detailed_info () {
-    assert (fetch_int () == CODE_msg_detailed_info);
+    auto result = fetch_int ();
+    TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_msg_detailed_info));
     fetch_long (); // msg_id
     fetch_long (); // answer_msg_id
     fetch_int (); // bytes
@@ -967,7 +984,8 @@ static int work_detailed_info () {
 }
 
 static int work_new_detailed_info () {
-    assert (fetch_int () == (int)CODE_msg_new_detailed_info);
+    auto result = fetch_int ();
+    TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_msg_new_detailed_info));
     fetch_long (); // answer_msg_id
     fetch_int (); // bytes
     fetch_int (); // status
@@ -977,7 +995,8 @@ static int work_new_detailed_info () {
 static int work_bad_msg_notification (const std::shared_ptr<tgl_connection>& c, long long msg_id) {
   TGL_UNUSED(msg_id);
   TGL_UNUSED(c);
-  assert (fetch_int () == (int)CODE_bad_msg_notification);
+  auto result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_bad_msg_notification));
   long long m1 = fetch_long ();
   int s = fetch_int ();
   int e = fetch_int ();
@@ -1170,7 +1189,7 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
   }
 
   int l = tgl_pad_aes_decrypt ((unsigned char *)&enc->server_salt, len - UNENCSZ, (unsigned char *)&enc->server_salt, len - UNENCSZ);
-  assert (l == len - UNENCSZ);
+  TGL_ASSERT_UNUSED(l, l == len - UNENCSZ);
 
   if (!(!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12)) {
     TGL_WARNING("Incorrect packet from server. Closing connection");
@@ -1192,7 +1211,6 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
     fail_connection(c);
     return -1;
   }
-  assert (!memcmp (&enc->msg_key, sha1_buffer + 4, 16));
 
   int this_server_time = enc->msg_id >> 32LL;
   if (!S->received_messages) {
@@ -1443,7 +1461,8 @@ std::shared_ptr<tgl_dc> tglmp_alloc_dc (int flags, int id, const std::string &ip
 
 void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC) {
   std::shared_ptr<tgl_session> S = std::make_shared<tgl_session>();
-  assert (TGLC_rand_pseudo_bytes ((unsigned char *) &S->session_id, 8) >= 0);
+  auto result = TGLC_rand_pseudo_bytes ((unsigned char *) &S->session_id, 8);
+  TGL_ASSERT_UNUSED(result, result >= 0);
   S->dc = DC;
   //S->c = tgl_state::instance()->connection_factory()->create_connection (DC->ip, DC->port, S, DC, &mtproto_methods);
 

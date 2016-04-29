@@ -37,6 +37,7 @@
 
 #include "tools.h"
 #include "mtproto-common.h"
+#include "tgl-log.h"
 
 #ifdef __MACH__
 #include <mach/clock.h>
@@ -86,7 +87,10 @@ void *tgl_memdup (const void *s, size_t n) {
 int tgl_inflate (void *input, int ilen, void *output, int olen) {
   z_stream strm;
   memset (&strm, 0, sizeof (strm));
-  assert (inflateInit2 (&strm, 16 + MAX_WBITS) == Z_OK);
+  if (inflateInit2 (&strm, 16 + MAX_WBITS) != Z_OK) {
+    TGL_ERROR("failed to call inflateInit2");
+    return 0;
+  }
   strm.avail_in = ilen;
   strm.next_in = (Bytef*)input;
   strm.avail_out = olen ;
@@ -95,8 +99,7 @@ int tgl_inflate (void *input, int ilen, void *output, int olen) {
   int total_out = strm.total_out;
 
   if (err != Z_OK && err != Z_STREAM_END) {
-    fprintf(stderr, "inflate error = %d\n", err);
-    fprintf(stderr, "inflated %d bytes\n", (int) strm.total_out);
+    TGL_ERROR("inflate error = " << err << ", inflated " << strm.total_out << " bytes");
     total_out = 0;
   }
   inflateEnd (&strm);
@@ -114,7 +117,8 @@ void tgl_my_clock_gettime (int clock_id, struct timespec *T) {
   T->tv_sec = mts.tv_sec;
   T->tv_nsec = mts.tv_nsec;
 #else
-  assert (clock_gettime(clock_id, T) >= 0);
+  auto result = clock_gettime(clock_id, T);
+  TGL_ASSERT_UNUSED(result, result >= 0);
 #endif
 }
 

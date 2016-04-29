@@ -315,7 +315,8 @@ void tglq_query_free_all () {
 }
 
 int tglq_query_error (long long id) {
-  assert (fetch_int () == CODE_rpc_error);
+  int result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == CODE_rpc_error);
   int error_code = fetch_int ();
   int error_len = prefetch_strlen ();
   std::string error = std::string(fetch_str (error_len), error_len);

@@ -1650,7 +1650,8 @@ std::shared_ptr<tgl_message> tglf_fetch_encrypted_message (struct tl_ds_encrypte
   in_ptr = decr_ptr;
   int ll = *in_ptr; // decrypted data length
   in_end = in_ptr + ll / 4 + 1;  
-  assert (fetch_int () == ll);
+  auto result = fetch_int ();
+  TGL_ASSERT_UNUSED(result, result == ll);
 
   std::shared_ptr<tgl_message> M;
   if (*in_ptr == CODE_decrypted_message_layer) {
@@ -1663,7 +1664,8 @@ std::shared_ptr<tgl_message> tglf_fetch_encrypted_message (struct tl_ds_encrypte
     }
 
     in_ptr = decr_ptr;
-    assert (fetch_int () == ll);
+    result = fetch_int ();
+    TGL_ASSERT_UNUSED(result, result == ll);
 
     struct tl_ds_decrypted_message_layer *DS_DML = fetch_ds_type_decrypted_message_layer (&decrypted_message_layer);
     assert (DS_DML);
@@ -1779,7 +1781,8 @@ std::shared_ptr<tgl_message> tglf_fetch_encrypted_message (struct tl_ds_encrypte
     }
 
     in_ptr = decr_ptr;
-    assert (fetch_int () == ll);
+    result = fetch_int ();
+    TGL_ASSERT_UNUSED(result, result == ll);
 
     struct tl_ds_decrypted_message *DS_DM = fetch_ds_type_decrypted_message (&decrypted_message);
     assert (DS_DM);

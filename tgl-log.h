@@ -35,29 +35,31 @@ void init_tgl_log(log_function, int severity);
 void tgl_log(std::string str, int severity);
 
 
-#define TGL_DEBUG(X) { std::stringstream str_stream; \
+#define TGL_CRASH() do { *reinterpret_cast<int*>(0xbadbeef) = 0; *reinterpret_cast<int*>(0x0) = 0; abort(); } while (false)
+
+#define TGL_DEBUG(X) do { std::stringstream str_stream; \
                     str_stream << X ; \
-                    tgl_log(str_stream.str(), E_DEBUG);}
+                    tgl_log(str_stream.str(), E_DEBUG);} while (false)
 
-#define TGL_DEBUG2(X) { std::stringstream str_stream; \
+#define TGL_DEBUG2(X) do { std::stringstream str_stream; \
                     str_stream << X; \
-                    tgl_log(str_stream.str(), E_DEBUG2);};
+                    tgl_log(str_stream.str(), E_DEBUG2);} while (false)
 
-#define TGL_NOTICE(X) { std::stringstream str_stream; \
+#define TGL_NOTICE(X) do { std::stringstream str_stream; \
                     str_stream << X; \
-                    tgl_log(str_stream.str(), E_NOTICE);};
+                    tgl_log(str_stream.str(), E_NOTICE);} while (false)
 
-#define TGL_WARNING(X) { std::stringstream str_stream; \
+#define TGL_WARNING(X) do { std::stringstream str_stream; \
                     str_stream << __FILE__ <<  "(" << __LINE__ << "): " << X; \
-                    tgl_log(str_stream.str(), E_WARNING);};
+                    tgl_log(str_stream.str(), E_WARNING);} while (false)
 
-#define TGL_ERROR(X) { std::stringstream str_stream; \
+#define TGL_ERROR(X) do { std::stringstream str_stream; \
                     str_stream << __FILE__ <<  "(" << __LINE__ << "): " << X; \
-                    tgl_log(str_stream.str(), E_ERROR);};
+                    tgl_log(str_stream.str(), E_ERROR);} while (false)
 
 
 #define TGL_ASSERT(x) assert(x)
-#define TGL_ASSERT_UNUSED(u, x) { static_cast<void>(u); assert(x); }
+#define TGL_ASSERT_UNUSED(u, x) do { static_cast<void>(u); assert(x); } while (false)
 
 #if defined(__SIZEOF_INT128__)
 std::ostream& operator<<(std::ostream& s, __int128 i);

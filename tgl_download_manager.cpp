@@ -499,9 +499,11 @@ int tgl_download_manager::download_on_answer (std::shared_ptr<query> q, void *DD
         if (len > D->size - D->offset) {
             len = D->size - D->offset;
         }
-        assert (write (D->fd, ptr, len) == len);
+        auto result = write (D->fd, ptr, len);
+        TGL_ASSERT_UNUSED(result, result == len);
     } else {
-        assert (write (D->fd, DS_UF->bytes->data, len) == len);
+        auto result = write (D->fd, DS_UF->bytes->data, len);
+        TGL_ASSERT_UNUSED(result, result == len);
     }
 
     D->offset += len;

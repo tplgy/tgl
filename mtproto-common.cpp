@@ -220,7 +220,8 @@ int tgl_fetch_bignum (TGLC_bn *x) {
     return l;
   }
   char *str = fetch_str (l);
-  assert (TGLC_bn_bin2bn ((unsigned char *) str, l, x) == x);
+  auto result = TGLC_bn_bin2bn ((unsigned char *) str, l, x);
+  TGL_ASSERT_UNUSED(result, result == x);
   return l;
 }
 
@@ -228,10 +229,11 @@ int tgl_pad_rsa_encrypt (char *from, int from_len, char *to, int size, TGLC_bn *
   int pad = (255000 - from_len - 32) % 255 + 32;
   int chunks = (from_len + pad) / 255;
   int bits = TGLC_bn_num_bits (N);
-  assert (bits >= 2041 && bits <= 2048);
+  TGL_ASSERT_UNUSED (bits, bits >= 2041 && bits <= 2048);
   assert (from_len > 0 && from_len <= 2550);
   assert (size >= chunks * 256);
-  assert (TGLC_rand_pseudo_bytes ((unsigned char *) from + from_len, pad) >= 0);
+  auto result = TGLC_rand_pseudo_bytes ((unsigned char *) from + from_len, pad);
+  TGL_ASSERT_UNUSED(result, result >= 0);
   int i;
   TGLC_bn *x = TGLC_bn_new ();
   TGLC_bn *y = TGLC_bn_new ();
@@ -240,7 +242,8 @@ int tgl_pad_rsa_encrypt (char *from, int from_len, char *to, int size, TGLC_bn *
   rsa_encrypted_chunks += chunks;
   for (i = 0; i < chunks; i++) {
     TGLC_bn_bin2bn ((unsigned char *) from, 255, x);
-    assert (TGLC_bn_mod_exp (y, x, E, N, tgl_state::instance()->bn_ctx) == 1);
+    result = TGLC_bn_mod_exp (y, x, E, N, tgl_state::instance()->bn_ctx);
+    TGL_ASSERT_UNUSED(result, result == 1);
     unsigned l = 256 - TGLC_bn_num_bytes (y);
     assert (l <= 256);
     memset (to, 0, l);
@@ -258,7 +261,7 @@ int tgl_pad_rsa_decrypt (char *from, int from_len, char *to, int size, TGLC_bn *
   }
   int chunks = (from_len >> 8);
   int bits = TGLC_bn_num_bits (N);
-  assert (bits >= 2041 && bits <= 2048);
+  TGL_ASSERT_UNUSED(bits, bits >= 2041 && bits <= 2048);
   assert (size >= chunks * 255);
   int i;
   TGLC_bn *x = TGLC_bn_new ();
@@ -268,7 +271,8 @@ int tgl_pad_rsa_decrypt (char *from, int from_len, char *to, int size, TGLC_bn *
   for (i = 0; i < chunks; i++) {
     ++rsa_decrypted_chunks;
     TGLC_bn_bin2bn ((unsigned char *) from, 256, x);
-    assert (TGLC_bn_mod_exp (y, x, D, N, tgl_state::instance()->bn_ctx) == 1);
+    auto result = TGLC_bn_mod_exp (y, x, D, N, tgl_state::instance()->bn_ctx);
+    TGL_ASSERT_UNUSED(result, result == 1);
     int l = TGLC_bn_num_bytes (y);
     if (l > 255) {
       TGLC_bn_free (x);
@@ -353,7 +357,8 @@ int tgl_pad_aes_encrypt (unsigned char *from, int from_len, unsigned char *to, i
   int padded_size = (from_len + 15) & -16;
   assert (from_len > 0 && padded_size <= size);
   if (from_len < padded_size) {
-    assert (TGLC_rand_pseudo_bytes ((unsigned char *) from + from_len, padded_size - from_len) >= 0);
+    auto result = TGLC_rand_pseudo_bytes ((unsigned char *) from + from_len, padded_size - from_len);
+    TGL_ASSERT_UNUSED(result, result >= 0);
   }
   TGLC_aes_ige_encrypt ((unsigned char *) from, (unsigned char *) to, padded_size, &aes_key, aes_iv, 1);
   return padded_size;

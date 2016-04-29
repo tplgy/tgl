@@ -417,7 +417,9 @@ int gen_create (struct tl_tree *t, int *vars, int offset) {
       print_offset (offset + 2);
       printf (".params = (struct paramed_type *[]){\n");
       for (i = 0; i < t1->children_num; i++) {
-        assert (gen_create (t1->children[i], vars, offset + 4) >= 0);
+        int result = gen_create (t1->children[i], vars, offset + 4);
+        (void)result;
+        assert(result >= 0);
         printf (",\n");
       }
       print_offset (offset + 2);
@@ -497,7 +499,9 @@ int gen_field_skip (struct arg *arg, int *vars, int num) {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (arg->type, vars, 2 + o) >= 0);
+      int result = gen_create (arg->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       int bare = arg->flags & FLAG_BARE;
       if (!bare && t == NODE_TYPE_TYPE) {
@@ -511,10 +515,14 @@ int gen_field_skip (struct arg *arg, int *vars, int num) {
     } else {
       assert (t == NODE_TYPE_ARRAY);
       printf ("%sint multiplicity%d = PTR2INT (\n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o) >= 0);
+      int result = gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf ("%s);\n", offset);
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o) >= 0);
+      result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       printf ("%swhile (multiplicity%d -- > 0) {\n", offset, num);
       printf ("%s  if (skip_type_%s (field%d) < 0) { return -1;}\n", offset, "any", num);
@@ -568,7 +576,9 @@ int gen_field_fetch (struct arg *arg, int *vars, int num, int empty) {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (arg->type, vars, 2 + o) >= 0);
+      int result = gen_create (arg->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       int bare = arg->flags & FLAG_BARE;
       if (!bare && t == NODE_TYPE_TYPE) {
@@ -582,10 +592,14 @@ int gen_field_fetch (struct arg *arg, int *vars, int num, int empty) {
     } else {
       assert (t == NODE_TYPE_ARRAY);
       printf ("%sint multiplicity%d = PTR2INT (\n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o) >= 0);
+      int result = gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf ("%s);\n", offset);
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o) >= 0);
+      result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       printf ("%seprintf (\" [\");\n", offset);
       printf ("%sif (multiline_output >= 1) { eprintf (\"\\n\"); }\n", offset);
@@ -655,7 +669,9 @@ int gen_field_store (struct arg *arg, int *vars, int num, int from_func, int emp
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (arg->type, vars, 2 + o) >= 0);
+      int result = gen_create (arg->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       int bare = arg->flags & FLAG_BARE;
       if (!bare && t == NODE_TYPE_TYPE) {
@@ -671,10 +687,13 @@ int gen_field_store (struct arg *arg, int *vars, int num, int from_func, int emp
       
       assert (t == NODE_TYPE_ARRAY);
       printf ("%sint multiplicity%d = PTR2INT (\n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o) >= 0);
+      int result = gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf ("%s);\n", offset);
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o) >= 0);
+      result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
+      assert(result >= 0);
       printf (";\n");
       printf ("%swhile (multiplicity%d -- > 0) {\n", offset, num);
       printf ("%s  if (store_type_%s (field%d) < 0) { return %s;}\n", offset, "any", num, fail);
@@ -739,7 +758,9 @@ int gen_field_autocomplete (struct arg *arg, int *vars, int num, int from_func, 
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (arg->type, vars, 2 + o) >= 0);
+      int result = gen_create (arg->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       int bare = arg->flags & FLAG_BARE;
       if (!bare && t == NODE_TYPE_TYPE) {
@@ -755,10 +776,14 @@ int gen_field_autocomplete (struct arg *arg, int *vars, int num, int from_func, 
       
       assert (t == NODE_TYPE_ARRAY);
       printf ("%sint multiplicity%d = PTR2INT (\n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o) >= 0);
+      int result = gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf ("%s);\n", offset);
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o) >= 0);
+      result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       printf ("%swhile (multiplicity%d -- > 0) {\n", offset, num);
       printf ("%s  if (autocomplete_type_%s (field%d) < 0) { return %s;}\n", offset, "any", num, fail);
@@ -812,7 +837,9 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (arg->type, vars, 2 + o) >= 0);
+      int result = gen_create (arg->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       int bare = arg->flags & FLAG_BARE;
       if (!bare && t == NODE_TYPE_TYPE) {
@@ -834,10 +861,13 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
     } else {
       assert (t == NODE_TYPE_ARRAY);
       printf ("%sint multiplicity%d = PTR2INT (\n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o) >= 0);
+      int result = gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf ("%s);\n", offset);
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o) >= 0);
+      result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
+      assert(result >= 0);
       printf (";\n");
       if (arg->id && strlen (arg->id)) {
         printf ("%sresult->%s = ", offset, arg->id);
@@ -903,7 +933,9 @@ int gen_field_free_ds (struct arg *arg, int *vars, int num, int empty) {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (arg->type, vars, 2 + o) >= 0);
+      int result = gen_create (arg->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       int any = (t == NODE_TYPE_VAR_TYPE) || ((struct tl_tree_type *)arg->type)->type->name == NAME_VECTOR;
       if (arg->id && strlen (arg->id)) {
@@ -914,10 +946,14 @@ int gen_field_free_ds (struct arg *arg, int *vars, int num, int empty) {
     } else {
       assert (t == NODE_TYPE_ARRAY);
       printf ("%sint multiplicity%d = PTR2INT (\n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o) >= 0);
+      int result = gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf ("%s);\n", offset);
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o) >= 0);
+      result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       printf ("%s{\n", offset);
       printf ("%s  int i = 0;\n", offset);
@@ -985,7 +1021,9 @@ int gen_field_store_ds (struct arg *arg, int *vars, int num, int empty) {
         bare = ((struct tl_tree_type *)arg->type)->self.flags & FLAG_BARE;
       }
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (arg->type, vars, 2 + o) >= 0);
+      int result = gen_create (arg->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       int any = (t == NODE_TYPE_VAR_TYPE);
       int vec = ((struct tl_tree_type *)arg->type)->type->name == NAME_VECTOR;
@@ -997,10 +1035,14 @@ int gen_field_store_ds (struct arg *arg, int *vars, int num, int empty) {
     } else {
       assert (t == NODE_TYPE_ARRAY);
       printf ("%sint multiplicity%d = PTR2INT (\n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o) >= 0);
+      int result = gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf ("%s);\n", offset);
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o) >= 0);
+      result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       printf ("%s{\n", offset);
       printf ("%s  int i = 0;\n", offset);
@@ -1063,7 +1105,9 @@ int gen_field_print_ds (struct arg *arg, int *vars, int num, int empty) {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (arg->type, vars, 2 + o) >= 0);
+      int result = gen_create (arg->type, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf (";\n");
       int bare = arg->flags & FLAG_BARE;
       if (!bare && t == NODE_TYPE_TYPE) {
@@ -1079,10 +1123,13 @@ int gen_field_print_ds (struct arg *arg, int *vars, int num, int empty) {
     } else {
       assert (t == NODE_TYPE_ARRAY);
       printf ("%sint multiplicity%d = PTR2INT (\n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o) >= 0);
+      int result = gen_create (((struct tl_tree_array *)arg->type)->multiplicity, vars, 2 + o);
+      (void)result;
+      assert(result >= 0);
       printf ("%s);\n", offset);
       printf ("%sstruct paramed_type *field%d = \n", offset, num);
-      assert (gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o) >= 0);
+      result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
+      assert(result >= 0);
       printf (";\n");
       printf ("%seprintf (\" [\");\n", offset);
       printf ("%sif (multiline_output >= 1) { eprintf (\"\\n\"); }\n", offset);
@@ -1217,7 +1264,9 @@ void gen_constructor_skip (struct tl_combinator *c) {
   }
 
   for (i = 0; i < c->args_num; i++) if (!(c->args[i]->flags & FLAG_OPT_VAR)) {
-    assert (gen_field_skip (c->args[i], vars, i + 1) >= 0);
+    int result = gen_field_skip (c->args[i], vars, i + 1);
+    (void)result;
+    assert(result >= 0);
   }
   free (vars);
   printf ("  return 0;\n");
@@ -1277,7 +1326,9 @@ void gen_constructor_fetch (struct tl_combinator *c) {
   
 
   for (i = 0; i < c->args_num; i++) if (!(c->args[i]->flags & FLAG_OPT_VAR)) {
-    assert (gen_field_fetch (c->args[i], vars, i + 1, empty) >= 0);
+    int result = gen_field_fetch (c->args[i], vars, i + 1, empty);
+    (void)result;
+    assert(result >= 0);
   }
   free (vars);
   printf ("  return 0;\n");
@@ -1343,7 +1394,9 @@ void gen_constructor_store (struct tl_combinator *c) {
 
   int empty = is_empty (((struct tl_tree_type *)c->result)->type);
   for (i = 0; i < c->args_num; i++) if (!(c->args[i]->flags & FLAG_OPT_VAR)) {
-    assert (gen_field_store (c->args[i], vars, i + 1, 0, empty) >= 0);
+    int result = gen_field_store (c->args[i], vars, i + 1, 0, empty);
+    (void)result;
+    assert(result >= 0);
   }
 
   free (vars);
@@ -1406,7 +1459,9 @@ void gen_constructor_autocomplete (struct tl_combinator *c) {
 
   int empty = is_empty (((struct tl_tree_type *)c->result)->type);
   for (i = 0; i < c->args_num; i++) if (!(c->args[i]->flags & FLAG_OPT_VAR)) {
-    assert (gen_field_autocomplete (c->args[i], vars, i + 1, 0, empty) >= 0);
+    int result = gen_field_autocomplete (c->args[i], vars, i + 1, 0, empty);
+    (void)result;
+    assert(result >= 0);
   }
 
   free (vars);
@@ -1473,7 +1528,9 @@ void gen_constructor_fetch_ds (struct tl_combinator *c) {
   int empty = is_empty (((struct tl_tree_type *)c->result)->type);
 
   for (i = 0; i < c->args_num; i++) if (!(c->args[i]->flags & FLAG_OPT_VAR)) {
-    assert (gen_field_fetch_ds (c->args[i], vars, i + 1, empty) >= 0);
+    int result = gen_field_fetch_ds (c->args[i], vars, i + 1, empty);
+    (void)result;
+    assert(result >= 0);
   }
   free (vars);
   printf ("  return result;\n");
@@ -1526,7 +1583,9 @@ void gen_constructor_free_ds (struct tl_combinator *c) {
   int empty = is_empty (((struct tl_tree_type *)c->result)->type);
 
   for (i = 0; i < c->args_num; i++) if (!(c->args[i]->flags & FLAG_OPT_VAR)) {
-    assert (gen_field_free_ds (c->args[i], vars, i + 1, empty) >= 0);
+    int result = gen_field_free_ds (c->args[i], vars, i + 1, empty);
+    (void)result;
+    assert(result >= 0);
   }
   printf ("  free (D);\n");
   free (vars);
@@ -1578,7 +1637,9 @@ void gen_constructor_store_ds (struct tl_combinator *c) {
   int empty = is_empty (((struct tl_tree_type *)c->result)->type);
 
   for (i = 0; i < c->args_num; i++) if (!(c->args[i]->flags & FLAG_OPT_VAR)) {
-    assert (gen_field_store_ds (c->args[i], vars, i + 1, empty) >= 0);
+    int result = gen_field_store_ds (c->args[i], vars, i + 1, empty);
+    (void)result;
+    assert(result >= 0);
   }
   free (vars);
   printf ("}\n"); 
@@ -1631,7 +1692,9 @@ void gen_constructor_print_ds (struct tl_combinator *c) {
   
 
   for (i = 0; i < c->args_num; i++) if (!(c->args[i]->flags & FLAG_OPT_VAR)) {
-    assert (gen_field_print_ds (c->args[i], vars, i + 1, empty) >= 0);
+    int result = gen_field_print_ds (c->args[i], vars, i + 1, empty);
+    (void)result;
+    assert(result >= 0);
   }
   free (vars);
   printf ("  return 0;\n");
@@ -1700,7 +1763,7 @@ void gen_type_fetch (struct tl_type *t) {
       printf ("  if (multiline_output >= 2) { multiline_offset += multiline_offset_size; }\n");
     }
     for (i = 0; i < t->constructors_num; i++) {
-      printf ("  if (skip_constructor_%s (T) >= 0) { in_ptr = save_in_ptr; %sassert (!fetch_constructor_%s (T)); %sreturn 0; }\n", t->constructors[i]->print_id, empty ? "" : "eprintf (\" (\"); ", t->constructors[i]->print_id , empty ? "" : "if (multiline_output >= 2) { multiline_offset -= multiline_offset_size; print_offset (); } eprintf (\" )\");");
+      printf ("  if (skip_constructor_%s (T) >= 0) { in_ptr = save_in_ptr; %sint result = fetch_constructor_%s (T); (void)result; assert(!result); %sreturn 0; }\n", t->constructors[i]->print_id, empty ? "" : "eprintf (\" (\"); ", t->constructors[i]->print_id , empty ? "" : "if (multiline_output >= 2) { multiline_offset -= multiline_offset_size; print_offset (); } eprintf (\" )\");");
       printf ("  in_ptr = save_in_ptr;\n");
     }
   } else {
@@ -1921,15 +1984,21 @@ void gen_function_store (struct tl_combinator *f) {
 
   for (i = 0; i < f->args_num; i++) if (!(f->args[i]->flags & FLAG_OPT_VAR)) {
     if (f->args[i]->flags & FLAG_EXCL) {
-      assert (gen_field_store_excl (f->args[i], vars, i + 1, 1) >= 0);
+      int result = gen_field_store_excl (f->args[i], vars, i + 1, 1);
+      (void)result;
+      assert(result >= 0);
     } else {
-      assert (gen_field_store (f->args[i], vars, i + 1, 1, 0) >= 0);
+      int result = gen_field_store (f->args[i], vars, i + 1, 1, 0);
+      (void)result;
+      assert(result >= 0);
     }
   }
 
 
   printf ("  struct paramed_type *R = \n");
-  assert (gen_create (f->result, vars, 2) >= 0);
+  int result = gen_create (f->result, vars, 2);
+  (void)result;
+  assert(result >= 0);
   printf (";\n");
 
   free (vars);
@@ -1946,14 +2015,20 @@ void gen_function_autocomplete (struct tl_combinator *f) {
 
   for (i = 0; i < f->args_num; i++) if (!(f->args[i]->flags & FLAG_OPT_VAR)) {
     if (f->args[i]->flags & FLAG_EXCL) {
-      assert (gen_field_autocomplete_excl (f->args[i], vars, i + 1, 1) >= 0);
+      int result = gen_field_autocomplete_excl (f->args[i], vars, i + 1, 1);
+      (void)result;
+      assert(result >= 0);
     } else {
-      assert (gen_field_autocomplete (f->args[i], vars, i + 1, 1, 0) >= 0);
+      int result = gen_field_autocomplete (f->args[i], vars, i + 1, 1, 0);
+      (void)result;
+      assert(result >= 0);
     }
   }
 
   printf ("  struct paramed_type *R = \n");
-  assert (gen_create (f->result, vars, 2) >= 0);
+  int result = gen_create (f->result, vars, 2);
+  (void)result;
+  assert(result >= 0);
   printf (";\n");
 
   free (vars);
@@ -2010,7 +2085,9 @@ struct tl_tree *read_array (int *var_num) {
   assert (T->args_num >= 0 && T->args_num <= 1000);
   T->args = malloc0 (sizeof (void *) * T->args_num);
 
-  assert (read_args_list (T->args, T->args_num, var_num) >= 0);
+  int result = read_args_list (T->args, T->args_num, var_num);
+  (void)result;
+  assert(result >= 0);
   T->self.flags |= FLAG_NOVAR;
   int i;
   for (i = 0; i < T->args_num; i++) {
@@ -2141,7 +2218,9 @@ int read_args_list (struct arg **args, int args_num, int *var_num) {
     args[i] = malloc0 (sizeof (struct arg));
     args[i]->exist_var_num = -1;
     args[i]->exist_var_bit = 0;
-    assert (get_int () == TLS_ARG_V2);
+    int result = get_int ();
+    (void)result;
+    assert(result == TLS_ARG_V2);
     args[i]->id = get_string ();
     args[i]->flags = get_int ();
 
@@ -2190,7 +2269,9 @@ int read_combinator_args_list (struct tl_combinator *c) {
 }
 
 int read_combinator_right (struct tl_combinator *c) {
-  assert (get_int () == TLS_COMBINATOR_RIGHT_V2);
+  int result = get_int ();
+  (void)result;
+  assert(result == TLS_COMBINATOR_RIGHT_V2);
   c->result = read_type_expr (&c->var_num);
   assert (c->result);
   return 1;
@@ -2255,8 +2336,11 @@ struct tl_combinator *read_combinators (int v) {
     tl_function_insert_by_name (c);
     c->is_fun = 1;
   }
-  assert (read_combinator_left (c) >= 0);
-  assert (read_combinator_right (c) >= 0);
+  int result = read_combinator_left (c);
+  (void)result;
+  assert(result >= 0);
+  result = read_combinator_right (c);
+  assert(result >= 0);
   return c;
 }
 
@@ -2926,7 +3010,9 @@ void fix_up_id() {
 
 int parse_tlo_file (void) {
   buf_end = buf_ptr + (buf_size / 4);
-  assert (get_int () == TLS_SCHEMA_V2);
+  int result = get_int ();
+  (void)result;
+  assert(result == TLS_SCHEMA_V2);
 
   get_int (); // version
   get_int (); // date
@@ -2945,7 +3031,8 @@ int parse_tlo_file (void) {
   }
 
   for (i = 0; i < tn; i++) {
-    assert (get_int () == TLS_TYPE);
+    result = get_int ();
+    assert(result == TLS_TYPE);
     tps[i] = read_types ();
     assert (tps[i]);
   }
@@ -2958,8 +3045,11 @@ int parse_tlo_file (void) {
   }
 
   for (i = 0; i < cn; i++) {
-    assert (get_int () == TLS_COMBINATOR);
-    assert (read_combinators (2));
+    result = get_int ();
+    assert(result == TLS_COMBINATOR);
+    struct tl_combinator* c = read_combinators (2);
+    (void)c;
+    assert(c);
   }
   
   fn = get_int ();
@@ -2972,7 +3062,8 @@ int parse_tlo_file (void) {
   }
 
   for (i = 0; i < fn; i++) {
-    assert (get_int () == TLS_COMBINATOR);
+    result = get_int ();
+    assert(result == TLS_COMBINATOR);
     fns[i] = read_combinators (3);
     assert (fns[i]);
   }
