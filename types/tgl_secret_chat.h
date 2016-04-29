@@ -46,7 +46,6 @@ struct tgl_secret_chat {
     struct tgl_file_location photo_big;
     struct tgl_file_location photo_small;
     struct tgl_photo *photo;
-    void *extra;
     int user_id;
     int admin_id;
     int date;
@@ -110,7 +109,6 @@ struct tgl_secret_chat {
         , photo_big()
         , photo_small()
         , photo(nullptr)
-        , extra(nullptr)
         , user_id(0)
         , admin_id(0)
         , date(0)
