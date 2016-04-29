@@ -35,7 +35,7 @@ void init_tgl_log(log_function, int severity);
 void tgl_log(std::string str, int severity);
 
 
-#define TGL_CRASH() do { *reinterpret_cast<int*>(0xbadbeef) = 0; *reinterpret_cast<int*>(0x0) = 0; abort(); } while (false)
+#define TGL_CRASH() do { *reinterpret_cast<int*>(0xbadbeef) = 0; abort(); } while (false)
 
 #define TGL_DEBUG(X) do { std::stringstream str_stream; \
                     str_stream << X ; \
