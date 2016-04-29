@@ -25,7 +25,6 @@
 #include "auto.h"
 #include "tgl-layout.h"
 #include "types/query_methods.h"
-#include "types/tgl_secret_chat.h"
 #include <boost/variant.hpp>
 
 static const float DEFAULT_QUERY_TIMEOUT = 6.0;
@@ -83,24 +82,6 @@ void tglq_regen_query (long long id);
 void tglq_query_delete (long long id);
 void tglq_query_free_all ();
 void tglq_regen_queries_from_old_session (struct tgl_dc *DC, struct tgl_session *S);
-
-
-#ifdef ENABLE_SECRET_CHAT
-void tgl_do_encr_chat(const tgl_peer_id_t& id,
-        long long* access_hash,
-        int* date,
-        int* admin,
-        const int* user_id,
-        const unsigned char* key,
-        const unsigned char* g_key,
-        tgl_secret_chat_state* state,
-        int* ttl,
-        int* layer,
-        int* in_seq_no,
-        int* last_in_seq_no,
-        int* out_seq_no,
-        int flags);
-#endif
 
 // For binlog
 

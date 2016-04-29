@@ -157,32 +157,27 @@ static int encr_chat_on_error(std::shared_ptr<query> q, int error_code, const st
     return 0;
 }
 
-void tgl_do_encr_chat(const tgl_peer_id_t& id,
-        long long* access_hash,
-        int* date,
-        int* admin,
+void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const long long* access_hash,
+        const int* date,
+        const int* admin,
         const int* user_id,
         const unsigned char* key,
         const unsigned char* g_key,
-        tgl_secret_chat_state* state,
-        int* ttl,
-        int* layer,
-        int* in_seq_no,
-        int* last_in_seq_no,
-        int* out_seq_no,
+        const tgl_secret_chat_state* state,
+        const int* ttl,
+        const int* layer,
+        const int* in_seq_no,
+        const int* last_in_seq_no,
+        const int* out_seq_no,
         int flags)
 {
-    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(id);
+    assert(secret_chat);
 
     if ((flags & TGLPF_CREATE) && (flags != TGL_FLAGS_UNCHANGED)) {
-        if (!secret_chat) {
-          secret_chat = tgl_state::instance()->ensure_secret_chat(id);
-          secret_chat->id = id;
-        } else {
-          assert (!(secret_chat->flags & TGLPF_CREATED));
-        }
+        assert(!(secret_chat->flags & TGLPF_CREATED));
     } else {
-        assert (secret_chat->flags & TGLPF_CREATED);
+        assert(secret_chat->flags & TGLPF_CREATED);
     }
 
     if (flags == TGL_FLAGS_UNCHANGED) {
@@ -857,7 +852,7 @@ void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
 
   tgl_secret_chat_state state = sc_ok;
 
-  tgl_do_encr_chat(secret_chat->id,
+  tgl_update_secret_chat(secret_chat,
           NULL,
           NULL,
           NULL,
@@ -962,7 +957,7 @@ void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
   
   tgl_secret_chat_state state = sc_waiting;
   int our_id = tgl_get_peer_id (tgl_state::instance()->our_id());
-  tgl_do_encr_chat(secret_chat->id,
+  tgl_update_secret_chat(secret_chat,
         NULL,
         NULL,
         &our_id,

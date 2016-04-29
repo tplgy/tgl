@@ -362,7 +362,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
  
     int user_id =  DS_LVAL (DS_EC->participant_id) + DS_LVAL (DS_EC->admin_id) - tgl_get_peer_id (tgl_state::instance()->our_id());
     tgl_secret_chat_state state = sc_request;
-    tgl_do_encr_chat(secret_chat->id,
+    tgl_update_secret_chat(secret_chat,
             DS_EC->access_hash,
             DS_EC->date,
             DS_EC->admin_id,
@@ -379,7 +379,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
   } else {
     if (DS_EC->magic == CODE_encrypted_chat_waiting) {
       tgl_secret_chat_state state = sc_waiting;
-      tgl_do_encr_chat(secret_chat->id,
+      tgl_update_secret_chat(secret_chat,
             DS_EC->access_hash,
             DS_EC->date,
             NULL,
@@ -401,7 +401,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
     //write_secret_chat_file ();
     tgl_secret_chat_state state = sc_ok;
     secret_chat->temp_key_fingerprint = DS_LVAL(DS_EC->key_fingerprint);
-    tgl_do_encr_chat(secret_chat->id,
+    tgl_update_secret_chat(secret_chat,
             DS_EC->access_hash,
             DS_EC->date,
             NULL,
@@ -1674,7 +1674,7 @@ std::shared_ptr<tgl_message> tglf_fetch_encrypted_message (struct tl_ds_encrypte
     in_end = save_in_end;
 
     //bl_do_encr_chat_set_layer ((void *)P, DS_LVAL (DS_DML->layer));
-    tgl_do_encr_chat(secret_chat->id,
+    tgl_update_secret_chat(secret_chat,
         NULL,
         NULL,
         NULL,
@@ -1752,7 +1752,7 @@ std::shared_ptr<tgl_message> tglf_fetch_encrypted_message (struct tl_ds_encrypte
       //bl_do_encr_chat_update_seq ((void *)P, in_seq_no / 2 + 1, out_seq_no / 2);
       in_seq_no = in_seq_no / 2 + 1;
       out_seq_no = out_seq_no / 2;
-      tgl_do_encr_chat(secret_chat->id,
+      tgl_update_secret_chat(secret_chat,
           NULL,
           NULL,
           NULL,
@@ -1807,7 +1807,7 @@ std::shared_ptr<tgl_message> tglf_fetch_encrypted_message (struct tl_ds_encrypte
         DS_EM->file,
         TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
 
-    tgl_do_encr_chat(secret_chat->id,
+    tgl_update_secret_chat(secret_chat,
         NULL,
         NULL,
         NULL,
@@ -1915,7 +1915,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_encrypted_message (struct tl_ds_en
     }
     if (action_type == tgl_message_action_type_notify_layer) {
       auto action = std::static_pointer_cast<tgl_message_action_notify_layer>(M->action);
-      tgl_do_encr_chat(secret_chat->id,
+      tgl_update_secret_chat(secret_chat,
               NULL,
               NULL,
               NULL,
@@ -1933,7 +1933,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_encrypted_message (struct tl_ds_en
     if (action_type == tgl_message_action_type_set_message_ttl) {
       auto action = std::static_pointer_cast<tgl_message_action_set_message_ttl>(M->action);
       //bl_do_encr_chat_set_ttl (secret_chat, M->action.ttl);
-      tgl_do_encr_chat(secret_chat->id,
+      tgl_update_secret_chat(secret_chat,
               NULL,
               NULL,
               NULL,
