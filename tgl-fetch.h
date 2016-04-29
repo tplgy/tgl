@@ -19,12 +19,15 @@
 */
 #ifndef __TGL_FETCH_H__
 #define __TGL_FETCH_H__
+
 #include "tgl.h"
 #include "auto/auto-types.h"
 #include "types/tgl_bot.h"
 #include "types/tgl_chat.h"
 #include "types/tgl_channel.h"
 #include "types/tgl_user.h"
+#include "types/tgl_message.h"
+#include "types/tgl_message_media.h"
 
 std::shared_ptr<tgl_user> tglf_fetch_alloc_user (struct tl_ds_user *DS_U);
 std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_U);
@@ -67,4 +70,5 @@ std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo *DS_P);
 std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info (struct tl_ds_bot_info *DS_BI);
 std::shared_ptr<tgl_message_reply_markup> tglf_fetch_alloc_reply_markup(const tl_ds_reply_markup *DS_RM);
 void tglf_fetch_message_entities (const std::shared_ptr<tgl_message>& M, struct tl_ds_vector *DS);
+
 #endif

@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 
+#include "tgl_file_location.h"
+#include "tgl_peer_id.h"
+
 struct tgl_chat_user {
     int user_id;
     int inviter_id;

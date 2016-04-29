@@ -4,7 +4,8 @@
 #include "crypto/bn.h"
 #include "crypto/sha.h"
 #include "tgl-layout.h"
-#include "types/tgl_file_location.h"
+#include "tgl_file_location.h"
+#include "tgl_peer_id.h"
 
 #include <algorithm>
 #include <string.h>

@@ -4,6 +4,7 @@
 #include "tgl.h"
 #include "types/tgl_chat.h"
 #include "types/tgl_user.h"
+#include "types/tgl_typing_status.h"
 
 #include <vector>
 
