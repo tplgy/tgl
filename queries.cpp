@@ -1093,7 +1093,7 @@ static int sign_in_on_answer (std::shared_ptr<query> q, void *D) {
 static int sign_in_on_error (std::shared_ptr<query> q, int error_code, const std::string &error) {
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error);
     if (q->callback) {
-        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (0);
+        (*std::static_pointer_cast<std::function<void(bool, struct tgl_user *)>>(q->callback)) (false, nullptr);
     }
     return 0;
 }
