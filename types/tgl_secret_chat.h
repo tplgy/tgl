@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <string.h>
 #include <memory>
+#include <vector>
 
 enum tgl_secret_chat_state {
     sc_none,
