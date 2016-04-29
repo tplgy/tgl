@@ -268,7 +268,6 @@ std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int ints, vo
 static int fail_on_error(std::shared_ptr<query> q, int error_code, const std::string &error) {
   TGL_UNUSED(q);
   TGL_WARNING("error " << error_code << error);
-  assert (0);
   return 0;
 }
 
@@ -1259,7 +1258,7 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
         if (callback) {
           callback(0, 0);
         }
-        return;    
+        return;
       }
       text_len = strlen (new_text);
       int *save_ptr = in_ptr;
@@ -1396,7 +1395,7 @@ static int mark_read_channels_on_receive (std::shared_ptr<query> q, void *D) {
 
   //bl_do_channel (tgl_get_peer_id (E->id), NULL, NULL, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL,
     //&E->max_id, TGL_FLAGS_UNCHANGED);
-  
+
   if (q->callback) {
     (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (1);
   }
@@ -1473,13 +1472,13 @@ void tgl_do_messages_mark_read (tgl_peer_id_t id, int max_id, int offset, std::f
     out_int (CODE_input_channel);
     out_int (tgl_get_peer_id (id));
     out_long (id.access_hash);
-    
+
     out_int (max_id);
 
     std::shared_ptr<mark_read_extra> E = std::make_shared<mark_read_extra>();
     E->id = id;
     E->max_id = max_id;
-    
+
     tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &mark_read_channels_methods, E, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
   }
 }
@@ -1592,9 +1591,9 @@ static void _tgl_do_get_history (std::shared_ptr<get_history_extra> E, std::func
   if (tgl_get_peer_type (E->id) != TGL_PEER_CHANNEL) {// || (C && (C->flags & TGLCHF_MEGAGROUP))) {
     out_int (CODE_messages_get_history);
     out_peer_id (E->id);
-  } else {    
+  } else {
     out_int (CODE_channels_get_important_history);
-    
+
     out_int (CODE_input_channel);
     out_int (tgl_get_peer_id (E->id));
     out_long (E->id.access_hash);
@@ -1708,7 +1707,7 @@ static int get_dialogs_on_answer (std::shared_ptr<query> q, void *D) {
     E->offset += dl_size;
     if (E->list_offset > 0) {
       E->offset_peer = E->PL[E->list_offset - 1];
-    
+
       int p = E->list_offset - 1;
       while (p >= 0) {
 #if 0
@@ -1876,7 +1875,7 @@ int contact_search_on_answer (std::shared_ptr<query> q, void *D) {
   for (i = 0; i < DS_LVAL (DS_CRU->users->cnt); i++) {
     tglf_fetch_alloc_user (DS_CRU->users->data[i]);
   }
-  
+
   for (i = 0; i < DS_LVAL (DS_CRU->chats->cnt); i++) {
     tglf_fetch_alloc_chat (DS_CRU->chats->data[i]);
   }
@@ -2015,7 +2014,7 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
 
     ids[i] = msg_id;
 
-    if (i == 0) {      
+    if (i == 0) {
       from_id = tgl_msg_id_to_peer_id (msg_id);
     } else {
       if (tgl_cmp_peer_id (from_id, tgl_msg_id_to_peer_id (msg_id))) {
@@ -2028,8 +2027,8 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
       }
     }
   }
-  
-  
+
+
   clear_packet ();
   out_int (CODE_messages_forward_messages);
 
@@ -2063,7 +2062,7 @@ void tgl_do_forward_messages (tgl_peer_id_t id, int n, const tgl_message_id_t *_
 
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_msgs_methods, E,
         callback ? std::make_shared<std::function<void(bool, int , const std::vector<std::shared_ptr<tgl_message>>&)>>(callback) : nullptr);
-        
+
   tfree (ids, n * sizeof (tgl_message_id_t));
 }
 
@@ -2094,7 +2093,7 @@ void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, u
     }
     return;
   }
-  
+
   clear_packet ();
   out_int (CODE_messages_forward_message);
   tgl_peer_id_t from_peer = tgl_msg_id_to_peer_id (msg_id);
@@ -2454,7 +2453,7 @@ void _tgl_do_channel_get_members  (std::shared_ptr<struct channel_get_members_ex
 
 static int channels_get_members_on_answer (std::shared_ptr<query> q, void *D) {
   struct tl_ds_channels_channel_participants *DS_CP = (struct tl_ds_channels_channel_participants *)D;
-  
+
   int count = DS_LVAL (DS_CP->participants->cnt);
 
   std::shared_ptr<channel_get_members_extra> E = std::static_pointer_cast<channel_get_members_extra>(q->extra);
@@ -2473,7 +2472,7 @@ static int channels_get_members_on_answer (std::shared_ptr<query> q, void *D) {
     E->UL[E->count ++] = TGL_MK_USER (DS_LVAL (DS_CP->participants->data[i]->user_id));
   }
   E->offset += count;
-  
+
   if (!count || E->count == E->limit) {
     (*std::static_pointer_cast<std::function<void(int, int, tgl_peer_id_t *)>>(q->callback)) (1, E->count, E->UL);
     tfree (E->UL, E->size * sizeof (void *));
@@ -2488,7 +2487,7 @@ static int channels_get_members_on_error (std::shared_ptr<struct query> q, int e
   if (q->callback) {
     (*std::static_pointer_cast<std::function<void(bool, int, struct tgl_user **)>>(q->callback)) (0, 0, NULL);
   }
-  
+
   std::shared_ptr<channel_get_members_extra> E = std::static_pointer_cast<channel_get_members_extra>(q->extra);
   tfree (E->UL, E->size * sizeof (void *));
 
@@ -2526,7 +2525,7 @@ void _tgl_do_channel_get_members  (std::shared_ptr<struct channel_get_members_ex
   }
   out_int (E->offset);
   out_int (E->limit);
-  
+
   tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &channels_get_members_methods, E,
         std::make_shared<std::function<void(bool, int, struct tgl_user *[])>>(callback));
 }
@@ -2873,7 +2872,7 @@ static void _tgl_do_msg_search(std::shared_ptr<msg_search_extra> E, std::functio
 static int msg_search_on_answer(std::shared_ptr<query> q, void *D)
 {
   struct tl_ds_messages_messages *DS_MM = (struct tl_ds_messages_messages *)D;
-  
+
   int i;
   for (i = 0; i < DS_LVAL (DS_MM->chats->cnt); i++) {
     tglf_fetch_alloc_chat (DS_MM->chats->data[i]);
@@ -3378,7 +3377,7 @@ void tgl_do_create_channel (int users_num, tgl_peer_id_t ids[], const char *chat
   out_cstring (chat_topic, chat_topic_len);
   out_cstring (about, about_len);
   //out_int (CODE_vector);
-  //out_int (users_num); 
+  //out_int (users_num);
   int i;
   for (i = 0; i < users_num; i++) {
     tgl_peer_id_t id = ids[i];
@@ -4265,7 +4264,7 @@ void tgl_do_unblock_user (tgl_peer_id_t id, std::function<void(bool success)> ca
   clear_packet ();
 
   out_int (CODE_contacts_unblock);
-  
+
   out_int (CODE_input_user);
   out_int (tgl_get_peer_id (id));
   out_long (id.access_hash);
@@ -4342,7 +4341,7 @@ static int register_device_on_answer(std::shared_ptr<query> q, void *D) {
     }
     return 0;
 }
-    
+
 static struct query_methods register_device_methods = {
     .on_answer = register_device_on_answer,
     .on_error = q_void_on_error,
@@ -4351,7 +4350,7 @@ static struct query_methods register_device_methods = {
     .name = "regster device",
     .timeout = 0,
 };
-    
+
 void tgl_do_register_device(int token_type, const std::string& token, const std::string& device_model, const std::string& system_version, const std::string& lang_code,
                                 std::function<void(bool success)> callback)
 {
