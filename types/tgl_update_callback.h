@@ -16,9 +16,7 @@ public:
             std::function<void(const void *answer)>) = 0;
     virtual void logged_in() = 0;
     virtual void started() = 0;
-    virtual void type_notification(int user_id, enum tgl_typing_status status) = 0;
-    virtual void type_in_chat_notification(int user_id, int chat_id, enum tgl_typing_status status) = 0;
-    virtual void type_in_secret_chat_notification(int chat_id) = 0;
+    virtual void typing_status_changed(int user_id, int chat_id, int chat_type, enum tgl_typing_status status) = 0;
     virtual void status_notification(int user_id, const tgl_user_status& status) = 0;
     virtual void user_registered(int user_id) = 0;
     virtual void new_authorization(const std::string& device, const std::string& location) = 0;

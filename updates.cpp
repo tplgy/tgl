@@ -256,7 +256,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       //tgl_peer_t *U = tgl_peer_get (id);
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
-      tgl_state::instance()->callback()->type_notification(DS_LVAL(DS_U->user_id), status);
+      tgl_state::instance()->callback()->typing_status_changed(DS_LVAL(DS_U->user_id), DS_LVAL(DS_U->user_id), TGL_PEER_USER, status);
     }
     break;
   case CODE_update_chat_user_typing:
@@ -265,7 +265,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
       tgl_peer_id_t id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
-      tgl_state::instance()->callback()->type_in_chat_notification(tgl_get_peer_id(id), tgl_get_peer_id(chat_id), status);
+      tgl_state::instance()->callback()->typing_status_changed(tgl_get_peer_id(id), tgl_get_peer_id(chat_id), TGL_PEER_CHAT, status);
     }
     break;
   case CODE_update_user_status:
@@ -355,7 +355,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     break;
   case CODE_update_encrypted_chat_typing:
     {
-      tgl_state::instance()->callback()->type_in_secret_chat_notification(DS_LVAL(DS_U->chat_id));
+      tgl_state::instance()->callback()->typing_status_changed(DS_LVAL(DS_U->chat_id), DS_LVAL(DS_U->chat_id), TGL_PEER_ENCR_CHAT, tgl_typing_status::tgl_typing_typing);
     }
     break;
   case CODE_update_encrypted_messages_read:
