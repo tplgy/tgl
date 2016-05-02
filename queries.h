@@ -25,6 +25,9 @@
 #include "auto.h"
 #include "tgl-layout.h"
 #include "types/query_methods.h"
+#include "string.h"
+
+#include <string>
 #include <boost/variant.hpp>
 
 static const float DEFAULT_QUERY_TIMEOUT = 6.0;
@@ -49,6 +52,45 @@ struct query {
     struct paramed_type *type;
     std::shared_ptr<void> extra;
     std::shared_ptr<void> callback;
+    virtual bool is_v2() const { return false; }
+};
+
+class query_v2: public query {
+public:
+    explicit query_v2(const std::string& name,
+            const paramed_type& type_in)
+        : m_name(name)
+        , m_type(type_in)
+    {
+        msg_id = 0;
+        data_len = 0;
+        flags = 0;
+        seq_no = 0;
+        session_id = 0;
+        methods = nullptr;
+        type = &m_type;
+    }
+
+    void load_data(const void* data_in, int ints)
+    {
+        data_len = ints;
+        data = talloc (4 * ints);
+        memcpy(data, data_in, 4 * ints);
+    }
+
+    const std::string& name() const { return m_name; }
+
+    virtual bool is_v2() const override { return true; }
+
+    virtual void on_answer(void* DS) = 0;
+    virtual int on_error(int error_code, const std::string& error_string) = 0;
+
+    virtual double timeout_interval() const { return 0; }
+    virtual void on_timeout() { };
+
+private:
+    const std::string m_name;
+    paramed_type m_type;
 };
 
 void out_peer_id (tgl_peer_id_t id);
@@ -61,6 +103,8 @@ struct messages_send_extra {
 };
 
 std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int len, void *data, struct query_methods *methods, std::shared_ptr<void> extra, std::shared_ptr<void> callback);
+void tglq_send_query_v2(const std::shared_ptr<tgl_dc>& DC, const std::shared_ptr<query_v2>& q, int flags = 0);
+
 void tglq_query_ack (long long id);
 int tglq_query_error (long long id);
 int tglq_query_result (long long id);

@@ -261,6 +261,53 @@ std::shared_ptr<query> tglq_send_query_ex(std::shared_ptr<tgl_dc> DC, int ints, 
   return q;
 }
 
+void tglq_send_query_v2(const std::shared_ptr<tgl_dc>& DC, const std::shared_ptr<query_v2>& q, int flags) {
+  assert (DC);
+  bool pending = false;
+  if (!DC->sessions[0]) {
+    tglmp_dc_create_session (DC);
+    pending = true;
+  }
+  if (!(DC->flags & TGLDCF_CONFIGURED) && !(flags & QUERY_FORCE_SEND)) {
+    pending = true;
+  }
+  if (!tgl_signed_dc(DC) && !(flags & QUERY_LOGIN) && !(flags & QUERY_FORCE_SEND)) {
+    pending = true;
+    if (DC != tgl_state::instance()->DC_working && !(flags & QUERY_FORCE_SEND)) {
+      tgl_do_transfer_auth(DC->id, std::bind(tgl_transfer_auth_callback, DC, std::placeholders::_1));
+    }
+  }
+
+  TGL_DEBUG("Sending query \"" << q->name() << "\" of size " << 4 * q->data_len << " to DC " << DC->id << (pending ? " (pending)" : ""));
+  if (pending) {
+    q->msg_id = 0;
+    q->session = 0;
+    q->seq_no = 0;
+    q->session_id = 0;
+  } else {
+    q->msg_id = tglmp_encrypt_send_message (DC->sessions[0]->c, (int*)q->data, q->data_len, 1 | (flags & QUERY_FORCE_SEND));
+    q->session = DC->sessions[0];
+    q->seq_no = q->session->seq_no - 1;
+    q->session_id = q->session->session_id;
+    TGL_DEBUG("Sent query \"" << q->name() << "\" of size " << 4 * q->data_len << " to DC " << DC->id << ": #" << q->msg_id);
+  }
+  q->DC = DC;
+  q->flags = flags & ~QUERY_ACK_RECEIVED;
+  tgl_state::instance()->queries_tree.push_back(q);
+
+  q->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&alarm_query_gateway, q));
+  if (!pending) {
+    q->ev->start(q->timeout_interval() ? q->timeout_interval() : DEFAULT_QUERY_TIMEOUT);
+  }
+
+  tgl_state::instance()->active_queries ++;
+  DC->add_query(q);
+
+  if (pending) {
+    DC->add_pending_query(q);
+  }
+}
+
 std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int ints, void *data, struct query_methods *methods, std::shared_ptr<void> extra, std::shared_ptr<void> callback) {
   return tglq_send_query_ex(DC, ints, data, methods, extra, callback, 0);
 }
@@ -323,7 +370,11 @@ int tglq_query_error (long long id) {
   if (!q) {
     TGL_WARNING("error for unknown query #" << id << " #" << error_code << ": " << error);
   } else {
-    TGL_WARNING("error for query '" << (q->methods->name ? q->methods->name : "") << "' #" << id << " #" << error_code << ": " << error);
+    if (q->is_v2()) {
+      TGL_WARNING("error for query '" << std::static_pointer_cast<query_v2>(q)->name() << "' #" << id << " #" << error_code << ": " << error);
+    } else {
+      TGL_WARNING("error for query '" << (q->methods->name ? q->methods->name : "") << "' #" << id << " #" << error_code << ": " << error);
+    }
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
       q->ev->cancel();
     }
@@ -431,7 +482,9 @@ int tglq_query_error (long long id) {
       TGL_NOTICE("error for query #" << id << " error:" << error_code << " " << error << " (HANDLED)");
     } else {
       TGL_WARNING("error for query #"<< id << " error:" << error_code << " " << error);
-      if (q->methods && q->methods->on_error) {
+      if (q->is_v2()) {
+        res = std::static_pointer_cast<query_v2>(q)->on_error(error_code, error);
+      } else if (q->methods && q->methods->on_error) {
         res = q->methods->on_error (q, error_code, error);
       }
     }
@@ -483,7 +536,27 @@ int tglq_query_result (long long id) {
     if (!(q->flags & QUERY_ACK_RECEIVED)) {
       q->ev->cancel();
     }
-    if (q->methods && q->methods->on_answer) {
+    if (q->is_v2()) {
+      auto q2 = std::static_pointer_cast<query_v2>(q);
+      int *save = in_ptr;
+      TGL_DEBUG("in_ptr = " << in_ptr << ", end_ptr = " << in_end);
+      if (skip_type_any (q2->type) < 0) {
+        TGL_ERROR("Skipped " << (long)(in_ptr - save) << " int out of " << (long)(in_end - save) << " (type " << q2->type->type->id << ") (query type " << q2->name() << ")");
+        TGL_ERROR("0x" << std::hex << *(save - 1) << " 0x" << *(save) << " 0x" << *(save + 1) << " 0x" << *(save + 2));
+        assert (0);
+      }
+
+      assert (in_ptr == in_end);
+      in_ptr = save;
+
+      void *DS = fetch_ds_type_any (q2->type);
+      assert (DS);
+
+      q2->on_answer(DS);
+      free_ds_type_any (DS, q2->type);
+
+      assert (in_ptr == in_end);
+    } else if (q->methods && q->methods->on_answer) {
       //assert (q->type);
       int *save = in_ptr;
       TGL_DEBUG("in_ptr = " << in_ptr << ", end_ptr = " << in_end);
@@ -504,6 +577,7 @@ int tglq_query_result (long long id) {
 
       assert (in_ptr == in_end);
     }
+
     free (q->data);
     if (q->ev) {
         q->ev->cancel();
@@ -1494,15 +1568,11 @@ void tgl_do_mark_read (tgl_peer_id_t id, std::function<void(bool success)> callb
   if (!secret_chat) {
     tgl_set_query_error (EINVAL, "unknown secret chat");
     if (callback) {
-      callback(0);
+      callback(false);
     }
     return;
   }
-  if (secret_chat->last) {
-    tgl_do_messages_mark_read_encr (id, secret_chat->access_hash, secret_chat->last->date, callback);
-  } else {
-    tgl_do_messages_mark_read_encr (id, secret_chat->access_hash, time (0) - 10, callback);
-  }
+  tgl_do_messages_mark_read_encr(secret_chat, callback);
 #endif
 }
 /* }}} */

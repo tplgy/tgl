@@ -19,6 +19,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 
 #include "auto.h"
 #include "auto/auto-fetch-ds.h"
@@ -145,16 +146,6 @@ static void do_set_dh_params(const std::shared_ptr<tgl_secret_chat>& secret_chat
 
     auto res = tglmp_check_DH_params(secret_chat->encr_prime_bn(), secret_chat->encr_root);
     TGL_ASSERT_UNUSED(res, res >= 0);
-}
-
-static int encr_chat_on_error(std::shared_ptr<query> q, int error_code, const std::string &error) {
-    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error));
-
-    if (q->callback) {
-        (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(q->callback)) (false, std::static_pointer_cast<tgl_secret_chat>(q->extra));
-    }
-
-    return 0;
 }
 
 void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
@@ -288,63 +279,53 @@ void tgl_do_set_encr_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_cha
     tgl_do_send_encr_action(secret_chat, action);
 }
 
-/* {{{ Seng msg (plain text, encrypted) */
-static int msg_send_encr_on_answer (std::shared_ptr<query> q, void *D) {
-  //assert (M->flags & TGLMF_ENCRYPTED);
-  
-#if 0
-  if (M->flags & TGLMF_PENDING) {
-    bl_do_edit_message_encr (&M->permanent_id, NULL, NULL,  
-      &M->date,
-      NULL, 0, NULL, NULL, NULL, M->flags ^ TGLMF_PENDING);
-    bl_do_msg_update (&M->permanent_id);
-  }
-
-  if (q->callback) {
-    ((void (*)(std::shared_ptr<void>, bool, struct tgl_message*))q->callback) (q->callback_extra, true, M);
-  }
-#endif
-
-  std::shared_ptr<secret_msg_callback_extra> callback_extra = std::static_pointer_cast<secret_msg_callback_extra>(q->extra);
-  if (callback_extra) {
-    tgl_state::instance()->callback()->message_sent(callback_extra->message, callback_extra->message->permanent_id.id, callback_extra->out_seq_no);
-  }
-
-  return 0;
-}
-
-static int msg_send_encr_on_error (std::shared_ptr<query> q, int error_code, const std::string& error) {
-  std::shared_ptr<secret_msg_callback_extra> callback_extra = std::static_pointer_cast<secret_msg_callback_extra>(q->extra);
-  if (!callback_extra) {
-    return 0;
-  }
-  std::shared_ptr<tgl_message> M = callback_extra->message;
-  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(M->permanent_id.peer_id));
-  if (secret_chat && secret_chat->state != sc_deleted && error_code == 400) {
-    if (strncmp (error.c_str(), "ENCRYPTION_DECLINED", 19) == 0) {
-      //bl_do_peer_delete (tgl_state::instance(), secret_chat->id);
+class query_msg_send_encr: public query_v2 {
+public:
+    query_msg_send_encr(
+            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::shared_ptr<tgl_message>& message,
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
+        : query_v2("send encrypted (message)", TYPE_TO_PARAM(messages_sent_encrypted_message))
+        , m_secret_chat(secret_chat)
+        , m_message(message)
+        , m_callback(callback)
+    {
     }
-  }
-  if (q->callback) {
-    (*std::static_pointer_cast<std::function<void(int, const std::shared_ptr<tgl_message>&)>>(q->callback))(0, M);
-  }
-  if (M) {
-    //bl_do_message_delete (&M->permanent_id);
-    tgl_state::instance()->callback()->message_deleted(M->permanent_id.id);
-  }
-  return 0;
-}
 
-struct paramed_type msg_enc_type = TYPE_TO_PARAM(messages_sent_encrypted_message);
-static struct query_methods msg_send_encr_methods = {
-  .on_answer = msg_send_encr_on_answer,
-  .on_error = msg_send_encr_on_error,
-  .on_timeout = nullptr,
-  .type = msg_enc_type,
-  .name = "send encrypted (message)",
-  .timeout = 0,
+    virtual void on_answer(void*) override
+    {
+        tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id.id, m_secret_chat->out_seq_no);
+        if (m_callback) {
+            m_callback(true, m_message);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        if (m_secret_chat && m_secret_chat->state != sc_deleted && error_code == 400) {
+            if (error_string == "ENCRYPTION_DECLINED") {
+                // FIXME: delete the secret chat?
+                //bl_do_peer_delete (tgl_state::instance(), secret_chat->id);
+            }
+        }
+
+        if (m_callback) {
+            m_callback(false, m_message);
+        }
+
+        if (m_message) {
+            //bl_do_message_delete (&M->permanent_id);
+            // FIXME: is this correct?
+            tgl_state::instance()->callback()->message_deleted(m_message->permanent_id.id);
+        }
+        return 0;
+    }
+
+private:
+    std::shared_ptr<tgl_secret_chat> m_secret_chat;
+    std::shared_ptr<tgl_message> m_message;
+    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
 };
-/* }}} */
 
 void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M)> callback)
 {
@@ -432,9 +413,9 @@ void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::fu
   }
   encr_finish (secret_chat.get());
 
-  std::shared_ptr<secret_msg_callback_extra> extra = std::make_shared<secret_msg_callback_extra>(M, secret_chat->out_seq_no);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_encr_methods, extra,
-        callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_message>&)>>(callback) : nullptr);
+  auto q = std::make_shared<query_msg_send_encr>(secret_chat, M, callback);
+  q->load_data(packet_buffer, packet_ptr - packet_buffer);
+  tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
 
 void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M)> callback)
@@ -493,84 +474,112 @@ void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<
   }
   encr_finish (secret_chat.get());
   
-  std::shared_ptr<secret_msg_callback_extra> extra = std::make_shared<secret_msg_callback_extra>(M, secret_chat->out_seq_no);
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &msg_send_encr_methods, extra,
-        callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_message>&)>>(callback) : nullptr);
+  auto q = std::make_shared<query_msg_send_encr>(secret_chat, M, callback);
+  q->load_data(packet_buffer, packet_ptr - packet_buffer);
+  tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
 
-static int mark_read_encr_on_receive (std::shared_ptr<query> q, void *D) {
-    TGL_UNUSED(D);
-    if (q->callback) {
-        (*std::static_pointer_cast<std::function<void(int)>>(q->callback))(1);
+class query_mark_read_encr: public query_v2
+{
+public:
+    query_mark_read_encr(
+            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::function<void(bool)>& callback)
+        : query_v2("read encrypted", TYPE_TO_PARAM(bool))
+        , m_secret_chat(secret_chat)
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void*) override
+    {
+        if (m_callback) {
+            m_callback(true);
+        }
     }
-    return 0;
-}
 
-static int mark_read_encr_on_error (std::shared_ptr<query> q, int error_code, const std::string& error) {
-#if 0
-  tgl_peer_t *P = q->extra;
-  if (P && P->encr_chat.state != sc_deleted && error_code == 400) {
-    if (strncmp (error.c_str(), "ENCRYPTION_DECLINED", 19) == 0) {
-      bl_do_peer_delete (P->id);
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        if (m_secret_chat->state != sc_deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
+            // FIMXE: delete the secret chat?
+            //bl_do_peer_delete (P->id);
+        }
+
+        if (m_callback) {
+            m_callback(false);
+        }
+
+        return 0;
     }
-  }
-#endif
-  return 0;
-}
 
-static const struct paramed_type bool_type = TYPE_TO_PARAM(bool);
-
-static struct query_methods mark_read_encr_methods = {
-  .on_answer = mark_read_encr_on_receive,
-  .on_error = mark_read_encr_on_error,
-  .on_timeout = nullptr,
-  .type = bool_type,
-  .name = "read encrypted",
-  .timeout = 0,
+private:
+    std::shared_ptr<tgl_secret_chat> m_secret_chat;
+    std::function<void(bool)> m_callback;
 };
 
-void tgl_do_messages_mark_read_encr(const tgl_peer_id_t& id, long long access_hash, int last_time, std::function<void(bool)> callback) {
+void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secret_chat, std::function<void(bool)> callback) {
     clear_packet ();
     out_int (CODE_messages_read_encrypted_history);
     out_int (CODE_input_encrypted_chat);
-    out_int (tgl_get_peer_id (id));
-    out_long (access_hash);
-    out_int (last_time);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &mark_read_encr_methods, /*tgl_peer_get (id)*/0,
-            callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
+    out_int (tgl_get_peer_id (secret_chat->id));
+    out_long (secret_chat->access_hash);
+    out_int (secret_chat->last ? secret_chat->last->date : time (0) - 10);
+
+    auto q = std::make_shared<query_mark_read_encr>(secret_chat, callback);
+    q->load_data(packet_buffer, packet_ptr - packet_buffer);
+    tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
 
-static int send_encr_file_on_answer (std::shared_ptr<query> q, void *D) {
+class query_send_encr_file: public query_v2
+{
+public:
+    query_send_encr_file(
+            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::shared_ptr<tgl_message>& message)
+        : query_v2("send encrypted (file)", TYPE_TO_PARAM(messages_sent_encrypted_message))
+        , m_secret_chat(secret_chat)
+        , m_message(message)
+    { }
+
+    virtual void on_answer(void*) override
+    {
 #if 0 // FIXME
-  struct tl_ds_messages_sent_encrypted_message *DS_MSEM = (struct tl_ds_messages_sent_encrypted_message*)D; 
-  struct tgl_message *M = q->extra;
+        struct tl_ds_messages_sent_encrypted_message *DS_MSEM = (struct tl_ds_messages_sent_encrypted_message*)D;
+        struct tgl_message *M = q->extra;
 
-  if (M->flags & TGLMF_PENDING) {
-    //bl_do_edit_message_encr (&M->permanent_id, NULL, NULL, DS_MSEM->date, 
-    //NULL, 0, NULL, NULL, DS_MSEM->file, M->flags ^ TGLMF_PENDING);   
-    //bl_do_msg_update (&M->permanent_id);
-    tgl_state::instance()->callback.new_msg(M);
-  }
-  
-  if (q->callback) {
-    ((void (*)(void *, int, struct tgl_message *))q->callback)(q->callback_extra, 1, M);
-  }
+        if (M->flags & TGLMF_PENDING) {
+          //bl_do_edit_message_encr (&M->permanent_id, NULL, NULL, DS_MSEM->date,
+          //NULL, 0, NULL, NULL, DS_MSEM->file, M->flags ^ TGLMF_PENDING);
+          //bl_do_msg_update (&M->permanent_id);
+          tgl_state::instance()->callback.new_msg(M);
+        }
+
+        if (q->callback) {
+          ((void (*)(void *, int, struct tgl_message *))q->callback)(q->callback_extra, 1, M);
+        }
 #endif
-  std::shared_ptr<secret_msg_callback_extra> callback_extra = std::static_pointer_cast<secret_msg_callback_extra>(q->extra);
-  if (callback_extra) {
-    tgl_state::instance()->callback()->message_sent(callback_extra->message, callback_extra->message->permanent_id.id, callback_extra->out_seq_no);
-  }
-  return 0;
-}
+        tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id.id, m_secret_chat->out_seq_no);
+    }
 
-struct paramed_type msg_send_enc_type = TYPE_TO_PARAM(messages_sent_encrypted_message);
-static struct query_methods send_encr_file_methods = {
-  .on_answer = send_encr_file_on_answer,
-  .on_error = msg_send_encr_on_error,
-  .on_timeout = nullptr,
-  .type = msg_send_enc_type,
-  .name = "send encrypted (file)",
-  .timeout = 0,
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        if (m_secret_chat && m_secret_chat->state != sc_deleted && error_code == 400) {
+            if (error_string == "ENCRYPTION_DECLINED") {
+                // FIXME: delete the secret chat?
+                //bl_do_peer_delete (tgl_state::instance(), secret_chat->id);
+            }
+        }
+
+        if (m_message) {
+            //bl_do_message_delete (&M->permanent_id);
+            // FIXME: is this correct?
+            tgl_state::instance()->callback()->message_deleted(m_message->permanent_id.id);
+        }
+        return 0;
+    }
+
+private:
+    std::shared_ptr<tgl_secret_chat> m_secret_chat;
+    std::shared_ptr<tgl_message> m_message;
 };
 
 void send_file_encrypted_end (std::shared_ptr<send_file> f, std::shared_ptr<void> callback) {
@@ -679,8 +688,6 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, std::shared_ptr<void
 
   tfree_secure (f->iv, 32);
  
-  int ints = packet_ptr - packet_buffer;
-
   tgl_peer_id_t from_id = tgl_state::instance()->our_id();
   
   struct tgl_message_id msg_id = tgl_peer_id_to_msg_id(secret_chat->id, r);
@@ -698,8 +705,9 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, std::shared_ptr<void
   free_ds_type_decrypted_message_media (DS_DMM, &decrypted_message_media);
   assert (M);
       
-  std::shared_ptr<secret_msg_callback_extra> extra = std::make_shared<secret_msg_callback_extra>(M, secret_chat->out_seq_no);
-  tglq_send_query (tgl_state::instance()->DC_working, ints, packet_buffer, &send_encr_file_methods, extra, callback);
+  auto q = std::make_shared<query_send_encr_file>(secret_chat, M);
+  q->load_data(packet_buffer, packet_ptr - packet_buffer);
+  tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
 
 void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
@@ -737,77 +745,84 @@ void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double 
   tgl_do_send_encr_msg(M, callback);
 }
 
-/* {{{ Encr accept */
-static int send_encr_accept_on_answer (std::shared_ptr<query> q, void *D) {
-  std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat ((struct tl_ds_encrypted_chat*)D);
+class query_send_encr_accept: public query_v2
+{
+public:
+    explicit query_send_encr_accept(
+            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
+        : query_v2("send encrypted (chat accept)", TYPE_TO_PARAM(encrypted_chat))
+        , m_callback(callback)
+    { }
 
-  if (!secret_chat) {
-    return 0;
-  }
+    virtual void on_answer(void* D) override
+    {
+        std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat(
+                static_cast<tl_ds_encrypted_chat*>(D));
 
-  if (secret_chat->state == sc_ok) {
-    tgl_do_send_encr_chat_layer(secret_chat);
-  }
-  if (q->callback) {
-    (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(q->callback)) (secret_chat->state == sc_ok, secret_chat);
-  }
-  return 0;
-}
+        if (secret_chat && secret_chat->state == sc_ok) {
+            tgl_do_send_encr_chat_layer(secret_chat);
+        }
 
-static int send_encr_request_on_answer (std::shared_ptr<query> q, void *D) {
-  std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat ((struct tl_ds_encrypted_chat*)D);
-  
-  if (!secret_chat) {
-    return 0;
-  }
-
-  if (q->callback) {
-    (*std::static_pointer_cast<std::function<void(bool, std::shared_ptr<tgl_secret_chat>)>>(q->callback)) (secret_chat->state != sc_deleted, secret_chat);
-  }
-  return 0;
-}
-
-static int encr_accept_on_error (std::shared_ptr<query> q, int error_code, const std::string& error) {
-#if 0 // FIXME
-  tgl_peer_t *P = (tgl_peer_t *)q->extra;
-  if (P && P->encr_chat.state != sc_deleted &&  error_code == 400) {
-    if (strncmp (error, "ENCRYPTION_DECLINED", 19) == 0) {
-      bl_do_peer_delete (P->id);
+        if (m_callback) {
+            m_callback(secret_chat && secret_chat->state == sc_ok, secret_chat);
+        }
     }
-  }
-  if (q->callback) {
-    ((void (*)(void *, int, struct tgl_secret_chat *))q->callback) (q->callback_extra, 0, NULL);
-  }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+#if 0 // FIXME
+        tgl_peer_t *P = (tgl_peer_t *)q->extra;
+        if (P && P->encr_chat.state != sc_deleted &&  error_code == 400) {
+          if (strncmp (error, "ENCRYPTION_DECLINED", 19) == 0) {
+            bl_do_peer_delete (P->id);
+          }
+        }
 #endif
-  return 0;
-}
+        if (m_callback) {
+            m_callback(false, nullptr);
+        }
+        return 0;
+    }
 
-struct paramed_type enc_chat_type = TYPE_TO_PARAM(encrypted_chat);
-static struct query_methods send_encr_accept_methods  = {
-  .on_answer = send_encr_accept_on_answer,
-  .on_error = encr_accept_on_error,
-  .on_timeout = nullptr,
-  .type = enc_chat_type,
-  .name = "send encrypted (chat accept)",
-  .timeout = 0,
+private:
+    std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_callback;
 };
 
-static struct query_methods send_encr_request_methods  = {
-  .on_answer = send_encr_request_on_answer,
-  .on_error = encr_chat_on_error,
-  .on_timeout = nullptr,
-  .type = enc_chat_type,
-  .name = "send encrypted (chat request)",
-  .timeout = 0,
+class query_send_encr_request: public query_v2
+{
+public:
+    explicit query_send_encr_request(
+            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
+        : query_v2("send encrypted (chat request)", TYPE_TO_PARAM(encrypted_chat))
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void* D) override
+    {
+        std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat(
+                static_cast<tl_ds_encrypted_chat*>(D));
+
+        if (m_callback) {
+            m_callback(secret_chat && secret_chat->state == sc_ok, secret_chat);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false, nullptr);
+        }
+
+        return 0;
+    }
+
+private:
+    std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_callback;
 };
 
-//int encr_root;
-//unsigned char *encr_prime;
-//int encr_param_version;
-//static TGLC_bn_ctx *ctx;
-
-void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        unsigned char *random,
+static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        std::array<unsigned char, 256>& random,
         std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> callback)
 {
   int i;
@@ -832,7 +847,7 @@ void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
   for (i = 0; i < 256; i++) {
     random[i] ^= random_here[i];
   }
-  TGLC_bn *b = TGLC_bn_bin2bn (random, 256, 0);
+  TGLC_bn *b = TGLC_bn_bin2bn (random.data(), 256, 0);
   ensure_ptr (b);
   TGLC_bn *g_a = TGLC_bn_bin2bn (secret_chat->g_key.data(), 256, 0);
   ensure_ptr (g_a);
@@ -885,8 +900,9 @@ void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
   TGLC_bn_clear_free (g_a);
   TGLC_bn_clear_free (r);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_encr_accept_methods, secret_chat,
-        callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(callback) : nullptr);
+  auto q = std::make_shared<query_send_encr_accept>(callback);
+  q->load_data(packet_buffer, packet_ptr - packet_buffer);
+  tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
 
 void tgl_do_create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat) {
@@ -921,8 +937,8 @@ void tgl_do_create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat)
   TGLC_bn_clear_free (a);
 }
 
-void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        unsigned char *random,
+static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        std::array<unsigned char, 256>& random,
         std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> callback)
 {
   int i;
@@ -931,7 +947,7 @@ void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
   for (i = 0; i < 256; i++) {
     random[i] ^= random_here[i];
   }
-  TGLC_bn *a = TGLC_bn_bin2bn (random, 256, 0);
+  TGLC_bn *a = TGLC_bn_bin2bn (random.data(), 256, 0);
   ensure_ptr (a);
   TGLC_bn *p = TGLC_bn_bin2bn (secret_chat->encr_prime().data(), 256, 0);
   ensure_ptr (p);
@@ -962,7 +978,7 @@ void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
         NULL,
         &our_id,
         NULL,
-        random,
+        random.data(),
         NULL,
         &state,
         NULL,
@@ -987,100 +1003,112 @@ void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret
   TGLC_bn_clear_free (p);
   TGLC_bn_clear_free (r);
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_encr_request_methods, secret_chat,
-        callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(callback) : nullptr);
+  auto q = std::make_shared<query_send_encr_request>(callback);
+  q->load_data(packet_buffer, packet_ptr - packet_buffer);
+  tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
 
-static int send_encr_discard_on_answer (std::shared_ptr<query> q, void *D) {
-  TGL_UNUSED(D);
-  std::shared_ptr<tgl_secret_chat> E = std::static_pointer_cast<tgl_secret_chat>(q->extra);
+class query_send_encr_discard: public query_v2
+{
+public:
+    query_send_encr_discard(
+            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
+        : query_v2("send encrypted (chat discard)", TYPE_TO_PARAM(bool))
+        , m_secret_chat(secret_chat)
+        , m_callback(callback)
+    { }
 
-  // FIXME
-  //bl_do_peer_delete(tgl_state::instance(), E->id);
+    virtual void on_answer(void*) override
+    {
+        if (m_callback) {
+            m_callback(true, m_secret_chat);
+        }
+    }
 
-  if (q->callback) {
-    (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(q->callback)) (true, E);
-  }
-  return 0;
-}
+    virtual int on_error(int error_code, const std::string& error_string)
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false, m_secret_chat);
+        }
+        return 0;
+    }
 
-static struct query_methods send_encr_discard_methods  = {
-  .on_answer = send_encr_discard_on_answer,
-  .on_error = encr_chat_on_error,
-  .on_timeout = nullptr,
-  .type = TYPE_TO_PARAM(bool),
-  .name = "send encrypted (chat discard)",
-  .timeout = 0,
+private:
+    std::shared_ptr<tgl_secret_chat> m_secret_chat;
+    std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_callback;
 };
 
-void tgl_do_discard_secret_chat (const std::shared_ptr<tgl_secret_chat>& E, std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> callback) {
-  assert (E);
-  assert (tgl_get_peer_id (E->id) > 0);
+void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat, std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> callback) {
+  assert (secret_chat);
+  assert (tgl_get_peer_id (secret_chat->id) > 0);
 
-  if (E->state == sc_deleted || E->state == sc_none) {
+  if (secret_chat->state == sc_deleted || secret_chat->state == sc_none) {
     if (callback) {
-      callback (0, E);
+      callback (false, secret_chat);
     }
     return;
   }
 
   clear_packet ();
   out_int (CODE_messages_discard_encryption);
-  out_int (tgl_get_peer_id (E->id));
+  out_int (tgl_get_peer_id (secret_chat->id));
 
-  tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_encr_discard_methods, E,
-        callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(callback) : nullptr);
+  auto q = std::make_shared<query_send_encr_discard>(secret_chat, callback);
+  q->load_data(packet_buffer, packet_ptr - packet_buffer);
+  tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
 
-struct encr_chat_extra {
-   std::function<void(const std::shared_ptr<tgl_secret_chat>&, unsigned char *random, std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>)> callback;
-   std::shared_ptr<tgl_secret_chat> secret_chat;
-};
+class query_get_dh_config: public query_v2
+{
+public:
+    query_get_dh_config(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::function<void(const std::shared_ptr<tgl_secret_chat>&,
+                    std::array<unsigned char, 256>& random,
+                    const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>&)>& callback,
+            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& final_callback)
+        : query_v2("get dh config", TYPE_TO_PARAM(messages_dh_config))
+        , m_secret_chat(secret_chat)
+        , m_callback(callback)
+        , m_final_callback(final_callback)
+    { }
 
-static int get_dh_config_on_answer (std::shared_ptr<query> q, void *D) {
-    struct tl_ds_messages_dh_config *DS_MDC = (struct tl_ds_messages_dh_config *)D;
+    virtual void on_answer(void* D) override
+    {
+        tl_ds_messages_dh_config* DS_MDC = static_cast<tl_ds_messages_dh_config*>(D);
 
-    assert(q->extra);
-    auto extra = std::static_pointer_cast<encr_chat_extra>(q->extra);
+        if (DS_MDC->magic == CODE_messages_dh_config) {
+            assert(DS_MDC->p->len == 256);
+            do_set_dh_params(m_secret_chat, DS_LVAL(DS_MDC->g),
+                    reinterpret_cast<unsigned char*>(DS_MDC->p->data), DS_LVAL(DS_MDC->version));
+        } else {
+            assert(m_secret_chat->encr_param_version);
+        }
 
-    if (DS_MDC->magic == CODE_messages_dh_config) {
-        assert (DS_MDC->p->len == 256);
-        do_set_dh_params(extra->secret_chat, DS_LVAL(DS_MDC->g), (unsigned char *)DS_MDC->p->data, DS_LVAL (DS_MDC->version));
-    } else {
-        assert(extra->secret_chat->encr_param_version);
-    }
-    unsigned char *random = (unsigned char *)malloc (256);
-    assert (DS_MDC->random->len == 256);
-    memcpy (random, DS_MDC->random->data, 256);
-
-    extra->callback(extra->secret_chat, random,
-        q->callback ? *std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(q->callback) : nullptr);
-    free (random);
-
-    return 0;
-}
-
-static int get_dh_config_on_error(std::shared_ptr<query> q, int error_code, const std::string &error) {
-    TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << std::string(error));
-
-    assert(q->extra);
-
-    if (q->callback) {
-        auto extra = std::static_pointer_cast<encr_chat_extra>(q->extra);
-        (*std::static_pointer_cast<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(q->callback)) (false, extra->secret_chat);
+        if (m_callback) {
+            std::array<unsigned char, 256> random;
+            assert(DS_MDC->random->len == 256);
+            memcpy(random.data(), DS_MDC->random->data, 256);
+            m_callback(m_secret_chat, random, m_final_callback);
+        }
     }
 
-    return 0;
-}
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_final_callback) {
+            m_final_callback(false, m_secret_chat);
+        }
+        return 0;
+    }
 
-struct paramed_type dh_config_type = TYPE_TO_PARAM(messages_dh_config);
-static struct query_methods get_dh_config_methods  = {
-  .on_answer = get_dh_config_on_answer,
-  .on_error = get_dh_config_on_error,
-  .on_timeout = nullptr,
-  .type = dh_config_type,
-  .name = "dh config",
-  .timeout = 0,
+private:
+    std::shared_ptr<tgl_secret_chat> m_secret_chat;
+    std::function<void(const std::shared_ptr<tgl_secret_chat>&,
+             std::array<unsigned char, 256>& random,
+             const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>&)> m_callback;
+    std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_final_callback;
 };
 
 void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& secret_chat, std::function<void(bool, const std::shared_ptr<tgl_secret_chat>& E)> callback) {
@@ -1096,11 +1124,10 @@ void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& sec
     out_int (CODE_messages_get_dh_config);
     out_int (secret_chat->encr_param_version);
     out_int (256);
-    auto extra = std::make_shared<encr_chat_extra>();
-    extra->callback = tgl_do_send_accept_encr_chat;
-    extra->secret_chat = secret_chat;
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dh_config_methods, extra,
-            callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>& E)>>(callback) : nullptr);
+
+    auto q = std::make_shared<query_get_dh_config>(secret_chat, tgl_do_send_accept_encr_chat, callback);
+    q->load_data(packet_buffer, packet_ptr - packet_buffer);
+    tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
 
 int tgl_do_create_encr_chat_request(const tgl_peer_id_t& user_id, std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> callback) {
@@ -1118,11 +1145,11 @@ int tgl_do_create_encr_chat_request(const tgl_peer_id_t& user_id, std::function<
     out_int (CODE_messages_get_dh_config);
     out_int (0);
     out_int (256);
-    auto extra = std::make_shared<encr_chat_extra>();
-    extra->callback = tgl_do_send_create_encr_chat;
-    extra->secret_chat = secret_chat;
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &get_dh_config_methods, extra,
-            callback ? std::make_shared<std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>>(callback) : nullptr);
+
+    auto q = std::make_shared<query_get_dh_config>(secret_chat, tgl_do_send_create_encr_chat, callback);
+    q->load_data(packet_buffer, packet_ptr - packet_buffer);
+    tglq_send_query_v2(tgl_state::instance()->DC_working, q);
+
     return t;
 }
 
