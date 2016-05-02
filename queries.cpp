@@ -111,11 +111,23 @@ void tglq_query_remove (std::shared_ptr<query> q)
 
 static int alarm_query (std::shared_ptr<query> q) {
   assert (q);
-  TGL_DEBUG("Alarm query " << q->msg_id << " (type '" << (q->methods->name ? q->methods->name : "") << "')");
+  if (q->is_v2()) {
+    TGL_DEBUG("Alarm query " << q->msg_id << " (type '" << std::static_pointer_cast<query_v2>(q)->name() << "')");
+  } else {
+    TGL_DEBUG("Alarm query " << q->msg_id << " (type '" << (q->methods->name ? q->methods->name : "") << "')");
+  }
 
   assert(q->ev);
-  assert(q->methods);
-  q->ev->start(q->methods->timeout ? q->methods->timeout : DEFAULT_QUERY_TIMEOUT);
+
+  double timeout;
+  if (q->is_v2()) {
+    timeout = std::static_pointer_cast<query_v2>(q)->timeout_interval();
+  } else {
+    assert(q->methods);
+    timeout = q->methods->timeout;
+  }
+
+  q->ev->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
 
   if (q->session && q->session_id && q->DC && q->DC->sessions[0] == q->session && q->session->session_id == q->session_id) {
     clear_packet ();
@@ -901,39 +913,55 @@ static void fetch_dc_option (struct tl_ds_dc_option *DS_DO) {
   tgl_state::instance()->set_dc_option (DS_LVAL (DS_DO->flags), DS_LVAL (DS_DO->id), std::string(DS_DO->ip_address->data, DS_DO->ip_address->len), DS_LVAL (DS_DO->port));
 }
 
-static int help_get_config_on_answer (std::shared_ptr<query> q, void *DS) {
-  struct tl_ds_config *DS_C = (struct tl_ds_config *) DS;
+class query_help_get_config: public query_v2
+{
+public:
+    explicit query_help_get_config(const std::function<void(bool)>& callback)
+        : query_v2("get config", TYPE_TO_PARAM(config))
+        , m_callback(callback)
+    { }
 
-  int i;
-  for (i = 0; i < DS_LVAL (DS_C->dc_options->cnt); i++) {
-    fetch_dc_option (DS_C->dc_options->data[i]);
-  }
+    virtual void on_answer(void* DS) override
+    {
+        tl_ds_config* DS_C = static_cast<tl_ds_config*>(DS);
 
-  int max_chat_size = DS_LVAL (DS_C->chat_size_max);
-  int max_bcast_size = 0;//DS_LVAL (DS_C->broadcast_size_max);
-  TGL_DEBUG("chat_size = " << max_chat_size << ", bcast_size = " << max_bcast_size);
+        int count = DS_LVAL(DS_C->dc_options->cnt);
+        for (int i = 0; i < count; ++i) {
+            fetch_dc_option(DS_C->dc_options->data[i]);
+        }
 
-  if (q->callback) {
-    (*std::static_pointer_cast<std::function<void(bool)>>(q->callback)) (true);
-  }
-  return 0;
-}
+        int max_chat_size = DS_LVAL(DS_C->chat_size_max);
+        int max_bcast_size = 0; //DS_LVAL (DS_C->broadcast_size_max);
+        TGL_DEBUG("chat_size = " << max_chat_size << ", bcast_size = " << max_bcast_size);
 
-static struct query_methods help_get_config_methods  = {
-  .on_answer = help_get_config_on_answer,
-  .on_error = q_void_on_error,
-  .on_timeout = NULL,
-  .type = TYPE_TO_PARAM(config),
-  .name = "get config",
-  .timeout = 1
+        if (m_callback) {
+            m_callback(true);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false);
+        }
+        return 0;
+    }
+
+    virtual double timeout_interval() const override { return 1; }
+
+private:
+    std::function<void(bool)> m_callback;
 };
 
 void tgl_do_help_get_config(std::function<void(bool)> callback) {
     clear_packet ();
     tgl_do_insert_header ();
     out_int (CODE_help_get_config);
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0,
-            callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
+
+    auto q = std::make_shared<query_help_get_config>(callback);
+    q->load_data(packet_buffer, packet_ptr - packet_buffer);
+    tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
 
 static void set_dc_configured (std::shared_ptr<void> _D, bool success);
@@ -941,31 +969,49 @@ void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D) {
     clear_packet ();
     tgl_do_insert_header();
     out_int (CODE_help_get_config);
-    tglq_send_query_ex (D, packet_ptr - packet_buffer, packet_buffer, &help_get_config_methods, 0, std::make_shared<std::function<void(bool)>>(std::bind(set_dc_configured, D, std::placeholders::_1)), QUERY_FORCE_SEND);
+
+    auto q = std::make_shared<query_help_get_config>(std::bind(set_dc_configured, D, std::placeholders::_1));
+    q->load_data(packet_buffer, packet_ptr - packet_buffer);
+    tglq_send_query_v2(tgl_state::instance()->DC_working, q, QUERY_FORCE_SEND);
 }
 /* }}} */
 
 /* {{{ Send code */
-static int send_code_on_answer (std::shared_ptr<query> q, void *D) {
-    struct tl_ds_auth_sent_code *DS_ASC = (struct tl_ds_auth_sent_code *)D;
+class query_send_code: public query_v2
+{
+public:
+    explicit query_send_code(const std::function<void(bool, int, const char*)>& callback)
+        : query_v2("send code", TYPE_TO_PARAM(auth_sent_code))
+        , m_callback(callback)
+    { }
 
-    char *phone_code_hash = (char*)DS_STR_DUP (DS_ASC->phone_code_hash);
-    int registered = DS_BVAL (DS_ASC->phone_registered);;
+    virtual void on_answer(void* D) override
+    {
+        tl_ds_auth_sent_code* DS_ASC = static_cast<tl_ds_auth_sent_code*>(D);
 
-    if (q->callback) {
-        (*std::static_pointer_cast<std::function<void(int, int, const char *)>>(q->callback)) (1, registered, phone_code_hash);
+        std::string phone_code_hash;
+        if (DS_ASC->phone_code_hash) {
+            phone_code_hash = std::string(DS_ASC->phone_code_hash->data, DS_ASC->phone_code_hash->len);
+        }
+
+        int registered = DS_BVAL(DS_ASC->phone_registered);;
+
+        if (m_callback) {
+            m_callback(true, registered, phone_code_hash.c_str());
+        }
     }
-    free (phone_code_hash);
-    return 0;
-}
 
-static struct query_methods send_code_methods  = {
-  .on_answer = send_code_on_answer,
-  .on_error = q_list_on_error,
-  .on_timeout = NULL,
-  .type = TYPE_TO_PARAM(auth_sent_code),
-  .name = "send code",
-  .timeout = 0,
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false, 0, nullptr);
+        }
+        return 0;
+    }
+
+private:
+    std::function<void(bool, int, const char*)> m_callback;
 };
 
 void tgl_do_send_code (const char *phone, int phone_len, std::function<void(bool, int, const char *)> callback) {
@@ -980,26 +1026,37 @@ void tgl_do_send_code (const char *phone, int phone_len, std::function<void(bool
     out_string (tgl_state::instance()->app_hash().c_str());
     out_string ("en");
 
-    tglq_send_query_ex(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &send_code_methods, NULL,
-            std::make_shared<std::function<void(bool, int, const char *)>>(callback), QUERY_LOGIN);
+    auto q = std::make_shared<query_send_code>(callback);
+    q->load_data(packet_buffer, packet_ptr - packet_buffer);
+    tglq_send_query_v2(tgl_state::instance()->DC_working, q, QUERY_LOGIN);
 }
 
+class query_phone_call: public query_v2
+{
+public:
+    explicit query_phone_call(const std::function<void(bool)>& callback)
+        : query_v2("phone call", TYPE_TO_PARAM(bool))
+        , m_callback(callback)
+    { }
 
-static int phone_call_on_answer(std::shared_ptr<query> q, void *D) {
-    TGL_UNUSED(D);
-    if (q->callback) {
-        (*std::static_pointer_cast<std::function<void(int)>>(q->callback)) (1);
+    virtual void on_answer(void*) override
+    {
+        if (m_callback) {
+            m_callback(true);
+        }
     }
-    return 0;
-}
 
-static struct query_methods phone_call_methods  = {
-  .on_answer = phone_call_on_answer,
-  .on_error = q_void_on_error,
-  .on_timeout = NULL,
-  .type = TYPE_TO_PARAM(bool),
-  .name = "phone call",
-  .timeout = 0,
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false);
+        }
+        return 0;
+    }
+
+private:
+    std::function<void(bool)> m_callback;
 };
 
 void tgl_do_phone_call (const char *phone, int phone_len, const char *hash, int hash_len, std::function<void(bool)> callback) {
@@ -1011,7 +1068,9 @@ void tgl_do_phone_call (const char *phone, int phone_len, const char *hash, int 
     out_cstring (phone, phone_len);
     out_cstring (hash, hash_len);
 
-    tglq_send_query(tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &phone_call_methods, NULL, callback ? std::make_shared<std::function<void(bool)>>(callback) : nullptr);
+    auto q = std::make_shared<query_phone_call>(callback);
+    q->load_data(packet_buffer, packet_ptr - packet_buffer);
+    tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
 /* }}} */
 

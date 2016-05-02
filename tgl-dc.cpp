@@ -30,14 +30,25 @@ static const float SESSION_CLEANUP_TIMEOUT = 5.0;
 void tglq_query_remove(std::shared_ptr<query> q);
 bool send_pending_query(std::shared_ptr<query> q) {
     assert(q->DC);
+    std::string name;
+    double timeout;
+    if (q->is_v2()) {
+        auto q2 = std::static_pointer_cast<query_v2>(q);
+        name = q2->name();
+        timeout = q2->timeout_interval();
+    } else {
+        name = q->methods->name ? q->methods->name : "";
+        timeout = q->methods->timeout;
+    }
+
     if (!q->DC->auth_key_id || !q->DC->sessions[0]) {
-        TGL_DEBUG("not ready to send pending query " << q << " (" << (q->methods->name ? q->methods->name : "") << "), re-queuing");
+        TGL_DEBUG("not ready to send pending query " << q << " (" << name << "), re-queuing");
         tglmp_dc_create_session(q->DC);
         q->DC->add_pending_query(q);
         return false;
     }
     if (!tgl_signed_dc(q->DC) && !(q->flags & QUERY_LOGIN)) {
-        TGL_DEBUG("not ready to send pending non-login query " << q << " (" << (q->methods->name ? q->methods->name : "") << "), re-queuing");
+        TGL_DEBUG("not ready to send pending non-login query " << q << " (" << name << "), re-queuing");
         q->DC->add_pending_query(q);
         return false;
     }
@@ -53,9 +64,9 @@ bool send_pending_query(std::shared_ptr<query> q) {
         q->session_id = 0;
     }
 
-    TGL_DEBUG("Sending pending query \"" << (q->methods->name ? q->methods->name : "") << "\" (" << q->msg_id << ") of size " << 4 * q->data_len << " to DC " << q->DC->id);
+    TGL_DEBUG("Sending pending query \"" << name << "\" (" << q->msg_id << ") of size " << 4 * q->data_len << " to DC " << q->DC->id);
 
-    q->ev->start(q->methods->timeout ? q->methods->timeout : DEFAULT_QUERY_TIMEOUT);
+    q->ev->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
 
     return true;
 }
