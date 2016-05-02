@@ -128,7 +128,9 @@ void tgl_dc::remove_query(std::shared_ptr<query> q) {
 }
 
 void tgl_dc::add_pending_query(std::shared_ptr<query> q) {
-    pending_queries.push_back(q);
+    if (std::find(pending_queries.cbegin(), pending_queries.cend(), q) == pending_queries.cend()) {
+        pending_queries.push_back(q);
+    }
 }
 
 void tgl_dc::remove_pending_query(std::shared_ptr<query> q) {
