@@ -1026,7 +1026,7 @@ public:
         }
     }
 
-    virtual int on_error(int error_code, const std::string& error_string)
+    virtual int on_error(int error_code, const std::string& error_string) override
     {
         TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
         if (m_callback) {
