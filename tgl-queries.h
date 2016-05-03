@@ -40,7 +40,7 @@ void tgl_do_forward_message (int id, int msg_id, unsigned long long flags, std::
 
 // forward messages *ids* to peer *id*
 // messages can not be encrypted and peer can not be secret chat
-void tgl_do_forward_messages (int id, int size, const int ids[], std::function<void(bool success, int count, const std::vector<std::shared_ptr<tgl_message>>& M)> callback);
+void tgl_do_forward_messages(const tgl_peer_id_t& id, const std::vector<tgl_message_id_t>& ids, unsigned long long flags, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)> callback);
 
 // sends contact to another user.
 // This contact may be or may not be telegram user
@@ -62,7 +62,7 @@ void tgl_do_send_location (tgl_peer_id_t id, double latitude, double longitude, 
 
 // sends broadcast (i.e. message to several users at once)
 // flags are same as in tgl_do_send_message
-void tgl_do_send_broadcast (int num, int id[], const char *text, unsigned long long flags, std::function<void(bool success, int num, const std::vector<std::shared_ptr<tgl_message>>& ML)> callback);
+void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, unsigned long long flags, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& ML)> callback);
 /* }}} */
 
 /* {{{ EDITING SELF PROFILE */

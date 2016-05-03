@@ -25,10 +25,12 @@
 #include "auto.h"
 #include "tgl-layout.h"
 #include "types/query_methods.h"
+#include "types/tgl_message.h"
 #include "string.h"
 
 #include <string>
 #include <boost/variant.hpp>
+#include <vector>
 
 static const float DEFAULT_QUERY_TIMEOUT = 6.0;
 
@@ -96,10 +98,28 @@ private:
 void out_peer_id (tgl_peer_id_t id);
 
 struct messages_send_extra {
-  int multi = 0;
+  bool multi = false;
   tgl_message_id_t id;
   int count = 0;
-  tgl_message_id_t *list = NULL;
+  std::vector<tgl_message_id_t> message_ids;
+};
+
+class query_send_msgs: public query_v2
+{
+public:
+    query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)> single_callback);
+    query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
+            const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& multi_callback);
+    explicit query_send_msgs(const std::function<void(bool)>& bool_callback);
+    virtual void on_answer(void *D) override;
+    virtual int on_error(int error_code, const std::string& error_string) override;
+
+private:
+    std::shared_ptr<messages_send_extra> m_extra;
+    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_single_callback;
+    std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>& messages)> m_multi_callback;
+    std::function<void(bool)> m_bool_callback;
 };
 
 std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int len, void *data, struct query_methods *methods, std::shared_ptr<void> extra, std::shared_ptr<void> callback);
@@ -118,7 +138,7 @@ void tglq_query_restart (long long id);
 double get_double_time (void);
 
 struct send_file;
-void send_file_encrypted_end (std::shared_ptr<send_file> f, std::shared_ptr<void> callback);
+void send_file_encrypted_end(std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
 
 void tgl_do_send_bind_temp_key (std::shared_ptr<tgl_dc> D, long long nonce, int expires_at, void *data, int len, long long msg_id);
 

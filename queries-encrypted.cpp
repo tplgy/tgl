@@ -534,10 +534,12 @@ class query_send_encr_file: public query_v2
 public:
     query_send_encr_file(
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<tgl_message>& message)
+            const std::shared_ptr<tgl_message>& message,
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
         : query_v2("send encrypted (file)", TYPE_TO_PARAM(messages_sent_encrypted_message))
         , m_secret_chat(secret_chat)
         , m_message(message)
+        , m_callback(callback)
     { }
 
     virtual void on_answer(void*) override
@@ -552,11 +554,10 @@ public:
           //bl_do_msg_update (&M->permanent_id);
           tgl_state::instance()->callback.new_msg(M);
         }
-
-        if (q->callback) {
-          ((void (*)(void *, int, struct tgl_message *))q->callback)(q->callback_extra, 1, M);
-        }
 #endif
+        if (m_callback) {
+            m_callback(true, m_message);
+        }
         tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id.id, m_secret_chat->out_seq_no);
     }
 
@@ -567,6 +568,10 @@ public:
                 // FIXME: delete the secret chat?
                 //bl_do_peer_delete (tgl_state::instance(), secret_chat->id);
             }
+        }
+
+        if (m_callback) {
+            m_callback(false, m_message);
         }
 
         if (m_message) {
@@ -580,9 +585,10 @@ public:
 private:
     std::shared_ptr<tgl_secret_chat> m_secret_chat;
     std::shared_ptr<tgl_message> m_message;
+    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
 };
 
-void send_file_encrypted_end (std::shared_ptr<send_file> f, std::shared_ptr<void> callback) {
+void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) {
   out_int (CODE_messages_send_encrypted_file);
   out_int (CODE_input_encrypted_chat);
   out_int (tgl_get_peer_id (f->to_id));
@@ -705,7 +711,7 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, std::shared_ptr<void
   free_ds_type_decrypted_message_media (DS_DMM, &decrypted_message_media);
   assert (M);
       
-  auto q = std::make_shared<query_send_encr_file>(secret_chat, M);
+  auto q = std::make_shared<query_send_encr_file>(secret_chat, M, callback);
   q->load_data(packet_buffer, packet_ptr - packet_buffer);
   tglq_send_query_v2(tgl_state::instance()->DC_working, q);
 }
