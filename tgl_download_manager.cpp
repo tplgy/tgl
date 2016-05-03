@@ -315,7 +315,12 @@ void tgl_download_manager::send_file_end (std::shared_ptr<send_file> f, const st
     clear_packet ();
 
     if (f->avatar) {
-        send_avatar_end (f, [=](bool success) { callback(success, nullptr); });
+        send_avatar_end (f,
+                [=](bool success) {
+                    if(callback) {
+                        callback(success, nullptr);
+                    }
+                });
         return;
     }
     if (!f->encr) {
@@ -467,7 +472,9 @@ void tgl_download_manager::set_chat_photo (tgl_peer_id_t chat_id, const std::str
     assert (tgl_get_peer_type (chat_id) == TGL_PEER_CHAT);
     _tgl_do_send_photo (chat_id, file_name, tgl_get_peer_id (chat_id), 0, 0, 0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
             [=](bool success, const std::shared_ptr<tgl_message>&) {
-                callback(success);
+                if (callback) {
+                    callback(success);
+                }
             });
 }
 
@@ -475,7 +482,9 @@ void tgl_download_manager::set_profile_photo (const std::string &file_name, cons
 {
     _tgl_do_send_photo (tgl_state::instance()->our_id(), file_name, -1, 0, 0, 0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO,
             [=](bool success, const std::shared_ptr<tgl_message>&) {
-                callback(success);
+                if (callback) {
+                    callback(success);
+                }
             });
 }
 
