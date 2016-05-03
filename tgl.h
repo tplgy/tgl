@@ -63,6 +63,7 @@ class tgl_connection;
 struct tgl_session;
 struct tgl_dc;
 struct query;
+struct tgl_user;
 struct tgl_state;
 
 enum tgl_value_type {
@@ -201,7 +202,7 @@ private:
 };
 
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);
-int tgl_do_send_bot_auth (const char *code, int code_len, std::function<void(bool success, struct tgl_user *Self)> callback);
+int tgl_do_send_bot_auth (const char *code, int code_len, std::function<void(bool success, const std::shared_ptr<tgl_user>&)> callback);
 
 #define TGL_PEER_USER 1
 #define TGL_PEER_CHAT 2

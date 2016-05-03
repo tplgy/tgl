@@ -20,12 +20,12 @@ void tgl_do_send_code (const char *phone, int phone_len, std::function<void(bool
 void tgl_do_phone_call (const char *phone, int phone_len, const char *hash, int hash_len, std::function<void(bool success)> callback);
 
 // sends code from SMS to server. This step should end authorization, unless user have password
-int tgl_do_send_code_result (const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, std::function<void(bool success)> callback);
+int tgl_do_send_code_result (const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, std::function<void(bool success, const std::shared_ptr<tgl_user>&)> callback);
 
 
 // sends code from SMS, username and lastname to server. This step should end new user registration
 int tgl_do_send_code_result_auth (const char *phone, int phone_len, const char *hash, int hash_len, const char *code, int code_len, const char *first_name,
-        int first_name_len, const char *last_name, int last_name_len, std::function<void(bool success, struct tgl_user *Self)> callback);
+        int first_name_len, const char *last_name, int last_name_len, std::function<void(bool success, const std::shared_ptr<tgl_user>&)> callback);
 
 /* }}} */
 void tgl_do_send_msg (const std::shared_ptr<tgl_message>& M, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);

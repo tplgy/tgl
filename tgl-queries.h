@@ -5,6 +5,7 @@
 #include "types/tgl_chat.h"
 #include "types/tgl_user.h"
 #include "types/tgl_typing_status.h"
+#include "types/tgl_message.h"
 
 #include <vector>
 
@@ -158,7 +159,11 @@ int tgl_do_create_secret_chat(const tgl_peer_id_t& user_id, std::function<void(b
 // receives all dialogs (except secret chats) from offset=*offset* with limit=*limit*
 // dialogs are sorted by last message received
 // if limit is > 100 there is a (small) chance of one dialog received twice
-void tgl_do_get_dialog_list (int limit, int offset, std::function<void(bool success, int size, tgl_peer_id_t peers[], int last_msg_id[], int unread_count[])> callback);
+void tgl_do_get_dialog_list(int limit, int offset,
+        const std::function<void(bool success,
+                const std::vector<tgl_peer_id_t>& peers,
+                const std::vector<tgl_message_id_t>& last_msg_ids,
+                const std::vector<int>& unread_count)>& callback);
 
 // resolves username
 void tgl_do_contact_search(const char *name, std::function<void(bool success)> callback);
