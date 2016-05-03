@@ -212,7 +212,13 @@ void tglq_query_restart (long long id) {
 }
 
 static void alarm_query_gateway(std::shared_ptr<query> q) {
-    alarm_query(q);
+    assert(q);
+    if (q->methods && q->methods->on_timeout) {
+        tglq_query_remove(q);
+        q->methods->on_timeout(q);
+    } else {
+        alarm_query(q);
+    }
 }
 
 void tgl_transfer_auth_callback (std::shared_ptr<tgl_dc> arg, bool success);
@@ -4541,10 +4547,17 @@ static int send_bind_on_error (std::shared_ptr<query> q, int error_code, const s
     return 0;
 }
 
+static int send_bind_temp_on_timeout(std::shared_ptr<query> q) {
+    std::shared_ptr<tgl_dc> DC = std::static_pointer_cast<tgl_dc>(q->extra);
+    TGL_NOTICE("Bind timed out for DC " << DC->id);
+    DC->reset();
+    return 0;
+}
+
 static struct query_methods send_bind_temp_methods = {
   .on_answer = send_bind_temp_on_answer,
   .on_error = send_bind_on_error,
-  .on_timeout = NULL,
+  .on_timeout = send_bind_temp_on_timeout,
   .type = bool_type,
   .name = "bind temp auth key",
   .timeout = 0,
