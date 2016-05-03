@@ -1094,6 +1094,7 @@ class query_sign_in: public query_v2
 public:
     explicit query_sign_in(const std::function<void(int, const std::shared_ptr<struct tgl_user>&)>& callback)
         : query_v2("sign in", TYPE_TO_PARAM(auth_authorization))
+        , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
