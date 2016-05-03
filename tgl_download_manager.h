@@ -5,6 +5,7 @@
 #include "types/tgl_file_location.h"
 #include "types/tgl_peer_id.h"
 
+#include <functional>
 #include <memory>
 #include <vector>
 #include <string>

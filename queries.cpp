@@ -1547,7 +1547,6 @@ public:
             const std::function<void(bool)>& callback)
         : query_v2("mark read", TYPE_TO_PARAM(messages_affected_history))
         , m_id(id)
-        , m_max_id(max_id)
         , m_callback(callback)
     { }
 
@@ -1585,7 +1584,6 @@ public:
 
 private:
     tgl_peer_id_t m_id;
-    int m_max_id;
     std::function<void(bool)> m_callback;
 };
 
