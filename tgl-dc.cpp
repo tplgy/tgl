@@ -41,9 +41,11 @@ bool send_pending_query(std::shared_ptr<query> q) {
         timeout = q->methods->timeout;
     }
 
-    if (!q->DC->auth_key_id || !q->DC->sessions[0]) {
-        TGL_DEBUG("not ready to send pending query " << q << " (" << name << "), re-queuing");
+    if (!q->DC->sessions[0]) {
         tglmp_dc_create_session(q->DC);
+    }
+    if (!q->DC->auth_key_id) {
+        TGL_DEBUG("not ready to send pending query " << q << " (" << name << "), re-queuing");
         q->DC->add_pending_query(q);
         return false;
     }
@@ -89,6 +91,10 @@ void tgl_dc::reset()
             sessions[i] = nullptr;
         }
     }
+    if (temp_auth_key_bind_query_id) {
+        tglq_query_delete(temp_auth_key_bind_query_id);
+        temp_auth_key_bind_query_id = 0;
+    }
     flags = 0;
     rsa_key_idx = 0;
     state = st_init;
@@ -100,6 +106,9 @@ void tgl_dc::reset()
     auth_key_id = 0;
     temp_auth_key_id = 0;
     server_salt = 0;
+    if (!pending_queries.empty()) {
+        send_pending_queries();
+    }
 }
 
 void tgl_dc::send_pending_queries() {
