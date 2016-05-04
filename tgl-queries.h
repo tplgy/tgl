@@ -7,6 +7,7 @@
 #include "types/tgl_typing_status.h"
 #include "types/tgl_message.h"
 
+#include <string>
 #include <vector>
 
 void tgl_do_get_terms_of_service(std::function<void(bool success, const char *ans)> callback);
@@ -77,7 +78,7 @@ void tgl_do_set_username (const std::string& username, std::function<void(bool s
 void tgl_do_update_status (bool online, std::function<void(bool success)> callback);
 
 // exports card. This card can be later be used by another user to add you to dialog list.
-void tgl_do_export_card (std::function<void(bool success, int size, int *card)> callback);
+void tgl_do_export_card(const std::function<void(bool success, const std::vector<int>& card)>& callback);
 /* }}} */
 
 /* {{{ WORKING WITH GROUP CHATS */
@@ -104,7 +105,7 @@ void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::s
 // receives invitation link to this chat
 // only chat admin can create one
 // prevoius link invalidated, if existed
-void tgl_do_export_chat_link (tgl_peer_id_t id, std::function<void(bool success, const char *link)> callback);
+void tgl_do_export_chat_link(const tgl_peer_id_t& id, const std::function<void(bool success, const std::string& link)>& callback);
 
 // joins to secret chat by link (or hash of this link)
 void tgl_do_import_chat_link (const char *link, int link_len, std::function<void(bool success)> callback);
