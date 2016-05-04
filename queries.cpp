@@ -990,7 +990,7 @@ public:
         tl_ds_auth_sent_code* DS_ASC = static_cast<tl_ds_auth_sent_code*>(D);
 
         std::string phone_code_hash;
-        if (DS_ASC->phone_code_hash) {
+        if (DS_ASC->phone_code_hash && DS_ASC->phone_code_hash->data) {
             phone_code_hash = std::string(DS_ASC->phone_code_hash->data, DS_ASC->phone_code_hash->len);
         }
 
