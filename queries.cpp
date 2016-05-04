@@ -4835,15 +4835,19 @@ struct sign_up_extra {
     int hash_len = 0;
     int first_name_len = 0;
     int last_name_len = 0;
+
+    ~sign_up_extra() {
+        free(phone);
+        free(hash);
+        free(first_name);
+        free(last_name);
+    }
 };
 
 void tgl_sign_in_code(std::shared_ptr<sign_up_extra> E, const void *code);
 void tgl_sign_in_result(std::shared_ptr<sign_up_extra> E, bool success, const std::shared_ptr<tgl_user>& U) {
     TGL_ERROR(".....tgl_sign_in_result");
-    if (success) {
-        free (E->phone);
-        free (E->hash);
-    } else {
+    if (!success) {
         TGL_ERROR("incorrect code");
         tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
         return;
@@ -4866,12 +4870,7 @@ void tgl_sign_in_code(std::shared_ptr<sign_up_extra> E, const void *code)
 void tgl_sign_up_code (std::shared_ptr<sign_up_extra> E, const void *code);
 void tgl_sign_up_result (std::shared_ptr<sign_up_extra> E, bool success, const std::shared_ptr<tgl_user>& U) {
     TGL_UNUSED(U);
-    if (success) {
-        free (E->phone);
-        free (E->hash);
-        free (E->first_name);
-        free (E->last_name);
-    } else {
+    if (!success) {
         TGL_ERROR("incorrect code");
         tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
         return;
@@ -4919,8 +4918,6 @@ void tgl_register_cb (std::shared_ptr<sign_up_extra> E, const void *rinfo)
         }
     } else {
         TGL_ERROR("stopping registration");
-        free (E->phone);
-        free (E->hash);
         tgl_state::instance()->login ();
     }
 }
@@ -4932,6 +4929,8 @@ void tgl_sign_in_phone_cb(std::shared_ptr<sign_up_extra> E, bool success, int re
         TGL_ERROR("Incorrect phone number");
 
         free (E->phone);
+        E->phone = nullptr;
+        E->phone_len = 0;
         tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone);
         return;
     }
