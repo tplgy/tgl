@@ -21,7 +21,8 @@ public:
     virtual void user_registered(int user_id) = 0;
     virtual void new_authorization(const std::string& device, const std::string& location) = 0;
     virtual void new_user(int user_id, const std::string &phone, const std::string &firstname,
-                     const std::string &lastname, const std::string &username, long long access_hash, const tgl_user_status& status) = 0;
+                     const std::string &lastname, const std::string &username, long long access_hash,
+                     const tgl_user_status& status, bool is_bot) = 0;
     virtual void user_update(int user_id, void *value, enum tgl_user_update_type update_type) = 0;
     virtual void user_deleted(int id) = 0;
     virtual void avatar_update(int peer_id, int peer_type, const tgl_file_location &photo_small, const tgl_file_location &photo_big) = 0;
