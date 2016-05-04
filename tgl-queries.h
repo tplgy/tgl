@@ -193,7 +193,8 @@ void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, std::f
 // id type of id is UNKNOWN uses global search (in all dialogs) instead
 // if *from* or *to* is means *from*=0 and *to*=+INF
 // return up to *limit* entries from offset=*offset*
-void tgl_do_msg_search (int id, int from, int to, int limit, int offset, const char *query, int query_len, std::function<void(bool success, int size, const std::vector<std::shared_ptr<tgl_message>>& list)> callback);
+void tgl_do_msg_search(const tgl_peer_id_t& id, int from, int to, int limit, int offset, const std::string& query,
+        const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback);
 
 // deletes message *id*
 void tgl_do_delete_msg (long long msg_id, std::function<void(bool success)> callback);

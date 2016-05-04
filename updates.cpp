@@ -35,8 +35,6 @@
 
 #include <assert.h>
 
-void tgl_do_get_channel_difference (int channel_id, std::function<void(bool success)> callback);
-
 static void fetch_dc_option (struct tl_ds_dc_option *DS_DO) {
   TGL_DEBUG("id = " << DS_LVAL (DS_DO->id) << ", ip = " << std::string(DS_DO->ip_address->data, DS_DO->ip_address->len) << ", port = " << DS_LVAL (DS_DO->port));
 
