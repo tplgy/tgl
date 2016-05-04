@@ -115,7 +115,7 @@ void tgl_do_import_chat_link (const char *link, int link_len, std::function<void
 
 // requests full info about user *id*.
 // if *offline_mode* is set no actual query is sent
-void tgl_do_get_user_info (int id, std::function<void(bool success, struct tgl_user *U)> callback);
+void tgl_do_get_user_info(const tgl_peer_id_t& id, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback);
 
 // adds contact to contact list by phone number
 // user will be named  *first_name* *last_name* in contact list
