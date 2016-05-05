@@ -370,6 +370,9 @@ int tglq_query_error(long long id)
         TGL_WARNING("error for query '" << q->name() << "' #" << id << " #" << error_code << ": " << error_string);
         return q->handle_error(error_code, error_string);
     }
+
+    tgl_state::instance()->active_queries--;
+
     return 0;
 }
 
