@@ -11,17 +11,22 @@
 #include <fcntl.h>
 #include <boost/filesystem.hpp>
 
-class query_send_file_part: public query_v2, public std::enable_shared_from_this<query_send_file_part>
+class query_send_file_part: public query
 {
 public:
     query_send_file_part(tgl_download_manager* download_manager,
             const std::shared_ptr<send_file>& file,
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
-        : query_v2("send file part", TYPE_TO_PARAM(bool))
+        : query("send file part", TYPE_TO_PARAM(bool))
         , m_download_manager(download_manager)
         , m_file(file)
         , m_callback(callback)
     { }
+
+    std::shared_ptr<query_send_file_part> shared_from_this()
+    {
+        return std::static_pointer_cast<query_send_file_part>(query::shared_from_this());
+    }
 
     virtual void on_answer(void* D) override
     {
@@ -53,13 +58,18 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
 };
 
-class query_set_photo: public query_v2
+class query_set_photo: public query
 {
 public:
     explicit query_set_photo(const std::function<void(bool)>& callback)
-        : query_v2("set photo", TYPE_TO_PARAM(photos_photo))
+        : query("set photo", TYPE_TO_PARAM(photos_photo))
         , m_callback(callback)
     { }
+
+    std::shared_ptr<query_set_photo> shared_from_this()
+    {
+        return std::static_pointer_cast<query_set_photo>(query::shared_from_this());
+    }
 
     virtual void on_answer(void* D) override
     {
@@ -81,17 +91,22 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-class query_download: public query_v2, public std::enable_shared_from_this<query_download>
+class query_download: public query
 {
 public:
     explicit query_download(tgl_download_manager* download_manager,
             const std::shared_ptr<download>& download,
             const std::function<void(bool, const std::string&)>& callback)
-        : query_v2("download", TYPE_TO_PARAM(upload_file))
+        : query("download", TYPE_TO_PARAM(upload_file))
         , m_download_manager(download_manager)
         , m_download(download)
         , m_callback(callback)
     { }
+
+    std::shared_ptr<query_download> shared_from_this()
+    {
+        return std::static_pointer_cast<query_download>(query::shared_from_this());
+    }
 
     virtual void on_answer(void* D) override
     {
@@ -188,7 +203,7 @@ void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, const 
 
         auto q = std::make_shared<query_send_msgs>(callback);
         q->load_data(packet_buffer, packet_ptr - packet_buffer);
-        tglq_send_query_v2(tgl_state::instance()->DC_working, q);
+        q->execute(tgl_state::instance()->DC_working);
     } else {
         out_int (CODE_photos_upload_profile_photo);
         if (f->size < (16 << 20)) {
@@ -210,7 +225,7 @@ void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, const 
 
         auto q = std::make_shared<query_set_photo>(callback);
         q->load_data(packet_buffer, packet_ptr - packet_buffer);
-        tglq_send_query_v2(tgl_state::instance()->DC_working, q);
+        q->execute(tgl_state::instance()->DC_working);
     }
 }
 
@@ -305,7 +320,7 @@ void tgl_download_manager::send_file_unencrypted_end(std::shared_ptr<send_file> 
 
     auto q = std::make_shared<query_send_msgs>(E, callback);
     q->load_data(packet_buffer, packet_ptr - packet_buffer);
-    tglq_send_query_v2(tgl_state::instance()->DC_working, q);
+    q->execute(tgl_state::instance()->DC_working);
 }
 
 void tgl_download_manager::send_file_end (std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) {
@@ -379,7 +394,7 @@ void tgl_download_manager::send_part(std::shared_ptr<send_file> f, const std::fu
 
         auto q = std::make_shared<query_send_file_part>(this, f, callback);
         q->load_data(packet_buffer, packet_ptr - packet_buffer);
-        tglq_send_query_v2(tgl_state::instance()->DC_working, q);
+        q->execute(tgl_state::instance()->DC_working);
     } else {
         send_file_end (f, callback);
     }
@@ -396,7 +411,7 @@ void tgl_download_manager::send_file_thumb(std::shared_ptr<send_file> f, const v
 
     auto q = std::make_shared<query_send_file_part>(this, f, callback);
     q->load_data(packet_buffer, packet_ptr - packet_buffer);
-    tglq_send_query_v2(tgl_state::instance()->DC_working, q);
+    q->execute(tgl_state::instance()->DC_working);
 }
 
 
@@ -647,7 +662,7 @@ void tgl_download_manager::load_next_part (std::shared_ptr<download> D, std::fun
 
     auto q = std::make_shared<query_download>(this, D, callback);
     q->load_data(packet_buffer, packet_ptr - packet_buffer);
-    tglq_send_query_v2(tgl_state::instance()->DC_list[D->location.dc()], q);
+    q->execute(tgl_state::instance()->DC_list[D->location.dc()]);
 }
 
 void tgl_download_manager::download_photo_size (const std::shared_ptr<tgl_photo_size>& P, std::function<void(bool success, const std::string &filename)> callback)

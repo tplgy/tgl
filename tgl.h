@@ -62,7 +62,7 @@
 class tgl_connection;
 struct tgl_session;
 struct tgl_dc;
-struct query;
+class query;
 struct tgl_user;
 struct tgl_state;
 

@@ -24,10 +24,11 @@
 #include "tgl-structures.h"
 #include "auto.h"
 #include "tgl-layout.h"
-#include "types/query_methods.h"
 #include "types/tgl_message.h"
+#include "tgl-dc.h"
 #include "string.h"
 
+#include <memory>
 #include <string>
 #include <boost/variant.hpp>
 #include <vector>
@@ -40,59 +41,65 @@ static const float DEFAULT_QUERY_TIMEOUT = 6.0;
 
 class tgl_timer;
 
-struct query {
-    long long msg_id;
-    int data_len;
-    int flags;
-    int seq_no;
-    long long session_id;
-    void *data;
-    struct query_methods *methods;
-    std::shared_ptr<tgl_timer> ev;
-    std::shared_ptr<tgl_dc> DC;
-    std::shared_ptr<tgl_session> session;
-    struct paramed_type *type;
-    std::shared_ptr<void> extra;
-    std::shared_ptr<void> callback;
-    virtual bool is_v2() const { return false; }
-};
-
-class query_v2: public query {
+class query: public std::enable_shared_from_this<query>
+{
 public:
-    explicit query_v2(const std::string& name,
-            const paramed_type& type_in)
+    query(const std::string& name, const paramed_type& type)
         : m_name(name)
-        , m_type(type_in)
+        , m_type(type)
+        , m_data()
+        , m_flags(0)
+        , m_seq_no(0)
+        , m_msg_id(0)
+        , m_session_id(0)
+        , m_timer()
+        , m_dc()
+        , m_session()
     {
-        msg_id = 0;
-        data_len = 0;
-        flags = 0;
-        seq_no = 0;
-        session_id = 0;
-        methods = nullptr;
-        type = &m_type;
     }
+
+    void execute(const std::shared_ptr<tgl_dc>& dc, int flags = 0);
+    bool execute_after_pending();
+    void alarm();
+    void regen();
+    void ack();
+    void cancel_timer();
+    void clear_timer();
+    int handle_error(int error_code, const std::string& error_string);
+    void handle_result();
 
     void load_data(const void* data_in, int ints)
     {
-        data_len = ints;
-        data = talloc (4 * ints);
-        memcpy(data, data_in, 4 * ints);
+        static_assert(sizeof(int) == 4, "We assume int is 4 bytes");
+        m_data.resize(4 * ints);
+        memcpy(m_data.data(), data_in, m_data.size());
     }
 
+    paramed_type* type() { return &m_type; }
     const std::string& name() const { return m_name; }
-
-    virtual bool is_v2() const override { return true; }
+    long long session_id() const { return m_session_id; }
+    long long msg_id() const { return m_msg_id; }
+    int flags() const { return m_flags; }
+    const std::shared_ptr<tgl_session>& session() const { return m_session; }
+    const std::shared_ptr<tgl_dc>& dc() const { return m_dc; }
 
     virtual void on_answer(void* DS) = 0;
     virtual int on_error(int error_code, const std::string& error_string) = 0;
 
     virtual double timeout_interval() const { return 0; }
-    virtual void on_timeout() { };
+    virtual bool on_timeout() { return false; };
 
 private:
     const std::string m_name;
     paramed_type m_type;
+    std::vector<char> m_data;
+    int m_flags;
+    int m_seq_no;
+    long long m_msg_id;
+    long long m_session_id;
+    std::shared_ptr<tgl_timer> m_timer;
+    std::shared_ptr<tgl_dc> m_dc;
+    std::shared_ptr<tgl_session> m_session;
 };
 
 void out_peer_id (tgl_peer_id_t id);
@@ -104,7 +111,7 @@ struct messages_send_extra {
   std::vector<tgl_message_id_t> message_ids;
 };
 
-class query_send_msgs: public query_v2
+class query_send_msgs: public query
 {
 public:
     query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
@@ -122,9 +129,6 @@ private:
     std::function<void(bool)> m_bool_callback;
 };
 
-std::shared_ptr<query> tglq_send_query (std::shared_ptr<tgl_dc> DC, int len, void *data, struct query_methods *methods, std::shared_ptr<void> extra, std::shared_ptr<void> callback);
-void tglq_send_query_v2(const std::shared_ptr<tgl_dc>& DC, const std::shared_ptr<query_v2>& q, int flags = 0);
-
 void tglq_query_ack (long long id);
 int tglq_query_error (long long id);
 int tglq_query_result (long long id);
@@ -132,8 +136,6 @@ void tglq_query_restart (long long id);
 
 //double next_timer_in (void);
 //void work_timers (void);
-
-//extern struct query_methods help_get_config_methods;
 
 double get_double_time (void);
 
@@ -147,8 +149,4 @@ void tglq_query_delete (long long id);
 void tglq_query_free_all ();
 void tglq_regen_queries_from_old_session (struct tgl_dc *DC, struct tgl_session *S);
 
-// For binlog
-
-//int get_dh_config_on_answer (struct query *q);
-//void fetch_dc_option (void);
 #endif

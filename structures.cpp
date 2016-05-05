@@ -2205,7 +2205,6 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
         const tl_ds_encrypted_file* file,
         int flags)
 {
-    clear_packet ();
     assert (!(flags & 0xfffe0000));
 
     std::shared_ptr<tgl_message> M = tglm_message_alloc(id);

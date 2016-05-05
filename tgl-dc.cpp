@@ -27,52 +27,6 @@
 
 static const float SESSION_CLEANUP_TIMEOUT = 5.0;
 
-void tglq_query_remove(std::shared_ptr<query> q);
-bool send_pending_query(std::shared_ptr<query> q) {
-    assert(q->DC);
-    std::string name;
-    double timeout;
-    if (q->is_v2()) {
-        auto q2 = std::static_pointer_cast<query_v2>(q);
-        name = q2->name();
-        timeout = q2->timeout_interval();
-    } else {
-        name = q->methods->name ? q->methods->name : "";
-        timeout = q->methods->timeout;
-    }
-
-    if (!q->DC->sessions[0]) {
-        tglmp_dc_create_session(q->DC);
-    }
-    if (!q->DC->auth_key_id) {
-        TGL_DEBUG("not ready to send pending query " << q << " (" << name << "), re-queuing");
-        q->DC->add_pending_query(q);
-        return false;
-    }
-    if (!tgl_signed_dc(q->DC) && !(q->flags & QUERY_LOGIN)) {
-        TGL_DEBUG("not ready to send pending non-login query " << q << " (" << name << "), re-queuing");
-        q->DC->add_pending_query(q);
-        return false;
-    }
-
-    q->flags &= ~QUERY_ACK_RECEIVED;
-    tglq_query_remove(q);
-    q->session = q->DC->sessions[0];
-    q->msg_id = tglmp_encrypt_send_message (q->session->c, (int*)q->data, q->data_len, (q->flags & QUERY_FORCE_SEND) | 1);
-    tgl_state::instance()->queries_tree.push_back(q);
-    q->session_id = q->session->session_id;
-    auto dc = q->session->dc.lock();
-    if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !(q->flags & QUERY_FORCE_SEND)) {
-        q->session_id = 0;
-    }
-
-    TGL_DEBUG("Sending pending query \"" << name << "\" (" << q->msg_id << ") of size " << 4 * q->data_len << " to DC " << q->DC->id);
-
-    q->ev->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
-
-    return true;
-}
-
 tgl_dc::tgl_dc()
     : session_cleanup_timer(tgl_state::instance()->timer_factory()->create_timer(std::bind(&tgl_dc::cleanup_timer_expired, this)))
 {
@@ -115,7 +69,7 @@ void tgl_dc::send_pending_queries() {
     TGL_NOTICE("sending pending queries for DC " << id);
     std::list<std::shared_ptr<query>> queries = pending_queries; // make a copy since queries can get re-enqueued
     for (std::shared_ptr<query> q : queries) {
-        if (send_pending_query(q)) {
+        if (q->execute_after_pending()) {
             pending_queries.remove(q);
         } else {
             TGL_DEBUG("sending pending query failed for DC " << id);

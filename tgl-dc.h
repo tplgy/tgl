@@ -53,6 +53,7 @@ enum tgl_dc_state {
 struct tgl_dc;
 class tgl_connection;
 class tgl_timer;
+class query;
 
 struct tgl_session {
   std::weak_ptr<tgl_dc> dc;
@@ -99,16 +100,16 @@ struct tgl_dc {
     // ipv4, ipv6, ipv4_media, ipv6_media
     std::array<tgl_dc_option, 4> options;
 
-    void add_query(std::shared_ptr<struct query> q);
-    void remove_query(std::shared_ptr<struct query> q);
+    void add_query(std::shared_ptr<query> q);
+    void remove_query(std::shared_ptr<query> q);
 
-    void add_pending_query(std::shared_ptr<struct query> q);
-    void remove_pending_query(std::shared_ptr<struct query> q);
+    void add_pending_query(std::shared_ptr<query> q);
+    void remove_pending_query(std::shared_ptr<query> q);
     void send_pending_queries();
 
 private:
-    std::list<std::shared_ptr<struct query>> active_queries;
-    std::list<std::shared_ptr<struct query>> pending_queries;
+    std::list<std::shared_ptr<query>> active_queries;
+    std::list<std::shared_ptr<query>> pending_queries;
 
     void cleanup_timer_expired();
     std::shared_ptr<tgl_timer> session_cleanup_timer;
