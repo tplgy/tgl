@@ -27,6 +27,7 @@
 #include "tgl-log.h"
 #include <map>
 #include <memory>
+#include <set>
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
@@ -108,7 +109,6 @@ struct tgl_secret_chat;
 struct tgl_state {
   static tgl_state *instance();
 
-  int active_queries;
   int started;
 
   long long locks;
@@ -119,8 +119,6 @@ struct tgl_state {
   TGLC_bn_ctx *bn_ctx;
 
   std::vector<std::shared_ptr<tgl_message>> unsent_messages;
-
-  std::vector<std::shared_ptr<query>> queries_tree;
 
   std::shared_ptr<tgl_timer> ev_login;
 
@@ -174,6 +172,11 @@ struct tgl_state {
   std::shared_ptr<tgl_secret_chat> ensure_secret_chat(const tgl_peer_id_t& id);
   void add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 
+  void add_query(const std::shared_ptr<query>& q);
+  std::shared_ptr<query> get_query(long long id);
+  void remove_query(const std::shared_ptr<query>& q);
+  void remove_all_queries();
+
 private:
   int m_app_id;
   std::string m_app_hash;
@@ -192,6 +195,8 @@ private:
   bool m_ipv6_enabled;
   std::vector<std::unique_ptr<tgl_rsa_key>> m_rsa_key_list;
   std::map<int/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
+  std::map<long long/*msg_id*/, std::shared_ptr<query>> m_active_queries;
+  std::set<std::shared_ptr<query>> m_pending_queries; /*msg_id of the query must be 0*/
 
   tgl_state();
 

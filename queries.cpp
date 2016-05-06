@@ -85,28 +85,6 @@ static int mystreq1 (const char *a, const char *b, int l) {
     return memcmp (a, b, l);
 }
 
-/* {{{ COMMON */
-
-std::shared_ptr<query> tglq_query_get(long long id)
-{
-    for (auto it = tgl_state::instance()->queries_tree.begin(); it != tgl_state::instance()->queries_tree.end(); it++) {
-        if (id == (*it)->msg_id()) {
-            return *it;
-        }
-    }
-    return NULL;
-}
-
-static void tglq_query_remove(const std::shared_ptr<query>& q)
-{
-    for (auto it = tgl_state::instance()->queries_tree.begin(); it != tgl_state::instance()->queries_tree.end(); it++) {
-        if (q == (*it)) {
-            tgl_state::instance()->queries_tree.erase(it);
-            return;
-        }
-    }
-}
-
 void query::cancel_timer()
 {
     if (m_timer) {
@@ -139,12 +117,12 @@ void query::alarm()
         tglmp_encrypt_send_message (m_session->c, packet_buffer, packet_ptr - packet_buffer, m_flags & QUERY_FORCE_SEND);
     } else if (m_dc->sessions[0]) {
         m_flags &= ~QUERY_ACK_RECEIVED;
-        tglq_query_remove(shared_from_this());
+        tgl_state::instance()->remove_query(shared_from_this());
         m_session = m_dc->sessions[0];
         long long old_id = m_msg_id;
         m_msg_id = tglmp_encrypt_send_message(m_session->c, (int*)m_data.data(), m_data.size() / 4, (m_flags & QUERY_FORCE_SEND) | 1);
         TGL_NOTICE("Resent query #" << old_id << " as #" << m_msg_id << " of size " << m_data.size() << " to DC " << m_dc->id);
-        tgl_state::instance()->queries_tree.push_back(shared_from_this());
+        tgl_state::instance()->add_query(shared_from_this());
         m_session_id = m_session->session_id;
         auto dc = m_session->dc.lock();
         if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !(m_flags & QUERY_FORCE_SEND)) {
@@ -158,7 +136,7 @@ void query::alarm()
 }
 
 void tglq_regen_query (long long id) {
-  std::shared_ptr<query> q = tglq_query_get (id);
+  std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
   if (!q) { return; }
   TGL_NOTICE("regen query " << id);
   q->regen();
@@ -205,7 +183,7 @@ void tglq_regen_queries_from_old_session (struct tgl_dc *DC, struct tgl_session 
 #endif
 
 void tglq_query_restart (long long id) {
-    std::shared_ptr<query> q = tglq_query_get(id);
+    std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (q) {
         TGL_NOTICE("restarting query " << id);
         q->cancel_timer();
@@ -216,7 +194,7 @@ void tglq_query_restart (long long id) {
 static void alarm_query_gateway(std::shared_ptr<query> q) {
     assert(q);
     if (q->on_timeout()) {
-        tglq_query_remove(q);
+        tgl_state::instance()->remove_query(q);
     } else {
         q->alarm();
     }
@@ -262,7 +240,7 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, int flags)
     }
 
     m_flags = flags & ~QUERY_ACK_RECEIVED;
-    tgl_state::instance()->queries_tree.push_back(shared_from_this());
+    tgl_state::instance()->add_query(shared_from_this());
 
     m_timer = tgl_state::instance()->timer_factory()->create_timer(std::bind(&alarm_query_gateway, shared_from_this()));
     if (!pending) {
@@ -270,7 +248,6 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, int flags)
         m_timer->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
     }
 
-    tgl_state::instance()->active_queries ++;
     m_dc->add_query(shared_from_this());
 
     if (pending) {
@@ -299,10 +276,10 @@ bool query::execute_after_pending()
     }
 
     m_flags &= ~QUERY_ACK_RECEIVED;
-    tglq_query_remove(shared_from_this());
+    tgl_state::instance()->remove_query(shared_from_this());
     m_session = m_dc->sessions[0];
     m_msg_id = tglmp_encrypt_send_message(m_session->c, (int*)m_data.data(), m_data.size() / 4, (m_flags & QUERY_FORCE_SEND) | 1);
-    tgl_state::instance()->queries_tree.push_back(shared_from_this());
+    tgl_state::instance()->add_query(shared_from_this());
     m_session_id = m_session->session_id;
     auto dc = m_session->dc.lock();
     if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !(m_flags & QUERY_FORCE_SEND)) {
@@ -317,7 +294,7 @@ bool query::execute_after_pending()
 }
 
 void tglq_query_ack(long long id) {
-    std::shared_ptr<query> q = tglq_query_get(id);
+    std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (q) {
         q->ack();
     }
@@ -332,29 +309,17 @@ void query::ack()
 }
 
 void tglq_query_delete(long long id) {
-    std::shared_ptr<query> q = tglq_query_get (id);
+    std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (!q) {
         return;
     }
 
     q->clear_timer();
-    tglq_query_remove(q);
-    tgl_state::instance()->active_queries --;
+    tgl_state::instance()->remove_query(q);
     q->dc()->remove_query(q);
 }
 
 static void resend_query_cb(const std::shared_ptr<query>& q, bool success);
-
-void tglq_free_query (std::shared_ptr<query> q) {
-    q->clear_timer();
-}
-
-void tglq_query_free_all () {
-    for (auto it = tgl_state::instance()->queries_tree.begin(); it != tgl_state::instance()->queries_tree.end(); it++) {
-        tglq_free_query(*it);
-    }
-    tgl_state::instance()->queries_tree.clear();
-}
 
 int tglq_query_error(long long id)
 {
@@ -363,15 +328,13 @@ int tglq_query_error(long long id)
     int error_code = fetch_int ();
     int error_len = prefetch_strlen ();
     std::string error_string = std::string(fetch_str (error_len), error_len);
-    std::shared_ptr<query> q = tglq_query_get(id);
+    std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (!q) {
         TGL_WARNING("error for unknown query #" << id << " #" << error_code << ": " << error_string);
     } else {
         TGL_WARNING("error for query '" << q->name() << "' #" << id << " #" << error_code << ": " << error_string);
         return q->handle_error(error_code, error_string);
     }
-
-    tgl_state::instance()->active_queries--;
 
     return 0;
 }
@@ -382,7 +345,7 @@ int query::handle_error(int error_code, const std::string& error_string)
         cancel_timer();
     }
 
-    tglq_query_remove(shared_from_this());
+    tgl_state::instance()->remove_query(shared_from_this());
     int res = 0;
 
     int error_handled = 0;
@@ -495,7 +458,6 @@ int query::handle_error(int error_code, const std::string& error_string)
     }
 
     if (res == -11) {
-      tgl_state::instance()->active_queries --;
       return -1;
 
     }
@@ -521,7 +483,7 @@ int tglq_query_result (long long id) {
     in_ptr = packed_buffer;
     in_end = in_ptr + total_out / 4;
   }
-  std::shared_ptr<query> q = tglq_query_get(id);
+  std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
   if (!q) {
     TGL_WARNING("result for unknown query #" << id);
     in_ptr = in_end;
@@ -551,14 +513,13 @@ int tglq_query_result (long long id) {
     assert (in_ptr == in_end);
 
     q->clear_timer();
-    tglq_query_remove(q);
+    tgl_state::instance()->remove_query(q);
 
   }
   if (end) {
     in_ptr = end;
     in_end = eend;
   }
-  tgl_state::instance()->active_queries --;
   return 0;
 }
 

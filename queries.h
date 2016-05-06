@@ -58,6 +58,11 @@ public:
     {
     }
 
+    ~query()
+    {
+        clear_timer();
+    }
+
     void execute(const std::shared_ptr<tgl_dc>& dc, int flags = 0);
     bool execute_after_pending();
     void alarm();
@@ -146,7 +151,6 @@ void tgl_do_send_bind_temp_key (std::shared_ptr<tgl_dc> D, long long nonce, int 
 
 void tglq_regen_query (long long id);
 void tglq_query_delete (long long id);
-void tglq_query_free_all ();
 void tglq_regen_queries_from_old_session (struct tgl_dc *DC, struct tgl_session *S);
 
 #endif

@@ -34,12 +34,12 @@
 #include "types/tgl_update_callback.h"
 #include "types/tgl_rsa_key.h"
 #include "types/tgl_secret_chat.h"
+#include "queries.h"
 
 #include <assert.h>
 
 tgl_state::tgl_state()
-    : active_queries(0)
-    , started(false)
+    : started(false)
     , locks(0)
     , DC_working(NULL)
     , temp_key_expire_time(0)
@@ -250,4 +250,44 @@ std::shared_ptr<tgl_secret_chat> tgl_state::ensure_secret_chat(const tgl_peer_id
 void tgl_state::add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 {
     m_secret_chats[tgl_get_peer_id(secret_chat->id)] = secret_chat;
+}
+
+void tgl_state::add_query(const std::shared_ptr<query>& q)
+{
+    auto id = q->msg_id();
+    if (id == -1) {
+        assert(false);
+    } else if (id == 0) {
+        m_pending_queries.insert(q);
+    } else {
+        m_active_queries[id] = q;
+    }
+}
+
+std::shared_ptr<query> tgl_state::get_query(long long id)
+{
+    assert(id);
+    auto it = m_active_queries.find(id);
+    if (it == m_active_queries.end()) {
+        return nullptr;
+    }
+    return it->second;
+}
+
+void tgl_state::remove_query(const std::shared_ptr<query>& q)
+{
+    auto id = q->msg_id();
+    if (id == -1) {
+        assert(false);
+    } else if (id == 0) {
+        m_pending_queries.erase(q);
+    } else {
+        m_active_queries.erase(id);
+    }
+}
+
+void tgl_state::remove_all_queries()
+{
+    m_pending_queries.clear();
+    m_active_queries.clear();
 }
