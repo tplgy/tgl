@@ -809,7 +809,7 @@ public:
                 static_cast<tl_ds_encrypted_chat*>(D));
 
         if (m_callback) {
-            m_callback(secret_chat && secret_chat->state == sc_ok, secret_chat);
+            m_callback(secret_chat && secret_chat->state != sc_deleted, secret_chat);
         }
     }
 
