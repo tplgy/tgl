@@ -61,7 +61,6 @@ tgl_connection_asio::~tgl_connection_asio()
 }
 
 void tgl_connection_asio::ping_alarm(const boost::system::error_code& error) {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (error == boost::asio::error::operation_aborted) {
         return;
     }
@@ -83,18 +82,15 @@ void tgl_connection_asio::ping_alarm(const boost::system::error_code& error) {
 }
 
 void tgl_connection_asio::stop_ping_timer() {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     m_ping_timer.cancel();
 }
 
 void tgl_connection_asio::start_ping_timer() {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     m_ping_timer.expires_from_now(boost::posix_time::seconds(PING_TIMEOUT));
     m_ping_timer.async_wait(std::bind(&tgl_connection_asio::ping_alarm, shared_from_this(), std::placeholders::_1));
 }
 
 void tgl_connection_asio::fail_alarm(const boost::system::error_code& error) {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     m_in_fail_timer = false;
     if (error == boost::asio::error::operation_aborted) {
         return;
@@ -103,7 +99,6 @@ void tgl_connection_asio::fail_alarm(const boost::system::error_code& error) {
 }
 
 void tgl_connection_asio::start_fail_timer() {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (m_in_fail_timer) {
         return;
     }
@@ -114,7 +109,6 @@ void tgl_connection_asio::start_fail_timer() {
 }
 
 ssize_t tgl_connection_asio::read_in_lookup(void* data_out, size_t len) {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     unsigned char* data = static_cast<unsigned char*>(data_out);
     if (!len || !m_in_bytes) {
         return 0;
@@ -158,8 +152,6 @@ static int rotate_port(int port) {
 
 bool tgl_connection_asio::open()
 {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
-
     if (!connect()) {
         TGL_ERROR("Can not connect to " << m_ip << ":" << m_port);
         return false;
@@ -176,7 +168,6 @@ bool tgl_connection_asio::open()
 }
 
 void tgl_connection_asio::restart() {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (m_closed) {
         TGL_WARNING("Can't restart a closed connection");
         return;
@@ -206,7 +197,6 @@ void tgl_connection_asio::restart() {
 }
 
 void tgl_connection_asio::fail() {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (m_state == conn_ready || m_state == conn_connecting) {
         stop_ping_timer();
     }
@@ -224,7 +214,6 @@ void tgl_connection_asio::fail() {
 }
 
 void tgl_connection_asio::try_rpc_read() {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (m_closed) {
         return;
     }
@@ -277,7 +266,6 @@ void tgl_connection_asio::try_rpc_read() {
 
 void tgl_connection_asio::close()
 {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (m_closed) {
         return;
     }
@@ -292,14 +280,12 @@ void tgl_connection_asio::close()
 
 void tgl_connection_asio::clear_buffers()
 {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     m_write_buffer_queue.clear();
     m_read_buffer_queue.clear();
     m_in_bytes = 0;
 }
 
 bool tgl_connection_asio::connect() {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (m_closed) {
         return false;
     }
@@ -330,7 +316,6 @@ bool tgl_connection_asio::connect() {
 
 void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
 {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (ec) {
         TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message());
         fail();
@@ -344,7 +329,6 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
 }
 
 ssize_t tgl_connection_asio::read(void* data_out, size_t len) {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     unsigned char* data = static_cast<unsigned char*>(data_out);
     if (!len) {
         return 0;
@@ -384,7 +368,6 @@ ssize_t tgl_connection_asio::read(void* data_out, size_t len) {
 }
 
 void tgl_connection_asio::start_read() {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (m_closed) {
         return;
     }
@@ -396,7 +379,6 @@ void tgl_connection_asio::start_read() {
 }
 
 ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     //TGL_DEBUG("write: " << len << " bytes to DC " << m_dc.lock()->id);
     const unsigned char* data = static_cast<const unsigned char*>(data_in);
     if (!len) {
@@ -415,7 +397,6 @@ ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
 }
 
 void tgl_connection_asio::start_write() {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
     if (m_closed) {
         return;
     }
@@ -443,7 +424,6 @@ void tgl_connection_asio::flush() {
 
 void tgl_connection_asio::handle_read(const std::shared_ptr<std::vector<char>>& buffer,
         const boost::system::error_code& ec, size_t bytes_transferred) {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
 
     if (m_temp_read_buffer != buffer) {
         TGL_DEBUG("the temp reading buffer has changed due to connection restart");
@@ -504,7 +484,6 @@ static inline bool starts_with_buffers(const std::deque<std::shared_ptr<std::vec
 
 void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::vector<char>>>& buffers,
         const boost::system::error_code& ec, size_t bytes_transferred) {
-    std::lock_guard<std::recursive_mutex> guard(m_mutex);
 
     if (!starts_with_buffers(m_write_buffer_queue, buffers)) {
         TGL_DEBUG("the front writing buffers have changed due to connection restart");

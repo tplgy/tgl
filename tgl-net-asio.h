@@ -25,7 +25,6 @@
 #include "tgl-net.h"
 
 #include <boost/asio.hpp>
-#include <mutex>
 #include <deque>
 
 enum conn_state {
@@ -109,9 +108,6 @@ private:
 
     bool m_in_fail_timer;
     bool m_write_pending;
-
-    // FIXME: remove this when we change the out buffer management.
-    std::recursive_mutex m_mutex;
 };
 
 class tgl_connection_factory_asio : public tgl_connection_factory

@@ -37,6 +37,7 @@
 #include "queries.h"
 
 #include <assert.h>
+#include <stdlib.h>
 
 tgl_state::tgl_state()
     : started(false)
@@ -228,8 +229,22 @@ void tgl_state::set_error(std::string error, int error_code)
     m_error_code = error_code;
 }
 
-std::shared_ptr<tgl_secret_chat> tgl_state::secret_chat_for_id(int peer_id) const
+tgl_peer_id_t tgl_state::create_secret_chat_id()
 {
+    std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
+
+    int id = rand();
+    while (tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(id))) {
+        id = rand ();
+    }
+
+    return TGL_MK_ENCR_CHAT(id);
+}
+
+std::shared_ptr<tgl_secret_chat> tgl_state::secret_chat_for_id(int peer_id)
+{
+    std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
+
     auto secret_chat_it = m_secret_chats.find(peer_id);
     if (secret_chat_it == m_secret_chats.end()) {
         return nullptr;
@@ -239,6 +254,8 @@ std::shared_ptr<tgl_secret_chat> tgl_state::secret_chat_for_id(int peer_id) cons
 
 std::shared_ptr<tgl_secret_chat> tgl_state::ensure_secret_chat(const tgl_peer_id_t& peer_id)
 {
+    std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
+
     auto& secret_chat = m_secret_chats[tgl_get_peer_id(peer_id)];
     if (!secret_chat) {
         secret_chat = std::make_shared<tgl_secret_chat>();
@@ -249,6 +266,7 @@ std::shared_ptr<tgl_secret_chat> tgl_state::ensure_secret_chat(const tgl_peer_id
 
 void tgl_state::add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 {
+    std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
     m_secret_chats[tgl_get_peer_id(secret_chat->id)] = secret_chat;
 }
 
