@@ -330,7 +330,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
 
     if (admin_id != tgl_state::instance()->our_id().peer_id) {
       // It must be a new secret chat requested from the peer.
-      secret_chat = tgl_state::instance()->ensure_secret_chat(chat_id);
+      secret_chat = tgl_state::instance()->create_secret_chat(chat_id);
     }
   }
 

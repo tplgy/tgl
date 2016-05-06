@@ -229,39 +229,45 @@ void tgl_state::set_error(std::string error, int error_code)
     m_error_code = error_code;
 }
 
-tgl_peer_id_t tgl_state::create_secret_chat_id()
+std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat()
 {
     std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
 
-    int id = rand();
-    while (tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(id))) {
-        id = rand ();
+    int chat_id = rand();
+    while (tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(chat_id))) {
+        chat_id = rand();
     }
 
-    return TGL_MK_ENCR_CHAT(id);
+    auto secret_chat = std::make_shared<tgl_secret_chat>();
+    secret_chat->id = TGL_MK_ENCR_CHAT(chat_id);
+    m_secret_chats[chat_id] = secret_chat;
+
+    return secret_chat;
 }
 
-std::shared_ptr<tgl_secret_chat> tgl_state::secret_chat_for_id(int peer_id)
+std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat(const tgl_peer_id_t& chat_id)
+{
+    std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
+    if (m_secret_chats.find(chat_id.peer_id) != m_secret_chats.end()) {
+        return nullptr;
+    }
+
+    auto secret_chat = std::make_shared<tgl_secret_chat>();
+    secret_chat->id = chat_id;
+    m_secret_chats[chat_id.peer_id] = secret_chat;
+
+    return secret_chat;
+}
+
+std::shared_ptr<tgl_secret_chat> tgl_state::secret_chat_for_id(int chat_id)
 {
     std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
 
-    auto secret_chat_it = m_secret_chats.find(peer_id);
+    auto secret_chat_it = m_secret_chats.find(chat_id);
     if (secret_chat_it == m_secret_chats.end()) {
         return nullptr;
     }
     return secret_chat_it->second;
-}
-
-std::shared_ptr<tgl_secret_chat> tgl_state::ensure_secret_chat(const tgl_peer_id_t& peer_id)
-{
-    std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
-
-    auto& secret_chat = m_secret_chats[tgl_get_peer_id(peer_id)];
-    if (!secret_chat) {
-        secret_chat = std::make_shared<tgl_secret_chat>();
-        secret_chat->id = peer_id;
-    }
-    return secret_chat;
 }
 
 void tgl_state::add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat)

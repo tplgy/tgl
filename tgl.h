@@ -166,13 +166,13 @@ struct tgl_state {
   bool pfs_enabled() { return m_enable_pfs; }
 
   // These secret chat methods are thread-safe.
-  tgl_peer_id_t create_secret_chat_id();
-  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(const tgl_peer_id_t& id)
+  std::shared_ptr<tgl_secret_chat> create_secret_chat();
+  std::shared_ptr<tgl_secret_chat> create_secret_chat(const tgl_peer_id_t& chat_id);
+  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(const tgl_peer_id_t& chat_id)
   {
-      return secret_chat_for_id(id.peer_id);
+      return secret_chat_for_id(chat_id.peer_id);
   }
-  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int peer_id);
-  std::shared_ptr<tgl_secret_chat> ensure_secret_chat(const tgl_peer_id_t& id);
+  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int chat_id);
   void add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 
   void add_query(const std::shared_ptr<query>& q);
