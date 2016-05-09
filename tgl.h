@@ -27,7 +27,6 @@
 #include "tgl-log.h"
 #include <map>
 #include <memory>
-#include <mutex>
 #include <set>
 #include <stdlib.h>
 #include <string.h>
@@ -165,14 +164,13 @@ struct tgl_state {
   bool ipv6_enabled() { return m_ipv6_enabled; }
   bool pfs_enabled() { return m_enable_pfs; }
 
-  // These secret chat methods are thread-safe.
+  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(const tgl_peer_id_t& id) const
+  {
+      return secret_chat_for_id(id.peer_id);
+  }
   std::shared_ptr<tgl_secret_chat> create_secret_chat();
   std::shared_ptr<tgl_secret_chat> create_secret_chat(const tgl_peer_id_t& chat_id);
-  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(const tgl_peer_id_t& chat_id)
-  {
-      return secret_chat_for_id(chat_id.peer_id);
-  }
-  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int chat_id);
+  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int chat_id) const;
   void add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 
   void add_query(const std::shared_ptr<query>& q);
@@ -207,7 +205,6 @@ private:
   std::shared_ptr<tgl_timer_factory> m_timer_factory;
   std::shared_ptr<tgl_connection_factory> m_connection_factory;
   std::shared_ptr<tgl_update_callback> m_callback;
-  std::recursive_mutex m_secret_chat_mutex;
 };
 
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);

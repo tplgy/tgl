@@ -424,7 +424,6 @@ void tgl_connection_asio::flush() {
 
 void tgl_connection_asio::handle_read(const std::shared_ptr<std::vector<char>>& buffer,
         const boost::system::error_code& ec, size_t bytes_transferred) {
-
     if (m_temp_read_buffer != buffer) {
         TGL_DEBUG("the temp reading buffer has changed due to connection restart");
         return;
@@ -484,7 +483,6 @@ static inline bool starts_with_buffers(const std::deque<std::shared_ptr<std::vec
 
 void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::vector<char>>>& buffers,
         const boost::system::error_code& ec, size_t bytes_transferred) {
-
     if (!starts_with_buffers(m_write_buffer_queue, buffers)) {
         TGL_DEBUG("the front writing buffers have changed due to connection restart");
         return;

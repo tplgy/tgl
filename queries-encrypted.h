@@ -18,7 +18,7 @@ void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secr
 void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double longitude,
         unsigned long long flags,
         std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
-void tgl_do_create_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+void tgl_do_create_encr_chat_request(const tgl_peer_id_t& user_id,
         const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback);
 void tgl_do_create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 void tgl_do_send_encr_chat_layer(const std::shared_ptr<tgl_secret_chat>& secret_chat);

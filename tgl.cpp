@@ -231,8 +231,6 @@ void tgl_state::set_error(std::string error, int error_code)
 
 std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat()
 {
-    std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
-
     int chat_id = rand();
     while (tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(chat_id))) {
         chat_id = rand();
@@ -247,7 +245,6 @@ std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat()
 
 std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat(const tgl_peer_id_t& chat_id)
 {
-    std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
     if (m_secret_chats.find(chat_id.peer_id) != m_secret_chats.end()) {
         return nullptr;
     }
@@ -259,10 +256,8 @@ std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat(const tgl_peer_id
     return secret_chat;
 }
 
-std::shared_ptr<tgl_secret_chat> tgl_state::secret_chat_for_id(int chat_id)
+std::shared_ptr<tgl_secret_chat> tgl_state::secret_chat_for_id(int chat_id) const
 {
-    std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
-
     auto secret_chat_it = m_secret_chats.find(chat_id);
     if (secret_chat_it == m_secret_chats.end()) {
         return nullptr;
@@ -272,7 +267,6 @@ std::shared_ptr<tgl_secret_chat> tgl_state::secret_chat_for_id(int chat_id)
 
 void tgl_state::add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 {
-    std::lock_guard<std::recursive_mutex> guard(m_secret_chat_mutex);
     m_secret_chats[tgl_get_peer_id(secret_chat->id)] = secret_chat;
 }
 

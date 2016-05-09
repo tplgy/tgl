@@ -152,7 +152,7 @@ void tgl_do_set_encr_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_cha
 //int tgl_do_visualize_key (int id, unsigned char buf[16]);
 
 // requests creation of secret chat with user id
-void tgl_do_create_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id,
         const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>& callback);
 /* }}} */
 
