@@ -775,7 +775,10 @@ std::shared_ptr<tgl_document> tglf_fetch_alloc_video(const tl_ds_video *DS_V) {
   document->duration = DS_LVAL(DS_V->duration);
   document->mime_type = "video/";//DS_STR_DUP (DS_V->mime_type);
   document->size = DS_LVAL(DS_V->size);
-  document->thumb = tglf_fetch_photo_size(DS_V->thumb);
+
+  if (DS_V->thumb && DS_V->thumb->magic != CODE_photo_size_empty) {
+    document->thumb = tglf_fetch_photo_size(DS_V->thumb);
+  }
 
   document->dc_id = DS_LVAL(DS_V->dc_id);
   document->w = DS_LVAL(DS_V->w);
@@ -864,7 +867,9 @@ std::shared_ptr<tgl_document> tglf_fetch_alloc_document(const tl_ds_document *DS
   document->size = DS_LVAL (DS_D->size);
   document->dc_id = DS_LVAL (DS_D->dc_id);
 
-  document->thumb = tglf_fetch_photo_size (DS_D->thumb);
+  if (DS_D->thumb && DS_D->thumb->magic != CODE_photo_size_empty) {
+    document->thumb = tglf_fetch_photo_size (DS_D->thumb);
+  }
 
   if (DS_D->attributes) {
     int i;
