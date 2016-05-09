@@ -854,7 +854,7 @@ void tgl_do_help_get_config(std::function<void(bool)> callback) {
     q->execute(tgl_state::instance()->DC_working);
 }
 
-static void set_dc_configured (std::shared_ptr<void> _D, bool success);
+static void set_dc_configured(const std::shared_ptr<tgl_dc>& D, bool success);
 void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D) {
     clear_packet ();
     tgl_do_insert_header();
@@ -4725,8 +4725,7 @@ void tgl_do_upgrade_group (tgl_peer_id_t id, std::function<void(bool success)> c
 }
 
 
-static void set_dc_configured (std::shared_ptr<void> _D, bool success) {
-  std::shared_ptr<tgl_dc> D = std::static_pointer_cast<tgl_dc>(_D);
+static void set_dc_configured(const std::shared_ptr<tgl_dc>& D, bool success) {
   assert (success);
   D->flags |= TGLDCF_CONFIGURED;
 

@@ -56,6 +56,7 @@
 #include "auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-skip.h"
+#include "crypto/bn.h"
 #include "crypto/rand.h"
 #include "crypto/rsa_pem.h"
 #include "crypto/sha.h"
@@ -65,6 +66,8 @@
 #include "tgl-methods-in.h"
 #include "types/tgl_rsa_key.h"
 #include "tgl-log.h"
+
+#include <memory>
 
 #define MAX_NET_RES        (1L << 16)
 //extern int log_level;
@@ -268,9 +271,9 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
     return;
   }
 
-  TGLC_bn *p = TGLC_bn_new ();
-  TGLC_bn *q = TGLC_bn_new ();
-  auto result = bn_factorize (pq, p, q);
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> p(TGLC_bn_new());
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> q(TGLC_bn_new());
+  auto result = bn_factorize (pq, p.get(), q.get());
   TGL_ASSERT_UNUSED(result, result >= 0);
 
   clear_packet ();
@@ -278,8 +281,8 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
   out_int (temp_key ? CODE_p_q_inner_data_temp : CODE_p_q_inner_data);
 
   out_bignum (pq);
-  out_bignum (p);
-  out_bignum (q);
+  out_bignum (p.get());
+  out_bignum (q.get());
 
   out_ints ((int *) DC->nonce, 4);
   out_ints ((int *) DC->server_nonce, 4);
@@ -296,14 +299,12 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
   out_int (CODE_req_DH_params);
   out_ints ((int *) DC->nonce, 4);
   out_ints ((int *) DC->server_nonce, 4);
-  out_bignum (p);
-  out_bignum (q);
+  out_bignum (p.get());
+  out_bignum (q.get());
 
   out_long (tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->fingerprint());
   out_cstring ((char *) encrypt_buffer, l);
 
-  TGLC_bn_free (p);
-  TGLC_bn_free (q);
   DC->state = temp_key ? st_reqdh_sent_temp : st_reqdh_sent;
   TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " DC " << DC->id);
   rpc_send_packet (c);
@@ -326,35 +327,30 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   out_ints ((int *) DC->server_nonce, 4);
   out_long (0);
 
-  TGLC_bn *dh_g = TGLC_bn_new ();
-  ensure (TGLC_bn_set_word (dh_g, g));
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_g(TGLC_bn_new());
+  ensure (TGLC_bn_set_word (dh_g.get(), g));
 
   static unsigned char s_power[256];
   tglt_secure_random (s_power, 256);
-  TGLC_bn *dh_power = TGLC_bn_bin2bn ((unsigned char *)s_power, 256, 0);
-  ensure_ptr (dh_power);
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_power(TGLC_bn_bin2bn ((unsigned char *)s_power, 256, 0));
+  ensure_ptr (dh_power.get());
 
-  TGLC_bn *y = TGLC_bn_new ();
-  ensure_ptr (y);
-  ensure (TGLC_bn_mod_exp (y, dh_g, dh_power, dh_prime, tgl_state::instance()->bn_ctx));
-  out_bignum (y);
-  TGLC_bn_free (y);
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> y(TGLC_bn_new());
+  ensure_ptr (y.get());
+  ensure (TGLC_bn_mod_exp (y.get(), dh_g.get(), dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx));
+  out_bignum (y.get());
 
-  TGLC_bn *auth_key_num = TGLC_bn_new ();
-  ensure (TGLC_bn_mod_exp (auth_key_num, g_a, dh_power, dh_prime, tgl_state::instance()->bn_ctx));
-  int l = TGLC_bn_num_bytes (auth_key_num);
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> auth_key_num(TGLC_bn_new());
+  ensure (TGLC_bn_mod_exp (auth_key_num.get(), g_a, dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx));
+  int l = TGLC_bn_num_bytes (auth_key_num.get());
   assert (l >= 250 && l <= 256);
-  auto result = TGLC_bn_bn2bin (auth_key_num, (unsigned char *)(temp_key ? DC->temp_auth_key : DC->auth_key));
+  auto result = TGLC_bn_bn2bin (auth_key_num.get(), (unsigned char *)(temp_key ? DC->temp_auth_key : DC->auth_key));
   TGL_ASSERT_UNUSED(result, result);
   if (l < 256) {
     unsigned char *key = temp_key ? DC->temp_auth_key : DC->auth_key;
     memmove (key + 256 - l, key, l);
     memset (key, 0, 256 - l);
   }
-
-  TGLC_bn_free (dh_power);
-  TGLC_bn_free (auth_key_num);
-  TGLC_bn_free (dh_g);
 
   TGLC_sha1 ((unsigned char *) (packet_buffer + 5), (packet_ptr - packet_buffer - 5) * 4, (unsigned char *) packet_buffer);
 
@@ -407,8 +403,8 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
   }
   fetch_ints (DC->server_nonce, 4);
 
-  TGLC_bn *pq = TGLC_bn_new ();
-  result = fetch_bignum (pq);
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> pq(TGLC_bn_new());
+  result = fetch_bignum (pq.get());
   TGL_ASSERT_UNUSED(result, result >= 0);
 
   result = fetch_int ();
@@ -433,9 +429,8 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
     return -1;
   }
 
-  send_req_dh_packet(c, pq, temp_key);
+  send_req_dh_packet(c, pq.get(), temp_key);
 
-  TGLC_bn_free (pq);
   return 1;
 }
 /* }}} */
@@ -520,18 +515,18 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   }
   int g = fetch_int ();
 
-  TGLC_bn *dh_prime = TGLC_bn_new ();
-  TGLC_bn *g_a = TGLC_bn_new ();
-  result = fetch_bignum (dh_prime);
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_prime(TGLC_bn_new());
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> g_a(TGLC_bn_new());
+  result = fetch_bignum (dh_prime.get());
   TGL_ASSERT_UNUSED(result, result > 0);
-  result = fetch_bignum (g_a);
+  result = fetch_bignum (g_a.get());
   TGL_ASSERT_UNUSED(result, result > 0);
 
-  if (tglmp_check_DH_params (dh_prime, g) < 0) {
+  if (tglmp_check_DH_params (dh_prime.get(), g) < 0) {
     TGL_ERROR("bad DH params");
     return -1;
   }
-  if (tglmp_check_g_a (dh_prime, g_a) < 0) {
+  if (tglmp_check_g_a (dh_prime.get(), g_a.get()) < 0) {
     TGL_ERROR("bad dh_prime");
     return -1;
   }
@@ -553,10 +548,7 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   DC->server_time_delta = server_time - get_utime (CLOCK_REALTIME);
   DC->server_time_udelta = server_time - get_utime (CLOCK_MONOTONIC);
 
-  send_dh_params (c, dh_prime, g_a, g, temp_key);
-
-  TGLC_bn_free (dh_prime);
-  TGLC_bn_free (g_a);
+  send_dh_params (c, dh_prime.get(), g_a.get(), g, temp_key);
 
   return 1;
 }
@@ -786,7 +778,12 @@ long long tglmp_encrypt_send_message (const std::shared_ptr<tgl_connection>& c, 
     }
 
     const int UNENCSZ = offsetof (struct encrypted_message, server_salt);
-    if (msg_ints <= 0 || msg_ints > MAX_MESSAGE_INTS - 4) {
+    if (msg_ints <= 0) {
+        TGL_NOTICE("message length is zero or negative");
+        return -1;
+    }
+
+    if (msg_ints > MAX_MESSAGE_INTS - 4) {
         TGL_NOTICE("message too long");
         return -1;
     }

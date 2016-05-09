@@ -29,13 +29,6 @@ enum tgl_secret_chat_exchange_state {
     tgl_sce_aborted
 };
 
-struct TGLC_bn_deleter {
-    void operator()(TGLC_bn* bn)
-    {
-        TGLC_bn_free(bn);
-    }
-};
-
 struct tgl_secret_chat {
     tgl_peer_id_t id;
     int flags;

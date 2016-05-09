@@ -50,6 +50,14 @@ int TGLC_bn_mod_exp (TGLC_bn *r, const TGLC_bn *a, const TGLC_bn *p, const TGLC_
 }
 
 std::ostream& operator<<(std::ostream& s, const TGLC_bn& bn);
+
+struct TGLC_bn_deleter {
+    void operator()(TGLC_bn* bn)
+    {
+        TGLC_bn_free(bn);
+    }
+};
+
 #endif
 
 #define TGLC_bn_num_bytes(a) ((TGLC_bn_num_bits(a)+7)/8)
