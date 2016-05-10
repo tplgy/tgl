@@ -338,14 +338,29 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
     return NULL;
   }
   
-  int is_new = !(secret_chat->flags & TGLPF_CREATED);
+  bool is_new = !(secret_chat->flags & TGLPF_CREATED);
  
   if (DS_EC->magic == CODE_encrypted_chat_discarded) {
     if (is_new) {
-      return nullptr;
+        return nullptr;
     }
-    //bl_do_peer_delete (tgl_state::instance(), secret_chat->id);
-    //write_secret_chat_file ();
+
+    tgl_secret_chat_state state = sc_deleted;
+    tgl_update_secret_chat(secret_chat,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        &state,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        TGL_FLAGS_UNCHANGED);
+
     return secret_chat;
   }
 

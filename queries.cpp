@@ -447,7 +447,6 @@ int query::handle_error(int error_code, const std::string& error_string)
     if (error_handled) {
       TGL_NOTICE("error for query #" << m_msg_id << " error:" << error_code << " " << error_string << " (HANDLED)");
     } else {
-      TGL_WARNING("error for query #"<< m_msg_id << " error:" << error_code << " " << error_string);
       res = on_error(error_code, error_string);
     }
 
