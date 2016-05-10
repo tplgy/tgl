@@ -113,33 +113,19 @@ static double get_utime (int clock_id) {
  *
  */
 
-#define ENCRYPT_BUFFER_INTS        16384
-static int encrypt_buffer[ENCRYPT_BUFFER_INTS];
-
 #define DECRYPT_BUFFER_INTS        16384
-static int decrypt_buffer[ENCRYPT_BUFFER_INTS];
-
-static int encrypt_packet_buffer (std::shared_ptr<tgl_dc> DC) {
-  const TGLC_rsa *key = tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->public_key();
-  return tgl_pad_rsa_encrypt ((char *) packet_buffer, (packet_ptr - packet_buffer) * 4, (char *) encrypt_buffer, ENCRYPT_BUFFER_INTS * 4, TGLC_rsa_n (key), TGLC_rsa_e (key));
-}
-
-static int encrypt_packet_buffer_aes_unauth (const unsigned char server_nonce[16], const unsigned char hidden_client_nonce[32]) {
-  tgl_init_aes_unauth (server_nonce, hidden_client_nonce, 1);
-  return tgl_pad_aes_encrypt ((unsigned char *) packet_buffer, (packet_ptr - packet_buffer) * 4, (unsigned char *) encrypt_buffer, ENCRYPT_BUFFER_INTS * 4);
-}
+static int decrypt_buffer[DECRYPT_BUFFER_INTS];
 
 //
 // Used in unauthorized part of protocol
 //
-static int rpc_send_packet (const std::shared_ptr<tgl_connection>& c) {
+static int rpc_send_packet(const std::shared_ptr<tgl_connection>& c, const char* data, size_t len) {
     static struct {
         long long auth_key_id;
         long long out_msg_id;
         int msg_len;
     } unenc_msg_header;
 
-    int len = (packet_ptr - packet_buffer) * 4;
     c->incr_out_packet_num();
 
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
@@ -164,7 +150,7 @@ static int rpc_send_packet (const std::shared_ptr<tgl_connection>& c) {
         TGL_ASSERT_UNUSED(result, result == 4);
     }
     c->write(&unenc_msg_header, 20);
-    c->write(packet_buffer, len);
+    c->write(data, len);
     c->flush();
 
     total_packets_sent ++;
@@ -203,6 +189,7 @@ static int rpc_send_message (const std::shared_ptr<tgl_connection>& c, void *dat
 
 static int check_unauthorized_header () {
     if (in_end - in_ptr < 5) {
+      TGL_ERROR("ERROR: the input buffer is small than 5 bytes");
       return -1;
     }
     long long auth_key_id = fetch_long ();
@@ -230,11 +217,11 @@ static int send_req_pq_packet (const std::shared_ptr<tgl_connection>& c) {
     assert (DC->state == st_init);
 
     tglt_secure_random (DC->nonce, 16);
-    clear_packet ();
-    out_int (CODE_req_pq);
-    out_ints ((int *)DC->nonce, 4);
+    mtprotocol_serializer s;
+    s.out_i32 (CODE_req_pq);
+    s.out_i32s ((int *)DC->nonce, 4);
     TGL_DEBUG(__FUNCTION__ << " DC " << DC->id);
-    rpc_send_packet(c);
+    rpc_send_packet(c, s.char_data(), s.char_size());
 
     DC->state = st_reqpq_sent;
     return 1;
@@ -250,11 +237,11 @@ static int send_req_pq_temp_packet (const std::shared_ptr<tgl_connection>& c) {
     assert (DC->state == st_authorized);
 
     tglt_secure_random (DC->nonce, 16);
-    clear_packet ();
-    out_int (CODE_req_pq);
-    out_ints ((int *)DC->nonce, 4);
+    mtprotocol_serializer s;
+    s.out_i32 (CODE_req_pq);
+    s.out_i32s ((int *)DC->nonce, 4);
     TGL_DEBUG(__FUNCTION__ << " DC " << DC->id);
-    rpc_send_packet(c);
+    rpc_send_packet(c, s.char_data(), s.char_size());
 
     DC->state = st_reqpq_sent_temp;
     return 1;
@@ -276,38 +263,45 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
   auto result = bn_factorize (pq, p.get(), q.get());
   TGL_ASSERT_UNUSED(result, result >= 0);
 
-  clear_packet ();
-  packet_ptr += 5;
-  out_int (temp_key ? CODE_p_q_inner_data_temp : CODE_p_q_inner_data);
+  mtprotocol_serializer s;
+  size_t at = s.reserve_i32s(5);
+  s.out_i32 (temp_key ? CODE_p_q_inner_data_temp : CODE_p_q_inner_data);
 
-  out_bignum (pq);
-  out_bignum (p.get());
-  out_bignum (q.get());
+  s.out_bignum (pq);
+  s.out_bignum (p.get());
+  s.out_bignum (q.get());
 
-  out_ints ((int *) DC->nonce, 4);
-  out_ints ((int *) DC->server_nonce, 4);
+  s.out_i32s ((int *) DC->nonce, 4);
+  s.out_i32s ((int *) DC->server_nonce, 4);
   tglt_secure_random (DC->new_nonce, 32);
-  out_ints ((int *) DC->new_nonce, 8);
+  s.out_i32s ((int *) DC->new_nonce, 8);
   if (temp_key) {
-    out_int (tgl_state::instance()->temp_key_expire_time);
+    s.out_i32 (tgl_state::instance()->temp_key_expire_time);
   }
-  TGLC_sha1 ((unsigned char *) (packet_buffer + 5), (packet_ptr - packet_buffer - 5) * 4, (unsigned char *) packet_buffer);
 
-  int l = encrypt_packet_buffer (DC);
+  unsigned char sha1_buffer[20];
+  TGLC_sha1 (reinterpret_cast<const unsigned char*>(s.i32_data() + at + 5), (s.i32_size() - at - 5) * 4, sha1_buffer);
+  s.out_i32s_at(at, reinterpret_cast<int32_t*>(sha1_buffer), 5);
 
-  clear_packet ();
-  out_int (CODE_req_DH_params);
-  out_ints ((int *) DC->nonce, 4);
-  out_ints ((int *) DC->server_nonce, 4);
-  out_bignum (p.get());
-  out_bignum (q.get());
+  int encrypted_buffer_size = tgl_pad_rsa_encrypt_dest_buffer_size(s.char_size());
+  assert(encrypted_buffer_size > 0);
+  std::unique_ptr<char[]> encrypted_data(new char[encrypted_buffer_size]);
+  const TGLC_rsa* key = tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->public_key();
+  int encrypted_data_size = tgl_pad_rsa_encrypt(s.char_data(), s.char_size(), encrypted_data.get(), encrypted_buffer_size, TGLC_rsa_n(key), TGLC_rsa_e(key));
 
-  out_long (tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->fingerprint());
-  out_cstring ((char *) encrypt_buffer, l);
+  s.clear();
+  s.out_i32 (CODE_req_DH_params);
+  s.out_i32s ((int *) DC->nonce, 4);
+  s.out_i32s ((int *) DC->server_nonce, 4);
+  s.out_bignum (p.get());
+  s.out_bignum (q.get());
+
+  s.out_i64 (tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->fingerprint());
+  s.out_string (encrypted_data.get(), encrypted_data_size);
 
   DC->state = temp_key ? st_reqdh_sent_temp : st_reqdh_sent;
   TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " DC " << DC->id);
-  rpc_send_packet (c);
+  rpc_send_packet (c, s.char_data(), s.char_size());
 }
 /* }}} */
 
@@ -320,12 +314,12 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
     return;
   }
 
-  clear_packet ();
-  packet_ptr += 5;
-  out_int (CODE_client_DH_inner_data);
-  out_ints ((int *) DC->nonce, 4);
-  out_ints ((int *) DC->server_nonce, 4);
-  out_long (0);
+  mtprotocol_serializer s;
+  size_t at = s.reserve_i32s(5);
+  s.out_i32 (CODE_client_DH_inner_data);
+  s.out_i32s ((int *) DC->nonce, 4);
+  s.out_i32s ((int *) DC->server_nonce, 4);
+  s.out_i64(0);
 
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_g(TGLC_bn_new());
   ensure (TGLC_bn_set_word (dh_g.get(), g));
@@ -338,7 +332,7 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> y(TGLC_bn_new());
   ensure_ptr (y.get());
   ensure (TGLC_bn_mod_exp (y.get(), dh_g.get(), dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx));
-  out_bignum (y.get());
+  s.out_bignum (y.get());
 
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> auth_key_num(TGLC_bn_new());
   ensure (TGLC_bn_mod_exp (auth_key_num.get(), g_a, dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx));
@@ -352,19 +346,25 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
     memset (key, 0, 256 - l);
   }
 
-  TGLC_sha1 ((unsigned char *) (packet_buffer + 5), (packet_ptr - packet_buffer - 5) * 4, (unsigned char *) packet_buffer);
+  unsigned char sha1_buffer[20];
+  TGLC_sha1 (reinterpret_cast<const unsigned char*>(s.i32_data() + at + 5), (s.i32_size() - at - 5) * 4, sha1_buffer);
+  s.out_i32s_at(at, reinterpret_cast<int32_t*>(sha1_buffer), 5);
 
-  l = encrypt_packet_buffer_aes_unauth (DC->server_nonce, DC->new_nonce);
+  tgl_init_aes_unauth(DC->server_nonce, DC->new_nonce, 1);
+  int encrypted_buffer_size = tgl_pad_aes_encrypt_dest_buffer_size(s.char_size());
+  std::unique_ptr<char[]> encrypted_data(new char[encrypted_buffer_size]);
+  int encrypted_data_size = tgl_pad_aes_encrypt(reinterpret_cast<const unsigned char*>(s.char_data()), s.char_size(),
+          reinterpret_cast<unsigned char*>(encrypted_data.get()), encrypted_buffer_size);
 
-  clear_packet ();
-  out_int (CODE_set_client_DH_params);
-  out_ints ((int *) DC->nonce, 4);
-  out_ints ((int *) DC->server_nonce, 4);
-  out_cstring ((char *) encrypt_buffer, l);
+  s.clear();
+  s.out_i32 (CODE_set_client_DH_params);
+  s.out_i32s ((int *) DC->nonce, 4);
+  s.out_i32s ((int *) DC->server_nonce, 4);
+  s.out_string (encrypted_data.get(), encrypted_data_size);
 
   DC->state = temp_key ? st_client_dh_sent_temp : st_client_dh_sent;;
   TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " DC " << DC->id);
-  rpc_send_packet (c);
+  rpc_send_packet (c, s.char_data(), s.char_size());
 }
 /* }}} */
 
@@ -559,7 +559,7 @@ static void create_temp_auth_key (const std::shared_ptr<tgl_connection>& c) {
   send_req_pq_temp_packet(c);
 }
 
-int tglmp_encrypt_inner_temp (const std::shared_ptr<tgl_connection>& c, int *msg, int msg_ints, int useful, void *data, long long msg_id);
+int tglmp_encrypt_inner_temp (const std::shared_ptr<tgl_connection>& c, const int *msg, int msg_ints, int useful, void *data, long long msg_id);
 static long long msg_id_override;
 static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c);
 
@@ -670,23 +670,23 @@ static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c) {
     }
     long long msg_id = generate_next_msg_id(DC, S);
 
-    clear_packet ();
-    out_int (CODE_bind_auth_key_inner);
+    mtprotocol_serializer s;
+    s.out_i32 (CODE_bind_auth_key_inner);
     long long rand;
     tglt_secure_random ((unsigned char*)&rand, 8);
-    out_long (rand);
-    out_long (DC->temp_auth_key_id);
-    out_long (DC->auth_key_id);
+    s.out_i64 (rand);
+    s.out_i64 (DC->temp_auth_key_id);
+    s.out_i64 (DC->auth_key_id);
 
     if (!S->session_id) {
         tglt_secure_random ((unsigned char*)&S->session_id, 8);
     }
-    out_long (S->session_id);
+    s.out_i64 (S->session_id);
     int expires = time (0) + DC->server_time_delta + tgl_state::instance()->temp_key_expire_time;
-    out_int (expires);
+    s.out_i32 (expires);
 
     static int data[1000];
-    int len = tglmp_encrypt_inner_temp(c, packet_buffer, packet_ptr - packet_buffer, 0, data, msg_id);
+    int len = tglmp_encrypt_inner_temp(c, s.i32_data(), s.i32_size(), 0, data, msg_id);
     msg_id_override = msg_id;
     DC->temp_auth_key_bind_query_id = msg_id;
     tgl_do_send_bind_temp_key(DC, rand, expires, (void *)data, len, msg_id);
@@ -765,7 +765,7 @@ static int aes_encrypt_message (unsigned char *key, struct encrypted_message *en
   return tgl_pad_aes_encrypt ((unsigned char *) &enc->server_salt, enc_len, (unsigned char *) &enc->server_salt, MAX_MESSAGE_INTS * 4 + (MINSZ - UNENCSZ));
 }
 
-long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c, int *msg, int msg_ints, bool force_send, bool useful) {
+long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c, const int *msg, int msg_ints, bool force_send, bool useful) {
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
     std::shared_ptr<tgl_session> S = c->get_session().lock();
     if (!DC || !S) {
@@ -805,7 +805,7 @@ long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c, i
     return S->last_msg_id;
 }
 
-int tglmp_encrypt_inner_temp (const std::shared_ptr<tgl_connection>& c, int *msg, int msg_ints, int useful, void *data, long long msg_id) {
+int tglmp_encrypt_inner_temp (const std::shared_ptr<tgl_connection>& c, const int *msg, int msg_ints, int useful, void *data, long long msg_id) {
     TGL_UNUSED(useful);
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
     std::shared_ptr<tgl_session> S = c->get_session().lock();
@@ -1399,16 +1399,16 @@ void tgl_dc_authorize(const std::shared_ptr<tgl_dc>& DC) {
 }
 
 static int send_all_acks(const std::shared_ptr<tgl_session>& S) {
-  clear_packet ();
-  out_int (CODE_msgs_ack);
-  out_int (CODE_vector);
-  out_int (S->ack_tree.size());
+  mtprotocol_serializer s;
+  s.out_i32 (CODE_msgs_ack);
+  s.out_i32 (CODE_vector);
+  s.out_i32 (S->ack_tree.size());
   while (S->ack_tree.begin() != S->ack_tree.end()) {
     auto it = std::min_element(std::begin(S->ack_tree), std::end(S->ack_tree));
-    out_long (*it);
+    s.out_i64 (*it);
     S->ack_tree.erase(it);
   }
-  tglmp_encrypt_send_message (S->c, packet_buffer, packet_ptr - packet_buffer);
+  tglmp_encrypt_send_message (S->c, s.i32_data(), s.i32_size());
   return 0;
 }
 

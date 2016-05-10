@@ -26,8 +26,11 @@
 #include "tgl-layout.h"
 #include "types/tgl_message.h"
 #include "tgl-dc.h"
-#include "string.h"
+#include "mtproto-common.h"
 
+#include <string.h>
+#include <cstdint>
+#include <exception>
 #include <memory>
 #include <string>
 #include <boost/variant.hpp>
@@ -43,17 +46,17 @@ public:
     enum class execution_option { UNKNOWN, NORMAL, LOGIN, FORCE };
 
     query(const std::string& name, const paramed_type& type)
-        : m_name(name)
-        , m_type(type)
-        , m_data()
-        , m_seq_no(0)
-        , m_msg_id(0)
+        : m_msg_id(0)
         , m_session_id(0)
+        , m_seq_no(0)
+        , m_exec_option(execution_option::UNKNOWN)
+        , m_ack_received(false)
+        , m_name(name)
+        , m_type(type)
+        , m_serializer(std::make_shared<mtprotocol_serializer>())
         , m_timer()
         , m_dc()
         , m_session()
-        , m_ack_received(false)
-        , m_exec_option(execution_option::UNKNOWN)
     {
     }
 
@@ -71,15 +74,52 @@ public:
     void clear_timer();
     int handle_error(int error_code, const std::string& error_string);
     int handle_result();
+    const std::shared_ptr<mtprotocol_serializer>& serializer() const { return m_serializer; }
 
-    void load_data(const void* data_in, int ints)
+    void out_i32s(const int32_t* ints, size_t num)
     {
-        static_assert(sizeof(int) == 4, "We assume int is 4 bytes");
-        m_data.resize(4 * ints);
-        memcpy(m_data.data(), data_in, m_data.size());
+        m_serializer->out_i32s(ints, num);
     }
 
-    //paramed_type* type() { return &m_type; }
+    void out_i32(int32_t i)
+    {
+        m_serializer->out_i32(i);
+    }
+
+    void out_i64(int64_t i)
+    {
+        m_serializer->out_i64(i);
+    }
+
+    void out_double(double d)
+    {
+        m_serializer->out_double(d);
+    }
+
+    void out_string(const char* str, size_t size)
+    {
+        m_serializer->out_string(str, size);
+    }
+
+    void out_string(const char* str)
+    {
+        m_serializer->out_string(str);
+    }
+
+    void out_std_string(const std::string& str)
+    {
+        m_serializer->out_string(str.c_str(), str.size());
+    }
+
+    void out_random(int length)
+    {
+        m_serializer->out_random(length);
+    }
+
+    void out_peer_id(const tgl_peer_id_t& id);
+
+    void out_header();
+
     const std::string& name() const { return m_name; }
     long long session_id() const { return m_session_id; }
     long long msg_id() const { return m_msg_id; }
@@ -97,20 +137,18 @@ private:
     bool is_login() const { return m_exec_option == execution_option::LOGIN; }
 
 private:
-    const std::string m_name;
-    paramed_type m_type;
-    std::vector<char> m_data;
-    int m_seq_no;
     long long m_msg_id;
     long long m_session_id;
+    int m_seq_no;
+    execution_option m_exec_option;
+    bool m_ack_received;
+    const std::string m_name;
+    paramed_type m_type;
+    std::shared_ptr<mtprotocol_serializer> m_serializer;
     std::shared_ptr<tgl_timer> m_timer;
     std::shared_ptr<tgl_dc> m_dc;
     std::shared_ptr<tgl_session> m_session;
-    bool m_ack_received;
-    execution_option m_exec_option;
 };
-
-void out_peer_id (tgl_peer_id_t id);
 
 struct messages_send_extra {
   bool multi = false;

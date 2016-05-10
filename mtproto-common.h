@@ -26,6 +26,15 @@
 #include "crypto/bn.h"
 #include <stdio.h>
 #include <assert.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+#ifdef __cplusplus
+#include <exception>
+#include <memory>
+#include <string>
+#include <vector>
+#endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #define INT64_PRINTF_MODIFIER "I64"
@@ -125,76 +134,131 @@ void tgl_prng_seed (const char *password_filename, int password_length);
 int tgl_serialize_bignum (const TGLC_bn *b, char *buffer, int maxlen);
 long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key);
 
-#define packet_buffer tgl_packet_buffer
-#define packet_ptr tgl_packet_ptr
-
-extern int *tgl_packet_buffer;
-extern int *tgl_packet_ptr;
-
-static inline void out_ints (const int *what, int len) {
-  assert (packet_ptr + len <= packet_buffer + PACKET_BUFFER_SIZE);
-  memcpy (packet_ptr, what, len * 4);
-  packet_ptr += len;
-}
-
-
-static inline void out_int (int x) {
-  assert (packet_ptr + 1 <= packet_buffer + PACKET_BUFFER_SIZE);
-  *packet_ptr++ = x;
-}
-
-static inline void out_long (long long int x) {
-  assert (packet_ptr + 2 <= packet_buffer + PACKET_BUFFER_SIZE);
-  *(long long *)packet_ptr = x;
-  packet_ptr += 2;
-}
-
-static inline void out_double (double x) {
-  assert (packet_ptr + 2 <= packet_buffer + PACKET_BUFFER_SIZE);
-  *(double *)packet_ptr = x;
-  packet_ptr += 2;
-}
-
-static inline void clear_packet (void) {
-  packet_ptr = packet_buffer;
-}
-
-static inline void tgl_out_cstring (const char *str, long len) {
-  assert (len >= 0 && len < (1 << 24));
-  assert ((char *) packet_ptr + len + 8 < (char *) (packet_buffer + PACKET_BUFFER_SIZE));
-  char *dest = (char *) packet_ptr;
-  if (len < 254) {
-    *dest++ = len;
-  } else {
-    *packet_ptr = (len << 8) + 0xfe;
-    dest += 4;
-  }
-  memcpy (dest, str, len);
-  dest += len;
-  while ((long) dest & 3) {
-    *dest++ = 0;
-  }
-  packet_ptr = (int *) dest;
-}
-
-#define out_cstring tgl_out_cstring
-
-static inline void out_string (const char *str) {
-  out_cstring (str, strlen (str));
-}
-
 #ifdef __cplusplus
-static inline void out_std_string (const std::string& str)
+class mtprotocol_serializer
 {
-  out_cstring(str.c_str(), str.length());
-}
-#endif
+public:
+    explicit mtprotocol_serializer(size_t initial_buffer_capacity = 256 /*int32_ts*/)
+    {
+        m_data.reserve(initial_buffer_capacity);
+    }
 
-static inline void out_bignum (TGLC_bn *n) {
-  int l = tgl_serialize_bignum (n, (char *)packet_ptr, (PACKET_BUFFER_SIZE - (packet_ptr - packet_buffer)) * 4);
-  assert (l > 0);
-  packet_ptr += l >> 2;
-}
+    void out_i32s(const int32_t* ints, size_t num)
+    {
+        m_data.resize(m_data.size() + num);
+        memcpy(m_data.data() + m_data.size() - num, ints, num * 4);
+    }
+
+    void out_i32s_at(size_t at, const int32_t* ints, size_t num)
+    {
+        memcpy(m_data.data() + at, ints, num * 4);
+    }
+
+    void out_i32_at(size_t at, int32_t i)
+    {
+        out_i32s_at(at, &i, 1);
+    }
+
+    void out_i32(int32_t i)
+    {
+        out_i32s(&i, 1);
+    }
+
+    void out_i64(int64_t i)
+    {
+        m_data.resize(m_data.size() + 2);
+        *reinterpret_cast<int64_t*>(m_data.data() + m_data.size() - 2) = i;
+    }
+
+    void out_i64_at(size_t at, int64_t i)
+    {
+        *reinterpret_cast<int64_t*>(m_data.data() + at) = i;
+    }
+
+    void out_double(double d)
+    {
+        static_assert(sizeof(double) == 8, "We assume double is 8 bytes");
+        m_data.resize(m_data.size() + 2);
+        *reinterpret_cast<double*>(m_data.data() + m_data.size() - 2) = d;
+    }
+
+    void out_string(const char* str, size_t size)
+    {
+        if (size >= (1 << 24)) {
+            throw std::logic_error("string is too big");
+        }
+        char* dest = nullptr;
+        if (size < 0xfe) {
+            size_t num = ((1 + size) + 3) / 4;
+            m_data.resize(m_data.size() + num);
+            dest = reinterpret_cast<char*>(m_data.data() + m_data.size() - num);
+            *dest++ = static_cast<char>(size);
+        } else {
+            size_t num = ((4 + size) + 3) / 4;
+            m_data.resize(m_data.size() + num);
+            dest = reinterpret_cast<char*>(m_data.data() + m_data.size() - num);
+            *reinterpret_cast<int32_t*>(dest) = static_cast<int32_t>((size << 8) + 0xfe);
+            dest += 4;
+        }
+
+        memcpy(dest, str, size);
+        dest += size;
+        while (reinterpret_cast<intptr_t>(dest) & 3) {
+            *dest++ = 0;
+        }
+    }
+
+    void out_string(const char* str)
+    {
+        out_string(str, strlen(str));
+    }
+
+    void out_std_string (const std::string& str)
+    {
+        out_string(str.c_str(), str.size());
+    }
+
+    void out_bignum(TGLC_bn* n)
+    {
+        int required_size = -tgl_serialize_bignum(n, nullptr, -1);
+        if (required_size <= 0) {
+            throw std::logic_error("bad big number");
+        }
+        assert(!(required_size & 3));
+        int num = required_size / 4;
+        m_data.resize(m_data.size() + num);
+        int actual_size = tgl_serialize_bignum(n, reinterpret_cast<char*>(m_data.data() + m_data.size() - num), required_size);
+        assert(required_size == actual_size);
+    }
+
+    void out_random(int length)
+    {
+        std::unique_ptr<unsigned char[]> buffer(new unsigned char[length]);
+        tglt_secure_random(buffer.get(), length);
+        out_string(reinterpret_cast<const char*>(buffer.get()), length);
+    }
+
+    size_t reserve_i32s(size_t num_of_i32)
+    {
+        size_t old_size = m_data.size();
+        m_data.resize(old_size + num_of_i32);
+        return old_size;
+    }
+
+    void clear() { m_data.clear(); }
+
+    const int32_t* i32_data() const { return m_data.data(); }
+    size_t i32_size() const { return m_data.size(); }
+    const char* char_data() const { return reinterpret_cast<const char*>(m_data.data()); }
+    size_t char_size() const { return m_data.size() * 4; }
+
+    int32_t* mutable_i32_data() { return m_data.data(); }
+    char* mutable_char_data() { return reinterpret_cast<char*>(m_data.data()); }
+
+private:
+    std::vector<int32_t> m_data;
+};
+#endif
 
 #define in_ptr tgl_in_ptr
 #define in_end tgl_in_end
@@ -362,8 +426,13 @@ static inline int in_remaining (void) {
 
 //int get_random_bytes (unsigned char *buf, int n);
 
-int tgl_pad_rsa_encrypt (char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *E);
-int tgl_pad_rsa_decrypt (char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *D);
+int tgl_pad_rsa_encrypt (const char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *E);
+int tgl_pad_rsa_decrypt (const char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *D);
+
+static inline int tgl_pad_rsa_encrypt_dest_buffer_size(int src_buffer_size)
+{
+    return tgl_pad_rsa_encrypt(NULL, src_buffer_size, NULL, 0, NULL, NULL);
+}
 
 //extern long long rsa_encrypted_chunks, rsa_decrypted_chunks;
 
@@ -375,8 +444,13 @@ int tgl_pad_rsa_decrypt (char *from, int from_len, char *to, int size, TGLC_bn *
 
 void tgl_init_aes_unauth (const unsigned char server_nonce[16], const unsigned char hidden_client_nonce[32], int encrypt);
 void tgl_init_aes_auth (unsigned char auth_key[192], unsigned char msg_key[16], int encrypt);
-int tgl_pad_aes_encrypt (unsigned char *from, int from_len, unsigned char *to, int size);
-int tgl_pad_aes_decrypt (unsigned char *from, int from_len, unsigned char *to, int size);
+int tgl_pad_aes_encrypt (const unsigned char *from, int from_len, unsigned char *to, int size);
+int tgl_pad_aes_decrypt (const unsigned char *from, int from_len, unsigned char *to, int size);
+
+static inline int tgl_pad_aes_encrypt_dest_buffer_size(int src_buffer_size)
+{
+    return tgl_pad_aes_encrypt(NULL, src_buffer_size, NULL, 0);
+}
 
 void *tgl_alloc0 (size_t size);
 
