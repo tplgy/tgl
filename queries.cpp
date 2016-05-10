@@ -114,18 +114,18 @@ void query::alarm()
         out_int (m_seq_no);
         out_int (m_data.size());
         out_ints ((int*)m_data.data(), m_data.size() / 4);
-        tglmp_encrypt_send_message (m_session->c, packet_buffer, packet_ptr - packet_buffer, m_flags & QUERY_FORCE_SEND);
+        tglmp_encrypt_send_message (m_session->c, packet_buffer, packet_ptr - packet_buffer, is_force());
     } else if (m_dc->sessions[0]) {
-        m_flags &= ~QUERY_ACK_RECEIVED;
+        m_ack_received = false;
         tgl_state::instance()->remove_query(shared_from_this());
         m_session = m_dc->sessions[0];
         long long old_id = m_msg_id;
-        m_msg_id = tglmp_encrypt_send_message(m_session->c, (int*)m_data.data(), m_data.size() / 4, (m_flags & QUERY_FORCE_SEND) | 1);
+        m_msg_id = tglmp_encrypt_send_message(m_session->c, (int*)m_data.data(), m_data.size() / 4, is_force(), true);
         TGL_NOTICE("Resent query #" << old_id << " as #" << m_msg_id << " of size " << m_data.size() << " to DC " << m_dc->id);
         tgl_state::instance()->add_query(shared_from_this());
         m_session_id = m_session->session_id;
         auto dc = m_session->dc.lock();
-        if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !(m_flags & QUERY_FORCE_SEND)) {
+        if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !is_force()) {
             m_session_id = 0;
         }
     } else {
@@ -144,17 +144,16 @@ void tglq_regen_query (long long id) {
 
 void query::regen()
 {
-  m_flags &= ~QUERY_ACK_RECEIVED;
-
-  if (!(m_session && m_session_id && m_dc && m_dc->sessions[0] == m_session && m_session->session_id == m_session_id)) {
-    m_session_id = 0;
-  } else {
-    auto dc = m_session->dc.lock();
-    if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !(m_flags & QUERY_FORCE_SEND)) {
-      m_session_id = 0;
+    m_ack_received = false;
+    if (!(m_session && m_session_id && m_dc && m_dc->sessions[0] == m_session && m_session->session_id == m_session_id)) {
+        m_session_id = 0;
+    } else {
+        auto dc = m_session->dc.lock();
+        if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !is_force()) {
+            m_session_id = 0;
+        }
     }
-  }
-  m_timer->start(0.001);
+    m_timer->start(0.001);
 }
 
 #if 0
@@ -203,8 +202,10 @@ static void alarm_query_gateway(std::shared_ptr<query> q) {
 void tgl_transfer_auth_callback (std::shared_ptr<tgl_dc> arg, bool success);
 void tgl_do_transfer_auth (int num, std::function<void(bool success)> callback);
 
-void query::execute(const std::shared_ptr<tgl_dc>& dc, int flags)
+void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
 {
+    m_ack_received = false;
+    m_exec_option = option;
     m_dc = dc;
     assert(m_dc);
     bool pending = false;
@@ -213,11 +214,11 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, int flags)
         pending = true;
     }
 
-    if (!(m_dc->flags & TGLDCF_CONFIGURED) && !(flags & QUERY_FORCE_SEND)) {
+    if (!(m_dc->flags & TGLDCF_CONFIGURED) && !is_force()) {
         pending = true;
     }
 
-    if (!tgl_signed_dc(m_dc) && !(flags & QUERY_LOGIN) && !(flags & QUERY_FORCE_SEND)) {
+    if (!tgl_signed_dc(m_dc) && !is_login() && !is_force()) {
         pending = true;
         if (m_dc != tgl_state::instance()->DC_working) {
             tgl_do_transfer_auth(m_dc->id, std::bind(tgl_transfer_auth_callback, m_dc, std::placeholders::_1));
@@ -232,14 +233,13 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, int flags)
         m_session_id = 0;
         m_seq_no = 0;
     } else {
-        m_msg_id = tglmp_encrypt_send_message (m_dc->sessions[0]->c, (int*)m_data.data(), m_data.size() / 4, 1 | (flags & QUERY_FORCE_SEND));
+        m_msg_id = tglmp_encrypt_send_message (m_dc->sessions[0]->c, (int*)m_data.data(), m_data.size() / 4, is_force(), true);
         m_session = m_dc->sessions[0];
         m_session_id = m_session->session_id;
         m_seq_no = m_session->seq_no - 1;
         TGL_DEBUG("Sent query \"" << m_name << "\" of size " << m_data.size() << " to DC " << m_dc->id << ": #" << m_msg_id);
     }
 
-    m_flags = flags & ~QUERY_ACK_RECEIVED;
     tgl_state::instance()->add_query(shared_from_this());
 
     m_timer = tgl_state::instance()->timer_factory()->create_timer(std::bind(&alarm_query_gateway, shared_from_this()));
@@ -269,20 +269,20 @@ bool query::execute_after_pending()
         m_dc->add_pending_query(shared_from_this());
         return false;
     }
-    if (!tgl_signed_dc(m_dc) && !(m_flags & QUERY_LOGIN)) {
+    if (!tgl_signed_dc(m_dc) && !is_login()) {
         TGL_DEBUG("not ready to send pending non-login query " << this << " (" << m_name << "), re-queuing");
         m_dc->add_pending_query(shared_from_this());
         return false;
     }
 
-    m_flags &= ~QUERY_ACK_RECEIVED;
+    m_ack_received = false;
     tgl_state::instance()->remove_query(shared_from_this());
     m_session = m_dc->sessions[0];
-    m_msg_id = tglmp_encrypt_send_message(m_session->c, (int*)m_data.data(), m_data.size() / 4, (m_flags & QUERY_FORCE_SEND) | 1);
+    m_msg_id = tglmp_encrypt_send_message(m_session->c, (int*)m_data.data(), m_data.size() / 4, is_force(), true);
     tgl_state::instance()->add_query(shared_from_this());
     m_session_id = m_session->session_id;
     auto dc = m_session->dc.lock();
-    if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !(m_flags & QUERY_FORCE_SEND)) {
+    if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !is_force()) {
         m_session_id = 0;
     }
 
@@ -302,8 +302,8 @@ void tglq_query_ack(long long id) {
 
 void query::ack()
 {
-    if (!(m_flags & QUERY_ACK_RECEIVED)) {
-        m_flags |= QUERY_ACK_RECEIVED;
+    if (!m_ack_received) {
+        m_ack_received = true;
         cancel_timer();
     }
 }
@@ -341,7 +341,7 @@ int tglq_query_error(long long id)
 
 int query::handle_error(int error_code, const std::string& error_string)
 {
-    if (!(m_flags & QUERY_ACK_RECEIVED)) {
+    if (!m_ack_received) {
         cancel_timer();
     }
 
@@ -376,7 +376,7 @@ int query::handle_error(int error_code, const std::string& error_string)
           if (i > 0 && i < TGL_MAX_DC_NUM) {
             tgl_state::instance()->set_working_dc(i);
             tgl_state::instance()->login();
-            m_flags &= ~QUERY_ACK_RECEIVED;
+            m_ack_received = false;
             //m_session_id = 0;
             //struct tgl_dc *DC = q->DC;
             //if (!(DC->flags & 4) && !(q->flags & QUERY_FORCE_SEND)) {
@@ -433,10 +433,10 @@ int query::handle_error(int error_code, const std::string& error_string)
           } else {
             wait = atoll (error_string.data() + 11);
           }
-          m_flags &= ~QUERY_ACK_RECEIVED;
+          m_ack_received = false;
           m_timer->start(wait);
           std::shared_ptr<tgl_dc> DC = m_dc;
-          if (!(DC->flags & 4) && !(m_flags & QUERY_FORCE_SEND)) {
+          if (!(DC->flags & 4) && !is_force()) {
             m_session_id = 0;
           }
           error_handled = 1;
@@ -468,58 +468,66 @@ int query::handle_error(int error_code, const std::string& error_string)
 static int packed_buffer[MAX_PACKED_SIZE / 4];
 
 int tglq_query_result (long long id) {
-  int op = prefetch_int ();
-  int *end = 0;
-  int *eend = 0;
-  if (op == CODE_gzip_packed) {
-    fetch_int ();
-    int l = prefetch_strlen ();
-    char *s = fetch_str (l);
-    int total_out = tgl_inflate (s, l, packed_buffer, MAX_PACKED_SIZE);
-    TGL_DEBUG("inflated " << total_out << " bytes");
-    end = in_ptr;
-    eend = in_end;
-    in_ptr = packed_buffer;
-    in_end = in_ptr + total_out / 4;
-  }
-  std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
-  if (!q) {
-    TGL_WARNING("result for unknown query #" << id);
-    in_ptr = in_end;
-  } else {
-    TGL_DEBUG2("result for query #" << id << ". Size " << (long)4 * (in_end - in_ptr) << " bytes");
-    if (!(q->flags() & QUERY_ACK_RECEIVED)) {
-      q->cancel_timer();
+    std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
+    if (!q) {
+        TGL_WARNING("result for unknown query #" << id);
+        in_ptr = in_end;
+        return 0;
+    }
+
+    return q->handle_result();
+}
+
+int query::handle_result()
+{
+    int op = prefetch_int ();
+    int *end = 0;
+    int *eend = 0;
+    if (op == CODE_gzip_packed) {
+        fetch_int ();
+        int l = prefetch_strlen ();
+        char *s = fetch_str (l);
+        int total_out = tgl_inflate (s, l, packed_buffer, MAX_PACKED_SIZE);
+        TGL_DEBUG("inflated " << total_out << " bytes");
+        end = in_ptr;
+        eend = in_end;
+        in_ptr = packed_buffer;
+        in_end = in_ptr + total_out / 4;
+    }
+
+    TGL_DEBUG2("result for query #" << m_msg_id << ". Size " << (long)4 * (in_end - in_ptr) << " bytes");
+    if (!m_ack_received) {
+        cancel_timer();
     }
 
     int *save = in_ptr;
     TGL_DEBUG("in_ptr = " << in_ptr << ", end_ptr = " << in_end);
-    if (skip_type_any (q->type()) < 0) {
-      TGL_ERROR("Skipped " << (long)(in_ptr - save) << " int out of " << (long)(in_end - save) << " (type " << q->type()->type->id << ") (query type " << q->name() << ")");
-      TGL_ERROR("0x" << std::hex << *(save - 1) << " 0x" << *(save) << " 0x" << *(save + 1) << " 0x" << *(save + 2));
-      assert (0);
+    if (skip_type_any(&m_type) < 0) {
+        TGL_ERROR("Skipped " << (long)(in_ptr - save) << " int out of " << (long)(in_end - save) << " (type " << m_type.type->id << ") (query type " << name() << ")");
+        TGL_ERROR("0x" << std::hex << *(save - 1) << " 0x" << *(save) << " 0x" << *(save + 1) << " 0x" << *(save + 2));
+        assert (0);
     }
 
     assert (in_ptr == in_end);
     in_ptr = save;
 
-    void *DS = fetch_ds_type_any (q->type());
+    void *DS = fetch_ds_type_any(&m_type);
     assert (DS);
 
-    q->on_answer(DS);
-    free_ds_type_any (DS, q->type());
+    on_answer(DS);
+    free_ds_type_any(DS, &m_type);
 
     assert (in_ptr == in_end);
 
-    q->clear_timer();
-    tgl_state::instance()->remove_query(q);
+    clear_timer();
+    tgl_state::instance()->remove_query(shared_from_this());
 
-  }
-  if (end) {
-    in_ptr = end;
-    in_end = eend;
-  }
-  return 0;
+    if (end) {
+        in_ptr = end;
+        in_end = eend;
+    }
+
+    return 0;
 }
 
 void tgl_do_insert_header () {
@@ -861,7 +869,7 @@ void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D) {
 
     auto q = std::make_shared<query_help_get_config>(std::bind(set_dc_configured, D, std::placeholders::_1));
     q->load_data(packet_buffer, packet_ptr - packet_buffer);
-    q->execute(tgl_state::instance()->DC_working, QUERY_FORCE_SEND);
+    q->execute(tgl_state::instance()->DC_working, query::execution_option::FORCE);
 }
 /* }}} */
 
@@ -917,7 +925,7 @@ void tgl_do_send_code (const char *phone, int phone_len, std::function<void(bool
 
     auto q = std::make_shared<query_send_code>(callback);
     q->load_data(packet_buffer, packet_ptr - packet_buffer);
-    q->execute(tgl_state::instance()->DC_working, QUERY_LOGIN);
+    q->execute(tgl_state::instance()->DC_working, query::execution_option::LOGIN);
 }
 
 class query_phone_call: public query
@@ -1005,7 +1013,7 @@ int tgl_do_send_code_result (const char *phone, int phone_len, const char *hash,
 
     auto q = std::make_shared<query_sign_in>(callback);
     q->load_data(packet_buffer, packet_ptr - packet_buffer);
-    q->execute(tgl_state::instance()->DC_working, QUERY_LOGIN);
+    q->execute(tgl_state::instance()->DC_working, query::execution_option::LOGIN);
     return 0;
 }
 
@@ -1021,7 +1029,7 @@ int tgl_do_send_code_result_auth (const char *phone, int phone_len, const char *
 
     auto q = std::make_shared<query_sign_in>(callback);
     q->load_data(packet_buffer, packet_ptr - packet_buffer);
-    q->execute(tgl_state::instance()->DC_working, QUERY_LOGIN);
+    q->execute(tgl_state::instance()->DC_working, query::execution_option::LOGIN);
     return 0;
 }
 
@@ -1035,7 +1043,7 @@ int tgl_do_send_bot_auth (const char *code, int code_len, std::function<void(boo
 
     auto q = std::make_shared<query_sign_in>(callback);
     q->load_data(packet_buffer, packet_ptr - packet_buffer);
-    q->execute(tgl_state::instance()->DC_working, QUERY_LOGIN);
+    q->execute(tgl_state::instance()->DC_working, query::execution_option::LOGIN);
     return 0;
 }
 /* }}} */
@@ -2845,7 +2853,7 @@ public:
     
         auto q = std::make_shared<query_import_auth>(m_dc, m_callback);
         q->load_data(packet_buffer, packet_ptr - packet_buffer);
-        q->execute(m_dc, QUERY_LOGIN);
+        q->execute(m_dc, query::execution_option::LOGIN);
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
@@ -4787,7 +4795,7 @@ void tgl_do_send_bind_temp_key (std::shared_ptr<tgl_dc> D, long long nonce, int 
 
     auto q = std::make_shared<query_send_bind_temp_auth_key>(D);
     q->load_data(packet_buffer, packet_ptr - packet_buffer);
-    q->execute(D, QUERY_FORCE_SEND);
+    q->execute(D, query::execution_option::FORCE);
     assert (q->msg_id() == msg_id);
 }
 

@@ -35,26 +35,25 @@
 
 static const float DEFAULT_QUERY_TIMEOUT = 6.0;
 
-#define QUERY_ACK_RECEIVED 1
-#define QUERY_FORCE_SEND 2
-#define QUERY_LOGIN 4
-
 class tgl_timer;
 
 class query: public std::enable_shared_from_this<query>
 {
 public:
+    enum class execution_option { UNKNOWN, NORMAL, LOGIN, FORCE };
+
     query(const std::string& name, const paramed_type& type)
         : m_name(name)
         , m_type(type)
         , m_data()
-        , m_flags(0)
         , m_seq_no(0)
         , m_msg_id(0)
         , m_session_id(0)
         , m_timer()
         , m_dc()
         , m_session()
+        , m_ack_received(false)
+        , m_exec_option(execution_option::UNKNOWN)
     {
     }
 
@@ -63,7 +62,7 @@ public:
         clear_timer();
     }
 
-    void execute(const std::shared_ptr<tgl_dc>& dc, int flags = 0);
+    void execute(const std::shared_ptr<tgl_dc>& dc, execution_option = execution_option::NORMAL);
     bool execute_after_pending();
     void alarm();
     void regen();
@@ -71,7 +70,7 @@ public:
     void cancel_timer();
     void clear_timer();
     int handle_error(int error_code, const std::string& error_string);
-    void handle_result();
+    int handle_result();
 
     void load_data(const void* data_in, int ints)
     {
@@ -80,11 +79,10 @@ public:
         memcpy(m_data.data(), data_in, m_data.size());
     }
 
-    paramed_type* type() { return &m_type; }
+    //paramed_type* type() { return &m_type; }
     const std::string& name() const { return m_name; }
     long long session_id() const { return m_session_id; }
     long long msg_id() const { return m_msg_id; }
-    int flags() const { return m_flags; }
     const std::shared_ptr<tgl_session>& session() const { return m_session; }
     const std::shared_ptr<tgl_dc>& dc() const { return m_dc; }
 
@@ -95,16 +93,21 @@ public:
     virtual bool on_timeout() { return false; };
 
 private:
+    bool is_force() const { return m_exec_option == execution_option::FORCE; }
+    bool is_login() const { return m_exec_option == execution_option::LOGIN; }
+
+private:
     const std::string m_name;
     paramed_type m_type;
     std::vector<char> m_data;
-    int m_flags;
     int m_seq_no;
     long long m_msg_id;
     long long m_session_id;
     std::shared_ptr<tgl_timer> m_timer;
     std::shared_ptr<tgl_dc> m_dc;
     std::shared_ptr<tgl_session> m_session;
+    bool m_ack_received;
+    execution_option m_exec_option;
 };
 
 void out_peer_id (tgl_peer_id_t id);

@@ -718,7 +718,7 @@ static long long generate_next_msg_id (const std::shared_ptr<tgl_dc>& DC, const 
     return next_id;
 }
 
-static void init_enc_msg(std::shared_ptr<tgl_session> S, int useful) {
+static void init_enc_msg(std::shared_ptr<tgl_session> S, bool useful) {
   std::shared_ptr<tgl_dc> DC = S->dc.lock();
   if (!DC) {
     TGL_WARNING("no dc found for session");
@@ -765,14 +765,14 @@ static int aes_encrypt_message (unsigned char *key, struct encrypted_message *en
   return tgl_pad_aes_encrypt ((unsigned char *) &enc->server_salt, enc_len, (unsigned char *) &enc->server_salt, MAX_MESSAGE_INTS * 4 + (MINSZ - UNENCSZ));
 }
 
-long long tglmp_encrypt_send_message (const std::shared_ptr<tgl_connection>& c, int *msg, int msg_ints, int flags) {
+long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c, int *msg, int msg_ints, bool force_send, bool useful) {
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
     std::shared_ptr<tgl_session> S = c->get_session().lock();
     if (!DC || !S) {
         return -1;
     }
 
-    if (!(DC->flags & TGLDCF_CONFIGURED) && !(flags & QUERY_FORCE_SEND)) {
+    if (!(DC->flags & TGLDCF_CONFIGURED) && !force_send) {
         TGL_NOTICE("generate next msg ID...request not sent");
         return generate_next_msg_id(DC, S);
     }
@@ -796,7 +796,7 @@ long long tglmp_encrypt_send_message (const std::shared_ptr<tgl_connection>& c, 
             return -1;
         }
     }
-    init_enc_msg(S, flags & 1);
+    init_enc_msg(S, useful);
 
     int l = aes_encrypt_message(DC->temp_auth_key, &enc_msg);
     assert (l > 0);
@@ -1408,7 +1408,7 @@ static int send_all_acks(const std::shared_ptr<tgl_session>& S) {
     out_long (*it);
     S->ack_tree.erase(it);
   }
-  tglmp_encrypt_send_message (S->c, packet_buffer, packet_ptr - packet_buffer, 0);
+  tglmp_encrypt_send_message (S->c, packet_buffer, packet_ptr - packet_buffer);
   return 0;
 }
 
@@ -1473,7 +1473,7 @@ void tgl_do_send_ping (const std::shared_ptr<tgl_connection>& c) {
   int x[3];
   x[0] = CODE_ping;
   *(long long *)(x + 1) = rand () * (1ll << 32) + rand ();
-  tglmp_encrypt_send_message (c, x, 3, 0);
+  tglmp_encrypt_send_message (c, x, 3);
 }
 
 #if 0
