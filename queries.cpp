@@ -4712,7 +4712,7 @@ void tgl_do_register_device(int token_type, const std::string& token, const std:
     out_std_string(device_model);
     out_std_string(system_version);
     out_std_string(app_version);
-    out_int(app_sandbox);
+    out_int(app_sandbox? CODE_bool_true : CODE_bool_false);
     out_std_string(lang_code);
 
     auto q = std::make_shared<query_register_device>(callback);
