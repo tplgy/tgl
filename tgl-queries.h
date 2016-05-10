@@ -13,7 +13,7 @@
 void tgl_do_get_terms_of_service(const std::function<void(bool success, const std::string&)>& callback);
 
 // Registers the device for push notifications
-void tgl_do_register_device(int token_type, const std::string& token, const std::string& device_model, const std::string& system_version, const std::string& lang_code,
+void tgl_do_register_device(int token_type, const std::string& token, const std::string& device_model, const std::string& system_version, const std::string& app_version, bool app_sandbox, const std::string& lang_code,
         std::function<void(bool success)> callback);
 
 /* {{{ WORK WITH ACCOUNT */

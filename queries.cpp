@@ -2850,7 +2850,7 @@ public:
         out_int(CODE_auth_import_authorization);
         out_int(tgl_get_peer_id(tgl_state::instance()->our_id()));
         out_cstring(DS_STR(DS_EA->bytes));
-    
+
         auto q = std::make_shared<query_import_auth>(m_dc, m_callback);
         q->load_data(packet_buffer, packet_ptr - packet_buffer);
         q->execute(m_dc, query::execution_option::LOGIN);
@@ -4702,7 +4702,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_register_device(int token_type, const std::string& token, const std::string& device_model, const std::string& system_version, const std::string& lang_code,
+void tgl_do_register_device(int token_type, const std::string& token, const std::string& device_model, const std::string& system_version, const std::string& app_version, bool app_sandbox, const std::string& lang_code,
                                 std::function<void(bool success)> callback)
 {
     clear_packet ();
@@ -4711,8 +4711,8 @@ void tgl_do_register_device(int token_type, const std::string& token, const std:
     out_std_string(token);
     out_std_string(device_model);
     out_std_string(system_version);
-    out_string("0.1");
-    out_int (CODE_bool_true); // app sandbox
+    out_std_string(app_version);
+    out_int(app_sandbox);
     out_std_string(lang_code);
 
     auto q = std::make_shared<query_register_device>(callback);
