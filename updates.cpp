@@ -23,7 +23,6 @@
 #include "auto/auto-types.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
-#include "auto/auto-store-ds.h"
 #include "mtproto-common.h"
 #include "queries-encrypted.h"
 #include "tgl-log.h"
