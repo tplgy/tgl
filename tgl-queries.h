@@ -96,7 +96,7 @@ void tgl_do_add_user_to_chat (int chat_id, int id, int limit, std::function<void
 
 // deleted user *id* from chat *chat_id*
 // you can do it if you are admin (=creator) of chat or if you invited this user or if it is yourself
-void tgl_do_del_user_from_chat (int chat_id, int id, std::function<void(bool success)> callback);
+void tgl_do_del_user_from_chat (int chat_id, tgl_peer_id_t id, std::function<void(bool success)> callback);
 
 // creates group chat with users ids
 // there should be at least one user other then you in chat

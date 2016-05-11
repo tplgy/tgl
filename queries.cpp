@@ -3474,16 +3474,19 @@ void tgl_do_add_user_to_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, int limit
   q->execute(tgl_state::instance()->DC_working);
 }
 
-void tgl_do_del_user_from_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, std::function<void(bool success)> callback) {
+void tgl_do_del_user_from_chat (int chat_id, tgl_peer_id_t id, std::function<void(bool success)> callback) {
   clear_packet ();
   out_int (CODE_messages_delete_chat_user);
-  out_int (tgl_get_peer_id (chat_id));
+  out_int (chat_id);
 
   assert (tgl_get_peer_type (id) == TGL_PEER_USER);
-  out_int (CODE_input_user);
-  out_int (tgl_get_peer_id (id));
-  out_long (id.access_hash);
-
+  if (id.peer_id == tgl_state::instance()->our_id().peer_id) {
+    out_int (CODE_input_user_self);
+  } else {
+    out_int (CODE_input_user);
+    out_int (tgl_get_peer_id (id));
+    out_long (id.access_hash);
+  }
   auto q = std::make_shared<query_send_msgs>(callback);
   q->load_data(packet_buffer, packet_ptr - packet_buffer);
   q->execute(tgl_state::instance()->DC_working);
