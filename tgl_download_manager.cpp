@@ -168,6 +168,16 @@ bool tgl_download_manager::file_exists(const tgl_file_location &location)
     return boost::filesystem::exists(path);
 }
 
+bool tgl_download_manager::currently_donwloading(const tgl_file_location& location)
+{
+    for (auto it=m_downloads.begin(); it!= m_downloads.end(); it++) {
+        if ((*it)->location.secret() == location.secret()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string tgl_download_manager::get_file_path(long long int secret)
 {
     std::ostringstream stream;
@@ -730,6 +740,7 @@ void tgl_download_manager::_tgl_do_load_document(std::shared_ptr<tgl_document> d
             D->ext = std::string(ext);
         }
     }
+    begin_download(D);
     load_next_part(D, callback);
 }
 

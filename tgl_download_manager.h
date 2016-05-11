@@ -72,6 +72,8 @@ public:
 
     bool file_exists(const tgl_file_location &location);
 
+    bool currently_donwloading(const tgl_file_location& location);
+
     std::string get_file_path(long long int secret);  // parameter is either secret or access hash depending on file type
 
     void download_encr_document(std::shared_ptr<tgl_encr_document> V, std::function<void(bool success, const std::string &filename)> callback);
@@ -82,7 +84,7 @@ public:
 
     void download_photo_size(const std::shared_ptr<tgl_photo_size>& P, std::function<void(bool success, const std::string &filename)> callback);
 
-    void download_file_location(const tgl_file_location& P, std::function<void(bool success, const std::string &filename)> callback);
+    void download_file_location(const tgl_file_location& location, std::function<void(bool success, const std::string &filename)> callback);
 
     void download_document(std::shared_ptr<tgl_document> document, std::function<void(bool success, const std::string &filename)>);
 
