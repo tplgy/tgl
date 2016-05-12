@@ -77,13 +77,6 @@
 #define O_BINARY 0
 #endif
 
-#define memcmp8(a,b) memcmp ((a), (b), 8)
-
-static int mystreq1 (const char *a, const char *b, int l) {
-    if ((int)strlen (a) != l) { return 1; }
-    return memcmp (a, b, l);
-}
-
 void query::cancel_timer()
 {
     if (m_timer) {
@@ -362,6 +355,42 @@ int tglq_query_error(long long id)
     return 0;
 }
 
+static bool get_int_from_prefixed_string(int& number, const std::string& prefixed_string, const std::string& prefix)
+{
+    std::string number_string;
+    if (prefixed_string.size() >= prefix.size() + 1 && !prefixed_string.compare(0, prefix.size(), prefix)) {
+        number_string = prefixed_string.substr(prefix.size());
+    }
+
+    if (number_string.size()) {
+        size_t pos;
+        number = std::stoi(number_string, &pos);
+        if (pos == number_string.size()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static int get_dc_from_migration(const std::string& migration_error_string)
+{
+    int dc = -1;
+    if (get_int_from_prefixed_string(dc, migration_error_string, "USER_MIGRATE_")) {
+        return dc;
+    }
+
+    if (get_int_from_prefixed_string(dc, migration_error_string, "PHONE_MIGRATE_")) {
+        return dc;
+    }
+
+    if (get_int_from_prefixed_string(dc, migration_error_string, "NETWORK_MIGRATE_")) {
+        return dc;
+    }
+
+    return dc;
+}
+
 int query::handle_error(int error_code, const std::string& error_string)
 {
     if (!m_ack_received) {
@@ -369,119 +398,91 @@ int query::handle_error(int error_code, const std::string& error_string)
     }
 
     tgl_state::instance()->remove_query(shared_from_this());
-    int res = 0;
 
-    int error_handled = 0;
+    int res = 0;
+    bool error_handled = false;
 
     switch (error_code) {
-      case 303:
-        // migrate
+        case 303: // migrate
         {
-          int offset = -1;
-          if (error_string.size() >= 15 && !memcmp (error_string.data(), "PHONE_MIGRATE_", 14)) {
-            offset = 14;
-            //} else if (error_len >= 14 && !memcmp (error_string, "FILE_MIGRATE_", 13)) {
-            //    offset = 13;
-        }
-        if (error_string.size() >= 17 && !memcmp (error_string.data(), "NETWORK_MIGRATE_", 16)) {
-          offset = 16;
-        }
-        if (error_string.size() >= 14 && !memcmp (error_string.data(), "USER_MIGRATE_", 13)) {
-          offset = 13;
-        }
-        if (offset >= 0) {
-          int i = 0;
-          while (offset < static_cast<int>(error_string.size()) && error_string.data()[offset] >= '0' && error_string.data()[offset] <= '9') {
-            i = i * 10 + error_string[offset] - '0';
-            offset ++;
-          }
-          TGL_WARNING("Trying to handle error...");
-          if (i > 0 && i < TGL_MAX_DC_NUM) {
-            tgl_state::instance()->set_working_dc(i);
-            tgl_state::instance()->login();
-            m_ack_received = false;
-            //m_session_id = 0;
-            //struct tgl_dc *DC = q->DC;
-            //if (!(DC->flags & 4) && !(q->flags & QUERY_FORCE_SEND)) {
-            m_session_id = 0;
-            //}
-            m_dc = tgl_state::instance()->DC_working;
-            m_timer->start(0);
-            error_handled = 1;
-            res = 1;
-            TGL_WARNING("handled");
-          }
-          if (!error_handled) {
-            TGL_WARNING("failed");
-          }
-        } else {
-          TGL_WARNING("wrong offset");
-        }
-        }
-        break;
-      case 400:
-        // nothing to handle
-        // bad user input probably
-        break;
-      case 401:
-        if (!mystreq1 ("SESSION_PASSWORD_NEEDED", error_string.data(), error_string.size())) {
-          if (!(tgl_state::instance()->locks & TGL_LOCK_PASSWORD)) {
-            tgl_state::instance()->locks |= TGL_LOCK_PASSWORD;
-            tgl_do_check_password(std::bind(resend_query_cb, shared_from_this(), std::placeholders::_1)); // TODO make that a shared_ptr
-          }
-          res = 1;
-          error_handled = 1;
-        }
-        // TODO: handle AUTH_KEY_INVALID and AUTH_KEY_UNREGISTERED
-        break;
-      case 403:
-        // privacy violation
-        break;
-      case 404:
-        // not found
-        break;
-      case 420:
-        // flood
-      case 500:
-        // internal error
-      default:
-        // anything else. Treated as internal error
-        {
-          int wait;
-          if (strncmp (error_string.data(), "FLOOD_WAIT_", 11)) {
-            if (error_code == 420) {
-              TGL_ERROR("error = " << error_string);
+            TGL_NOTICE("trying to handle migration error of " << error_string);
+            int new_dc = get_dc_from_migration(error_string);
+            if (new_dc > 0 && new_dc < TGL_MAX_DC_NUM) {
+                tgl_state::instance()->set_working_dc(new_dc);
+                tgl_state::instance()->login();
+                m_ack_received = false;
+                //m_session_id = 0;
+                //struct tgl_dc *DC = q->DC;
+                //if (!(DC->flags & 4) && !(q->flags & QUERY_FORCE_SEND)) {
+                m_session_id = 0;
+                //}
+                m_dc = tgl_state::instance()->DC_working;
+                m_timer->start(0);
+                error_handled = true;
+                res = 1;
             }
-            wait = 10;
-          } else {
-            wait = atoll (error_string.data() + 11);
-          }
-          m_ack_received = false;
-          m_timer->start(wait);
-          std::shared_ptr<tgl_dc> DC = m_dc;
-          if (!(DC->flags & 4) && !is_force()) {
-            m_session_id = 0;
-          }
-          error_handled = 1;
+            if (error_handled) {
+                TGL_NOTICE("handled migration error of " << error_string);
+            } else {
+                TGL_WARNING("failed to handle migration error of " << error_string);
+            }
+            break;
         }
-        break;
+        case 400:
+            // nothing to handle
+            // bad user input probably
+            break;
+        case 401:
+            if (error_string == "SESSION_PASSWORD_NEEDED") {
+                if (!(tgl_state::instance()->locks & TGL_LOCK_PASSWORD)) {
+                    tgl_state::instance()->locks |= TGL_LOCK_PASSWORD;
+                    tgl_do_check_password(std::bind(resend_query_cb, shared_from_this(), std::placeholders::_1));
+                }
+                res = 1;
+                error_handled = true;
+            }
+            // TODO: handle AUTH_KEY_INVALID and AUTH_KEY_UNREGISTERED
+            break;
+        case 403: // privacy violation
+            break;
+        case 404: // not found
+            break;
+        case 420: // flood
+        case 500: // internal error
+        default: // anything else treated as internal error
+        {
+            int wait;
+            if (!get_int_from_prefixed_string(wait, error_string, "FLOOD_WAIT_")) {
+                if (error_code == 420) {
+                    TGL_ERROR("error 420: " << error_string);
+                }
+                wait = 10;
+            }
+            m_ack_received = false;
+            m_timer->start(wait);
+            std::shared_ptr<tgl_dc> DC = m_dc;
+            if (!(DC->flags & 4) && !is_force()) {
+                m_session_id = 0;
+            }
+            error_handled = true;
+            break;
+        }
     }
 
     if (error_handled) {
-      TGL_NOTICE("error for query #" << m_msg_id << " error:" << error_code << " " << error_string << " (HANDLED)");
+        TGL_NOTICE("error for query #" << m_msg_id << " error:" << error_code << " " << error_string << " (HANDLED)");
     } else {
-      res = on_error(error_code, error_string);
+        res = on_error(error_code, error_string);
     }
 
     m_dc->remove_query(shared_from_this());
 
     if (res <= 0) {
-      clear_timer();
+        clear_timer();
     }
 
     if (res == -11) {
-      return -1;
-
+        return -1;
     }
 
     return 0;
