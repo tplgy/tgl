@@ -30,7 +30,7 @@
 #include <stdlib.h>
 
 #ifdef __cplusplus
-#include <exception>
+#include <stdexcept>
 #include <memory>
 #include <string>
 #include <vector>
@@ -185,7 +185,7 @@ public:
     void out_string(const char* str, size_t size)
     {
         if (size >= (1 << 24)) {
-            throw std::logic_error("string is too big");
+            throw std::invalid_argument("string is too big");
         }
         char* dest = nullptr;
         if (size < 0xfe) {
@@ -222,7 +222,7 @@ public:
     {
         int required_size = -tgl_serialize_bignum(n, nullptr, -1);
         if (required_size <= 0) {
-            throw std::logic_error("bad big number");
+            throw std::invalid_argument("bad big number");
         }
         assert(!(required_size & 3));
         int num = required_size / 4;
