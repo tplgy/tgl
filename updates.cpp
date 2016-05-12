@@ -178,7 +178,6 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     }
   }
 
-  TGL_DEBUG("update 0x" << std::hex << DS_U->magic << " (check=" << std::dec << check_only << ")");
   if (check_only > 0 && DS_U->magic != CODE_update_message_i_d) { return; }
   switch (DS_U->magic) {
   case CODE_update_new_message:
