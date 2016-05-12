@@ -96,7 +96,7 @@ void tgl_do_add_user_to_chat (int chat_id, int id, int limit, std::function<void
 
 // deleted user *id* from chat *chat_id*
 // you can do it if you are admin (=creator) of chat or if you invited this user or if it is yourself
-void tgl_do_del_user_from_chat (int chat_id, tgl_peer_id_t id, std::function<void(bool success)> callback);
+void tgl_do_del_user_from_chat(int chat_id, const tgl_peer_id_t& user_id, const std::function<void(bool success)>& callback);
 
 // creates group chat with users ids
 // there should be at least one user other then you in chat
@@ -143,10 +143,14 @@ void tgl_do_unblock_user (int user_id, long long int access_hash, std::function<
 
 // accepts secret chat request
 // method can fail if another device will be first to accept it
-void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& E, std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)> callback);
+void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback);
 
 // sets ttl of secret chat
 void tgl_do_set_encr_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_chat, int ttl);
+
+void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback);
 
 // returns secret chat fingerprint
 //int tgl_do_visualize_key (int id, unsigned char buf[16]);

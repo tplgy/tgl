@@ -1067,20 +1067,20 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_callback;
 };
 
-void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat, std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> callback) {
-  assert (secret_chat);
-  assert (tgl_get_peer_id (secret_chat->id) > 0);
+void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback) {
+  assert(secret_chat);
 
   if (secret_chat->state == sc_deleted || secret_chat->state == sc_none) {
-    if (callback) {
-      callback (false, secret_chat);
-    }
-    return;
+      if (callback) {
+          callback (false, secret_chat);
+      }
+      return;
   }
 
   auto q = std::make_shared<query_send_encr_discard>(secret_chat, callback);
   q->out_i32 (CODE_messages_discard_encryption);
-  q->out_i32 (tgl_get_peer_id (secret_chat->id));
+  q->out_i32 (tgl_get_peer_id(secret_chat->id));
 
   q->execute(tgl_state::instance()->DC_working);
 }
@@ -1136,7 +1136,8 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_final_callback;
 };
 
-void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& secret_chat, std::function<void(bool, const std::shared_ptr<tgl_secret_chat>& E)> callback) {
+void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback) {
     if (secret_chat->state != sc_request) {
         if (callback) {
             callback (0, secret_chat);
