@@ -409,9 +409,9 @@ int gen_create (struct tl_tree *t, int *vars, int offset) {
     print_offset (offset + 2);
     t1 = (void *)t;
     if (t1->self.flags & FLAG_BARE) {
-      printf (".type = &(struct tl_type_descr) {.name = 0x%08x, .id = \"Bare_%s\", .params_num = %d, .params_types = %" INT64_PRINTF_MODIFIER "d},\n", ~t1->type->name, t1->type->id, t1->type->arity, t1->type->params_types);
+      printf (".type = &tl_type_bare_%s,\n", t1->type->print_id);
     } else {
-      printf (".type = &(struct tl_type_descr) {.name = 0x%08x, .id = \"%s\", .params_num = %d, .params_types = %" INT64_PRINTF_MODIFIER "d},\n", t1->type->name, t1->type->id, t1->type->arity, t1->type->params_types);
+      printf (".type = &tl_type_%s,\n", t1->type->print_id);
     }
     if (t1->children_num) {
       print_offset (offset + 2);
@@ -2399,6 +2399,7 @@ void gen_skip_source (void) {
   printf ("#include <assert.h>\n");
 
   printf ("#include \"auto/auto-skip.h\"\n");
+  printf ("#include \"auto/auto-types.h\"\n");
   printf ("#include \"auto-static-skip.c\"\n");
   printf ("#include \"mtproto-common.h\"\n");
 
@@ -2456,6 +2457,7 @@ void gen_fetch_source (void) {
 
   printf ("#include \"auto/auto-fetch.h\"\n");
   printf ("#include \"auto/auto-skip.h\"\n");
+  printf ("#include \"auto/auto-types.h\"\n");
   printf ("#include \"auto-static-fetch.c\"\n");
   printf ("#include \"mtproto-common.h\"\n");
   int i, j;
@@ -2515,6 +2517,7 @@ void gen_store_source (void ) {
   
   printf ("#include \"mtproto-common.h\"\n");
   printf ("#include \"auto/auto-store.h\"\n");
+  printf ("#include \"auto/auto-types.h\"\n");
   printf ("#include \"auto-static-store.c\"\n");
 
   int i, j;
@@ -2596,6 +2599,7 @@ void gen_autocomplete_source (void) {
   
   printf ("#include \"mtproto-common.h\"\n");
   printf ("#include \"auto/auto-autocomplete.h\"\n");
+  printf ("#include \"auto/auto-types.h\"\n");
   printf ("#include \"auto-static-autocomplete.c\"\n");
 
   int i, j;
