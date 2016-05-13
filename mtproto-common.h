@@ -260,44 +260,45 @@ private:
 };
 #endif
 
-#define in_ptr tgl_in_ptr
-#define in_end tgl_in_end
-extern int *tgl_in_ptr, *tgl_in_end;
+struct tgl_in_buffer {
+    int* ptr;
+    int* end;
+};
 
-static inline int prefetch_strlen (void) {
-  if (in_ptr >= in_end) { 
+static inline int prefetch_strlen(struct tgl_in_buffer* in) {
+  if (in->ptr >= in->end) {
     return -1; 
   }
-  unsigned l = *in_ptr;
+  unsigned l = *in->ptr;
   if ((l & 0xff) < 0xfe) { 
     l &= 0xff;
-    return (in_end >= in_ptr + (l >> 2) + 1) ? (int)l : -1;
+    return (in->end >= in->ptr + (l >> 2) + 1) ? (int)l : -1;
   } else if ((l & 0xff) == 0xfe) {
     l >>= 8;
-    return (l >= 254 && in_end >= in_ptr + ((l + 7) >> 2)) ? (int)l : -1;
+    return (l >= 254 && in->end >= in->ptr + ((l + 7) >> 2)) ? (int)l : -1;
   } else {
     return -1;
   }
 }
 
-static inline char *fetch_str (int len) {
+static inline char *fetch_str (struct tgl_in_buffer* in, int len) {
   assert (len >= 0);
   if (len < 254) {
-    char *str = (char *) in_ptr + 1;
-    in_ptr += 1 + (len >> 2);
+    char *str = (char *) in->ptr + 1;
+    in->ptr += 1 + (len >> 2);
     return str;
   } else {
-    char *str = (char *) in_ptr + 4;
-    in_ptr += (len + 7) >> 2;
+    char *str = (char *) in->ptr + 4;
+    in->ptr += (len + 7) >> 2;
     return str;
   }
 } 
 
-static inline char *fetch_str_dup (void) {
-  int l = prefetch_strlen ();
+static inline char *fetch_str_dup (struct tgl_in_buffer* in) {
+  int l = prefetch_strlen (in);
   assert (l >= 0);
   int i;
-  char *s = fetch_str (l);
+  char *s = fetch_str (in, l);
   for (i = 0; i < l; i++) {
     if (!s[i]) { break; }
   }
@@ -307,13 +308,13 @@ static inline char *fetch_str_dup (void) {
   return r;
 }
 
-static inline int fetch_update_str (char **s) {
+static inline int fetch_update_str (struct tgl_in_buffer* in, char **s) {
   if (!*s) {
-    *s = fetch_str_dup ();
+    *s = fetch_str_dup (in);
     return 1;
   }
-  int l = prefetch_strlen ();
-  char *r = fetch_str (l);
+  int l = prefetch_strlen (in);
+  char *r = fetch_str (in, l);
   if (memcmp (*s, r, l) || (*s)[l]) {
     tfree_str (*s);
     *s = (char *)malloc (l + 1);
@@ -324,23 +325,23 @@ static inline int fetch_update_str (char **s) {
   return 0;
 }
 
-static inline int fetch_update_int (int *value) {
-  if (*value == *in_ptr) {
-    in_ptr ++;
+static inline int fetch_update_int (struct tgl_in_buffer* in, int *value) {
+  if (*value == *in->ptr) {
+    in->ptr ++;
     return 0;
   } else {
-    *value = *(in_ptr ++);
+    *value = *(in->ptr ++);
     return 1;
   }
 }
 
-static inline int fetch_update_long (long long int *value) {
-  if (*value == *(long long int *)in_ptr) {
-    in_ptr += 2;
+static inline int fetch_update_long (struct tgl_in_buffer* in, long long int *value) {
+  if (*value == *(long long int *)in->ptr) {
+    in->ptr += 2;
     return 0;
   } else {
-    *value = *(long long int*)(in_ptr);
-    in_ptr += 2;
+    *value = *(long long int*)(in->ptr);
+    in->ptr += 2;
     return 1;
   }
 }
@@ -354,74 +355,74 @@ static inline int set_update_int (int *value, int new_value) {
   }
 }
 
-static inline void fetch_skip (int n) {
-  in_ptr += n;
-  assert (in_ptr <= in_end);
+static inline void fetch_skip (struct tgl_in_buffer* in, int n) {
+  in->ptr += n;
+  assert (in->ptr <= in->end);
 }
 
-static inline void fetch_skip_str (void) {
-  int l = prefetch_strlen ();
+static inline void fetch_skip_str (struct tgl_in_buffer* in) {
+  int l = prefetch_strlen (in);
   assert (l >= 0);
-  fetch_str (l);
+  fetch_str (in, l);
 }
 
-static inline long have_prefetch_ints (void) {
-  return in_end - in_ptr;
+static inline long have_prefetch_ints (struct tgl_in_buffer* in) {
+  return in->end - in->ptr;
 }
 
-int tgl_fetch_bignum (TGLC_bn *x);
+int tgl_fetch_bignum (struct tgl_in_buffer* in, TGLC_bn *x);
 #define fetch_bignum tgl_fetch_bignum
 
-static inline int fetch_int (void) {
-  assert (in_ptr + 1 <= in_end);
-  return *(in_ptr ++);
+static inline int fetch_int (struct tgl_in_buffer* in) {
+  assert (in->ptr + 1 <= in->end);
+  return *(in->ptr ++);
 }
 
-static inline int fetch_bool (void) {
-  assert (in_ptr + 1 <= in_end);
-  assert (*(in_ptr) == (int)CODE_bool_true || *(in_ptr) == (int)CODE_bool_false);
-  return *(in_ptr ++) == (int)CODE_bool_true;
+static inline int fetch_bool (struct tgl_in_buffer* in) {
+  assert (in->ptr + 1 <= in->end);
+  assert (*(in->ptr) == (int)CODE_bool_true || *(in->ptr) == (int)CODE_bool_false);
+  return *(in->ptr ++) == (int)CODE_bool_true;
 }
 
-static inline int prefetch_int (void) {
-  assert (in_ptr < in_end);
-  return *(in_ptr);
+static inline int prefetch_int (struct tgl_in_buffer* in) {
+  assert (in->ptr < in->end);
+  return *(in->ptr);
 }
 
-static inline void prefetch_data (void *data, int size) {
-  assert (in_ptr + (size >> 2) <= in_end);
-  memcpy (data, in_ptr, size);
+static inline void prefetch_data (struct tgl_in_buffer* in, void *data, int size) {
+  assert (in->ptr + (size >> 2) <= in->end);
+  memcpy (data, in->ptr, size);
 }
 
-static inline void fetch_data (void *data, int size) {
-  assert (in_ptr + (size >> 2) <= in_end);
-  memcpy (data, in_ptr, size);
+static inline void fetch_data (struct tgl_in_buffer* in, void *data, int size) {
+  assert (in->ptr + (size >> 2) <= in->end);
+  memcpy (data, in->ptr, size);
   assert (!(size & 3));
-  in_ptr += (size >> 2);
+  in->ptr += (size >> 2);
 }
 
-static inline long long fetch_long (void) {
-  assert (in_ptr + 2 <= in_end);
-  long long r = *(long long *)in_ptr;
-  in_ptr += 2;
+static inline long long fetch_long (struct tgl_in_buffer* in) {
+  assert (in->ptr + 2 <= in->end);
+  long long r = *(long long *)in->ptr;
+  in->ptr += 2;
   return r;
 }
 
-static inline double fetch_double (void) {
-  assert (in_ptr + 2 <= in_end);
-  double r = *(double *)in_ptr;
-  in_ptr += 2;
+static inline double fetch_double (struct tgl_in_buffer* in) {
+  assert (in->ptr + 2 <= in->end);
+  double r = *(double *)in->ptr;
+  in->ptr += 2;
   return r;
 }
 
-static inline void fetch_ints (void *data, int count) {
-  assert (in_ptr + count <= in_end);
-  memcpy (data, in_ptr, 4 * count);
-  in_ptr += count;
+static inline void fetch_ints (struct tgl_in_buffer* in, void *data, int count) {
+  assert (in->ptr + count <= in->end);
+  memcpy (data, in->ptr, 4 * count);
+  in->ptr += count;
 }
     
-static inline int in_remaining (void) {
-  return 4 * (in_end - in_ptr);
+static inline int in_remaining (struct tgl_in_buffer* in) {
+  return 4 * (in->end - in->ptr);
 }
 
 //int get_random_bytes (unsigned char *buf, int n);

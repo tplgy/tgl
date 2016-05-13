@@ -337,13 +337,13 @@ void tglq_query_delete(long long id) {
 
 static void resend_query_cb(const std::shared_ptr<query>& q, bool success);
 
-int tglq_query_error(long long id)
+int tglq_query_error(tgl_in_buffer* in, long long id)
 {
-    int result = fetch_int ();
+    int result = fetch_int (in);
     TGL_ASSERT_UNUSED(result, result == CODE_rpc_error);
-    int error_code = fetch_int ();
-    int error_len = prefetch_strlen ();
-    std::string error_string = std::string(fetch_str (error_len), error_len);
+    int error_code = fetch_int (in);
+    int error_len = prefetch_strlen (in);
+    std::string error_string = std::string(fetch_str(in, error_len), error_len);
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (!q) {
         TGL_WARNING("error for unknown query #" << id << " #" << error_code << ": " << error_string);
@@ -488,67 +488,66 @@ int query::handle_error(int error_code, const std::string& error_string)
     return 0;
 }
 
-#define MAX_PACKED_SIZE (1 << 24)
-static int packed_buffer[MAX_PACKED_SIZE / 4];
-
-int tglq_query_result (long long id) {
+int tglq_query_result (tgl_in_buffer* in, long long id) {
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (!q) {
         TGL_WARNING("result for unknown query #" << id);
-        in_ptr = in_end;
+        in->ptr = in->end;
         return 0;
     }
 
-    return q->handle_result();
+    return q->handle_result(in);
 }
 
-int query::handle_result()
+int query::handle_result(tgl_in_buffer* in)
 {
-    int op = prefetch_int ();
-    int *end = 0;
-    int *eend = 0;
+    int op = prefetch_int (in);
+
+    tgl_in_buffer save_in = { nullptr, nullptr };
+    std::unique_ptr<int[]> packed_buffer;
+
     if (op == CODE_gzip_packed) {
-        fetch_int ();
-        int l = prefetch_strlen ();
-        char *s = fetch_str (l);
-        int total_out = tgl_inflate (s, l, packed_buffer, MAX_PACKED_SIZE);
+        fetch_int (in);
+        int l = prefetch_strlen (in);
+        char *s = fetch_str (in, l);
+
+        constexpr size_t MAX_PACKED_SIZE = 1 << 24;
+        packed_buffer.reset(new int[MAX_PACKED_SIZE / 4]);
+
+        int total_out = tgl_inflate (s, l, packed_buffer.get(), MAX_PACKED_SIZE);
         TGL_DEBUG("inflated " << total_out << " bytes");
-        end = in_ptr;
-        eend = in_end;
-        in_ptr = packed_buffer;
-        in_end = in_ptr + total_out / 4;
+        save_in = *in;
+        in->ptr = packed_buffer.get();
+        in->end = in->ptr + total_out / 4;
     }
 
-    TGL_DEBUG2("result for query #" << m_msg_id << ". Size " << (long)4 * (in_end - in_ptr) << " bytes");
+    TGL_DEBUG2("result for query #" << m_msg_id << ". Size " << (long)4 * (in->end - in->ptr) << " bytes");
     if (!m_ack_received) {
         cancel_timer();
     }
 
-    int *save = in_ptr;
-    TGL_DEBUG("in_ptr = " << in_ptr << ", end_ptr = " << in_end);
-    if (skip_type_any(&m_type) < 0) {
-        TGL_ERROR("Skipped " << (long)(in_ptr - save) << " int out of " << (long)(in_end - save) << " (type " << m_type.type->id << ") (query type " << name() << ")");
-        TGL_ERROR("0x" << std::hex << *(save - 1) << " 0x" << *(save) << " 0x" << *(save + 1) << " 0x" << *(save + 2));
+    tgl_in_buffer skip_in = *in;
+    if (skip_type_any(&skip_in, &m_type) < 0) {
+        TGL_ERROR("Skipped " << (long)(skip_in.ptr - in->ptr) << " int out of " << (long)(skip_in.end - in->ptr) << " (type " << m_type.type->id << ") (query type " << name() << ")");
+        TGL_ERROR("0x" << std::hex << *(in->ptr - 1) << " 0x" << *(in->ptr) << " 0x" << *(in->ptr + 1) << " 0x" << *(in->ptr + 2));
         assert (0);
     }
 
-    assert (in_ptr == in_end);
-    in_ptr = save;
+    assert (skip_in.ptr == skip_in.end);
 
-    void *DS = fetch_ds_type_any(&m_type);
+    void *DS = fetch_ds_type_any(in, &m_type);
     assert (DS);
 
     on_answer(DS);
     free_ds_type_any(DS, &m_type);
 
-    assert (in_ptr == in_end);
+    assert (in->ptr == in->end);
 
     clear_timer();
     tgl_state::instance()->remove_query(shared_from_this());
 
-    if (end) {
-        in_ptr = end;
-        in_end = eend;
+    if (save_in.ptr) {
+        *in = save_in;
     }
 
     return 0;
@@ -1300,16 +1299,12 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
         return;
       }
       text_len = strlen (new_text);
-      int *save_ptr = in_ptr;
-      int *save_end = in_end;
-      in_ptr = ent;
-      in_end = ent + ent_size;
-      //EN = fetch_ds_type_any (TYPE_TO_PARAM_1 (vector, TYPE_TO_PARAM (message_entity)));
-      //assert (EN);
-      TGL_DEBUG("in_ptr = " << in_ptr << ", in_end = " << in_end);
-      assert (in_ptr == in_end);
-      in_ptr = save_ptr;
-      in_end = save_end;
+#if 0
+      tgl_in_buffer in = { ent, ent + ent_size };
+      EN = fetch_ds_type_any (&in, TYPE_TO_PARAM_1 (vector, TYPE_TO_PARAM (message_entity)));
+      assert (EN);
+      assert (in.ptr == in.end);
+#endif
       tfree (ent, 4 * ent_size);
     }
 

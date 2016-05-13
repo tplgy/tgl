@@ -1670,34 +1670,22 @@ std::shared_ptr<tgl_message> tglf_fetch_encrypted_message (struct tl_ds_encrypte
     return NULL;
   }
   
-  int *save_in_ptr = in_ptr;
-  int *save_in_end = in_end;
-
-  in_ptr = decr_ptr;
-  int ll = *in_ptr; // decrypted data length
-  in_end = in_ptr + ll / 4 + 1;  
-  auto result = fetch_int ();
-  TGL_ASSERT_UNUSED(result, result == ll);
+  int decrypted_data_length = *decr_ptr; // decrypted data length
+  tgl_in_buffer in = { decr_ptr, decr_ptr + decrypted_data_length / 4 + 1 };
+  auto result = fetch_int(&in);
+  TGL_ASSERT_UNUSED(result, result == decrypted_data_length);
 
   std::shared_ptr<tgl_message> M;
-  if (*in_ptr == CODE_decrypted_message_layer) {
+  if (*in.ptr == CODE_decrypted_message_layer) {
     struct paramed_type decrypted_message_layer = TYPE_TO_PARAM(decrypted_message_layer);
-    if (skip_type_decrypted_message_layer (&decrypted_message_layer) < 0 || in_ptr != in_end) {
+    tgl_in_buffer skip_in = in;
+    if (skip_type_decrypted_message_layer(&skip_in, &decrypted_message_layer) < 0 || skip_in.ptr != skip_in.end) {
       TGL_WARNING("can not fetch message");
-      in_ptr = save_in_ptr;
-      in_end = save_in_end;
       return NULL;
     }
 
-    in_ptr = decr_ptr;
-    result = fetch_int ();
-    TGL_ASSERT_UNUSED(result, result == ll);
-
-    struct tl_ds_decrypted_message_layer *DS_DML = fetch_ds_type_decrypted_message_layer (&decrypted_message_layer);
+    struct tl_ds_decrypted_message_layer *DS_DML = fetch_ds_type_decrypted_message_layer(&in, &decrypted_message_layer);
     assert (DS_DML);
-
-    in_ptr = save_in_ptr;
-    in_end = save_in_end;
 
     //bl_do_encr_chat_set_layer ((void *)P, DS_LVAL (DS_DML->layer));
     tgl_update_secret_chat(secret_chat,
@@ -1799,27 +1787,19 @@ std::shared_ptr<tgl_message> tglf_fetch_encrypted_message (struct tl_ds_encrypte
   } else {
     // Pre-layer 17 encrypted message
     struct paramed_type decrypted_message = TYPE_TO_PARAM(decrypted_message);
-    if (skip_type_decrypted_message (&decrypted_message) < 0 || in_ptr != in_end) {
+    tgl_in_buffer skip_in = in;
+    if (skip_type_decrypted_message(&skip_in, &decrypted_message) < 0 || skip_in.ptr != skip_in.end) {
       TGL_WARNING("can not fetch message");
-      in_ptr = save_in_ptr;
-      in_end = save_in_end;
       return NULL;
     }
 
-    in_ptr = decr_ptr;
-    result = fetch_int ();
-    TGL_ASSERT_UNUSED(result, result == ll);
-
-    struct tl_ds_decrypted_message *DS_DM = fetch_ds_type_decrypted_message (&decrypted_message);
+    struct tl_ds_decrypted_message *DS_DM = fetch_ds_type_decrypted_message(&in, &decrypted_message);
     assert (DS_DM);
 
     int layer = 8; // default secret chat layer is 8
     if (DS_DM->action && DS_DM->action->magic == CODE_decrypted_message_action_notify_layer) {
         layer = *(DS_DM->action->layer);
     }
-
-    in_ptr = save_in_ptr;
-    in_end = save_in_end;
 
     tgl_peer_id_t from_id = TGL_MK_USER(secret_chat->user_id);
     tgl_peer_id_t to_id = tgl_state::instance()->our_id();

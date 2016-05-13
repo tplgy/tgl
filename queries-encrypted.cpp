@@ -632,8 +632,7 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
   q->out_i32 (secret_chat->ttl);
   q->out_string ("");
 
-  // FIXME: We don't have to use mutable one but the C code of in_ptr doesn't use const.
-  int32_t *save_ptr = q->serializer()->mutable_i32_data() + q->serializer()->i32_size();
+  size_t start = q->serializer()->i32_size();
 
   if (f->flags == -1) {
     q->out_i32 (CODE_decrypted_message_media_photo);
@@ -677,23 +676,16 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
   q->out_string (reinterpret_cast<const char*>(f->key), 32);
   q->out_string (reinterpret_cast<const char*>(f->init_iv), 32);
  
-  int *save_in_ptr = in_ptr;
-  int *save_in_end = in_end;
-
-  in_ptr = save_ptr;
-  in_end = q->serializer()->mutable_i32_data() + q->serializer()->i32_size();
+  tgl_in_buffer in = { q->serializer()->mutable_i32_data() + start, q->serializer()->mutable_i32_data() + q->serializer()->i32_size() };
 
   struct paramed_type decrypted_message_media = TYPE_TO_PARAM(decrypted_message_media);
-  auto result = skip_type_any (&decrypted_message_media);
+  auto result = skip_type_any(&in, &decrypted_message_media);
   TGL_ASSERT_UNUSED(result, result >= 0);
-  assert (in_ptr == in_end);
+  assert (in.ptr == in.end);
   
-  in_ptr = save_ptr;
-  in_end = q->serializer()->mutable_i32_data() + q->serializer()->i32_size();
-  
-  struct tl_ds_decrypted_message_media *DS_DMM = fetch_ds_type_decrypted_message_media (&decrypted_message_media);
-  in_end = save_in_ptr;
-  in_ptr = save_in_end;
+  in = { q->serializer()->mutable_i32_data() + start, q->serializer()->mutable_i32_data() + q->serializer()->i32_size() };
+  struct tl_ds_decrypted_message_media *DS_DMM = fetch_ds_type_decrypted_message_media(&in, &decrypted_message_media);
+  assert (in.ptr == in.end);
 
   encryptor.end();
 

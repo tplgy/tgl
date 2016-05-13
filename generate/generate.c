@@ -484,12 +484,12 @@ int gen_field_skip (struct arg *arg, int *vars, int num) {
     } else {
       assert (t == NAME_VAR_NUM);
       if (vars[arg->var_num] == 0) {
-        printf ("%sif (in_remaining () < 4) { return -1;}\n", offset);
-        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_int ());\n", offset, arg->var_num);
+        printf ("%sif (in_remaining (in) < 4) { return -1;}\n", offset);
+        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_int (in));\n", offset, arg->var_num);
         vars[arg->var_num] = 2;
       } else if (vars[arg->var_num] == 2) {
-        printf ("%sif (in_remaining () < 4) { return -1;}\n", offset);
-        printf ("%sif (vars%d != INT2PTR (fetch_int ())) { return -1; }\n", offset, arg->var_num);
+        printf ("%sif (in_remaining (in) < 4) { return -1;}\n", offset);
+        printf ("%sif (vars%d != INT2PTR (fetch_int (in))) { return -1; }\n", offset, arg->var_num);
       } else {
         assert (0);
         return -1;
@@ -508,9 +508,9 @@ int gen_field_skip (struct arg *arg, int *vars, int num) {
         bare = ((struct tl_tree_type *)arg->type)->self.flags & FLAG_BARE;
       }
       if (!bare) {
-        printf ("%sif (skip_type_%s (field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("%sif (skip_type_%s (in, field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       } else {
-        printf ("%sif (skip_type_bare_%s (field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("%sif (skip_type_bare_%s (in, field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       }
     } else {
       assert (t == NODE_TYPE_ARRAY);
@@ -525,7 +525,7 @@ int gen_field_skip (struct arg *arg, int *vars, int num) {
       assert(result >= 0);
       printf (";\n");
       printf ("%swhile (multiplicity%d -- > 0) {\n", offset, num);
-      printf ("%s  if (skip_type_%s (field%d) < 0) { return -1;}\n", offset, "any", num);
+      printf ("%s  if (skip_type_%s (in, field%d) < 0) { return -1;}\n", offset, "any", num);
       printf ("%s}\n", offset);
     }
   }
@@ -559,14 +559,14 @@ int gen_field_fetch (struct arg *arg, int *vars, int num, int empty) {
     } else {
       assert (t == NAME_VAR_NUM);
       if (vars[arg->var_num] == 0) {
-        printf ("%sif (in_remaining () < 4) { return -1;}\n", offset);
-        printf ("%seprintf (\" %%d\", prefetch_int ());\n", offset);
-        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_int ());\n", offset, arg->var_num);
+        printf ("%sif (in_remaining (in) < 4) { return -1;}\n", offset);
+        printf ("%seprintf (\" %%d\", prefetch_int (in));\n", offset);
+        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_int (in));\n", offset, arg->var_num);
         vars[arg->var_num] = 2;
       } else if (vars[arg->var_num] == 2) {
-        printf ("%sif (in_remaining () < 4) { return -1;}\n", offset);
-        printf ("%seprintf (\" %%d\", prefetch_int ());\n", offset);
-        printf ("%sif (vars%d != INT2PTR (fetch_int ())) { return -1; }\n", offset, arg->var_num);
+        printf ("%sif (in_remaining (in) < 4) { return -1;}\n", offset);
+        printf ("%seprintf (\" %%d\", prefetch_int (in));\n", offset);
+        printf ("%sif (vars%d != INT2PTR (fetch_int (in))) { return -1; }\n", offset, arg->var_num);
       } else {
         assert (0);
         return -1;
@@ -585,9 +585,9 @@ int gen_field_fetch (struct arg *arg, int *vars, int num, int empty) {
         bare = ((struct tl_tree_type *)arg->type)->self.flags & FLAG_BARE;
       }
       if (!bare) {
-        printf ("%sif (fetch_type_%s (field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("%sif (fetch_type_%s (in, field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       } else {
-        printf ("%sif (fetch_type_bare_%s (field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("%sif (fetch_type_bare_%s (in, field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       }
     } else {
       assert (t == NODE_TYPE_ARRAY);
@@ -606,7 +606,7 @@ int gen_field_fetch (struct arg *arg, int *vars, int num, int empty) {
       printf ("%sif (multiline_output >= 1) { multiline_offset += multiline_offset_size;}\n", offset);
       printf ("%swhile (multiplicity%d -- > 0) {\n", offset, num);
       printf ("%s  if (multiline_output >= 1) { print_offset (); }\n", offset);
-      printf ("%s  if (fetch_type_%s (field%d) < 0) { return -1;}\n", offset, "any", num);
+      printf ("%s  if (fetch_type_%s (in, field%d) < 0) { return -1;}\n", offset, "any", num);
       printf ("%s  if (multiline_output >= 1) { eprintf (\"\\n\"); }\n", offset);
       printf ("%s}\n", offset);
       printf ("%sif (multiline_output >= 1) { multiline_offset -= multiline_offset_size; print_offset ();}\n", offset);
@@ -815,19 +815,19 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
       assert (0);
     } else {
       assert (t == NAME_VAR_NUM);
-      printf ("%sassert (in_remaining () >= 4);\n", offset);
+      printf ("%sassert (in_remaining (in) >= 4);\n", offset);
       if (arg->id && strlen (arg->id)) {
         printf ("%sresult->%s = malloc (4);", offset, arg->id);
-        printf ("%s*result->%s = prefetch_int ();", offset, arg->id);
+        printf ("%s*result->%s = prefetch_int (in);", offset, arg->id);
       } else {
         printf ("%sresult->f%d = malloc (4);", offset, num - 1);
-        printf ("%s*result->f%d = prefetch_int ();", offset, num - 1);
+        printf ("%s*result->f%d = prefetch_int (in);", offset, num - 1);
       }
       if (vars[arg->var_num] == 0) {
-        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_int ());\n", offset, arg->var_num);
+        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_int (in));\n", offset, arg->var_num);
         vars[arg->var_num] = 2;
       } else if (vars[arg->var_num] == 2) {
-        printf ("%sassert (vars%d == INT2PTR (fetch_int ()));\n", offset, arg->var_num);
+        printf ("%sassert (vars%d == INT2PTR (fetch_int (in)));\n", offset, arg->var_num);
       } else {
         assert (0);
         return -1;
@@ -854,9 +854,9 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
         printf ("(void *)");
       }
       if (!bare) {
-        printf ("fetch_ds_type_%s (field%d);\n", t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("fetch_ds_type_%s (in, field%d);\n", t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       } else {
-        printf ("fetch_ds_type_bare_%s (field%d);\n", t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("fetch_ds_type_bare_%s (in, field%d);\n", t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       }
     } else {
       assert (t == NODE_TYPE_ARRAY);
@@ -883,7 +883,7 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
       } else {
         printf ("%s    result->f%d[i ++] = ", offset, num - 1);
       }
-      printf ("fetch_ds_type_%s (field%d);\n", "any", num);
+      printf ("fetch_ds_type_%s (in, field%d);\n", "any", num);
       printf ("%s  }\n", offset);
       printf ("%s}\n", offset);
     }
@@ -1223,7 +1223,7 @@ int gen_field_store_excl (struct arg *arg, int *vars, int num, int from_func) {
 }
 
 void gen_constructor_skip (struct tl_combinator *c) {
-  printf ("int skip_constructor_%s (struct paramed_type *T) {\n", c->print_id);
+  printf ("int skip_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", c->print_id);
   int i;
   for (i = 0; i < c->args_num; i++) if (c->args[i]->flags & FLAG_EXCL) {
     printf (" return -1;\n");
@@ -1237,27 +1237,27 @@ void gen_constructor_skip (struct tl_combinator *c) {
   gen_uni_skip (c->result, s, vars, 1, 0);
   
   if (c->name == NAME_INT) {
-    printf ("  if (in_remaining () < 4) { return -1;}\n");
-    printf ("  fetch_int ();\n");
+    printf ("  if (in_remaining (in) < 4) { return -1;}\n");
+    printf ("  fetch_int (in);\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_LONG) {
-    printf ("  if (in_remaining () < 8) { return -1;}\n");
-    printf ("  fetch_long ();\n");
+    printf ("  if (in_remaining (in) < 8) { return -1;}\n");
+    printf ("  fetch_long (in);\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_STRING) {
-    printf ("  int l = prefetch_strlen ();\n");
+    printf ("  int l = prefetch_strlen (in);\n");
     printf ("  if (l < 0) { return -1;}\n");
-    printf ("  fetch_str (l);\n");
+    printf ("  fetch_str (in, l);\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_DOUBLE) {
-    printf ("  if (in_remaining () < 8) { return -1;}\n");
-    printf ("  fetch_double ();\n");
+    printf ("  if (in_remaining (in) < 8) { return -1;}\n");
+    printf ("  fetch_double (in);\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
@@ -1274,7 +1274,7 @@ void gen_constructor_skip (struct tl_combinator *c) {
 }
 
 void gen_constructor_fetch (struct tl_combinator *c) {
-  printf ("int fetch_constructor_%s (struct paramed_type *T) {\n", c->print_id);
+  printf ("int fetch_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", c->print_id);
   int i;
   for (i = 0; i < c->args_num; i++) if (c->args[i]->flags & FLAG_EXCL) {
     printf (" return -1;\n");
@@ -1288,30 +1288,30 @@ void gen_constructor_fetch (struct tl_combinator *c) {
   gen_uni_skip (c->result, s, vars, 1, 0);
 
   if (c->name == NAME_INT) {
-    printf ("  if (in_remaining () < 4) { return -1;}\n");
-    printf ("  eprintf (\" %%d\", fetch_int ());\n");
+    printf ("  if (in_remaining (in) < 4) { return -1;}\n");
+    printf ("  eprintf (\" %%d\", fetch_int (in));\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_LONG) {
-    printf ("  if (in_remaining () < 8) { return -1;}\n");
-    printf ("  eprintf (\" %%" INT64_PRINTF_MODIFIER "d\", fetch_long ());\n");
+    printf ("  if (in_remaining (in) < 8) { return -1;}\n");
+    printf ("  eprintf (\" %%" INT64_PRINTF_MODIFIER "d\", fetch_long (in));\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_STRING) {
     printf ("  static char buf[1 << 22];\n");
-    printf ("  int l = prefetch_strlen ();\n");
+    printf ("  int l = prefetch_strlen (in);\n");
     printf ("  if (l < 0 || (l >= (1 << 22) - 2)) { return -1; }\n");
-    printf ("  memcpy (buf, fetch_str (l), l);\n");
+    printf ("  memcpy (buf, fetch_str (in, l), l);\n");
     printf ("  buf[l] = 0;\n");
     printf ("  print_escaped_string (buf, l);\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_DOUBLE) {
-    printf ("  if (in_remaining () < 8) { return -1;}\n");
-    printf ("  eprintf (\" %%lf\", fetch_double ());\n");
+    printf ("  if (in_remaining (in) < 8) { return -1;}\n");
+    printf ("  eprintf (\" %%lf\", fetch_double (in));\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
@@ -1471,7 +1471,7 @@ void gen_constructor_autocomplete (struct tl_combinator *c) {
 
 void gen_constructor_fetch_ds (struct tl_combinator *c) {
   print_c_type_name (c->result, "", 0);
-  printf ("fetch_ds_constructor_%s (struct paramed_type *T) {\n", c->print_id);
+  printf ("fetch_ds_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", c->print_id);
   int i;
   for (i = 0; i < c->args_num; i++) if (c->args[i]->flags & FLAG_EXCL) {
     printf (" assert (0);\n");
@@ -1494,31 +1494,31 @@ void gen_constructor_fetch_ds (struct tl_combinator *c) {
   }
 
   if (c->name == NAME_INT) {
-    printf ("  assert (in_remaining () >= 4);\n");
-    printf ("  *result = fetch_int ();\n");
+    printf ("  assert (in_remaining (in) >= 4);\n");
+    printf ("  *result = fetch_int (in);\n");
     printf ("  return result;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_LONG) {
-    printf ("  assert (in_remaining () >= 8);\n");
-    printf ("  *result = fetch_long ();\n");
+    printf ("  assert (in_remaining (in) >= 8);\n");
+    printf ("  *result = fetch_long (in);\n");
     printf ("  return result;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_STRING || c->name == NAME_BYTES) {
-    printf ("  assert (in_remaining () >= 4);\n");
-    printf ("  int l = prefetch_strlen ();\n");
+    printf ("  assert (in_remaining (in) >= 4);\n");
+    printf ("  int l = prefetch_strlen (in);\n");
     printf ("  assert (l >= 0);\n");
     printf ("  result->len = l;\n");
     printf ("  result->data = malloc (l + 1);\n");
     printf ("  result->data[l] = 0;\n");
-    printf ("  memcpy (result->data, fetch_str (l), l);\n");
+    printf ("  memcpy (result->data, fetch_str (in, l), l);\n");
     printf ("  return result;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_DOUBLE) {
-    printf ("  assert (in_remaining () >= 8);\n");
-    printf ("  *result = fetch_double ();\n");
+    printf ("  assert (in_remaining (in) >= 8);\n");
+    printf ("  *result = fetch_double (in);\n");
     printf ("  return result;\n");
     printf ("}\n");
     return;
@@ -1702,27 +1702,27 @@ void gen_constructor_print_ds (struct tl_combinator *c) {
 }
 
 void gen_type_skip (struct tl_type *t) {
-  printf ("int skip_type_%s (struct paramed_type *T) {\n", t->print_id);
-  printf ("  if (in_remaining () < 4) { return -1;}\n");
-  printf ("  int magic = fetch_int ();\n");
+  printf ("int skip_type_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
+  printf ("  if (in_remaining (in) < 4) { return -1;}\n");
+  printf ("  int magic = fetch_int (in);\n");
   printf ("  switch (magic) {\n");
   int i;
   for (i = 0; i < t->constructors_num; i++) {
-     printf ("  case 0x%08x: return skip_constructor_%s (T);\n", t->constructors[i]->name, t->constructors[i]->print_id);
+     printf ("  case 0x%08x: return skip_constructor_%s (in, T);\n", t->constructors[i]->name, t->constructors[i]->print_id);
   }
   printf ("  default: return -1;\n");
   printf ("  }\n");
   printf ("}\n");
-  printf ("int skip_type_bare_%s (struct paramed_type *T) {\n", t->print_id);
+  printf ("int skip_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
   if (t->constructors_num > 1) {
-    printf ("  int *save_in_ptr = in_ptr;\n");
+    printf ("  struct tgl_in_buffer save_in = *in;\n");
     for (i = 0; i < t->constructors_num; i++) {
-      printf ("  if (skip_constructor_%s (T) >= 0) { return 0; }\n", t->constructors[i]->print_id);
-      printf ("  in_ptr = save_in_ptr;\n");
+      printf ("  if (skip_constructor_%s (in, T) >= 0) { return 0; }\n", t->constructors[i]->print_id);
+      printf ("  *in = save_in;\n");
     }
   } else {
     for (i = 0; i < t->constructors_num; i++) {
-      printf ("  if (skip_constructor_%s (T) >= 0) { return 0; }\n", t->constructors[i]->print_id);
+      printf ("  if (skip_constructor_%s (in, T) >= 0) { return 0; }\n", t->constructors[i]->print_id);
     }
   }
   printf ("  return -1;\n");
@@ -1731,18 +1731,18 @@ void gen_type_skip (struct tl_type *t) {
 
 void gen_type_fetch (struct tl_type *t) {
   int empty = is_empty (t);;
-  printf ("int fetch_type_%s (struct paramed_type *T) {\n", t->print_id);
-  printf ("  if (in_remaining () < 4) { return -1;}\n");
+  printf ("int fetch_type_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
+  printf ("  if (in_remaining (in) < 4) { return -1;}\n");
   if (!empty) {
     printf ("  if (multiline_output >= 2) { multiline_offset += multiline_offset_size; }\n");
     printf ("  eprintf (\" (\");\n");
   }
-  printf ("  int magic = fetch_int ();\n");
+  printf ("  int magic = fetch_int (in);\n");
   printf ("  int res = -1;\n");
   printf ("  switch (magic) {\n");
   int i;
   for (i = 0; i < t->constructors_num; i++) {
-     printf ("  case 0x%08x: res = fetch_constructor_%s (T); break;\n", t->constructors[i]->name, t->constructors[i]->print_id);
+     printf ("  case 0x%08x: res = fetch_constructor_%s (in, T); break;\n", t->constructors[i]->name, t->constructors[i]->print_id);
   }
   printf ("  default: return -1;\n");
   printf ("  }\n");
@@ -1755,16 +1755,16 @@ void gen_type_fetch (struct tl_type *t) {
   }
   printf ("  return res;\n");
   printf ("}\n");
-  printf ("int fetch_type_bare_%s (struct paramed_type *T) {\n", t->print_id);
+  printf ("int fetch_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
   if (t->constructors_num > 1) {
-    printf ("  int *save_in_ptr = in_ptr;\n");
+    printf ("  struct tgl_in_buffer save_in = *in;\n");
   
     if (!empty) {
       printf ("  if (multiline_output >= 2) { multiline_offset += multiline_offset_size; }\n");
     }
     for (i = 0; i < t->constructors_num; i++) {
-      printf ("  if (skip_constructor_%s (T) >= 0) { in_ptr = save_in_ptr; %sint result = fetch_constructor_%s (T); (void)result; assert(!result); %sreturn 0; }\n", t->constructors[i]->print_id, empty ? "" : "eprintf (\" (\"); ", t->constructors[i]->print_id , empty ? "" : "if (multiline_output >= 2) { multiline_offset -= multiline_offset_size; print_offset (); } eprintf (\" )\");");
-      printf ("  in_ptr = save_in_ptr;\n");
+      printf ("  if (skip_constructor_%s (in, T) >= 0) { *in = save_in; %sint result = fetch_constructor_%s (in, T); (void)result; assert(!result); %sreturn 0; }\n", t->constructors[i]->print_id, empty ? "" : "eprintf (\" (\"); ", t->constructors[i]->print_id , empty ? "" : "if (multiline_output >= 2) { multiline_offset -= multiline_offset_size; print_offset (); } eprintf (\" )\");");
+      printf ("  *in = save_in;\n");
     }
   } else {
     for (i = 0; i < t->constructors_num; i++) {
@@ -1772,7 +1772,7 @@ void gen_type_fetch (struct tl_type *t) {
         printf ("  if (multiline_output >= 2) { multiline_offset += multiline_offset_size; }\n");
         printf ("  eprintf (\" (\");\n");
       }
-      printf ("  if (fetch_constructor_%s (T) >= 0) { %sreturn 0; }\n", t->constructors[i]->print_id, empty ? "" : "if (multiline_output >= 2) { multiline_offset -= multiline_offset_size; print_offset (); } eprintf (\" )\");" );
+      printf ("  if (fetch_constructor_%s (in, T) >= 0) { %sreturn 0; }\n", t->constructors[i]->print_id, empty ? "" : "if (multiline_output >= 2) { multiline_offset -= multiline_offset_size; print_offset (); } eprintf (\" )\");" );
     }
   }
   printf ("  return -1;\n");
@@ -1862,27 +1862,27 @@ void gen_type_fetch_ds (struct tl_type *t) {
   //int empty = is_empty (t);;  
   print_c_type_name (t->constructors[0]->result, "", 0);
 
-  printf ("fetch_ds_type_%s (struct paramed_type *T) {\n", t->print_id);
-  printf ("  assert (in_remaining () >= 4);\n");
-  printf ("  int magic = fetch_int ();\n");
+  printf ("fetch_ds_type_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
+  printf ("  assert (in_remaining (in) >= 4);\n");
+  printf ("  int magic = fetch_int (in);\n");
   printf ("  switch (magic) {\n");
   int i;
   for (i = 0; i < t->constructors_num; i++) {
-     printf ("  case 0x%08x: return fetch_ds_constructor_%s (T); break;\n", t->constructors[i]->name, t->constructors[i]->print_id);
+     printf ("  case 0x%08x: return fetch_ds_constructor_%s (in, T); break;\n", t->constructors[i]->name, t->constructors[i]->print_id);
   }
   printf ("  default: assert (0); return NULL;\n");
   printf ("  }\n");
   printf ("}\n");
   print_c_type_name (t->constructors[0]->result, "", 0);
-  printf ("fetch_ds_type_bare_%s (struct paramed_type *T) {\n", t->print_id);
+  printf ("fetch_ds_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
   if (t->constructors_num > 1) {
-    printf ("  int *save_in_ptr = in_ptr;\n");
+    printf ("  struct tgl_in_buffer save_in = *in;\n");
   
     for (i = 0; i < t->constructors_num; i++) {
-      printf ("  if (skip_constructor_%s (T) >= 0) { in_ptr = save_in_ptr; return fetch_ds_constructor_%s (T); }\n", t->constructors[i]->print_id, t->constructors[i]->print_id);
+      printf ("  if (skip_constructor_%s (in, T) >= 0) { *in = save_in; return fetch_ds_constructor_%s (in, T); }\n", t->constructors[i]->print_id, t->constructors[i]->print_id);
     }
   } else {
-    printf ("  return fetch_ds_constructor_%s (T);\n", t->constructors[0]->print_id);
+    printf ("  return fetch_ds_constructor_%s (in, T);\n", t->constructors[0]->print_id);
   }
   printf ("  assert (0);\n");
   printf ("  return NULL;\n");
@@ -2376,18 +2376,19 @@ void gen_skip_header (void) {
   printf ("#ifdef __cplusplus\n");
   printf ("extern \"C\" {\n");
   printf ("#endif\n");
+  printf ("struct tgl_in_buffer;\n");
 
   int i, j;
   for (i = 0; i < tn; i++) {
     for (j = 0; j < tps[i]->constructors_num; j ++) {
-      printf ("int skip_constructor_%s (struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
+      printf ("int skip_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
     }
   }
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
-    printf ("int skip_type_%s (struct paramed_type *T);\n", tps[i]->print_id);
-    printf ("int skip_type_bare_%s (struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("int skip_type_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("int skip_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
   }
-  printf ("int skip_type_any (struct paramed_type *T);\n");
+  printf ("int skip_type_any (struct tgl_in_buffer *in, struct paramed_type *T);\n");
 
   printf ("#ifdef __cplusplus\n");
   printf ("}\n");
@@ -2412,11 +2413,11 @@ void gen_skip_source (void) {
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     gen_type_skip (tps[i]);
   }
-  printf ("int skip_type_any (struct paramed_type *T) {\n");
+  printf ("int skip_type_any (struct tgl_in_buffer *in, struct paramed_type *T) {\n");
   printf ("  switch (T->type->name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
-    printf ("  case 0x%08x: return skip_type_%s (T);\n", tps[i]->name, tps[i]->print_id);
-    printf ("  case 0x%08x: return skip_type_bare_%s (T);\n", ~tps[i]->name, tps[i]->print_id);
+    printf ("  case 0x%08x: return skip_type_%s (in, T);\n", tps[i]->name, tps[i]->print_id);
+    printf ("  case 0x%08x: return skip_type_bare_%s (in, T);\n", ~tps[i]->name, tps[i]->print_id);
   }
   printf ("  default: return -1; }\n");
   printf ("}\n");
@@ -2431,20 +2432,21 @@ void gen_fetch_header (void) {
   printf ("extern \"C\" {\n");
   printf ("#endif\n");
 
+  printf ("struct tgl_in_buffer;\n");
   printf ("struct tgl_state;\n");
   printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
   int i, j;
   for (i = 0; i < tn; i++) {
     for (j = 0; j < tps[i]->constructors_num; j ++) {
-      printf ("int fetch_constructor_%s (struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
+      printf ("int fetch_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
     }
   }
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
-    printf ("int fetch_type_%s (struct paramed_type *T);\n", tps[i]->print_id);
-    printf ("int fetch_type_bare_%s (struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("int fetch_type_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("int fetch_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
   }
-  printf ("int fetch_type_any (struct paramed_type *T);\n");
+  printf ("int fetch_type_any (struct tgl_in_buffer *in, struct paramed_type *T);\n");
 
   printf ("#ifdef __cplusplus\n");
   printf ("}\n");
@@ -2469,11 +2471,11 @@ void gen_fetch_source (void) {
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     gen_type_fetch (tps[i]);
   }
-  printf ("int fetch_type_any (struct paramed_type *T) {\n");
+  printf ("int fetch_type_any (struct tgl_in_buffer *in, struct paramed_type *T) {\n");
   printf ("  switch (T->type->name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
-    printf ("  case 0x%08x: return fetch_type_%s (T);\n", tps[i]->name, tps[i]->print_id);
-    printf ("  case 0x%08x: return fetch_type_bare_%s (T);\n", ~tps[i]->name, tps[i]->print_id);
+    printf ("  case 0x%08x: return fetch_type_%s (in, T);\n", tps[i]->name, tps[i]->print_id);
+    printf ("  case 0x%08x: return fetch_type_bare_%s (in, T);\n", ~tps[i]->name, tps[i]->print_id);
   }
   printf ("  default: return -1; }\n");
   printf ("}\n");
@@ -2486,6 +2488,7 @@ void gen_store_header (void) {
   printf ("#ifdef __cplusplus\n");
   printf ("extern \"C\" {\n");
   printf ("#endif\n");
+  printf ("struct tgl_in_buffer;\n");
 
   printf ("struct paramed_type *tglf_extf_store (const char *data, int data_len);\n");
   printf ("int tglf_store_type (const char *work, int work_len, struct paramed_type *P);\n");
@@ -2571,6 +2574,7 @@ void gen_autocomplete_header (void) {
   printf ("#ifdef __cplusplus\n");
   printf ("extern \"C\" {\n");
   printf ("#endif\n");
+  printf ("struct tgl_in_buffer;\n");
 
   printf ("int tglf_extf_autocomplete (const char *text, int text_len, int index, char **R, char *data, int data_len);\n");
 
@@ -2656,6 +2660,7 @@ void gen_types_header (void) {
   printf ("#ifdef __cplusplus\n");
   printf ("extern \"C\" {\n");
   printf ("#endif\n");
+  printf ("struct tgl_in_buffer;\n");
 
   int i;
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
@@ -2757,11 +2762,11 @@ void gen_fetch_ds_source (void) {
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     gen_type_fetch_ds (tps[i]);
   }
-  printf ("void *fetch_ds_type_any (struct paramed_type *T) {\n");
+  printf ("void *fetch_ds_type_any (struct tgl_in_buffer *in, struct paramed_type *T) {\n");
   printf ("  switch (T->type->name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
-    printf ("  case 0x%08x: return fetch_ds_type_%s (T);\n", tps[i]->name, tps[i]->print_id);
-    printf ("  case 0x%08x: return fetch_ds_type_bare_%s (T);\n", ~tps[i]->name, tps[i]->print_id);
+    printf ("  case 0x%08x: return fetch_ds_type_%s (in, T);\n", tps[i]->name, tps[i]->print_id);
+    printf ("  case 0x%08x: return fetch_ds_type_bare_%s (in, T);\n", ~tps[i]->name, tps[i]->print_id);
   }
   printf ("  default: return NULL; }\n");
   printf ("}\n");
@@ -2776,6 +2781,7 @@ void gen_fetch_ds_header (void) {
   printf ("extern \"C\" {\n");
   printf ("#endif\n");
 
+  printf ("struct tgl_in_buffer;\n");
   printf ("struct tgl_state;\n");
   //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
@@ -2783,16 +2789,16 @@ void gen_fetch_ds_header (void) {
   for (i = 0; i < tn; i++) {
     for (j = 0; j < tps[i]->constructors_num; j ++) {
       print_c_type_name (tps[i]->constructors[j]->result, "", 0);
-      printf ("fetch_ds_constructor_%s (struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
+      printf ("fetch_ds_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
     }
   }
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     print_c_type_name (tps[i]->constructors[0]->result, "", 0);
-    printf ("fetch_ds_type_%s (struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("fetch_ds_type_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
     print_c_type_name (tps[i]->constructors[0]->result, "", 0);
-    printf ("fetch_ds_type_bare_%s (struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("fetch_ds_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
   }
-  printf ("void *fetch_ds_type_any (struct paramed_type *T);\n");
+  printf ("void *fetch_ds_type_any (struct tgl_in_buffer *in, struct paramed_type *T);\n");
 
   printf ("#ifdef __cplusplus\n");
   printf ("}\n");
@@ -2836,6 +2842,7 @@ void gen_free_ds_header (void) {
   printf ("extern \"C\" {\n");
   printf ("#endif\n");
 
+  printf ("struct tgl_in_buffer;\n");
   printf ("struct tgl_state;\n");
   //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
@@ -2896,6 +2903,7 @@ void gen_store_ds_header (void) {
   printf ("extern \"C\" {\n");
   printf ("#endif\n");
 
+  printf ("struct tgl_in_buffer;\n");
   printf ("struct tgl_state;\n");
   //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
@@ -2935,6 +2943,7 @@ void gen_print_ds_header (void) {
   printf ("extern \"C\" {\n");
   printf ("#endif\n");
 
+  printf ("struct tgl_in_buffer;\n");
   printf ("struct tgl_state;\n");
   printf ("char *tglf_extf_print_ds (void *DS, struct paramed_type *T);\n");
 

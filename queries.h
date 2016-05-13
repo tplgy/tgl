@@ -73,7 +73,7 @@ public:
     void cancel_timer();
     void clear_timer();
     int handle_error(int error_code, const std::string& error_string);
-    int handle_result();
+    int handle_result(tgl_in_buffer* in);
     const std::shared_ptr<mtprotocol_serializer>& serializer() const { return m_serializer; }
 
     void out_i32s(const int32_t* ints, size_t num)
@@ -176,8 +176,8 @@ private:
 };
 
 void tglq_query_ack (long long id);
-int tglq_query_error (long long id);
-int tglq_query_result (long long id);
+int tglq_query_error (tgl_in_buffer* in, long long id);
+int tglq_query_result (tgl_in_buffer* in, long long id);
 void tglq_query_restart (long long id);
 
 //double next_timer_in (void);

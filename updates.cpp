@@ -778,9 +778,9 @@ void tglu_work_any_updates (int check_only, struct tl_ds_updates *DS_U, std::sha
   }
 }
 
-void tglu_work_any_updates_buf () {
+void tglu_work_any_updates_buf (tgl_in_buffer* in) {
   struct paramed_type type = TYPE_TO_PARAM (updates);
-  struct tl_ds_updates *DS_U = fetch_ds_type_updates (&type);
+  struct tl_ds_updates *DS_U = fetch_ds_type_updates (in, &type);
   assert (DS_U);
   tglu_work_any_updates (1, DS_U, NULL);
   tglu_work_any_updates (0, DS_U, NULL);

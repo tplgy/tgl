@@ -214,12 +214,12 @@ long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key) {
 
 int *tgl_in_ptr, *tgl_in_end;
 
-int tgl_fetch_bignum (TGLC_bn *x) {
-  int l = prefetch_strlen ();
+int tgl_fetch_bignum (tgl_in_buffer* in, TGLC_bn *x) {
+  int l = prefetch_strlen (in);
   if (l < 0) {
     return l;
   }
-  char *str = fetch_str (l);
+  char *str = fetch_str (in, l);
   auto result = TGLC_bn_bin2bn ((unsigned char *) str, l, x);
   TGL_ASSERT_UNUSED(result, result == x);
   return l;
