@@ -266,9 +266,9 @@ void tgl_download_manager::send_file_unencrypted_end(std::shared_ptr<send_file> 
 
     q->out_i64 (f->id);
     q->out_i32 (f->part_num);
-    const char *s = f->file_name.c_str() + f->file_name.length();
-    while (s >= f->file_name && *s != '/') { s --;}
-    q->out_string (s + 1);
+    boost::filesystem::path path = f->file_name;
+    const char* file_name = path.filename().string().c_str();
+    q->out_string (file_name);
     if (f->size < (16 << 20)) {
         q->out_string ("");
     }
@@ -295,7 +295,7 @@ void tgl_download_manager::send_file_unencrypted_end(std::shared_ptr<send_file> 
             q->out_i32 (CODE_document_attribute_audio);
             q->out_i32 (f->duration);
             q->out_i32 (CODE_document_attribute_filename);
-            q->out_string (s + 1);
+            q->out_string (file_name);
         } else if (f->flags & TGLDF_VIDEO) {
             q->out_i32 (2);
             q->out_i32 (CODE_document_attribute_video);
@@ -303,14 +303,14 @@ void tgl_download_manager::send_file_unencrypted_end(std::shared_ptr<send_file> 
             q->out_i32 (f->w);
             q->out_i32 (f->h);
             q->out_i32 (CODE_document_attribute_filename);
-            q->out_string (s + 1);
+            q->out_string (file_name);
         } else if (f->flags & TGLDF_STICKER) {
             q->out_i32 (1);
             q->out_i32 (CODE_document_attribute_sticker);
         } else {
             q->out_i32 (1);
             q->out_i32 (CODE_document_attribute_filename);
-            q->out_string (s + 1);
+            q->out_string (file_name);
         }
 
         if (f->thumb_id > 0) {
