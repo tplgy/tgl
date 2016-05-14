@@ -20,6 +20,8 @@
 
 #include "tgl-dc.h"
 
+#include <algorithm>
+
 #include "mtproto-client.h"
 #include "queries.h"
 #include "tgl-net.h"

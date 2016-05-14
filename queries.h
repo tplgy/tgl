@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -33,7 +33,6 @@
 #include <exception>
 #include <memory>
 #include <string>
-#include <boost/variant.hpp>
 #include <vector>
 
 static const float DEFAULT_QUERY_TIMEOUT = 6.0;
