@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <boost/filesystem.hpp>
 
 #include "auto.h"
 #include "auto/auto-fetch-ds.h"
@@ -661,13 +662,8 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
     q->out_i32 (f->duration);
     q->out_string (tg_mime_by_filename (f->file_name.c_str()));
   } else {
-    // FIXME: for no '/' sepearator filesystems.
-    auto filename = f->file_name;
-    auto pos = filename.rfind('/');
-    if (pos != std::string::npos) {
-        filename = filename.substr(pos + 1);
-    }
-    q->out_string (filename.c_str());
+    boost::filesystem::path path(f->file_name);
+    q->out_std_string(path.filename().string());
     q->out_string (tg_mime_by_filename (f->file_name.c_str()));
     // document
   }
