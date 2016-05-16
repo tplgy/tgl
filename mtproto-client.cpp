@@ -113,9 +113,6 @@ static double get_utime (int clock_id) {
  *
  */
 
-#define DECRYPT_BUFFER_INTS        16384
-static int decrypt_buffer[DECRYPT_BUFFER_INTS];
-
 //
 // Used in unauthorized part of protocol
 //
@@ -484,21 +481,30 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   tgl_init_aes_unauth (DC->server_nonce, DC->new_nonce, 0);
 
   int l = prefetch_strlen (&in);
-  assert (l >= 0);
-  if (!l) {
+  assert (l > 0);
+  if (l <= 0) {
     TGL_ERROR("non-empty encrypted part expected");
     return -1;
   }
-  l = tgl_pad_aes_decrypt((unsigned char *)fetch_str (&in, l), l, (unsigned char *) decrypt_buffer, DECRYPT_BUFFER_INTS * 4 - 16);
+  int decrypted_buffer_size = tgl_pad_aes_decrypt_dest_buffer_size(l);
+  assert(decrypted_buffer_size > 0);
+  if (decrypted_buffer_size <= 0) {
+    TGL_ERROR("failed to get decrypted buffer size");
+    return -1;
+  }
+
+  std::unique_ptr<int[]> decrypted_buffer(new int[(decrypted_buffer_size + 3) / 4]);
+  l = tgl_pad_aes_decrypt((unsigned char *)fetch_str (&in, l), l, reinterpret_cast<unsigned char*>(decrypted_buffer.get()), decrypted_buffer_size);
   assert (in.ptr == in.end);
 
-  tgl_in_buffer skip = { decrypt_buffer + 5, decrypt_buffer + (l >> 2) };
+  tgl_in_buffer skip = { decrypted_buffer.get() + 5, decrypted_buffer.get() + (decrypted_buffer_size >> 2) };
   struct paramed_type type2 = TYPE_TO_PARAM (server_d_h_inner_data);
   if (skip_type_any (&skip, &type2) < 0) {
     TGL_ERROR("can not parse server_DH_inner_data answer");
     return -1;
   }
-  in.ptr = decrypt_buffer + 5;
+  in.ptr = decrypted_buffer.get() + 5;
+  in.end = decrypted_buffer.get() + (decrypted_buffer_size >> 2);
 
   auto result = fetch_int (&in);
   TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_server_DH_inner_data));
@@ -534,8 +540,8 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   assert (in.ptr <= in.end);
 
   static char sha1_buffer[20];
-  TGLC_sha1 ((unsigned char *) decrypt_buffer + 20, (in.ptr - decrypt_buffer - 5) * 4, (unsigned char *) sha1_buffer);
-  if (memcmp (decrypt_buffer, sha1_buffer, 20)) {
+  TGLC_sha1 ((unsigned char *) decrypted_buffer.get() + 20, (in.ptr - decrypted_buffer.get() - 5) * 4, (unsigned char *) sha1_buffer);
+  if (memcmp (decrypted_buffer.get(), sha1_buffer, 20)) {
     TGL_ERROR("bad encrypted message SHA1");
     return -1;
   }

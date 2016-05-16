@@ -453,6 +453,12 @@ static inline int tgl_pad_aes_encrypt_dest_buffer_size(int src_buffer_size)
     return tgl_pad_aes_encrypt(NULL, src_buffer_size, NULL, 0);
 }
 
+static inline int tgl_pad_aes_decrypt_dest_buffer_size(int src_buffer_size)
+{
+    assert(src_buffer_size > 0);
+    return src_buffer_size;
+}
+
 void *tgl_alloc0 (size_t size);
 
 #ifndef CLOCK_REALTIME
