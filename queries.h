@@ -44,8 +44,9 @@ class query: public std::enable_shared_from_this<query>
 public:
     enum class execution_option { UNKNOWN, NORMAL, LOGIN, FORCE };
 
-    query(const std::string& name, const paramed_type& type)
+    query(const std::string& name, const paramed_type& type, long long msg_id_override = 0)
         : m_msg_id(0)
+        , m_msg_id_override(msg_id_override)
         , m_session_id(0)
         , m_seq_no(0)
         , m_exec_option(execution_option::UNKNOWN)
@@ -137,6 +138,7 @@ private:
 
 private:
     long long m_msg_id;
+    long long m_msg_id_override;
     long long m_session_id;
     int m_seq_no;
     execution_option m_exec_option;

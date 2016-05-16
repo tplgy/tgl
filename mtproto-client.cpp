@@ -117,11 +117,13 @@ static double get_utime (int clock_id) {
 // Used in unauthorized part of protocol
 //
 static int rpc_send_packet(const std::shared_ptr<tgl_connection>& c, const char* data, size_t len) {
-    static struct {
+    struct {
         long long auth_key_id;
         long long out_msg_id;
         int msg_len;
     } unenc_msg_header;
+
+    memset(&unenc_msg_header, 0, sizeof(unenc_msg_header));
 
     c->incr_out_packet_num();
 
@@ -321,7 +323,7 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_g(TGLC_bn_new());
   ensure (TGLC_bn_set_word (dh_g.get(), g));
 
-  static unsigned char s_power[256];
+  unsigned char s_power[256];
   tglt_secure_random (s_power, 256);
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_power(TGLC_bn_bin2bn ((unsigned char *)s_power, 256, 0));
   ensure_ptr (dh_power.get());
@@ -392,7 +394,7 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
   auto result = fetch_int(&in);
   TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_res_p_q));
 
-  static int tmp[4];
+  int tmp[4];
   fetch_ints (&in, tmp, 4);
   if (memcmp (tmp, DC->nonce, 16)) {
     TGL_ERROR("nonce mismatch");
@@ -539,7 +541,8 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   int server_time = fetch_int (&in);
   assert (in.ptr <= in.end);
 
-  static char sha1_buffer[20];
+  char sha1_buffer[20];
+  memset(sha1_buffer, 0, sizeof(sha1_buffer));
   TGLC_sha1 ((unsigned char *) decrypted_buffer.get() + 20, (in.ptr - decrypted_buffer.get() - 5) * 4, (unsigned char *) sha1_buffer);
   if (memcmp (decrypted_buffer.get(), sha1_buffer, 20)) {
     TGL_ERROR("bad encrypted message SHA1");
@@ -565,7 +568,6 @@ static void create_temp_auth_key (const std::shared_ptr<tgl_connection>& c) {
 }
 
 int tglmp_encrypt_inner_temp (const std::shared_ptr<tgl_connection>& c, const int *msg, int msg_ints, int useful, void *data, long long msg_id);
-static long long msg_id_override;
 static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c);
 
 /* {{{ RECV AUTH COMPLETE */
@@ -615,7 +617,9 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
 
   fetch_ints (&in, tmp, 4);
 
-  static unsigned char th[44], sha1_buffer[20];
+  unsigned char th[44], sha1_buffer[20];
+  memset(th, 0, sizeof(th));
+  memset(sha1_buffer, 0, sizeof(sha1_buffer));
   memcpy (th, DC->new_nonce, 32);
   th[32] = 1;
   if (!temp_key) {
@@ -690,12 +694,11 @@ static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c) {
     int expires = time (0) + DC->server_time_delta + tgl_state::instance()->temp_key_expire_time;
     s.out_i32 (expires);
 
-    static int data[1000];
+    int data[1000];
+    memset(data, 0, sizeof(data));
     int len = tglmp_encrypt_inner_temp(c, s.i32_data(), s.i32_size(), 0, data, msg_id);
-    msg_id_override = msg_id;
     DC->temp_auth_key_bind_query_id = msg_id;
     tgl_do_send_bind_temp_key(DC, rand, expires, (void *)data, len, msg_id);
-    msg_id_override = 0;
 }
 
 /*
@@ -703,8 +706,6 @@ static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c) {
  *                AUTHORIZED (MAIN) PROTOCOL PART
  *
  */
-
-static struct encrypted_message enc_msg;
 
 static double get_server_time(const std::shared_ptr<tgl_dc>& DC) {
     //if (!DC->server_time_udelta) {
@@ -723,7 +724,7 @@ static long long generate_next_msg_id (const std::shared_ptr<tgl_dc>& DC, const 
     return next_id;
 }
 
-static void init_enc_msg(std::shared_ptr<tgl_session> S, bool useful) {
+static void init_enc_msg(encrypted_message& enc_msg, std::shared_ptr<tgl_session> S, bool useful) {
   std::shared_ptr<tgl_dc> DC = S->dc.lock();
   if (!DC) {
     TGL_WARNING("no dc found for session");
@@ -739,7 +740,9 @@ static void init_enc_msg(std::shared_ptr<tgl_session> S, bool useful) {
     tglt_secure_random ((unsigned char*)&S->session_id, 8);
   }
   enc_msg.session_id = S->session_id;
-  enc_msg.msg_id = msg_id_override ? msg_id_override : generate_next_msg_id (DC, S);
+  if (!enc_msg.msg_id) {
+    enc_msg.msg_id = generate_next_msg_id (DC, S);
+  }
   enc_msg.seq_no = S->seq_no;
   if (useful) {
     enc_msg.seq_no |= 1;
@@ -747,7 +750,7 @@ static void init_enc_msg(std::shared_ptr<tgl_session> S, bool useful) {
   S->seq_no += 2;
 };
 
-static void init_enc_msg_inner_temp(std::shared_ptr<tgl_dc> DC, long long msg_id) {
+static void init_enc_msg_inner_temp(encrypted_message& enc_msg, std::shared_ptr<tgl_dc> DC, long long msg_id) {
     enc_msg.auth_key_id = DC->auth_key_id;
     tglt_secure_random ((unsigned char*)&enc_msg.server_salt, 8);
     tglt_secure_random ((unsigned char*)&enc_msg.session_id, 8);
@@ -770,7 +773,9 @@ static int aes_encrypt_message (unsigned char *key, struct encrypted_message *en
   return tgl_pad_aes_encrypt ((unsigned char *) &enc->server_salt, enc_len, (unsigned char *) &enc->server_salt, MAX_MESSAGE_INTS * 4 + (MINSZ - UNENCSZ));
 }
 
-long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c, const int *msg, int msg_ints, bool force_send, bool useful) {
+long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
+        const int *msg, int msg_ints,
+        long long msg_id_override, bool force_send, bool useful) {
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
     std::shared_ptr<tgl_session> S = c->get_session().lock();
     if (!DC || !S) {
@@ -792,6 +797,9 @@ long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c, c
         TGL_NOTICE("message too long");
         return -1;
     }
+
+    encrypted_message enc_msg;
+
     if (msg) {
         memcpy (enc_msg.message, msg, msg_ints * 4);
         enc_msg.msg_len = msg_ints * 4;
@@ -801,7 +809,9 @@ long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c, c
             return -1;
         }
     }
-    init_enc_msg(S, useful);
+
+    enc_msg.msg_id = msg_id_override;
+    init_enc_msg(enc_msg, S, useful);
 
     int l = aes_encrypt_message(DC->temp_auth_key, &enc_msg);
     assert (l > 0);
@@ -822,10 +832,13 @@ int tglmp_encrypt_inner_temp (const std::shared_ptr<tgl_connection>& c, const in
     if (msg_ints <= 0 || msg_ints > MAX_MESSAGE_INTS - 4) {
         return -1;
     }
+
+    encrypted_message enc_msg;
+
     memcpy (enc_msg.message, msg, msg_ints * 4);
     enc_msg.msg_len = msg_ints * 4;
 
-    init_enc_msg_inner_temp (DC, msg_id);
+    init_enc_msg_inner_temp (enc_msg, DC, msg_id);
 
     int l = aes_encrypt_message(DC->auth_key, &enc_msg);
     assert (l > 0);
@@ -835,7 +848,7 @@ int tglmp_encrypt_inner_temp (const std::shared_ptr<tgl_connection>& c, const in
     return l + UNENCSZ;
 }
 
-static int rpc_execute_answer (const std::shared_ptr<tgl_connection>& c, tgl_in_buffer* in, long long msg_id);
+static int rpc_execute_answer (const std::shared_ptr<tgl_connection>& c, tgl_in_buffer* in, long long msg_id, bool in_gzip = false);
 
 static int work_container (const std::shared_ptr<tgl_connection>& c, tgl_in_buffer* in, long long msg_id) {
   TGL_DEBUG("work_container: msg_id = " << msg_id);
@@ -921,26 +934,18 @@ static int work_rpc_result (const std::shared_ptr<tgl_connection>& c, tgl_in_buf
   }
 }
 
-#define MAX_PACKED_SIZE (1 << 24)
 static int work_packed (const std::shared_ptr<tgl_connection>& c, tgl_in_buffer* in, long long msg_id) {
     auto result = fetch_int (in);
     TGL_ASSERT_UNUSED(result, result == static_cast<int>(CODE_gzip_packed));
-    static volatile bool in_gzip;
-    static int buf[MAX_PACKED_SIZE >> 2];
-    if (in_gzip) {
-        TGL_CRASH();
-    }
-
-    in_gzip = true;
+    constexpr size_t MAX_PACKED_SIZE = 1 << 24;
+    std::unique_ptr<int[]> unzipped_buffer(new int[MAX_PACKED_SIZE >> 2]);
 
     int l = prefetch_strlen (in);
     char *s = fetch_str (in, l);
 
-    int total_out = tgl_inflate (s, l, buf, MAX_PACKED_SIZE);
-    //assert (total_out % 4 == 0);
-    tgl_in_buffer new_in = { buf, buf + total_out / 4 };
-    int r = rpc_execute_answer(c, &new_in, msg_id);
-    in_gzip = false;
+    int total_out = tgl_inflate (s, l, unzipped_buffer.get(), MAX_PACKED_SIZE);
+    tgl_in_buffer new_in = { unzipped_buffer.get(), unzipped_buffer.get() + total_out / 4 };
+    int r = rpc_execute_answer(c, &new_in, msg_id, true);
     return r;
 }
 
@@ -1020,7 +1025,7 @@ static int work_bad_msg_notification (const std::shared_ptr<tgl_connection>& c, 
   return -1;
 }
 
-static int rpc_execute_answer (const std::shared_ptr<tgl_connection>& c, tgl_in_buffer* in, long long msg_id) {
+static int rpc_execute_answer (const std::shared_ptr<tgl_connection>& c, tgl_in_buffer* in, long long msg_id, bool in_gzip) {
   unsigned int op = prefetch_int (in);
   switch (op) {
   case CODE_msg_container:
@@ -1039,6 +1044,10 @@ static int rpc_execute_answer (const std::shared_ptr<tgl_connection>& c, tgl_in_
     tglu_work_any_updates_buf (in);
     return 0;
   case CODE_gzip_packed:
+    if (in_gzip) {
+      TGL_ERROR("no netsted zip");
+      TGL_CRASH();
+    }
     return work_packed (c, in, msg_id);
   case CODE_bad_server_salt:
     return work_bad_server_salt (c, in, msg_id);
@@ -1201,7 +1210,8 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
       return 0;
   }
 
-  static unsigned char sha1_buffer[20];
+  unsigned char sha1_buffer[20];
+  memset(sha1_buffer, 0, sizeof(sha1_buffer));
   TGLC_sha1 ((unsigned char *)&enc->server_salt, enc->msg_len + (MINSZ - UNENCSZ), sha1_buffer);
   if (memcmp (&enc->msg_key, sha1_buffer + 4, 16)) {
     TGL_WARNING("Incorrect packet from server. Closing connection");
@@ -1270,12 +1280,10 @@ static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int le
         return 0;
     }
 
-    int Response_len = len;
-
-    static char Response[MAX_RESPONSE_SIZE];
-    TGL_DEBUG("Response_len = " << Response_len << " DC " << DC->id);
-    int result = c->read(Response, Response_len);
-    TGL_ASSERT_UNUSED(result, result == Response_len);
+    std::unique_ptr<char[]> response(new char[len]);
+    TGL_DEBUG("response of " << len << " bytes received from DC " << DC->id);
+    int result = c->read(response.get(), len);
+    TGL_ASSERT_UNUSED(result, result == len);
 
 #if !defined(__MACH__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined (__CYGWIN__)
     //  setsockopt (c->fd, IPPROTO_TCP, TCP_QUICKACK, (int[]){0}, 4);
@@ -1287,24 +1295,24 @@ static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int le
     }
     switch (o) {
     case st_reqpq_sent:
-        return process_respq_answer(c, Response/* + 8*/, Response_len/* - 12*/, 0);
+        return process_respq_answer(c, response.get()/* + 8*/, len/* - 12*/, 0);
     case st_reqdh_sent:
-        return process_dh_answer(c, Response/* + 8*/, Response_len/* - 12*/, 0);
+        return process_dh_answer(c, response.get()/* + 8*/, len/* - 12*/, 0);
     case st_client_dh_sent:
-        return process_auth_complete(c, Response/* + 8*/, Response_len/* - 12*/, 0);
+        return process_auth_complete(c, response.get()/* + 8*/, len/* - 12*/, 0);
     case st_reqpq_sent_temp:
-        return process_respq_answer(c, Response/* + 8*/, Response_len/* - 12*/, 1);
+        return process_respq_answer(c, response.get()/* + 8*/, len/* - 12*/, 1);
     case st_reqdh_sent_temp:
-        return process_dh_answer(c, Response/* + 8*/, Response_len/* - 12*/, 1);
+        return process_dh_answer(c, response.get()/* + 8*/, len/* - 12*/, 1);
     case st_client_dh_sent_temp:
-        return process_auth_complete(c, Response/* + 8*/, Response_len/* - 12*/, 1);
+        return process_auth_complete(c, response.get()/* + 8*/, len/* - 12*/, 1);
     case st_authorized:
         if (op < 0 && op >= -999) {
             TGL_WARNING("Server error " << op << " from DC " << DC->id);
             DC->reset();
             return -1;
         } else {
-            return process_rpc_message(c, (struct encrypted_message *)(Response/* + 8*/), Response_len/* - 12*/);
+            return process_rpc_message(c, (struct encrypted_message *)(response.get()/* + 8*/), len/* - 12*/);
         }
     default:
         TGL_ERROR("cannot receive answer in state " << DC->state);
