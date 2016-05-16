@@ -334,9 +334,9 @@ int gen_uni_skip (struct tl_tree *t, char *cur_name, int *vars, int first, int f
   case NODE_TYPE_TYPE:
     t1 = (void *)t;
     if (!first) {
-      printf ("  if (ODDP(%s) || %s->type->name != 0x%08x) { %s }\n", cur_name, cur_name, t1->type->name, fail);
+      printf ("  if (ODDP(%s) || %s->type.name != 0x%08x) { %s }\n", cur_name, cur_name, t1->type->name, fail);
     } else {
-      printf ("  if (ODDP(%s) || (%s->type->name != 0x%08x && %s->type->name != 0x%08x)) { %s }\n", cur_name, cur_name, t1->type->name, cur_name, ~t1->type->name, fail);
+      printf ("  if (ODDP(%s) || (%s->type.name != 0x%08x && %s->type.name != 0x%08x)) { %s }\n", cur_name, cur_name, t1->type->name, cur_name, ~t1->type->name, fail);
     }
     for (i = 0; i < t1->children_num; i++) {
       sprintf (cur_name + L, "->params[%d]", i);
@@ -348,7 +348,7 @@ int gen_uni_skip (struct tl_tree *t, char *cur_name, int *vars, int first, int f
     printf ("  if (EVENP(%s) || ((long)%s) != %" INT64_PRINTF_MODIFIER "d) { %s }\n", cur_name, cur_name, var_nat_const_to_int (t) * 2 + 1, fail);
     return 0;
   case NODE_TYPE_ARRAY:
-    printf ("  if (ODDP(%s) || %s->type->name != TL_TYPE_ARRAY) { %s }\n", cur_name, cur_name, fail);
+    printf ("  if (ODDP(%s) || %s->type.name != TL_TYPE_ARRAY) { %s }\n", cur_name, cur_name, fail);
     t2 = (void *)t;
     
     sprintf (cur_name + L, "->params[0]");
@@ -360,10 +360,10 @@ int gen_uni_skip (struct tl_tree *t, char *cur_name, int *vars, int first, int f
     cur_name[L] = 0;
     return 0;
   case NODE_TYPE_VAR_TYPE:
-    printf ("  if (ODDP(%s)) { %s }\n", cur_name, fail);
+    printf ("  if (ODDP(&%s)) { %s }\n", cur_name, fail);
     i = ((struct tl_tree_var_type *)t)->var_num;
     if (!vars[i]) {
-      printf ("  struct paramed_type *var%d = %s; assert (var%d);\n", i, cur_name, i);      
+      printf ("  const struct paramed_type &var%d = %s;\n", i, cur_name);
       vars[i] = 1;
     } else if (vars[i] == 1) {
       printf (" if (compare_types (var%d, %s) < 0) { %s }\n", i, cur_name, fail);
@@ -405,17 +405,17 @@ int gen_create (struct tl_tree *t, int *vars, int offset) {
   switch (x) {
   case NODE_TYPE_TYPE: 
     print_offset (offset); 
-    printf ("&(struct paramed_type){\n");
+    printf ("(const struct paramed_type){\n");
     print_offset (offset + 2);
     t1 = (void *)t;
     if (t1->self.flags & FLAG_BARE) {
-      printf (".type = &tl_type_bare_%s,\n", t1->type->print_id);
+      printf (".type = tl_type_bare_%s,\n", t1->type->print_id);
     } else {
-      printf (".type = &tl_type_%s,\n", t1->type->print_id);
+      printf (".type = tl_type_%s,\n", t1->type->print_id);
     }
     if (t1->children_num) {
       print_offset (offset + 2);
-      printf (".params = (struct paramed_type *[]){\n");
+      printf (".params = (const struct paramed_type []){\n");
       for (i = 0; i < t1->children_num; i++) {
         int result = gen_create (t1->children[i], vars, offset + 4);
         (void)result;
@@ -437,12 +437,12 @@ int gen_create (struct tl_tree *t, int *vars, int offset) {
     return 0;
   case NODE_TYPE_ARRAY:
     print_offset (offset); 
-    printf ("&(struct paramed_type){\n");
+    printf ("(const struct paramed_type){\n");
     print_offset (offset + 2);
     t2 = (void *)t;
-    printf (".type = &(struct tl_type_descr) {.name = NAME_ARRAY, .id = \"array\", .params_num = 2, .params_types = 1},\n");
+    printf (".type = (const struct tl_type_descr) {.name = NAME_ARRAY, .id = \"array\", .params_num = 2, .params_types = 1},\n");
     print_offset (offset + 2);
-    printf (".params = (struct paramed_type **){\n");
+    printf (".params = (const struct paramed_type []){\n");
     gen_create (t2->multiplicity, vars, offset + 4);
     printf (",\n");
     gen_create (t2->args[0]->type, vars, offset + 4);
@@ -498,7 +498,7 @@ int gen_field_skip (struct arg *arg, int *vars, int num) {
   } else {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       int result = gen_create (arg->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
@@ -508,9 +508,9 @@ int gen_field_skip (struct arg *arg, int *vars, int num) {
         bare = ((struct tl_tree_type *)arg->type)->self.flags & FLAG_BARE;
       }
       if (!bare) {
-        printf ("%sif (skip_type_%s (in, field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("%sif (skip_type_%s (in, &field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       } else {
-        printf ("%sif (skip_type_bare_%s (in, field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("%sif (skip_type_bare_%s (in, &field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       }
     } else {
       assert (t == NODE_TYPE_ARRAY);
@@ -519,13 +519,13 @@ int gen_field_skip (struct arg *arg, int *vars, int num) {
       (void)result;
       assert(result >= 0);
       printf ("%s);\n", offset);
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
       printf (";\n");
       printf ("%swhile (multiplicity%d -- > 0) {\n", offset, num);
-      printf ("%s  if (skip_type_%s (in, field%d) < 0) { return -1;}\n", offset, "any", num);
+      printf ("%s  if (skip_type_%s (in, &field%d) < 0) { return -1;}\n", offset, "any", num);
       printf ("%s}\n", offset);
     }
   }
@@ -575,7 +575,7 @@ int gen_field_fetch (struct arg *arg, int *vars, int num, int empty) {
   } else {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       int result = gen_create (arg->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
@@ -585,9 +585,9 @@ int gen_field_fetch (struct arg *arg, int *vars, int num, int empty) {
         bare = ((struct tl_tree_type *)arg->type)->self.flags & FLAG_BARE;
       }
       if (!bare) {
-        printf ("%sif (fetch_type_%s (in, field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("%sif (fetch_type_%s (in, &field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       } else {
-        printf ("%sif (fetch_type_bare_%s (in, field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("%sif (fetch_type_bare_%s (in, &field%d) < 0) { return -1;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       }
     } else {
       assert (t == NODE_TYPE_ARRAY);
@@ -596,7 +596,7 @@ int gen_field_fetch (struct arg *arg, int *vars, int num, int empty) {
       (void)result;
       assert(result >= 0);
       printf ("%s);\n", offset);
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
@@ -606,7 +606,7 @@ int gen_field_fetch (struct arg *arg, int *vars, int num, int empty) {
       printf ("%sif (multiline_output >= 1) { multiline_offset += multiline_offset_size;}\n", offset);
       printf ("%swhile (multiplicity%d -- > 0) {\n", offset, num);
       printf ("%s  if (multiline_output >= 1) { print_offset (); }\n", offset);
-      printf ("%s  if (fetch_type_%s (in, field%d) < 0) { return -1;}\n", offset, "any", num);
+      printf ("%s  if (fetch_type_%s (in, &field%d) < 0) { return -1;}\n", offset, "any", num);
       printf ("%s  if (multiline_output >= 1) { eprintf (\"\\n\"); }\n", offset);
       printf ("%s}\n", offset);
       printf ("%sif (multiline_output >= 1) { multiline_offset -= multiline_offset_size; print_offset ();}\n", offset);
@@ -668,7 +668,7 @@ int gen_field_store (struct arg *arg, int *vars, int num, int from_func, int emp
   } else {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       int result = gen_create (arg->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
@@ -678,9 +678,9 @@ int gen_field_store (struct arg *arg, int *vars, int num, int from_func, int emp
         bare = ((struct tl_tree_type *)arg->type)->self.flags & FLAG_BARE;
       }
       if (!bare) {
-        printf ("%sif (store_type_%s (field%d) < 0) { return %s;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num, fail);
+        printf ("%sif (store_type_%s (&field%d) < 0) { return %s;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num, fail);
       } else {
-        printf ("%sif (store_type_bare_%s (field%d) < 0) { return %s;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num, fail);
+        printf ("%sif (store_type_bare_%s (&field%d) < 0) { return %s;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num, fail);
       }
     } else {
       printf ("%s%s (\"[\", 1);\n", offset, expect);
@@ -691,12 +691,12 @@ int gen_field_store (struct arg *arg, int *vars, int num, int from_func, int emp
       (void)result;
       assert(result >= 0);
       printf ("%s);\n", offset);
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
       assert(result >= 0);
       printf (";\n");
       printf ("%swhile (multiplicity%d -- > 0) {\n", offset, num);
-      printf ("%s  if (store_type_%s (field%d) < 0) { return %s;}\n", offset, "any", num, fail);
+      printf ("%s  if (store_type_%s (&field%d) < 0) { return %s;}\n", offset, "any", num, fail);
       printf ("%s}\n", offset);
       
       printf ("%s%s (\"]\", 1);\n", offset, expect);
@@ -757,7 +757,7 @@ int gen_field_autocomplete (struct arg *arg, int *vars, int num, int from_func, 
   } else {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       int result = gen_create (arg->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
@@ -767,9 +767,9 @@ int gen_field_autocomplete (struct arg *arg, int *vars, int num, int from_func, 
         bare = ((struct tl_tree_type *)arg->type)->self.flags & FLAG_BARE;
       }
       if (!bare) {
-        printf ("%sif (autocomplete_type_%s (field%d) < 0) { return %s;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num, fail);
+        printf ("%sif (autocomplete_type_%s (&field%d) < 0) { return %s;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num, fail);
       } else {
-        printf ("%sif (autocomplete_type_bare_%s (field%d) < 0) { return %s;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num, fail);
+        printf ("%sif (autocomplete_type_bare_%s (&field%d) < 0) { return %s;}\n", offset, t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num, fail);
       }
     } else {
       printf ("%s%s (\"[\", 1);\n", offset, expect);
@@ -780,13 +780,13 @@ int gen_field_autocomplete (struct arg *arg, int *vars, int num, int from_func, 
       (void)result;
       assert(result >= 0);
       printf ("%s);\n", offset);
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
       printf (";\n");
       printf ("%swhile (multiplicity%d -- > 0) {\n", offset, num);
-      printf ("%s  if (autocomplete_type_%s (field%d) < 0) { return %s;}\n", offset, "any", num, fail);
+      printf ("%s  if (autocomplete_type_%s (&field%d) < 0) { return %s;}\n", offset, "any", num, fail);
       printf ("%s}\n", offset);
       
       printf ("%s%s (\"]\", 1);\n", offset, expect);
@@ -817,10 +817,10 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
       assert (t == NAME_VAR_NUM);
       printf ("%sassert (in_remaining (in) >= 4);\n", offset);
       if (arg->id && strlen (arg->id)) {
-        printf ("%sresult->%s = malloc (4);", offset, arg->id);
+        printf ("%sresult->%s = (decltype(result->%s))malloc (4);", offset, arg->id, arg->id);
         printf ("%s*result->%s = prefetch_int (in);", offset, arg->id);
       } else {
-        printf ("%sresult->f%d = malloc (4);", offset, num - 1);
+        printf ("%sresult->f%d = (decltype(result->f%d))malloc (4);", offset, num - 1, num - 1);
         printf ("%s*result->f%d = prefetch_int (in);", offset, num - 1);
       }
       if (vars[arg->var_num] == 0) {
@@ -836,7 +836,7 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
   } else {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       int result = gen_create (arg->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
@@ -851,12 +851,16 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
         printf ("%sresult->f%d = ", offset, num - 1);
       }
       if (t == NODE_TYPE_TYPE && !strcmp (((struct tl_tree_type *)arg->type)->type->id, "Vector")) {
-        printf ("(void *)");
+        if (arg->id && strlen (arg->id)) {
+          printf ("(decltype(result->%s))", arg->id);
+        } else {
+          printf ("(decltype(result->f%d))", num - 1);
+        }
       }
       if (!bare) {
-        printf ("fetch_ds_type_%s (in, field%d);\n", t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("fetch_ds_type_%s (in, &field%d);\n", t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       } else {
-        printf ("fetch_ds_type_bare_%s (in, field%d);\n", t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
+        printf ("fetch_ds_type_bare_%s (in, &field%d);\n", t == NODE_TYPE_VAR_TYPE ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num);
       }
     } else {
       assert (t == NODE_TYPE_ARRAY);
@@ -865,14 +869,14 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
       (void)result;
       assert(result >= 0);
       printf ("%s);\n", offset);
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
       assert(result >= 0);
       printf (";\n");
       if (arg->id && strlen (arg->id)) {
-        printf ("%sresult->%s = ", offset, arg->id);
+        printf ("%sresult->%s = (decltype(result->%s))", offset, arg->id, arg->id);
       } else {
-        printf ("%sresult->f%d = ", offset, num - 1);
+        printf ("%sresult->f%d = (decltype(result->f%d))", offset, num - 1, num - 1);
       }
       printf ("talloc0 (multiplicity%d * sizeof (void *));\n", num);
       printf ("%s{\n", offset);
@@ -883,7 +887,7 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
       } else {
         printf ("%s    result->f%d[i ++] = ", offset, num - 1);
       }
-      printf ("fetch_ds_type_%s (in, field%d);\n", "any", num);
+      printf ("fetch_ds_type_%s (in, &field%d);\n", "any", num);
       printf ("%s  }\n", offset);
       printf ("%s}\n", offset);
     }
@@ -932,16 +936,16 @@ int gen_field_free_ds (struct arg *arg, int *vars, int num, int empty) {
   } else {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       int result = gen_create (arg->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
       printf (";\n");
       int any = (t == NODE_TYPE_VAR_TYPE) || ((struct tl_tree_type *)arg->type)->type->name == NAME_VECTOR;
       if (arg->id && strlen (arg->id)) {
-        printf ("%sfree_ds_type_%s (D->%s, field%d);\n", offset, any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, arg->id, num);      
+        printf ("%sfree_ds_type_%s (D->%s, &field%d);\n", offset, any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, arg->id, num);
       } else {
-        printf ("%sfree_ds_type_%s (D->f%d, field%d);\n", offset, any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num - 1, num);      
+        printf ("%sfree_ds_type_%s (D->f%d, &field%d);\n", offset, any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, num - 1, num);
       }
     } else {
       assert (t == NODE_TYPE_ARRAY);
@@ -950,7 +954,7 @@ int gen_field_free_ds (struct arg *arg, int *vars, int num, int empty) {
       (void)result;
       assert(result >= 0);
       printf ("%s);\n", offset);
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
@@ -959,9 +963,9 @@ int gen_field_free_ds (struct arg *arg, int *vars, int num, int empty) {
       printf ("%s  int i = 0;\n", offset);
       printf ("%s  while (i < multiplicity%d) {\n", offset, num);
       if (arg->id && strlen (arg->id)) {
-        printf ("%s    free_ds_type_%s (D->%s[i ++], field%d);\n", offset, "any", arg->id, num);
+        printf ("%s    free_ds_type_%s (D->%s[i ++], &field%d);\n", offset, "any", arg->id, num);
       } else {
-        printf ("%s    free_ds_type_%s (D->f%d[i ++], field%d);\n", offset, "any", num - 1, num);
+        printf ("%s    free_ds_type_%s (D->f%d[i ++], &field%d);\n", offset, "any", num - 1, num);
       }
       printf ("%s  }\n", offset);
       printf ("%s}\n", offset);
@@ -1020,7 +1024,7 @@ int gen_field_store_ds (struct arg *arg, int *vars, int num, int empty) {
       if (!bare && t == NODE_TYPE_TYPE) {
         bare = ((struct tl_tree_type *)arg->type)->self.flags & FLAG_BARE;
       }
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       int result = gen_create (arg->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
@@ -1028,9 +1032,9 @@ int gen_field_store_ds (struct arg *arg, int *vars, int num, int empty) {
       int any = (t == NODE_TYPE_VAR_TYPE);
       int vec = ((struct tl_tree_type *)arg->type)->type->name == NAME_VECTOR;
       if (arg->id && strlen (arg->id)) {
-        printf ("%sstore_ds_type_%s%s (%sD->%s, field%d);\n", offset, bare ? "bare_" : "", any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, vec ? "(void *)" : "", arg->id, num);      
+        printf ("%sstore_ds_type_%s%s (%sD->%s, &field%d);\n", offset, bare ? "bare_" : "", any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, vec ? "(void *)" : "", arg->id, num);
       } else {
-        printf ("%sstore_ds_type_%s%s (%sD->f%d, field%d);\n", offset, bare ? "bare_" : "", any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, vec ? "(void *)" : "", num - 1, num);      
+        printf ("%sstore_ds_type_%s%s (%sD->f%d, &field%d);\n", offset, bare ? "bare_" : "", any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, vec ? "(void *)" : "", num - 1, num);
       }
     } else {
       assert (t == NODE_TYPE_ARRAY);
@@ -1039,7 +1043,7 @@ int gen_field_store_ds (struct arg *arg, int *vars, int num, int empty) {
       (void)result;
       assert(result >= 0);
       printf ("%s);\n", offset);
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
@@ -1048,9 +1052,9 @@ int gen_field_store_ds (struct arg *arg, int *vars, int num, int empty) {
       printf ("%s  int i = 0;\n", offset);
       printf ("%s  while (i < multiplicity%d) {\n", offset, num);
       if (arg->id && strlen (arg->id)) {
-        printf ("%s    store_ds_type_%s (D->%s[i ++], field%d);\n", offset, "any", arg->id, num);
+        printf ("%s    store_ds_type_%s (D->%s[i ++], &field%d);\n", offset, "any", arg->id, num);
       } else {
-        printf ("%s    store_ds_type_%s (D->f%d[i ++], field%d);\n", offset, "any", num - 1, num);
+        printf ("%s    store_ds_type_%s (D->f%d[i ++], &field%d);\n", offset, "any", num - 1, num);
       }
       printf ("%s  }\n", offset);
       printf ("%s}\n", offset);
@@ -1104,7 +1108,7 @@ int gen_field_print_ds (struct arg *arg, int *vars, int num, int empty) {
   } else {
     int t = TL_TREE_METHODS (arg->type)->type (arg->type);
     if (t == NODE_TYPE_TYPE || t == NODE_TYPE_VAR_TYPE) {    
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       int result = gen_create (arg->type, vars, 2 + o);
       (void)result;
       assert(result >= 0);
@@ -1116,9 +1120,9 @@ int gen_field_print_ds (struct arg *arg, int *vars, int num, int empty) {
       int any = (t == NODE_TYPE_VAR_TYPE);
       int vec = ((struct tl_tree_type *)arg->type)->type->name == NAME_VECTOR;
       if (arg->id && strlen (arg->id)) {
-        printf ("%sprint_ds_type_%s%s (%sDS->%s, field%d);\n", offset, bare ? "bare_" : "", any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, vec ? "(void *)" : "", arg->id, num);      
+        printf ("%sprint_ds_type_%s%s (%sDS->%s, &field%d);\n", offset, bare ? "bare_" : "", any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, vec ? "(void *)" : "", arg->id, num);
       } else {
-        printf ("%sprint_ds_type_%s%s (%sDS->f%d, field%d);\n", offset, bare ? "bare_" : "", any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, vec ? "(void *)" : "", num - 1, num);      
+        printf ("%sprint_ds_type_%s%s (%sDS->f%d, &field%d);\n", offset, bare ? "bare_" : "", any ? "any" : ((struct tl_tree_type *)arg->type)->type->print_id, vec ? "(void *)" : "", num - 1, num);
       }
     } else {
       assert (t == NODE_TYPE_ARRAY);
@@ -1127,7 +1131,7 @@ int gen_field_print_ds (struct arg *arg, int *vars, int num, int empty) {
       (void)result;
       assert(result >= 0);
       printf ("%s);\n", offset);
-      printf ("%sstruct paramed_type *field%d = \n", offset, num);
+      printf ("%sconst struct paramed_type &field%d = \n", offset, num);
       result = gen_create (((struct tl_tree_array *)arg->type)->args[0]->type, vars, 2 + o);
       assert(result >= 0);
       printf (";\n");
@@ -1139,9 +1143,9 @@ int gen_field_print_ds (struct arg *arg, int *vars, int num, int empty) {
       printf ("%s  while (i < multiplicity%d) {\n", offset, num);
       printf ("%s    if (multiline_output >= 1) { print_offset (); }\n", offset);
       if (arg->id && strlen (arg->id)) {
-        printf ("%s    print_ds_type_%s (DS->%s[i ++], field%d);\n", offset, "any", arg->id, num);
+        printf ("%s    print_ds_type_%s (DS->%s[i ++], &field%d);\n", offset, "any", arg->id, num);
       } else {
-        printf ("%s    print_ds_type_%s (DS->f%d[i ++], field%d);\n", offset, "any", num - 1, num);
+        printf ("%s    print_ds_type_%s (DS->f%d[i ++], &field%d);\n", offset, "any", num - 1, num);
       }
       printf ("%s    if (multiline_output >= 1) { eprintf (\"\\n\"); }\n", offset);
       printf ("%s  }\n", offset);
@@ -1223,7 +1227,7 @@ int gen_field_store_excl (struct arg *arg, int *vars, int num, int from_func) {
 }
 
 void gen_constructor_skip (struct tl_combinator *c) {
-  printf ("int skip_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", c->print_id);
+  printf ("int skip_constructor_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", c->print_id);
   int i;
   for (i = 0; i < c->args_num; i++) if (c->args[i]->flags & FLAG_EXCL) {
     printf (" return -1;\n");
@@ -1274,7 +1278,7 @@ void gen_constructor_skip (struct tl_combinator *c) {
 }
 
 void gen_constructor_fetch (struct tl_combinator *c) {
-  printf ("int fetch_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", c->print_id);
+  printf ("int fetch_constructor_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", c->print_id);
   int i;
   for (i = 0; i < c->args_num; i++) if (c->args[i]->flags & FLAG_EXCL) {
     printf (" return -1;\n");
@@ -1471,7 +1475,7 @@ void gen_constructor_autocomplete (struct tl_combinator *c) {
 
 void gen_constructor_fetch_ds (struct tl_combinator *c) {
   print_c_type_name (c->result, "", 0);
-  printf ("fetch_ds_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", c->print_id);
+  printf ("fetch_ds_constructor_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", c->print_id);
   int i;
   for (i = 0; i < c->args_num; i++) if (c->args[i]->flags & FLAG_EXCL) {
     printf (" assert (0);\n");
@@ -1486,7 +1490,7 @@ void gen_constructor_fetch_ds (struct tl_combinator *c) {
 
   printf ("  ");
   print_c_type_name (c->result, "  ", 0);
-  printf ("  result = talloc0 (sizeof (*result));\n");
+  printf ("  result = (decltype(result))talloc0 (sizeof (*result));\n");
 
   struct tl_type *T = ((struct tl_tree_type *)c->result)->type;
   if (T->constructors_num > 1) {
@@ -1510,7 +1514,7 @@ void gen_constructor_fetch_ds (struct tl_combinator *c) {
     printf ("  int l = prefetch_strlen (in);\n");
     printf ("  assert (l >= 0);\n");
     printf ("  result->len = l;\n");
-    printf ("  result->data = malloc (l + 1);\n");
+    printf ("  result->data = (decltype(result->data))malloc (l + 1);\n");
     printf ("  result->data[l] = 0;\n");
     printf ("  memcpy (result->data, fetch_str (in, l), l);\n");
     printf ("  return result;\n");
@@ -1540,7 +1544,7 @@ void gen_constructor_fetch_ds (struct tl_combinator *c) {
 void gen_constructor_free_ds (struct tl_combinator *c) {
   printf ("void free_ds_constructor_%s (", c->print_id);
   print_c_type_name (c->result, "", 0);
-  printf ("D, struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
+  printf ("D, const struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
   int i;
   for (i = 0; i < c->args_num; i++) if (c->args[i]->flags & FLAG_EXCL) {
     printf (" assert (0);\n");
@@ -1702,9 +1706,9 @@ void gen_constructor_print_ds (struct tl_combinator *c) {
 }
 
 void gen_type_skip (struct tl_type *t) {
-  printf ("int skip_type_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
+  printf ("int skip_type_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", t->print_id);
   printf ("  if (in_remaining (in) < 4) { return -1;}\n");
-  printf ("  int magic = fetch_int (in);\n");
+  printf ("  unsigned int magic = fetch_int (in);\n");
   printf ("  switch (magic) {\n");
   int i;
   for (i = 0; i < t->constructors_num; i++) {
@@ -1713,7 +1717,7 @@ void gen_type_skip (struct tl_type *t) {
   printf ("  default: return -1;\n");
   printf ("  }\n");
   printf ("}\n");
-  printf ("int skip_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
+  printf ("int skip_type_bare_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", t->print_id);
   if (t->constructors_num > 1) {
     printf ("  struct tgl_in_buffer save_in = *in;\n");
     for (i = 0; i < t->constructors_num; i++) {
@@ -1731,13 +1735,13 @@ void gen_type_skip (struct tl_type *t) {
 
 void gen_type_fetch (struct tl_type *t) {
   int empty = is_empty (t);;
-  printf ("int fetch_type_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
+  printf ("int fetch_type_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", t->print_id);
   printf ("  if (in_remaining (in) < 4) { return -1;}\n");
   if (!empty) {
     printf ("  if (multiline_output >= 2) { multiline_offset += multiline_offset_size; }\n");
     printf ("  eprintf (\" (\");\n");
   }
-  printf ("  int magic = fetch_int (in);\n");
+  printf ("  unsigned int magic = fetch_int (in);\n");
   printf ("  int res = -1;\n");
   printf ("  switch (magic) {\n");
   int i;
@@ -1755,7 +1759,7 @@ void gen_type_fetch (struct tl_type *t) {
   }
   printf ("  return res;\n");
   printf ("}\n");
-  printf ("int fetch_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
+  printf ("int fetch_type_bare_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", t->print_id);
   if (t->constructors_num > 1) {
     printf ("  struct tgl_in_buffer save_in = *in;\n");
   
@@ -1827,7 +1831,7 @@ void gen_type_autocomplete (struct tl_type *t) {
   int empty = is_empty (t);;
   int k = 0;
   for (k = 0; k < 2; k++) {
-    printf ("int autocomplete_type_%s%s (struct paramed_type *T) {\n", k == 0 ? "" : "bare_", t->print_id);
+    printf ("int autocomplete_type_%s%s (const struct paramed_type *T) {\n", k == 0 ? "" : "bare_", t->print_id);
     if (empty) {
       printf ("  if (autocomplete_constructor_%s (T) < 0) { return -1; }\n", t->constructors[0]->print_id);
       printf ("  return 0;\n");
@@ -1862,9 +1866,9 @@ void gen_type_fetch_ds (struct tl_type *t) {
   //int empty = is_empty (t);;  
   print_c_type_name (t->constructors[0]->result, "", 0);
 
-  printf ("fetch_ds_type_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
+  printf ("fetch_ds_type_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", t->print_id);
   printf ("  assert (in_remaining (in) >= 4);\n");
-  printf ("  int magic = fetch_int (in);\n");
+  printf ("  unsigned int magic = fetch_int (in);\n");
   printf ("  switch (magic) {\n");
   int i;
   for (i = 0; i < t->constructors_num; i++) {
@@ -1874,7 +1878,7 @@ void gen_type_fetch_ds (struct tl_type *t) {
   printf ("  }\n");
   printf ("}\n");
   print_c_type_name (t->constructors[0]->result, "", 0);
-  printf ("fetch_ds_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T) {\n", t->print_id);
+  printf ("fetch_ds_type_bare_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", t->print_id);
   if (t->constructors_num > 1) {
     printf ("  struct tgl_in_buffer save_in = *in;\n");
   
@@ -1892,7 +1896,7 @@ void gen_type_fetch_ds (struct tl_type *t) {
 void gen_type_free_ds (struct tl_type *t) {
   printf ("void free_ds_type_%s (", t->print_id);
   print_c_type_name (t->constructors[0]->result, "", 0);
-  printf ("D, struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
+  printf ("D, const struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
   
   if (t->constructors_num > 1) {
     printf ("  switch (D->magic) {\n");
@@ -1995,7 +1999,7 @@ void gen_function_store (struct tl_combinator *f) {
   }
 
 
-  printf ("  struct paramed_type *R = \n");
+  printf ("  const struct paramed_type &R = \n");
   int result = gen_create (f->result, vars, 2);
   (void)result;
   assert(result >= 0);
@@ -2025,7 +2029,7 @@ void gen_function_autocomplete (struct tl_combinator *f) {
     }
   }
 
-  printf ("  struct paramed_type *R = \n");
+  printf ("  const struct paramed_type &R = \n");
   int result = gen_create (f->result, vars, 2);
   (void)result;
   assert(result >= 0);
@@ -2373,26 +2377,19 @@ void gen_skip_header (void) {
   printf ("#include \"auto.h\"\n");
   printf ("#include <assert.h>\n");
 
-  printf ("#ifdef __cplusplus\n");
-  printf ("extern \"C\" {\n");
-  printf ("#endif\n");
   printf ("struct tgl_in_buffer;\n");
 
   int i, j;
   for (i = 0; i < tn; i++) {
     for (j = 0; j < tps[i]->constructors_num; j ++) {
-      printf ("int skip_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
+      printf ("int skip_constructor_%s (struct tgl_in_buffer *in, const struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
     }
   }
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
-    printf ("int skip_type_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
-    printf ("int skip_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("int skip_type_%s (struct tgl_in_buffer *in, const struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("int skip_type_bare_%s (struct tgl_in_buffer *in, const struct paramed_type *T);\n", tps[i]->print_id);
   }
-  printf ("int skip_type_any (struct tgl_in_buffer *in, struct paramed_type *T);\n");
-
-  printf ("#ifdef __cplusplus\n");
-  printf ("}\n");
-  printf ("#endif\n");
+  printf ("int skip_type_any (struct tgl_in_buffer *in, const struct paramed_type *T);\n");
 }
 
 void gen_skip_source (void) {
@@ -2413,8 +2410,8 @@ void gen_skip_source (void) {
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     gen_type_skip (tps[i]);
   }
-  printf ("int skip_type_any (struct tgl_in_buffer *in, struct paramed_type *T) {\n");
-  printf ("  switch (T->type->name) {\n");
+  printf ("int skip_type_any (struct tgl_in_buffer *in, const struct paramed_type *T) {\n");
+  printf ("  switch (T->type.name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
     printf ("  case 0x%08x: return skip_type_%s (in, T);\n", tps[i]->name, tps[i]->print_id);
     printf ("  case 0x%08x: return skip_type_bare_%s (in, T);\n", ~tps[i]->name, tps[i]->print_id);
@@ -2428,10 +2425,6 @@ void gen_fetch_header (void) {
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
-  printf ("#ifdef __cplusplus\n");
-  printf ("extern \"C\" {\n");
-  printf ("#endif\n");
-
   printf ("struct tgl_in_buffer;\n");
   printf ("struct tgl_state;\n");
   printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
@@ -2439,18 +2432,14 @@ void gen_fetch_header (void) {
   int i, j;
   for (i = 0; i < tn; i++) {
     for (j = 0; j < tps[i]->constructors_num; j ++) {
-      printf ("int fetch_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
+      printf ("int fetch_constructor_%s (struct tgl_in_buffer *in, const struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
     }
   }
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
-    printf ("int fetch_type_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
-    printf ("int fetch_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("int fetch_type_%s (struct tgl_in_buffer *in, const struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("int fetch_type_bare_%s (struct tgl_in_buffer *in, const struct paramed_type *T);\n", tps[i]->print_id);
   }
-  printf ("int fetch_type_any (struct tgl_in_buffer *in, struct paramed_type *T);\n");
-
-  printf ("#ifdef __cplusplus\n");
-  printf ("}\n");
-  printf ("#endif\n");
+  printf ("int fetch_type_any (struct tgl_in_buffer *in, const struct paramed_type *T);\n");
 }
 
 void gen_fetch_source (void) {
@@ -2471,8 +2460,8 @@ void gen_fetch_source (void) {
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     gen_type_fetch (tps[i]);
   }
-  printf ("int fetch_type_any (struct tgl_in_buffer *in, struct paramed_type *T) {\n");
-  printf ("  switch (T->type->name) {\n");
+  printf ("int fetch_type_any (struct tgl_in_buffer *in, const struct paramed_type *T) {\n");
+  printf ("  switch (T->type.name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
     printf ("  case 0x%08x: return fetch_type_%s (in, T);\n", tps[i]->name, tps[i]->print_id);
     printf ("  case 0x%08x: return fetch_type_bare_%s (in, T);\n", ~tps[i]->name, tps[i]->print_id);
@@ -2485,9 +2474,6 @@ void gen_store_header (void) {
   printf ("#include \"auto.h\"\n");
   printf ("#include <assert.h>\n");
 
-  printf ("#ifdef __cplusplus\n");
-  printf ("extern \"C\" {\n");
-  printf ("#endif\n");
   printf ("struct tgl_in_buffer;\n");
 
   printf ("struct paramed_type *tglf_extf_store (const char *data, int data_len);\n");
@@ -2508,10 +2494,6 @@ void gen_store_header (void) {
   }
   printf ("int store_type_any (struct paramed_type *T);\n");
   printf ("struct paramed_type *store_function_any (void);\n");
-
-  printf ("#ifdef __cplusplus\n");
-  printf ("}\n");
-  printf ("#endif\n");
 }
 
 void gen_store_source (void ) {
@@ -2536,7 +2518,7 @@ void gen_store_source (void ) {
     gen_function_store (fns[i]);
   }
   printf ("int store_type_any (struct paramed_type *T) {\n");
-  printf ("  switch (T->type->name) {\n");
+  printf ("  switch (T->type.name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
     printf ("  case 0x%08x: return store_type_%s (T);\n", tps[i]->name, tps[i]->print_id);
     printf ("  case 0x%08x: return store_type_bare_%s (T);\n", ~tps[i]->name, tps[i]->print_id);
@@ -2571,9 +2553,6 @@ void gen_autocomplete_header (void) {
   printf ("#include \"auto.h\"\n");
   printf ("#include <assert.h>\n");
 
-  printf ("#ifdef __cplusplus\n");
-  printf ("extern \"C\" {\n");
-  printf ("#endif\n");
   printf ("struct tgl_in_buffer;\n");
 
   printf ("int tglf_extf_autocomplete (const char *text, int text_len, int index, char **R, char *data, int data_len);\n");
@@ -2581,20 +2560,16 @@ void gen_autocomplete_header (void) {
   int i, j;
   for (i = 0; i < tn; i++) {
     for (j = 0; j < tps[i]->constructors_num; j ++) {
-      printf ("int autocomplete_constructor_%s (struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
+      printf ("int autocomplete_constructor_%s (const struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
     }
   }
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
-    printf ("int autocomplete_type_%s (struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("int autocomplete_type_%s (const struct paramed_type *T);\n", tps[i]->print_id);
     printf ("int do_autocomplete_type_%s (const char *text, int len, int index, char **R);\n", tps[i]->print_id);
-    printf ("int autocomplete_type_bare_%s (struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("int autocomplete_type_bare_%s (const struct paramed_type *T);\n", tps[i]->print_id);
   }
-  printf ("int autocomplete_type_any (struct paramed_type *T);\n");
-  printf ("struct paramed_type *autocomplete_function_any (void);\n");
-
-  printf ("#ifdef __cplusplus\n");
-  printf ("}\n");
-  printf ("#endif\n");
+  printf ("int autocomplete_type_any (const struct paramed_type *T);\n");
+  printf ("const struct paramed_type *autocomplete_function_any (void);\n");
 }
 
 void gen_autocomplete_source (void) {
@@ -2619,8 +2594,8 @@ void gen_autocomplete_source (void) {
   for (i = 0; i < fn; i++) {
     gen_function_autocomplete (fns[i]);
   }
-  printf ("int autocomplete_type_any (struct paramed_type *T) {\n");
-  printf ("  switch (T->type->name) {\n");
+  printf ("int autocomplete_type_any (const struct paramed_type *T) {\n");
+  printf ("  switch (T->type.name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
     printf ("  case 0x%08x: return autocomplete_type_%s (T);\n", tps[i]->name, tps[i]->print_id);
     printf ("  case 0x%08x: return autocomplete_type_bare_%s (T);\n", ~tps[i]->name, tps[i]->print_id);
@@ -2635,14 +2610,14 @@ void gen_autocomplete_source (void) {
   printf ("  *R = 0;\n");
   printf ("  return 0;\n");
   printf ("}\n");
-  printf ("struct paramed_type *autocomplete_function_any (void) {\n");
+  printf ("const struct paramed_type *autocomplete_function_any (void) {\n");
   printf ("  expect_token_ptr_autocomplete (\"(\", 1);\n");
   printf ("  if (cur_token_len == -3) { set_autocomplete_type (do_autocomplete_function); }\n");
   printf ("  if (cur_token_len < 0) { return 0; }\n");
   for (i = 0; i < fn; i++) {
     printf ("  if (cur_token_len == %d && !memcmp (cur_token, \"%s\", cur_token_len)) {\n", (int)strlen (fns[i]->id), fns[i]->id);
     printf ("    local_next_token ();\n");
-    printf ("    struct paramed_type *P = autocomplete_function_%s ();\n", fns[i]->print_id);
+    printf ("    const struct paramed_type *P = autocomplete_function_%s ();\n", fns[i]->print_id);
     printf ("    if (!P) { return 0; }\n");
     printf ("    expect_token_ptr_autocomplete (\")\", 1);\n");
     printf ("    return P;\n");
@@ -2657,9 +2632,6 @@ void gen_types_header (void) {
   printf ("#define __AUTO_TYPES_H__\n");
   printf ("#include \"auto.h\"\n");
 
-  printf ("#ifdef __cplusplus\n");
-  printf ("extern \"C\" {\n");
-  printf ("#endif\n");
   printf ("struct tgl_in_buffer;\n");
 
   int i;
@@ -2719,9 +2691,6 @@ void gen_types_header (void) {
     }
     printf ("};\n");
   }
-  printf ("#ifdef __cplusplus\n");
-  printf ("}\n");
-  printf ("#endif\n");
 
   printf ("#endif\n");
 }
@@ -2762,8 +2731,8 @@ void gen_fetch_ds_source (void) {
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     gen_type_fetch_ds (tps[i]);
   }
-  printf ("void *fetch_ds_type_any (struct tgl_in_buffer *in, struct paramed_type *T) {\n");
-  printf ("  switch (T->type->name) {\n");
+  printf ("void *fetch_ds_type_any (struct tgl_in_buffer *in, const struct paramed_type *T) {\n");
+  printf ("  switch (T->type.name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
     printf ("  case 0x%08x: return fetch_ds_type_%s (in, T);\n", tps[i]->name, tps[i]->print_id);
     printf ("  case 0x%08x: return fetch_ds_type_bare_%s (in, T);\n", ~tps[i]->name, tps[i]->print_id);
@@ -2777,10 +2746,6 @@ void gen_fetch_ds_header (void) {
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
-  printf ("#ifdef __cplusplus\n");
-  printf ("extern \"C\" {\n");
-  printf ("#endif\n");
-
   printf ("struct tgl_in_buffer;\n");
   printf ("struct tgl_state;\n");
   //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
@@ -2789,20 +2754,16 @@ void gen_fetch_ds_header (void) {
   for (i = 0; i < tn; i++) {
     for (j = 0; j < tps[i]->constructors_num; j ++) {
       print_c_type_name (tps[i]->constructors[j]->result, "", 0);
-      printf ("fetch_ds_constructor_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
+      printf ("fetch_ds_constructor_%s (struct tgl_in_buffer *in, const struct paramed_type *T);\n", tps[i]->constructors[j]->print_id);
     }
   }
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     print_c_type_name (tps[i]->constructors[0]->result, "", 0);
-    printf ("fetch_ds_type_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("fetch_ds_type_%s (struct tgl_in_buffer *in, const struct paramed_type *T);\n", tps[i]->print_id);
     print_c_type_name (tps[i]->constructors[0]->result, "", 0);
-    printf ("fetch_ds_type_bare_%s (struct tgl_in_buffer *in, struct paramed_type *T);\n", tps[i]->print_id);
+    printf ("fetch_ds_type_bare_%s (struct tgl_in_buffer *in, const struct paramed_type *T);\n", tps[i]->print_id);
   }
-  printf ("void *fetch_ds_type_any (struct tgl_in_buffer *in, struct paramed_type *T);\n");
-
-  printf ("#ifdef __cplusplus\n");
-  printf ("}\n");
-  printf ("#endif\n");
+  printf ("void *fetch_ds_type_any (struct tgl_in_buffer *in, const struct paramed_type *T);\n");
 }
 
 void gen_free_ds_source (void) {
@@ -2822,11 +2783,15 @@ void gen_free_ds_source (void) {
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     gen_type_free_ds (tps[i]);
   }
-  printf ("void free_ds_type_any (void *D, struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
-  printf ("  switch (T->type->name) {\n");
+  printf ("void free_ds_type_any (void *D, const struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
+  printf ("  switch (T->type.name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
-    printf ("  case 0x%08x: free_ds_type_%s (D, T); return;\n", tps[i]->name, tps[i]->print_id);
-    printf ("  case 0x%08x: free_ds_type_%s (D, T); return;\n", ~tps[i]->name, tps[i]->print_id);
+    printf ("  case 0x%08x: free_ds_type_%s ((", tps[i]->name, tps[i]->print_id);
+    print_c_type_name (tps[i]->constructors[0]->result, "", 0);
+    printf (")D, T); return;\n");
+    printf ("  case 0x%08x: free_ds_type_%s ((", ~tps[i]->name, tps[i]->print_id);
+    print_c_type_name (tps[i]->constructors[0]->result, "", 0);
+    printf (")D, T); return;\n");
   }
   printf ("  default: return; }\n");
   printf ("}\n");
@@ -2838,10 +2803,6 @@ void gen_free_ds_header (void) {
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
-  printf ("#ifdef __cplusplus\n");
-  printf ("extern \"C\" {\n");
-  printf ("#endif\n");
-
   printf ("struct tgl_in_buffer;\n");
   printf ("struct tgl_state;\n");
   //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
@@ -2851,19 +2812,15 @@ void gen_free_ds_header (void) {
     for (j = 0; j < tps[i]->constructors_num; j ++) {
       printf ("void free_ds_constructor_%s (", tps[i]->constructors[j]->print_id); 
       print_c_type_name (tps[i]->constructors[j]->result, "", 0);
-      printf ("D, struct paramed_type *T);\n");
+      printf ("D, const struct paramed_type *T);\n");
     }
   }
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     printf ("void free_ds_type_%s (", tps[i]->print_id);
     print_c_type_name (tps[i]->constructors[0]->result, "", 0);
-    printf ("D, struct paramed_type *T);\n");
+    printf ("D, const struct paramed_type *T);\n");
   }
-  printf ("void free_ds_type_any (void *D, struct paramed_type *T);\n");
-
-  printf ("#ifdef __cplusplus\n");
-  printf ("}\n");
-  printf ("#endif\n");
+  printf ("void free_ds_type_any (void *D, const struct paramed_type *T);\n");
 }
 
 void gen_store_ds_source (void) {
@@ -2884,7 +2841,7 @@ void gen_store_ds_source (void) {
     gen_type_store_ds (tps[i]);
   }
   printf ("void store_ds_type_any (void *D, struct paramed_type *T) {\n  TGL_UNUSED(D);\n");
-  printf ("  switch (T->type->name) {\n");
+  printf ("  switch (T->type.name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
     printf ("  case 0x%08x: store_ds_type_%s (D, T); return;\n", tps[i]->name, tps[i]->print_id);
     printf ("  case 0x%08x: store_ds_type_bare_%s (D, T); return;\n", ~tps[i]->name, tps[i]->print_id);
@@ -2898,10 +2855,6 @@ void gen_store_ds_header (void) {
   printf ("#include \"auto/auto-types.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
-
-  printf ("#ifdef __cplusplus\n");
-  printf ("extern \"C\" {\n");
-  printf ("#endif\n");
 
   printf ("struct tgl_in_buffer;\n");
   printf ("struct tgl_state;\n");
@@ -2924,10 +2877,6 @@ void gen_store_ds_header (void) {
     printf ("D, struct paramed_type *T);\n");
   }
   printf ("void store_ds_type_any (void *D, struct paramed_type *T);\n");
-
-  printf ("#ifdef __cplusplus\n");
-  printf ("}\n");
-  printf ("#endif\n");
 }
 
 void gen_print_ds_header (void) {
@@ -2938,10 +2887,6 @@ void gen_print_ds_header (void) {
   printf ("#include \"auto-types.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
-
-  printf ("#ifdef __cplusplus\n");
-  printf ("extern \"C\" {\n");
-  printf ("#endif\n");
 
   printf ("struct tgl_in_buffer;\n");
   printf ("struct tgl_state;\n");
@@ -2964,10 +2909,6 @@ void gen_print_ds_header (void) {
     printf ("DS, struct paramed_type *T);\n");
   }
   printf ("int print_ds_type_any (void *DS, struct paramed_type *T);\n");
-
-  printf ("#ifdef __cplusplus\n");
-  printf ("}\n");
-  printf ("#endif\n");
 
   printf ("#endif\n");
 }
@@ -2993,7 +2934,7 @@ void gen_print_ds_source (void) {
     gen_type_print_ds (tps[i]);
   }
   printf ("int print_ds_type_any (void *DS, struct paramed_type *T) {\n  TGL_UNUSED(DS);\n");
-  printf ("  switch (T->type->name) {\n");
+  printf ("  switch (T->type.name) {\n");
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type") && tps[i]->name) {
     printf ("  case 0x%08x: return print_ds_type_%s (DS, T);\n", tps[i]->name, tps[i]->print_id);
     printf ("  case 0x%08x: return print_ds_type_bare_%s (DS, T);\n", ~tps[i]->name, tps[i]->print_id);

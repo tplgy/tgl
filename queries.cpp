@@ -531,7 +531,7 @@ int query::handle_result(tgl_in_buffer* in)
 
     tgl_in_buffer skip_in = *in;
     if (skip_type_any(&skip_in, &m_type) < 0) {
-        TGL_ERROR("Skipped " << (long)(skip_in.ptr - in->ptr) << " int out of " << (long)(skip_in.end - in->ptr) << " (type " << m_type.type->id << ") (query type " << name() << ")");
+        TGL_ERROR("Skipped " << (long)(skip_in.ptr - in->ptr) << " int out of " << (long)(skip_in.end - in->ptr) << " (type " << m_type.type.id << ") (query type " << name() << ")");
         TGL_ERROR("0x" << std::hex << *(in->ptr - 1) << " 0x" << *(in->ptr) << " 0x" << *(in->ptr + 1) << " 0x" << *(in->ptr + 2));
         assert (0);
     }
@@ -3547,8 +3547,8 @@ void tgl_do_delete_msg (tgl_message_id_t *_msg_id, std::function<void(bool succe
 
 /* {{{ Export card */
 static struct paramed_type bare_int_type = TYPE_TO_PARAM (bare_int);
-static struct paramed_type *bare_int_array_type[1] = {&bare_int_type};
-static struct paramed_type vector_type = (struct paramed_type) {.type = &tl_type_vector, .params=bare_int_array_type};
+static struct paramed_type bare_int_array_type[1] = {bare_int_type};
+static struct paramed_type vector_type = (struct paramed_type) {.type = tl_type_vector, .params=bare_int_array_type};
 
 class query_export_card: public query
 {

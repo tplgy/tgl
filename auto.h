@@ -26,25 +26,25 @@
 
 struct tl_type_descr {
   unsigned name;
-  char *id;
+  const char *id;
   int params_num;
   long long params_types;
 };
 
 struct paramed_type {
-  struct tl_type_descr *type;
-  struct paramed_type **params;
+  const struct tl_type_descr& type;
+  const struct paramed_type* params;
 };
 
 #define NAME_ARRAY 0x89932ad9
 
 #define TGL_UNUSED(x) (void)x;
 
-#define TYPE_TO_PARAM(NAME) ((struct paramed_type) {.type = &tl_type_## NAME, .params=0})
-#define TYPE_TO_PARAM_1(NAME,PARAM1) ((struct paramed_type) {.type = &tl_type_## NAME, .params=(struct paramed_type *[1]){PARAM1}})
+#define TYPE_TO_PARAM(NAME) ((struct paramed_type) {.type = tl_type_## NAME, .params=0})
+#define TYPE_TO_PARAM_1(NAME,PARAM1) ((struct paramed_type) {.type = tl_type_## NAME, .params=(struct paramed_type [1]){PARAM1}})
 #define ODDP(x) (((long)(x)) & 1)
 #define EVENP(x) (!ODDP(x))
-#define INT2PTR(x) (void *)(long)(((long)x) * 2 + 1)
+#define INT2PTR(x) (struct paramed_type *)(long)(((long)x) * 2 + 1)
 #define PTR2INT(x) ((((long)x) - 1) / 2)
 
 static inline void *memdup (const void *d, int len) {
