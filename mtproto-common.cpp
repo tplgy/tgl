@@ -54,8 +54,6 @@
 #define O_BINARY 0
 #endif
 
-static long long rsa_encrypted_chunks, rsa_decrypted_chunks;
-
 //int verbosity;
 
 #ifndef WIN32
@@ -195,14 +193,18 @@ int tgl_serialize_bignum (const TGLC_bn *b, char *buffer, int maxlen) {
 
 
 long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key) {
-  static char tempbuff[4096];
-  static unsigned char sha[20]; 
+  unsigned char sha[20];
+  memset(sha, 0, sizeof(sha));
+
+  std::unique_ptr<char[]> temp_buffer(new char[4096]);
+  memset(temp_buffer.get(), 0, 4096);
+
   assert (TGLC_rsa_n (key) && TGLC_rsa_e (key));
-  int l1 = tgl_serialize_bignum (TGLC_rsa_n (key), tempbuff, 4096);
+  int l1 = tgl_serialize_bignum (TGLC_rsa_n (key), temp_buffer.get(), 4096);
   assert (l1 > 0);
-  int l2 = tgl_serialize_bignum (TGLC_rsa_e (key), tempbuff + l1, 4096 - l1);
+  int l2 = tgl_serialize_bignum (TGLC_rsa_e (key), temp_buffer.get() + l1, 4096 - l1);
   assert (l2 > 0 && l1 + l2 <= 4096);
-  TGLC_sha1 ((unsigned char *)tempbuff, l1 + l2, sha);
+  TGLC_sha1 ((unsigned char *)temp_buffer.get(), l1 + l2, sha);
   return *(long long *)(sha + 12);
 }
 
@@ -237,7 +239,6 @@ int tgl_pad_rsa_encrypt (const char *from, int from_len, char *to, int size, TGL
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> y(TGLC_bn_new());
   assert(x);
   assert(y);
-  rsa_encrypted_chunks += chunks;
   for (i = 0; i < chunks; i++) {
     TGLC_bn_bin2bn ((unsigned char *) from, 255, x.get());
     result = TGLC_bn_mod_exp (y.get(), x.get(), E, N, tgl_state::instance()->bn_ctx());
@@ -265,7 +266,6 @@ int tgl_pad_rsa_decrypt (const char *from, int from_len, char *to, int size, TGL
   assert(x);
   assert(y);
   for (i = 0; i < chunks; i++) {
-    ++rsa_decrypted_chunks;
     TGLC_bn_bin2bn ((unsigned char *) from, 256, x);
     auto result = TGLC_bn_mod_exp (y, x, D, N, tgl_state::instance()->bn_ctx());
     TGL_ASSERT_UNUSED(result, result == 1);
@@ -285,11 +285,14 @@ int tgl_pad_rsa_decrypt (const char *from, int from_len, char *to, int size, TGL
   return chunks * 255;
 }
 
-static unsigned char aes_key_raw[32], aes_iv[32];
-static TGLC_aes_key aes_key;
+void tgl_init_aes_unauth(TGLC_aes_key* aes_key, unsigned char aes_iv[32], const unsigned char server_nonce[16], const unsigned char hidden_client_nonce[32], int encrypt) {
+  unsigned char buffer[64], hash[20];
+  unsigned char aes_key_raw[32];
+  memset(buffer, 0, sizeof(buffer));
+  memset(hash, 0, sizeof(hash));
+  memset(aes_key_raw, 0, sizeof(aes_key_raw));
+  memset(aes_iv, 0, 32);
 
-void tgl_init_aes_unauth (const unsigned char server_nonce[16], const unsigned char hidden_client_nonce[32], int encrypt) {
-  static unsigned char buffer[64], hash[20];
   memcpy (buffer, hidden_client_nonce, 32);
   memcpy (buffer + 32, server_nonce, 16);
   TGLC_sha1 (buffer, 48, aes_key_raw);
@@ -302,15 +305,21 @@ void tgl_init_aes_unauth (const unsigned char server_nonce[16], const unsigned c
   memcpy (aes_iv, hash + 12, 8);
   memcpy (aes_iv + 28, hidden_client_nonce, 4);
   if (encrypt) {
-    TGLC_aes_set_encrypt_key (aes_key_raw, 32*8, &aes_key);
+    TGLC_aes_set_encrypt_key (aes_key_raw, 32*8, aes_key);
   } else {
-    TGLC_aes_set_decrypt_key (aes_key_raw, 32*8, &aes_key);
+    TGLC_aes_set_decrypt_key (aes_key_raw, 32*8, aes_key);
   }
   memset (aes_key_raw, 0, sizeof (aes_key_raw));
 }
 
-void tgl_init_aes_auth (unsigned char auth_key[192], unsigned char msg_key[16], int encrypt) {
-  static unsigned char buffer[48], hash[20];
+void tgl_init_aes_auth(TGLC_aes_key* aes_key, unsigned char aes_iv[32], const unsigned char auth_key[192], const unsigned char msg_key[16], int encrypt) {
+  unsigned char buffer[48], hash[20];
+  unsigned char aes_key_raw[32];
+  memset(buffer, 0, sizeof(buffer));
+  memset(hash, 0, sizeof(hash));
+  memset(aes_key_raw, 0, sizeof(aes_key_raw));
+  memset(aes_iv, 0, 32);
+
   //  sha1_a = SHA1 (msg_key + substr (auth_key, 0, 32));
   //  sha1_b = SHA1 (substr (auth_key, 32, 16) + msg_key + substr (auth_key, 48, 16));
   //  sha1_с = SHA1 (substr (auth_key, 64, 32) + msg_key);
@@ -342,14 +351,14 @@ void tgl_init_aes_auth (unsigned char auth_key[192], unsigned char msg_key[16], 
   memcpy (aes_iv + 24, hash, 8);
   
   if (encrypt) {
-    TGLC_aes_set_encrypt_key (aes_key_raw, 32*8, &aes_key);
+    TGLC_aes_set_encrypt_key (aes_key_raw, 32*8, aes_key);
   } else {
-    TGLC_aes_set_decrypt_key (aes_key_raw, 32*8, &aes_key);
+    TGLC_aes_set_decrypt_key (aes_key_raw, 32*8, aes_key);
   }
   memset (aes_key_raw, 0, sizeof (aes_key_raw));
 }
 
-int tgl_pad_aes_encrypt (const unsigned char *from, int from_len, unsigned char *to, int size) {
+int tgl_pad_aes_encrypt(const TGLC_aes_key* aes_key, unsigned char aes_iv[32], const unsigned char *from, int from_len, unsigned char *to, int size) {
   int padded_size = (from_len + 15) & -16;
   if (!to) {
     return padded_size;
@@ -360,14 +369,14 @@ int tgl_pad_aes_encrypt (const unsigned char *from, int from_len, unsigned char 
     auto result = TGLC_rand_pseudo_bytes ((unsigned char *) from + from_len, padded_size - from_len);
     TGL_ASSERT_UNUSED(result, result >= 0);
   }
-  TGLC_aes_ige_encrypt ((unsigned char *) from, (unsigned char *) to, padded_size, &aes_key, aes_iv, 1);
+  TGLC_aes_ige_encrypt ((unsigned char *) from, (unsigned char *) to, padded_size, aes_key, aes_iv, 1);
   return padded_size;
 }
 
-int tgl_pad_aes_decrypt (const unsigned char *from, int from_len, unsigned char *to, int size) {
+int tgl_pad_aes_decrypt(const TGLC_aes_key* aes_key, unsigned char aes_iv[32], const unsigned char *from, int from_len, unsigned char *to, int size) {
   if (from_len <= 0 || from_len > size || (from_len & 15)) {
     return -1;
   }
-  TGLC_aes_ige_encrypt ((unsigned char *) from, (unsigned char *) to, from_len, &aes_key, aes_iv, 0);
+  TGLC_aes_ige_encrypt ((unsigned char *) from, (unsigned char *) to, from_len, aes_key, aes_iv, 0);
   return from_len;
 }

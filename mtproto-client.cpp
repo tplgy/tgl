@@ -56,6 +56,7 @@
 #include "auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-skip.h"
+#include "crypto/aes.h"
 #include "crypto/bn.h"
 #include "crypto/rand.h"
 #include "crypto/rsa_pem.h"
@@ -95,11 +96,6 @@ static_assert(!(sizeof(encrypted_message) & 3), "the encrypted_message has to be
 
 static long long generate_next_msg_id(const std::shared_ptr<tgl_dc>& DC, const std::shared_ptr<tgl_session>& S);
 static double get_server_time(const std::shared_ptr<tgl_dc>& DC);
-
-// for statistic only
-static int total_packets_sent;
-static long long total_data_sent;
-
 
 static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int len);
 static int rpc_becomes_ready (const std::shared_ptr<tgl_connection>& c);
@@ -173,8 +169,6 @@ static int rpc_send_packet(const std::shared_ptr<tgl_connection>& c, const char*
     c->write(data, len);
     c->flush();
 
-    total_packets_sent ++;
-    total_data_sent += total_len;
     return 1;
 }
 
@@ -196,8 +190,6 @@ static int rpc_send_message (const std::shared_ptr<tgl_connection>& c, void *dat
     TGL_ASSERT_UNUSED(result, result == len);
     c->flush();
 
-    total_packets_sent ++;
-    total_data_sent += total_len;
     return 1;
 }
 
@@ -372,10 +364,12 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   TGLC_sha1 (reinterpret_cast<const unsigned char*>(s.i32_data() + at + 5), (s.i32_size() - at - 5) * 4, sha1_buffer);
   s.out_i32s_at(at, reinterpret_cast<int32_t*>(sha1_buffer), 5);
 
-  tgl_init_aes_unauth(DC->server_nonce, DC->new_nonce, 1);
+  TGLC_aes_key aes_key;
+  unsigned char aes_iv[32];
+  tgl_init_aes_unauth(&aes_key, aes_iv, DC->server_nonce, DC->new_nonce, 1);
   int encrypted_buffer_size = tgl_pad_aes_encrypt_dest_buffer_size(s.char_size());
   std::unique_ptr<char[]> encrypted_data(new char[encrypted_buffer_size]);
-  int encrypted_data_size = tgl_pad_aes_encrypt(reinterpret_cast<const unsigned char*>(s.char_data()), s.char_size(),
+  int encrypted_data_size = tgl_pad_aes_encrypt(&aes_key, aes_iv, reinterpret_cast<const unsigned char*>(s.char_data()), s.char_size(),
           reinterpret_cast<unsigned char*>(encrypted_data.get()), encrypted_buffer_size);
 
   s.clear();
@@ -503,7 +497,9 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
     return -1;
   }
 
-  tgl_init_aes_unauth (DC->server_nonce, DC->new_nonce, 0);
+  TGLC_aes_key aes_key;
+  unsigned char aes_iv[32];
+  tgl_init_aes_unauth(&aes_key, aes_iv, DC->server_nonce, DC->new_nonce, 0);
 
   int l = prefetch_strlen (&in);
   assert (l > 0);
@@ -519,7 +515,7 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   }
 
   std::unique_ptr<int[]> decrypted_buffer(new int[(decrypted_buffer_size + 3) / 4]);
-  l = tgl_pad_aes_decrypt((unsigned char *)fetch_str (&in, l), l, reinterpret_cast<unsigned char*>(decrypted_buffer.get()), decrypted_buffer_size);
+  l = tgl_pad_aes_decrypt(&aes_key, aes_iv, (unsigned char *)fetch_str (&in, l), l, reinterpret_cast<unsigned char*>(decrypted_buffer.get()), decrypted_buffer_size);
   assert (in.ptr == in.end);
 
   tgl_in_buffer skip = { decrypted_buffer.get() + 5, decrypted_buffer.get() + (decrypted_buffer_size >> 2) };
@@ -793,8 +789,10 @@ static int aes_encrypt_message (unsigned char *key, struct encrypted_message *en
   TGLC_sha1 ((unsigned char *) &enc->server_salt, enc_len, sha1_buffer);
   TGL_DEBUG("sending message with sha1 " << std::hex << *(int *)sha1_buffer);
   memcpy (enc->msg_key, sha1_buffer + 4, 16);
-  tgl_init_aes_auth (key, enc->msg_key, AES_ENCRYPT);
-  return tgl_pad_aes_encrypt ((unsigned char *) &enc->server_salt, enc_len,
+  TGLC_aes_key aes_key;
+  unsigned char aes_iv[32];
+  tgl_init_aes_auth(&aes_key, aes_iv, key, enc->msg_key, AES_ENCRYPT);
+  return tgl_pad_aes_encrypt(&aes_key, aes_iv, (unsigned char *) &enc->server_salt, enc_len,
       (unsigned char*)&enc->server_salt, tgl_pad_aes_encrypt_dest_buffer_size(enc_len));
 }
 
@@ -1216,17 +1214,20 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
         " (perm_auth_key_id " << DC->auth_key_id << " temp_auth_key_id "<< DC->temp_auth_key_id << "). Dropping");
     return 0;
   }
+
+  TGLC_aes_key aes_key;
+  unsigned char aes_iv[32];
   if (enc->auth_key_id == DC->temp_auth_key_id) {
     assert (enc->auth_key_id == DC->temp_auth_key_id);
     assert (DC->temp_auth_key_id);
-    tgl_init_aes_auth (DC->temp_auth_key + 8, enc->msg_key, AES_DECRYPT);
+    tgl_init_aes_auth(&aes_key, aes_iv, DC->temp_auth_key + 8, enc->msg_key, AES_DECRYPT);
   } else {
     assert (enc->auth_key_id == DC->auth_key_id);
     assert (DC->auth_key_id);
-    tgl_init_aes_auth (DC->auth_key + 8, enc->msg_key, AES_DECRYPT);
+    tgl_init_aes_auth(&aes_key, aes_iv, DC->auth_key + 8, enc->msg_key, AES_DECRYPT);
   }
 
-  int l = tgl_pad_aes_decrypt ((unsigned char *)&enc->server_salt, len - UNENCSZ, (unsigned char *)&enc->server_salt, len - UNENCSZ);
+  int l = tgl_pad_aes_decrypt(&aes_key, aes_iv, (unsigned char *)&enc->server_salt, len - UNENCSZ, (unsigned char *)&enc->server_salt, len - UNENCSZ);
   TGL_ASSERT_UNUSED(l, l == len - UNENCSZ);
 
   if (!(!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12)) {

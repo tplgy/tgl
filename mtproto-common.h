@@ -421,14 +421,16 @@ static inline int tgl_pad_rsa_encrypt_dest_buffer_size(int src_buffer_size)
 #define AES_DECRYPT 0
 #define AES_ENCRYPT 1
 
-void tgl_init_aes_unauth (const unsigned char server_nonce[16], const unsigned char hidden_client_nonce[32], int encrypt);
-void tgl_init_aes_auth (unsigned char auth_key[192], unsigned char msg_key[16], int encrypt);
-int tgl_pad_aes_encrypt (const unsigned char *from, int from_len, unsigned char *to, int size);
-int tgl_pad_aes_decrypt (const unsigned char *from, int from_len, unsigned char *to, int size);
+struct TGLC_aes_key;
+
+void tgl_init_aes_unauth(TGLC_aes_key* aes_key, unsigned char aes_iv[32], const unsigned char server_nonce[16], const unsigned char hidden_client_nonce[32], int encrypt);
+void tgl_init_aes_auth(TGLC_aes_key* aes_key, unsigned char aes_iv[32], const unsigned char auth_key[192], const unsigned char msg_key[16], int encrypt);
+int tgl_pad_aes_encrypt(const TGLC_aes_key* aes_key, unsigned char aes_iv[32], const unsigned char *from, int from_len, unsigned char *to, int size);
+int tgl_pad_aes_decrypt(const TGLC_aes_key* aes_key, unsigned char aes_iv[32], const unsigned char *from, int from_len, unsigned char *to, int size);
 
 static inline int tgl_pad_aes_encrypt_dest_buffer_size(int src_buffer_size)
 {
-    return tgl_pad_aes_encrypt(NULL, src_buffer_size, NULL, 0);
+    return tgl_pad_aes_encrypt(NULL, NULL, NULL, src_buffer_size, NULL, 0);
 }
 
 static inline int tgl_pad_aes_decrypt_dest_buffer_size(int src_buffer_size)
