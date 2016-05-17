@@ -44,7 +44,6 @@ tgl_state::tgl_state()
     , locks(0)
     , DC_working(NULL)
     , temp_key_expire_time(0)
-    , bn_ctx(0)
     , ev_login(NULL)
     , m_app_id(0)
     , m_error_code(0)
@@ -56,6 +55,7 @@ tgl_state::tgl_state()
     , m_our_id(tgl_peer_id_t())
     , m_enable_pfs(false)
     , m_ipv6_enabled(false)
+    , m_bn_ctx(TGLC_bn_ctx_new())
 {
 }
 

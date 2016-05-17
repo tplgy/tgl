@@ -116,14 +116,14 @@ struct tgl_state {
   std::shared_ptr<tgl_dc> DC_working;
   int temp_key_expire_time;
 
-  TGLC_bn_ctx *bn_ctx;
-
   std::vector<std::shared_ptr<tgl_message>> unsent_messages;
 
   std::shared_ptr<tgl_timer> ev_login;
 
   int init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
   void login();
+
+  TGLC_bn_ctx* bn_ctx() { return m_bn_ctx.get(); }
 
   void set_auth_key(int num, const char *buf);
   void set_our_id(int id);
@@ -205,6 +205,8 @@ private:
   std::shared_ptr<tgl_timer_factory> m_timer_factory;
   std::shared_ptr<tgl_connection_factory> m_connection_factory;
   std::shared_ptr<tgl_update_callback> m_callback;
+
+  std::unique_ptr<TGLC_bn_ctx, TGLC_bn_ctx_deleter> m_bn_ctx;
 };
 
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);

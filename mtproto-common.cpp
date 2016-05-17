@@ -162,8 +162,6 @@ void tgl_prng_seed (const char *password_filename, int password_length) {
       tfree_secure (a, password_length);
     }
   }
-  tgl_state::instance()->bn_ctx = TGLC_bn_ctx_new ();
-  ensure_ptr (tgl_state::instance()->bn_ctx);
 }
 
 int tgl_serialize_bignum (const TGLC_bn *b, char *buffer, int maxlen) {
@@ -242,7 +240,7 @@ int tgl_pad_rsa_encrypt (const char *from, int from_len, char *to, int size, TGL
   rsa_encrypted_chunks += chunks;
   for (i = 0; i < chunks; i++) {
     TGLC_bn_bin2bn ((unsigned char *) from, 255, x.get());
-    result = TGLC_bn_mod_exp (y.get(), x.get(), E, N, tgl_state::instance()->bn_ctx);
+    result = TGLC_bn_mod_exp (y.get(), x.get(), E, N, tgl_state::instance()->bn_ctx());
     TGL_ASSERT_UNUSED(result, result == 1);
     unsigned l = 256 - TGLC_bn_num_bytes (y.get());
     assert (l <= 256);
@@ -269,7 +267,7 @@ int tgl_pad_rsa_decrypt (const char *from, int from_len, char *to, int size, TGL
   for (i = 0; i < chunks; i++) {
     ++rsa_decrypted_chunks;
     TGLC_bn_bin2bn ((unsigned char *) from, 256, x);
-    auto result = TGLC_bn_mod_exp (y, x, D, N, tgl_state::instance()->bn_ctx);
+    auto result = TGLC_bn_mod_exp (y, x, D, N, tgl_state::instance()->bn_ctx());
     TGL_ASSERT_UNUSED(result, result == 1);
     int l = TGLC_bn_num_bytes (y);
     if (l > 255) {

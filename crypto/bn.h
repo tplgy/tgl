@@ -58,6 +58,13 @@ struct TGLC_bn_deleter {
     }
 };
 
+struct TGLC_bn_ctx_deleter {
+    void operator()(TGLC_bn_ctx* ctx)
+    {
+        TGLC_bn_ctx_free(ctx);
+    }
+};
+
 #endif
 
 #define TGLC_bn_num_bytes(a) ((TGLC_bn_num_bits(a)+7)/8)

@@ -860,7 +860,7 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     return; 
   } // Already generated key for this chat
   assert (!secret_chat->g_key.empty());
-  assert (tgl_state::instance()->bn_ctx);
+  assert (tgl_state::instance()->bn_ctx());
   unsigned char random_here[256];
   tglt_secure_random (random_here, 256);
   for (i = 0; i < 256; i++) {
@@ -879,7 +879,7 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
   TGLC_bn *p = secret_chat->encr_prime_bn();
   TGLC_bn *r = TGLC_bn_new ();
   ensure_ptr (r);
-  ensure (TGLC_bn_mod_exp (r, g_a, b, p, tgl_state::instance()->bn_ctx));
+  ensure (TGLC_bn_mod_exp (r, g_a, b, p, tgl_state::instance()->bn_ctx()));
   static unsigned char kk[256];
   memset (kk, 0, sizeof (kk));
   TGLC_bn_bn2bin (r, kk + (256 - TGLC_bn_num_bytes (r)));
@@ -908,7 +908,7 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
   q->out_i64 (secret_chat->access_hash);
   
   ensure (TGLC_bn_set_word (g_a, secret_chat->encr_root));
-  ensure (TGLC_bn_mod_exp (r, g_a, b, p, tgl_state::instance()->bn_ctx));
+  ensure (TGLC_bn_mod_exp (r, g_a, b, p, tgl_state::instance()->bn_ctx()));
   static unsigned char buf[256];
   memset (buf, 0, sizeof (buf));
   TGLC_bn_bn2bin (r, buf + (256 - TGLC_bn_num_bytes (r)));
@@ -935,7 +935,7 @@ void tgl_do_create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat)
   ensure_ptr (r);
   TGLC_bn *a = TGLC_bn_bin2bn (secret_chat->key(), tgl_secret_chat::key_size(), 0);
   ensure_ptr (a);
-  ensure (TGLC_bn_mod_exp (r, g_b, a, p, tgl_state::instance()->bn_ctx));
+  ensure (TGLC_bn_mod_exp (r, g_b, a, p, tgl_state::instance()->bn_ctx()));
 
   std::vector<unsigned char> key(tgl_secret_chat::key_size(), 0);
 
@@ -977,7 +977,7 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
   TGLC_bn *r = TGLC_bn_new ();
   ensure_ptr (r);
 
-  ensure (TGLC_bn_mod_exp (r, g, a, p, tgl_state::instance()->bn_ctx));
+  ensure (TGLC_bn_mod_exp (r, g, a, p, tgl_state::instance()->bn_ctx()));
 
   TGLC_bn_clear_free (a);
 
