@@ -54,10 +54,6 @@
 #define O_BINARY 0
 #endif
 
-static int __packet_buffer[PACKET_BUFFER_SIZE + 16];
-int *tgl_packet_ptr;
-int *tgl_packet_buffer = __packet_buffer + 16;
-
 static long long rsa_encrypted_chunks, rsa_decrypted_chunks;
 
 //int verbosity;

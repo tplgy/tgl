@@ -57,13 +57,23 @@ class query;
 
 struct tgl_session {
   std::weak_ptr<tgl_dc> dc;
-  long long session_id = 0;
-  long long last_msg_id = 0;
-  int seq_no = 0;
-  int received_messages = 0;
-  std::shared_ptr<tgl_connection> c = nullptr;
+  long long session_id;
+  long long last_msg_id;
+  int seq_no;
+  int received_messages;
+  std::shared_ptr<tgl_connection> c;
   std::vector<long> ack_tree;
-  std::shared_ptr<tgl_timer> ev = nullptr;
+  std::shared_ptr<tgl_timer> ev;
+  tgl_session()
+      : dc()
+      , session_id(0)
+      , last_msg_id(0)
+      , seq_no(0)
+      , received_messages(0)
+      , c()
+      , ack_tree()
+      , ev()
+  { }
 };
 
 struct tgl_dc_option {

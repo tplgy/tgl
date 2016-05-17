@@ -72,6 +72,27 @@
 #define MAX_NET_RES        (1L << 16)
 //extern int log_level;
 
+constexpr int MAX_MESSAGE_INTS = 1048576;
+
+#pragma pack(push,4)
+struct encrypted_message {
+  // unencrypted header
+  long long auth_key_id;
+  unsigned char msg_key[16];
+  // encrypted part, starts with encrypted header
+  long long server_salt;
+  long long session_id;
+  // long long auth_key_id2; // removed
+  // first message follows
+  long long msg_id;
+  int seq_no;
+  int msg_len;   // divisible by 4
+  int message[1];
+};
+#pragma pack(pop)
+
+static_assert(!(sizeof(encrypted_message) & 3), "the encrypted_message has to be 4 bytes alligned");
+
 static long long generate_next_msg_id(const std::shared_ptr<tgl_dc>& DC, const std::shared_ptr<tgl_session>& S);
 static double get_server_time(const std::shared_ptr<tgl_dc>& DC);
 
@@ -279,6 +300,7 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
   }
 
   unsigned char sha1_buffer[20];
+  memset(sha1_buffer, 0, sizeof(sha1_buffer));
   TGLC_sha1 (reinterpret_cast<const unsigned char*>(s.i32_data() + at + 5), (s.i32_size() - at - 5) * 4, sha1_buffer);
   s.out_i32s_at(at, reinterpret_cast<int32_t*>(sha1_buffer), 5);
 
@@ -346,6 +368,7 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   }
 
   unsigned char sha1_buffer[20];
+  memset(sha1_buffer, 0, sizeof(sha1_buffer));
   TGLC_sha1 (reinterpret_cast<const unsigned char*>(s.i32_data() + at + 5), (s.i32_size() - at - 5) * 4, sha1_buffer);
   s.out_i32s_at(at, reinterpret_cast<int32_t*>(sha1_buffer), 5);
 
@@ -761,16 +784,30 @@ static void init_enc_msg_inner_temp(encrypted_message& enc_msg, std::shared_ptr<
 
 static int aes_encrypt_message (unsigned char *key, struct encrypted_message *enc) {
   unsigned char sha1_buffer[20];
+  memset(sha1_buffer, 0, sizeof(sha1_buffer));
   const int MINSZ = offsetof (struct encrypted_message, message);
   const int UNENCSZ = offsetof (struct encrypted_message, server_salt);
 
   int enc_len = (MINSZ - UNENCSZ) + enc->msg_len;
   assert (enc->msg_len >= 0 && enc->msg_len <= MAX_MESSAGE_INTS * 4 - 16 && !(enc->msg_len & 3));
   TGLC_sha1 ((unsigned char *) &enc->server_salt, enc_len, sha1_buffer);
-  TGL_DEBUG("sending message with sha1 " << *(int *)sha1_buffer);
+  TGL_DEBUG("sending message with sha1 " << std::hex << *(int *)sha1_buffer);
   memcpy (enc->msg_key, sha1_buffer + 4, 16);
   tgl_init_aes_auth (key, enc->msg_key, AES_ENCRYPT);
-  return tgl_pad_aes_encrypt ((unsigned char *) &enc->server_salt, enc_len, (unsigned char *) &enc->server_salt, MAX_MESSAGE_INTS * 4 + (MINSZ - UNENCSZ));
+  return tgl_pad_aes_encrypt ((unsigned char *) &enc->server_salt, enc_len,
+      (unsigned char*)&enc->server_salt, tgl_pad_aes_encrypt_dest_buffer_size(enc_len));
+}
+
+static std::unique_ptr<char[]> allocate_encrypted_message_buffer(int msg_ints)
+{
+    // This will be slightly larger than the exactly needed.
+    int buffer_size = sizeof(encrypted_message) + tgl_pad_aes_encrypt_dest_buffer_size(
+        offsetof(encrypted_message, message) - offsetof(encrypted_message, server_salt)
+        + msg_ints * 4);
+
+    std::unique_ptr<char[]> buffer(new char[buffer_size]);
+    memset(buffer.get(), 0, buffer_size);
+    return buffer;
 }
 
 long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
@@ -798,24 +835,18 @@ long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
         return -1;
     }
 
-    encrypted_message enc_msg;
+    std::unique_ptr<char[]> buffer = allocate_encrypted_message_buffer(msg_ints);
+    encrypted_message* enc_msg = reinterpret_cast<encrypted_message*>(buffer.get());
 
-    if (msg) {
-        memcpy (enc_msg.message, msg, msg_ints * 4);
-        enc_msg.msg_len = msg_ints * 4;
-    } else {
-        if ((enc_msg.msg_len & 0x80000003) || enc_msg.msg_len > MAX_MESSAGE_INTS * 4 - 16) {
-            TGL_NOTICE("message too long");
-            return -1;
-        }
-    }
+    memcpy (enc_msg->message, msg, msg_ints * 4);
+    enc_msg->msg_len = msg_ints * 4;
 
-    enc_msg.msg_id = msg_id_override;
-    init_enc_msg(enc_msg, S, useful);
+    enc_msg->msg_id = msg_id_override;
+    init_enc_msg(*enc_msg, S, useful);
 
-    int l = aes_encrypt_message(DC->temp_auth_key, &enc_msg);
+    int l = aes_encrypt_message(DC->temp_auth_key, enc_msg);
     assert (l > 0);
-    rpc_send_message (c, &enc_msg, l + UNENCSZ);
+    rpc_send_message (c, enc_msg, l + UNENCSZ);
 
     return S->last_msg_id;
 }
@@ -833,17 +864,18 @@ int tglmp_encrypt_inner_temp (const std::shared_ptr<tgl_connection>& c, const in
         return -1;
     }
 
-    encrypted_message enc_msg;
+    std::unique_ptr<char[]> buffer = allocate_encrypted_message_buffer(msg_ints);
+    encrypted_message* enc_msg = reinterpret_cast<encrypted_message*>(buffer.get());
 
-    memcpy (enc_msg.message, msg, msg_ints * 4);
-    enc_msg.msg_len = msg_ints * 4;
+    memcpy (enc_msg->message, msg, msg_ints * 4);
+    enc_msg->msg_len = msg_ints * 4;
 
-    init_enc_msg_inner_temp (enc_msg, DC, msg_id);
+    init_enc_msg_inner_temp (*enc_msg, DC, msg_id);
 
-    int l = aes_encrypt_message(DC->auth_key, &enc_msg);
+    int l = aes_encrypt_message(DC->auth_key, enc_msg);
     assert (l > 0);
     //rpc_send_message (c, &enc_msg, l + UNENCSZ);
-    memcpy (data, &enc_msg, l + UNENCSZ);
+    memcpy (data, enc_msg, l + UNENCSZ);
 
     return l + UNENCSZ;
 }

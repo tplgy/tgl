@@ -104,29 +104,7 @@
 #define CODE_msg_new_detailed_info 0x809db6df
 
 #define CODE_msg_detailed_info 0x276d3ec6
-/* not really a limit, for struct encrypted_message only */
-// #define MAX_MESSAGE_INTS	16384
-#define MAX_MESSAGE_INTS	1048576
 #define MAX_PROTO_MESSAGE_INTS	1048576
-
-#define PACKET_BUFFER_SIZE	(16384 * 100 + 16) // temp fix
-#pragma pack(push,4)
-struct encrypted_message {
-  // unencrypted header
-  long long auth_key_id;
-  unsigned char msg_key[16];
-  // encrypted part, starts with encrypted header
-  long long server_salt;
-  long long session_id;
-  // long long auth_key_id2; // removed
-  // first message follows
-  long long msg_id;
-  int seq_no;
-  int msg_len;   // divisible by 4
-  int message[MAX_MESSAGE_INTS];
-};
-
-#pragma pack(pop)
 
 //TGLC_bn_ctx *bn_ctx;
 
