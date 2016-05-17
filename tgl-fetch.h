@@ -48,7 +48,7 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_messag
 //void tglf_fetch_chat_full (struct tgl_chat *C);
 
 #ifdef ENABLE_SECRET_CHAT
-void tglf_fetch_encrypted_message_file (struct tgl_message_media *M, const tl_ds_encrypted_file *DS_EF);
+void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>& M, const tl_ds_encrypted_file *DS_EF);
 std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_ds_decrypted_message_media *DS_DMM);
 std::shared_ptr<tgl_message_action> tglf_fetch_message_action_encrypted(const tl_ds_decrypted_message_action *DS_DMA);
 #endif
