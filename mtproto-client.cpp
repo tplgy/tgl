@@ -300,7 +300,8 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
   assert(encrypted_buffer_size > 0);
   std::unique_ptr<char[]> encrypted_data(new char[encrypted_buffer_size]);
   const TGLC_rsa* key = tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->public_key();
-  int encrypted_data_size = tgl_pad_rsa_encrypt(s.char_data(), s.char_size(), encrypted_data.get(), encrypted_buffer_size, TGLC_rsa_n(key), TGLC_rsa_e(key));
+  size_t unpadded_size = s.ensure_size(encrypted_buffer_size);
+  int encrypted_data_size = tgl_pad_rsa_encrypt(s.char_data(), unpadded_size, encrypted_data.get(), encrypted_buffer_size, TGLC_rsa_n(key), TGLC_rsa_e(key));
 
   s.clear();
   s.out_i32 (CODE_req_DH_params);
@@ -369,7 +370,8 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   tgl_init_aes_unauth(&aes_key, aes_iv, DC->server_nonce, DC->new_nonce, 1);
   int encrypted_buffer_size = tgl_pad_aes_encrypt_dest_buffer_size(s.char_size());
   std::unique_ptr<char[]> encrypted_data(new char[encrypted_buffer_size]);
-  int encrypted_data_size = tgl_pad_aes_encrypt(&aes_key, aes_iv, reinterpret_cast<const unsigned char*>(s.char_data()), s.char_size(),
+  size_t unpadded_size = s.ensure_size(encrypted_buffer_size);
+  int encrypted_data_size = tgl_pad_aes_encrypt(&aes_key, aes_iv, reinterpret_cast<const unsigned char*>(s.char_data()), unpadded_size,
           reinterpret_cast<unsigned char*>(encrypted_data.get()), encrypted_buffer_size);
 
   s.clear();

@@ -223,6 +223,15 @@ public:
         return old_size;
     }
 
+    size_t ensure_size(size_t bytes)
+    {
+        size_t old_size = m_data.size();
+        if (old_size < bytes) {
+            m_data.resize(bytes);
+        }
+        return old_size * 4;
+    }
+
     void clear() { m_data.clear(); }
 
     const int32_t* i32_data() const { return m_data.data(); }
