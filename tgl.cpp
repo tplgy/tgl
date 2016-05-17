@@ -40,13 +40,12 @@
 #include <stdlib.h>
 
 tgl_state::tgl_state()
-    : started(false)
-    , locks(0)
-    , DC_working(NULL)
-    , temp_key_expire_time(0)
+    : locks(0)
     , ev_login(NULL)
+    , m_is_started(false)
     , m_app_id(0)
     , m_error_code(0)
+    , m_temp_key_expire_time(0)
     , m_pts(0)
     , m_qts(0)
     , m_date(0)
@@ -68,20 +67,20 @@ tgl_state *tgl_state::instance()
 void tgl_state::set_auth_key(int num, const char *buf)
 {
     assert (num > 0 && num <= MAX_DC_ID);
-    assert (DC_list[num]);
+    assert (m_dcs[num]);
 
     if (buf) {
-        memcpy(DC_list[num]->auth_key, buf, 256);
+        memcpy(m_dcs[num]->auth_key, buf, 256);
     }
 
     static unsigned char sha1_buffer[20];
-    TGLC_sha1 ((unsigned char *)DC_list[num]->auth_key, 256, sha1_buffer);
-    DC_list[num]->auth_key_id = *(long long *)(sha1_buffer + 12);
+    TGLC_sha1 ((unsigned char *)m_dcs[num]->auth_key, 256, sha1_buffer);
+    m_dcs[num]->auth_key_id = *(long long *)(sha1_buffer + 12);
 
-    DC_list[num]->flags |= TGLDCF_AUTHORIZED;
+    m_dcs[num]->flags |= TGLDCF_AUTHORIZED;
 
-    TGL_DEBUG("set auth key for DC " << num << " to " << std::hex << DC_list[num]->auth_key_id);
-    m_callback->dc_update(DC_list[num]);
+    TGL_DEBUG("set auth key for DC " << num << " to " << std::hex << m_dcs[num]->auth_key_id);
+    m_callback->dc_update(m_dcs[num]);
 }
 
 void tgl_state::set_our_id(int id)
@@ -100,10 +99,10 @@ void tgl_state::set_dc_option(int flags, int id, std::string ip, int port)
         return;
     }
 
-    if (static_cast<size_t>(id) >= DC_list.size()) {
-        DC_list.resize(id+1, nullptr);
+    if (static_cast<size_t>(id) >= m_dcs.size()) {
+        m_dcs.resize(id+1, nullptr);
     }
-    std::shared_ptr<tgl_dc> DC = DC_list[id];
+    std::shared_ptr<tgl_dc> DC = m_dcs[id];
 
     if (DC) {
         tgl_dc_option option = DC->options[flags & 3];
@@ -121,19 +120,19 @@ void tgl_state::set_dc_signed(int num)
 {
     TGL_DEBUG2("set signed " << num);
     assert (num > 0 && num <= MAX_DC_ID);
-    assert (DC_list[num]);
-    DC_list[num]->flags |= TGLDCF_LOGGED_IN;
-    m_callback->dc_update(DC_list[num]);
+    assert (m_dcs[num]);
+    m_dcs[num]->flags |= TGLDCF_LOGGED_IN;
+    m_callback->dc_update(m_dcs[num]);
 }
 
 void tgl_state::set_working_dc(int num)
 {
-    if (DC_working && DC_working->id == num) {
+    if (m_working_dc && m_working_dc->id == num) {
         return;
     }
     TGL_DEBUG2("change working DC to " << num);
     assert (num > 0 && num <= MAX_DC_ID);
-    DC_working = DC_list[num];
+    m_working_dc = m_dcs[num];
     m_callback->change_active_dc(num);
 }
 
@@ -186,8 +185,8 @@ int tgl_state::init(const std::string &&download_dir, int app_id, const std::str
   m_app_version = app_version;
   assert(m_timer_factory);
   assert(m_connection_factory);
-  if (!temp_key_expire_time) {
-    temp_key_expire_time = 100000;
+  if (!m_temp_key_expire_time) {
+    m_temp_key_expire_time = 100000;
   }
 
   if (tglmp_on_start () < 0) {
@@ -308,4 +307,29 @@ void tgl_state::remove_all_queries()
 {
     m_pending_queries.clear();
     m_active_queries.clear();
+}
+
+std::shared_ptr<tgl_dc> tgl_state::dc_at(int id)
+{
+    if (static_cast<size_t>(id) >= m_dcs.size()) {
+        return nullptr;
+    }
+
+    return m_dcs[id];
+}
+
+std::shared_ptr<tgl_dc> tgl_state::allocate_dc(int id)
+{
+    if (static_cast<size_t>(id) >= m_dcs.size()) {
+        m_dcs.resize(id+1, nullptr);
+    }
+
+    assert(!m_dcs[id]);
+
+    std::shared_ptr<tgl_dc> dc = std::make_shared<tgl_dc>();
+    dc->id = id;
+    dc->sessions[0] = nullptr;
+    m_dcs[id] = dc;
+
+    return dc;
 }

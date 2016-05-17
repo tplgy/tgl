@@ -87,7 +87,7 @@ void tgl_dc::add_query(std::shared_ptr<query> q) {
 void tgl_dc::remove_query(std::shared_ptr<query> q) {
     active_queries.remove(q);
 
-    if (active_queries.empty() && pending_queries.empty() && tgl_state::instance()->DC_working.get() != this) {
+    if (active_queries.empty() && pending_queries.empty() && tgl_state::instance()->working_dc().get() != this) {
         session_cleanup_timer->start(SESSION_CLEANUP_TIMEOUT);
     }
 }

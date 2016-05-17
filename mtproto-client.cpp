@@ -296,7 +296,7 @@ static void send_req_dh_packet (const std::shared_ptr<tgl_connection>& c, TGLC_b
   tglt_secure_random (DC->new_nonce, 32);
   s.out_i32s ((int *) DC->new_nonce, 8);
   if (temp_key) {
-    s.out_i32 (tgl_state::instance()->temp_key_expire_time);
+    s.out_i32 (tgl_state::instance()->temp_key_expire_time());
   }
 
   unsigned char sha1_buffer[20];
@@ -714,7 +714,7 @@ static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c) {
         tglt_secure_random ((unsigned char*)&S->session_id, 8);
     }
     s.out_i64 (S->session_id);
-    int expires = time (0) + DC->server_time_delta + tgl_state::instance()->temp_key_expire_time;
+    int expires = time (0) + DC->server_time_delta + tgl_state::instance()->temp_key_expire_time();
     s.out_i32 (expires);
 
     int data[1000];
@@ -929,7 +929,7 @@ static int work_new_session_created (const std::shared_ptr<tgl_connection>& c, t
 
   //tglq_regen_queries_from_old_session (DC, S);
 
-  if (tgl_state::instance()->started && !(tgl_state::instance()->locks & TGL_LOCK_DIFF) && (tgl_state::instance()->DC_working->flags & TGLDCF_LOGGED_IN)) {
+  if (tgl_state::instance()->is_started() && !(tgl_state::instance()->locks & TGL_LOCK_DIFF) && (tgl_state::instance()->working_dc()->flags & TGLDCF_LOGGED_IN)) {
     tgl_do_get_difference (0, 0);
   }
   return 0;
@@ -1475,24 +1475,17 @@ void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& S, long long id) {
   //tglmp_regenerate_temp_auth_key(dc);
 //}
 
-std::shared_ptr<tgl_dc> tglmp_alloc_dc (int flags, int id, const std::string &ip, int port) {
-
-  if (!tgl_state::instance()->DC_list[id]) {
-    std::shared_ptr<tgl_dc> DC = std::make_shared<tgl_dc>();
-    DC->id = id;
-    DC->sessions[0] = NULL;
-    tgl_state::instance()->DC_list[id] = DC;
-    if (tgl_state::instance()->pfs_enabled()) {
-      //DC->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
-      //DC->ev->start(0);
+std::shared_ptr<tgl_dc> tglmp_alloc_dc(int flags, int id, const std::string &ip, int port) {
+    std::shared_ptr<tgl_dc> dc = tgl_state::instance()->dc_at(id);
+    if (!dc) {
+        dc = tgl_state::instance()->allocate_dc(id);
+        if (tgl_state::instance()->pfs_enabled()) {
+          //dc->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
+          //dc->ev->start(0);
+        }
     }
-  }
-
-  std::shared_ptr<tgl_dc> DC = tgl_state::instance()->DC_list[id];
-
-  DC->options[flags & 3].option_list.push_back(std::make_pair(ip, port));
-
-  return DC;
+    dc->options[flags & 3].option_list.push_back(std::make_pair(ip, port));
+    return dc;
 }
 
 void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC) {

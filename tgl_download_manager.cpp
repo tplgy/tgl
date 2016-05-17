@@ -212,7 +212,7 @@ void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, const 
         }
         q->out_i32 (CODE_input_photo_crop_auto);
 
-        q->execute(tgl_state::instance()->DC_working);
+        q->execute(tgl_state::instance()->working_dc());
     } else {
         auto q = std::make_shared<query_set_photo>(callback);
         q->out_i32 (CODE_photos_upload_profile_photo);
@@ -233,7 +233,7 @@ void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, const 
         q->out_i32 (CODE_input_geo_point_empty);
         q->out_i32 (CODE_input_photo_crop_auto);
 
-        q->execute(tgl_state::instance()->DC_working);
+        q->execute(tgl_state::instance()->working_dc());
     }
 }
 
@@ -327,7 +327,7 @@ void tgl_download_manager::send_file_unencrypted_end(std::shared_ptr<send_file> 
 
     q->out_i64 (E->id.id);
 
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_download_manager::send_file_end (std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) {
@@ -398,7 +398,7 @@ void tgl_download_manager::send_part(std::shared_ptr<send_file> f, const std::fu
             assert (f->part_size == x);
         }
 
-        q->execute(tgl_state::instance()->DC_working);
+        q->execute(tgl_state::instance()->working_dc());
     } else {
         send_file_end (f, callback);
     }
@@ -413,7 +413,7 @@ void tgl_download_manager::send_file_thumb(std::shared_ptr<send_file> f, const v
     q->out_i32 (0);
     q->out_string ((char *)thumb_data, thumb_len);
 
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 
@@ -662,7 +662,7 @@ void tgl_download_manager::load_next_part (std::shared_ptr<download> D, std::fun
     q->out_i32 (D->offset);
     q->out_i32 (D->size ? (1 << 14) : (1 << 19));
 
-    q->execute(tgl_state::instance()->DC_list[D->location.dc()]);
+    q->execute(tgl_state::instance()->dc_at(D->location.dc()));
 }
 
 void tgl_download_manager::download_photo_size (const std::shared_ptr<tgl_photo_size>& P, std::function<void(bool success, const std::string &filename)> callback)

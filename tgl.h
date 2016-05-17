@@ -109,16 +109,18 @@ struct tgl_secret_chat;
 struct tgl_state {
   static tgl_state *instance();
 
-  int started;
-
   long long locks;
-  std::vector<std::shared_ptr<tgl_dc>> DC_list;
-  std::shared_ptr<tgl_dc> DC_working;
-  int temp_key_expire_time;
-
   std::vector<std::shared_ptr<tgl_message>> unsent_messages;
-
   std::shared_ptr<tgl_timer> ev_login;
+
+  bool is_started() const { return m_is_started; }
+  void set_started(bool b) { m_is_started = b; }
+
+  const std::vector<std::shared_ptr<tgl_dc>>& dcs() { return m_dcs; }
+  std::shared_ptr<tgl_dc> working_dc() { return m_working_dc; }
+  std::shared_ptr<tgl_dc> allocate_dc(int id);
+  std::shared_ptr<tgl_dc> dc_at(int id);
+  int temp_key_expire_time() const { return m_temp_key_expire_time; }
 
   int init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
   void login();
@@ -179,11 +181,15 @@ struct tgl_state {
   void remove_all_queries();
 
 private:
+  bool m_is_started;
+
   int m_app_id;
   std::string m_app_hash;
 
   std::string m_error;
   int m_error_code;
+
+  int m_temp_key_expire_time;
 
   int m_pts;
   int m_qts;
@@ -207,6 +213,9 @@ private:
   std::shared_ptr<tgl_update_callback> m_callback;
 
   std::unique_ptr<TGLC_bn_ctx, TGLC_bn_ctx_deleter> m_bn_ctx;
+
+  std::vector<std::shared_ptr<tgl_dc>> m_dcs;
+  std::shared_ptr<tgl_dc> m_working_dc;
 };
 
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);

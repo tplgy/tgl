@@ -440,7 +440,7 @@ void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::fu
     assert (0);
   }
   encryptor.end();
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M)> callback)
@@ -500,7 +500,7 @@ void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<
   }
   encryptor.end();
   
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 class query_mark_read_encr: public query
@@ -546,7 +546,7 @@ void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secr
     q->out_i32(tgl_get_peer_id (secret_chat->id));
     q->out_i64(secret_chat->access_hash);
     q->out_i32(secret_chat->last ? secret_chat->last->date : time (0) - 10);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 class query_send_encr_file: public query
@@ -724,7 +724,7 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
   assert (M);
   q->set_message(M);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
@@ -919,7 +919,7 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
   TGLC_bn_clear_free (g_a);
   TGLC_bn_clear_free (r);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat) {
@@ -1020,7 +1020,7 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
   TGLC_bn_clear_free (p);
   TGLC_bn_clear_free (r);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 class query_send_encr_discard: public query
@@ -1070,7 +1070,7 @@ void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_c
   q->out_i32 (CODE_messages_discard_encryption);
   q->out_i32 (tgl_get_peer_id(secret_chat->id));
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 class query_get_dh_config: public query
@@ -1138,7 +1138,7 @@ void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& sec
     q->out_i32 (CODE_messages_get_dh_config);
     q->out_i32 (secret_chat->encr_param_version);
     q->out_i32 (256);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_create_encr_chat_request(const tgl_peer_id_t& user_id,
@@ -1152,7 +1152,7 @@ void tgl_do_create_encr_chat_request(const tgl_peer_id_t& user_id,
     q->out_i32 (CODE_messages_get_dh_config);
     q->out_i32 (0);
     q->out_i32 (256);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_request_exchange(const std::shared_ptr<tgl_secret_chat>&) {

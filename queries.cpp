@@ -193,7 +193,7 @@ static void alarm_query_gateway(std::shared_ptr<query> q) {
 }
 
 void tgl_transfer_auth_callback (std::shared_ptr<tgl_dc> arg, bool success);
-void tgl_do_transfer_auth (int num, std::function<void(bool success)> callback);
+void tgl_do_transfer_auth(const std::shared_ptr<tgl_dc>& dc, const std::function<void(bool success)>& callback);
 
 void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
 {
@@ -213,8 +213,8 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
 
     if (!tgl_signed_dc(m_dc) && !is_login() && !is_force()) {
         pending = true;
-        if (m_dc != tgl_state::instance()->DC_working) {
-            tgl_do_transfer_auth(m_dc->id, std::bind(tgl_transfer_auth_callback, m_dc, std::placeholders::_1));
+        if (m_dc != tgl_state::instance()->working_dc()) {
+            tgl_do_transfer_auth(m_dc, std::bind(tgl_transfer_auth_callback, m_dc, std::placeholders::_1));
         }
     }
 
@@ -419,7 +419,7 @@ int query::handle_error(int error_code, const std::string& error_string)
                 //if (!(DC->flags & 4) && !(q->flags & QUERY_FORCE_SEND)) {
                 m_session_id = 0;
                 //}
-                m_dc = tgl_state::instance()->DC_working;
+                m_dc = tgl_state::instance()->working_dc();
                 m_timer->start(0);
                 error_handled = true;
                 res = 1;
@@ -882,7 +882,7 @@ void tgl_do_help_get_config(std::function<void(bool)> callback) {
     auto q = std::make_shared<query_help_get_config>(callback);
     q->out_header();
     q->out_i32(CODE_help_get_config);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 static void set_dc_configured(const std::shared_ptr<tgl_dc>& D, bool success);
@@ -890,7 +890,7 @@ void tgl_do_help_get_config_dc (std::shared_ptr<tgl_dc> D) {
     auto q = std::make_shared<query_help_get_config>(std::bind(set_dc_configured, D, std::placeholders::_1));
     q->out_header();
     q->out_i32(CODE_help_get_config);
-    q->execute(tgl_state::instance()->DC_working, query::execution_option::FORCE);
+    q->execute(tgl_state::instance()->working_dc(), query::execution_option::FORCE);
 }
 /* }}} */
 
@@ -933,7 +933,7 @@ private:
 };
 
 void tgl_do_send_code (const char *phone, int phone_len, std::function<void(bool, int, const char *)> callback) {
-    TGL_NOTICE("requesting confirmation code from dc " << tgl_state::instance()->DC_working->id);
+    TGL_NOTICE("requesting confirmation code from dc " << tgl_state::instance()->working_dc()->id);
     auto q = std::make_shared<query_send_code>(callback);
     q->out_i32(CODE_auth_send_code);
     q->out_string (phone, phone_len);
@@ -941,7 +941,7 @@ void tgl_do_send_code (const char *phone, int phone_len, std::function<void(bool
     q->out_i32(tgl_state::instance()->app_id());
     q->out_string(tgl_state::instance()->app_hash().c_str());
     q->out_string("en");
-    q->execute(tgl_state::instance()->DC_working, query::execution_option::LOGIN);
+    q->execute(tgl_state::instance()->working_dc(), query::execution_option::LOGIN);
 }
 
 class query_phone_call: public query
@@ -980,7 +980,7 @@ void tgl_do_phone_call (const char *phone, int phone_len, const char *hash, int 
     q->out_i32(CODE_auth_send_call);
     q->out_string(phone, phone_len);
     q->out_string(hash, hash_len);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -998,7 +998,7 @@ public:
         TGL_DEBUG2("sign_in_on_answer");
         tl_ds_auth_authorization* DS_AA = static_cast<tl_ds_auth_authorization*>(D);
         std::shared_ptr<struct tgl_user> user = tglf_fetch_alloc_user(DS_AA->user);
-        tgl_state::instance()->set_dc_signed (tgl_state::instance()->DC_working->id);
+        tgl_state::instance()->set_dc_signed (tgl_state::instance()->working_dc()->id);
         if (m_callback) {
             m_callback(!!user, user);
         }
@@ -1023,7 +1023,7 @@ int tgl_do_send_code_result (const char *phone, int phone_len, const char *hash,
     q->out_string (phone, phone_len);
     q->out_string (hash, hash_len);
     q->out_string (code, code_len);
-    q->execute(tgl_state::instance()->DC_working, query::execution_option::LOGIN);
+    q->execute(tgl_state::instance()->working_dc(), query::execution_option::LOGIN);
     return 0;
 }
 
@@ -1036,7 +1036,7 @@ int tgl_do_send_code_result_auth (const char *phone, int phone_len, const char *
     q->out_string (code, code_len);
     q->out_string (first_name, first_name_len);
     q->out_string (last_name, last_name_len);
-    q->execute(tgl_state::instance()->DC_working, query::execution_option::LOGIN);
+    q->execute(tgl_state::instance()->working_dc(), query::execution_option::LOGIN);
     return 0;
 }
 
@@ -1047,7 +1047,7 @@ int tgl_do_send_bot_auth (const char *code, int code_len, std::function<void(boo
     q->out_i32 (tgl_state::instance()->app_id());
     q->out_std_string (tgl_state::instance()->app_hash());
     q->out_string (code, code_len);
-    q->execute(tgl_state::instance()->DC_working, query::execution_option::LOGIN);
+    q->execute(tgl_state::instance()->working_dc(), query::execution_option::LOGIN);
     return 0;
 }
 /* }}} */
@@ -1092,7 +1092,7 @@ void tgl_do_update_contact_list () {
     auto q = std::make_shared<query_get_contacts>(nullptr);
     q->out_i32 (CODE_contacts_get_contacts);
     q->out_string ("");
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -1237,7 +1237,7 @@ void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M, std::function<void(b
     }
   }
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
@@ -1478,7 +1478,7 @@ void tgl_do_messages_mark_read(const tgl_peer_id_t& id, int max_id, int offset, 
     q->out_peer_id(id);
     q->out_i32 (max_id);
     //q->out_i32 (offset);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
   } else {
     auto q = std::make_shared<query_mark_read>(id, max_id, callback);
     q->out_i32 (CODE_channels_read_history);
@@ -1486,7 +1486,7 @@ void tgl_do_messages_mark_read(const tgl_peer_id_t& id, int max_id, int offset, 
     q->out_i32 (tgl_get_peer_id (id));
     q->out_i64 (id.access_hash);
     q->out_i32 (max_id);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
   }
 }
 
@@ -1604,7 +1604,7 @@ static void _tgl_do_get_history(const tgl_peer_id_t& id, int limit, int offset, 
   q->out_i32 (limit);
   q->out_i32 (0);
   q->out_i32 (0);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, int offline_mode,
@@ -1735,7 +1735,7 @@ static void _tgl_do_get_dialog_list(const std::shared_ptr<get_dialogs_state>& st
     }
     q->out_i32 (state->limit - state->peers.size());
   }
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_get_dialog_list(int limit, int offset,
@@ -1800,14 +1800,14 @@ void tgl_do_set_profile_name (const std::string& first_name, const std::string& 
     q->out_i32 (CODE_account_update_profile);
     q->out_string (first_name.c_str(), last_name.length());
     q->out_string (last_name.c_str(), last_name.length());
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_set_username (const std::string& username, std::function<void(bool success)> callback) {
     auto q = std::make_shared<query_set_profile_name>(callback);
     q->out_i32 (CODE_account_update_username);
     q->out_string (username.c_str(), username.length());
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -1853,7 +1853,7 @@ void tgl_do_contact_search (const char *name, int name_len, std::function<void(b
   auto q = std::make_shared<query_contact_search>(callback);
   q->out_i32 (CODE_contacts_resolve_username);
   q->out_string (name, name_len);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2020,7 +2020,7 @@ void tgl_do_forward_messages(const tgl_peer_id_t& id, const std::vector<tgl_mess
     q->out_i64 (E->message_ids[i].id);
   }
   q->out_peer_id (id);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
@@ -2061,7 +2061,7 @@ void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, u
 
   q->out_i64 (E->id.id);
   q->out_peer_id (peer_id);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_send_contact (tgl_peer_id_t id, const char *phone, int phone_len,
@@ -2093,7 +2093,7 @@ void tgl_do_send_contact (tgl_peer_id_t id, const char *phone, int phone_len,
 
   q->out_i64 (E->id.id);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_reply_contact (tgl_message_id_t *_reply_id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name,
@@ -2207,7 +2207,7 @@ void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, uns
 #endif
 
   q->out_i64 (E->id.id);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2241,7 +2241,7 @@ void tgl_do_send_location (tgl_peer_id_t peer_id, double latitude, double longit
 
     q->out_i64 (E->id.id);
 
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
   }
 }
 
@@ -2279,7 +2279,7 @@ void tgl_do_rename_chat (tgl_peer_id_t id, const char *name, int name_len, std::
     assert (tgl_get_peer_type (id) == TGL_PEER_CHAT);
     q->out_i32 (tgl_get_peer_id (id));
     q->out_string (name, name_len);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2293,7 +2293,7 @@ void tgl_do_rename_channel (tgl_peer_id_t id, const char *name, int name_len, st
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
   q->out_string (name, name_len);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2306,7 +2306,7 @@ void tgl_do_join_channel (tgl_peer_id_t id, std::function<void(bool success)> ca
   q->out_i32 (CODE_input_channel);
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2319,7 +2319,7 @@ void tgl_do_leave_channel (tgl_peer_id_t id, std::function<void(bool success)> c
   q->out_i32 (CODE_input_channel);
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2360,7 +2360,7 @@ void tgl_do_channel_set_about (tgl_peer_id_t id, const char *about, int about_le
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
   q->out_string (about, about_len);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2373,7 +2373,7 @@ void tgl_do_channel_set_username (tgl_peer_id_t id, const char *username, int us
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
   q->out_string (username, username_len);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2401,7 +2401,7 @@ void tgl_do_channel_set_admin (tgl_peer_id_t channel_id, tgl_peer_id_t user_id, 
     break;
   }
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2484,7 +2484,7 @@ static void _tgl_do_channel_get_members(const std::shared_ptr<struct channel_get
   }
   q->out_i32 (state->offset);
   q->out_i32 (state->limit);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_channel_get_members(const tgl_peer_id_t& channel_id, int limit, int offset, int type, const std::function<void(bool success, const std::vector<tgl_peer_id_t>& peers)>& callback) {
@@ -2547,7 +2547,7 @@ void tgl_do_get_chat_info (int id, int offline_mode, std::function<void(bool suc
   auto q = std::make_shared<query_chat_info>(callback);
   q->out_i32 (CODE_messages_get_full_chat);
   q->out_i32 (id);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2604,7 +2604,7 @@ void tgl_do_get_channel_info (tgl_peer_id_t id, int offline_mode, std::function<
   q->out_i32 (CODE_input_channel);
   q->out_i32 (id.peer_id);
   q->out_i64 (id.access_hash);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2668,19 +2668,19 @@ void tgl_do_get_user_info(const tgl_peer_id_t& id, int offline_mode, const std::
   q->out_i32 (CODE_input_user);
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 static void resend_query_cb(const std::shared_ptr<query>& q, bool success) {
     assert (success);
 
     TGL_DEBUG2("resend_query_cb");
-    tgl_state::instance()->set_dc_signed (tgl_state::instance()->DC_working->id);
+    tgl_state::instance()->set_dc_signed (tgl_state::instance()->working_dc()->id);
 
     auto user_info_q = std::make_shared<query_user_info>(nullptr);
     user_info_q->out_i32 (CODE_users_get_full_user);
     user_info_q->out_i32 (CODE_input_user_self);
-    user_info_q->execute(tgl_state::instance()->DC_working);
+    user_info_q->execute(tgl_state::instance()->working_dc());
 
     if (auto dc = q->dc()) {
         dc->add_pending_query(q);
@@ -2706,7 +2706,7 @@ public:
         tglf_fetch_alloc_user(DS_U->user);
 
         assert(m_dc);
-        TGL_NOTICE("auth imported from DC " << tgl_state::instance()->DC_working->id << " to DC " << m_dc->id);
+        TGL_NOTICE("auth imported from DC " << tgl_state::instance()->working_dc()->id << " to DC " << m_dc->id);
 
         tgl_state::instance()->set_dc_signed(m_dc->id);
 
@@ -2768,17 +2768,16 @@ private:
 };
 
 // export auth from working DC and import to DC "num"
-void tgl_do_transfer_auth (int num, std::function<void(bool success)> callback) {
-    std::shared_ptr<tgl_dc> DC = tgl_state::instance()->DC_list[num];
-    if (DC->auth_transfer_in_process) {
+void tgl_do_transfer_auth(const std::shared_ptr<tgl_dc>& dc, const std::function<void(bool success)>& callback) {
+    if (dc->auth_transfer_in_process) {
         return;
     }
-    DC->auth_transfer_in_process = true;
-    TGL_NOTICE("Transferring auth from DC " << tgl_state::instance()->DC_working->id << " to DC " << num);
-    auto q = std::make_shared<query_export_auth>(DC, callback);
+    dc->auth_transfer_in_process = true;
+    TGL_NOTICE("Transferring auth from DC " << tgl_state::instance()->working_dc()->id << " to DC " << dc->id);
+    auto q = std::make_shared<query_export_auth>(dc, callback);
     q->out_i32 (CODE_auth_export_authorization);
-    q->out_i32 (num);
-    q->execute(tgl_state::instance()->DC_working);
+    q->out_i32 (dc->id);
+    q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2835,7 +2834,7 @@ void tgl_do_add_contact (const std::string& phone, const std::string& first_name
     q->out_string (first_name.c_str(), first_name.length());
     q->out_string (last_name.c_str(), last_name.length());
     q->out_i32 (replace ? CODE_bool_true : CODE_bool_false);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2874,7 +2873,7 @@ void tgl_do_del_contact (tgl_peer_id_t id, std::function<void(bool success)> cal
   q->out_i32 (CODE_input_user);
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -2978,7 +2977,7 @@ static void _tgl_do_msg_search(const std::shared_ptr<msg_search_state>& state,
     q->out_i32 (state->max_id); // max_id
     q->out_i32 (state->limit);
   }
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 //untested
@@ -3171,7 +3170,7 @@ void tgl_do_lookup_state () {
     auto q = std::make_shared<query_lookup_state>(nullptr);
     q->out_header();
     q->out_i32(CODE_updates_get_state);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_get_difference(int sync_from_start, const std::function<void(bool success)>& callback) {
@@ -3194,12 +3193,12 @@ void tgl_do_get_difference(int sync_from_start, const std::function<void(bool su
     q->out_i32(tgl_state::instance()->pts());
     q->out_i32(tgl_state::instance()->date());
     q->out_i32(tgl_state::instance()->qts());
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
   } else {
     auto q = std::make_shared<query_get_state>(callback);
     q->out_header();
     q->out_i32(CODE_updates_get_state);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
   }
 }
 /* }}} */
@@ -3312,7 +3311,7 @@ void tgl_do_get_channel_difference(int id, const std::function<void(bool success
   q->out_i32(CODE_channel_messages_filter_empty);
   q->out_i32(channel->pts);
   q->out_i32(100);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -3343,7 +3342,7 @@ void tgl_do_add_user_to_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, int limit
   q->out_i64 (id.access_hash);
   q->out_i32 (limit);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_del_user_from_chat(int chat_id, const tgl_peer_id_t& user_id, const std::function<void(bool success)>& callback) {
@@ -3360,7 +3359,7 @@ void tgl_do_del_user_from_chat(int chat_id, const tgl_peer_id_t& user_id, const 
         q->out_i64 (user_id.access_hash);
     }
 
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 /* }}} */
@@ -3380,7 +3379,7 @@ void tgl_do_channel_invite_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, std
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, std::function<void(bool success)> callback) {
@@ -3396,7 +3395,7 @@ void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, std::
 
   q->out_i32 (CODE_bool_true);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 /* }}} */
@@ -3432,7 +3431,7 @@ void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::s
   }
   TGL_NOTICE("sending out chat creat request users number:%d" << user_ids.size());
   q->out_string (chat_topic.c_str(), chat_topic.length());
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -3461,7 +3460,7 @@ void tgl_do_create_channel (int users_num, tgl_peer_id_t ids[], const char *chat
     q->out_i64 (id.access_hash);
   }
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -3541,7 +3540,7 @@ void tgl_do_delete_msg (tgl_message_id_t *_msg_id, std::function<void(bool succe
     q->out_i32 (msg_id.id);
   }
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -3587,7 +3586,7 @@ private:
 void tgl_do_export_card(const std::function<void(bool success, const std::vector<int>& card)>& callback) {
     auto q = std::make_shared<query_export_card>(callback);
     q->out_i32 (CODE_contacts_export_card);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -3627,7 +3626,7 @@ void tgl_do_import_card (int size, int *card, std::function<void(bool success, c
     q->out_i32 (CODE_vector);
     q->out_i32 (size);
     q->out_i32s (card, size);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -3643,7 +3642,7 @@ void tgl_do_start_bot (tgl_peer_id_t bot, tgl_peer_id_t chat, const char *str, i
   q->out_i64 (m);
   q->out_string (str, str_len);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 /* {{{ Send typing */
@@ -3713,7 +3712,7 @@ void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, std::f
             q->out_i32 (CODE_send_message_choose_contact_action);
             break;
         }
-        q->execute(tgl_state::instance()->DC_working);
+        q->execute(tgl_state::instance()->working_dc());
     } else {
         if (callback) {
             callback(false);
@@ -3752,7 +3751,7 @@ void tgl_do_send_extf (const char *data, int data_len, std::function<void(bool s
   ext_query_methods.type = tglf_extf_store (data, data_len);
 
   if (ext_query_methods.type) {
-    tglq_send_query (tgl_state::instance()->DC_working, packet_ptr - packet_buffer, packet_buffer, &ext_query_methods, 0, callback ? std::make_shared<std::function<void(bool, const char*)>>(callback));
+    tglq_send_query (tgl_state::instance()->working_dc(), packet_ptr - packet_buffer, packet_buffer, &ext_query_methods, 0, callback ? std::make_shared<std::function<void(bool, const char*)>>(callback));
   }
 #else
     if (callback) {
@@ -3861,7 +3860,7 @@ void tgl_do_get_message (tgl_message_id_t *_msg_id, std::function<void(bool succ
   q->out_i32 (1);
   q->out_i32 (msg_id.id);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -3912,7 +3911,7 @@ void tgl_do_export_chat_link(const tgl_peer_id_t& id, const std::function<void(b
     q->out_i32 (CODE_messages_export_chat_invite);
     q->out_i32 (tgl_get_peer_id (id));
 
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_import_chat_link (const char *link, int len, std::function<void(bool success)> callback) {
@@ -3926,7 +3925,7 @@ void tgl_do_import_chat_link (const char *link, int len, std::function<void(bool
     q->out_i32 (CODE_messages_import_chat_invite);
     q->out_string (l, len - (l - link));
 
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 /* }}} */
@@ -3948,7 +3947,7 @@ void tgl_do_export_channel_link(const tgl_peer_id_t& id, const std::function<voi
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 /* }}} */
@@ -4065,7 +4064,7 @@ static void tgl_do_act_set_password(const std::string& current_password,
         q->out_i32 (0);
     }
 
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 struct change_password_state {
@@ -4159,7 +4158,7 @@ private:
 void tgl_do_set_password(const std::string& hint, const std::function<void(bool success)>& callback) {
     auto q = std::make_shared<query_get_and_set_password>(hint, callback);
     q->out_i32 (CODE_account_get_password);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 /* }}} */
@@ -4232,7 +4231,7 @@ static void tgl_pwd_got(const std::string& current_salt, const std::function<voi
         q->out_string ("");
     }
 
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 class query_get_and_check_password: public query
@@ -4282,7 +4281,7 @@ private:
 void tgl_do_check_password (std::function<void(bool success)> callback) {
     auto q = std::make_shared<query_get_and_check_password>(callback);
     q->out_i32 (CODE_account_get_password);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 /* }}} */
@@ -4348,7 +4347,7 @@ void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, 
 
   q->out_i32 (CODE_message_media_empty);
 
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -4395,7 +4394,7 @@ void tgl_do_block_user (tgl_peer_id_t id, std::function<void(bool success)> call
   q->out_i32 (CODE_input_user);
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_unblock_user (tgl_peer_id_t id, std::function<void(bool success)> callback) {
@@ -4412,7 +4411,7 @@ void tgl_do_unblock_user (tgl_peer_id_t id, std::function<void(bool success)> ca
   q->out_i32 (CODE_input_user);
   q->out_i32 (tgl_get_peer_id (id));
   q->out_i64 (id.access_hash);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
@@ -4491,7 +4490,7 @@ void tgl_do_get_terms_of_service(const std::function<void(bool success, const st
   auto q = std::make_shared<query_get_tos>(callback);
   q->out_i32 (CODE_help_get_terms_of_service);
   q->out_string ("");
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 class query_register_device: public query
@@ -4534,14 +4533,14 @@ void tgl_do_register_device(int token_type, const std::string& token, const std:
     q->out_std_string(app_version);
     q->out_i32(app_sandbox? CODE_bool_true : CODE_bool_false);
     q->out_std_string(lang_code);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_upgrade_group (tgl_peer_id_t id, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_messages_migrate_chat);
   q->out_i32 (tgl_get_peer_id (id));
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 
@@ -4554,14 +4553,14 @@ static void set_dc_configured(const std::shared_ptr<tgl_dc>& D, bool success) {
 
   TGL_DEBUG("DC " << D->id << " is now configured");
 
-  //D->ev->start(tgl_state::instance()->temp_key_expire_time * 0.9);
-  if (D == tgl_state::instance()->DC_working || tgl_signed_dc(D)) {
+  //D->ev->start(tgl_state::instance()->temp_key_expire_time() * 0.9);
+  if (D == tgl_state::instance()->working_dc() || tgl_signed_dc(D)) {
     D->send_pending_queries();
   } else if (!tgl_signed_dc(D)) {
     if (D->auth_transfer_in_process) {
       D->send_pending_queries();
     } else {
-      tgl_do_transfer_auth(D->id, std::bind(tgl_transfer_auth_callback, D, std::placeholders::_1));
+      tgl_do_transfer_auth(D, std::bind(tgl_transfer_auth_callback, D, std::placeholders::_1));
     }
   }
 }
@@ -4644,7 +4643,7 @@ void tgl_do_update_status (bool online, std::function<void(bool success)> callba
     auto q = std::make_shared<query_update_status>(callback);
     q->out_i32 (CODE_account_update_status);
     q->out_i32 (online ? CODE_bool_false : CODE_bool_true);
-    q->execute(tgl_state::instance()->DC_working);
+    q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_started_cb(bool success) {
@@ -4653,8 +4652,8 @@ void tgl_started_cb(bool success) {
     tgl_state::instance()->callback()->on_failed_login();
     return;
   }
-  if (!tgl_state::instance()->started) {
-    tgl_state::instance()->started = 1;
+  if (!tgl_state::instance()->is_started()) {
+    tgl_state::instance()->set_started(true);
     tgl_state::instance()->callback()->started();
   }
 }
@@ -4667,14 +4666,14 @@ void tgl_transfer_auth_callback(std::shared_ptr<tgl_dc> DC, bool success)
     TGL_ERROR("auth transfer problem to DC " << DC->id);
     return;
   }
-  TGL_NOTICE("auth transferred from DC " << tgl_state::instance()->DC_working->id << " to DC " << DC->id);
+  TGL_NOTICE("auth transferred from DC " << tgl_state::instance()->working_dc()->id << " to DC " << DC->id);
   DC->send_pending_queries();
 }
 
 void tgl_export_all_auth () {
-  for (size_t i = 0; i < tgl_state::instance()->DC_list.size(); i++) {
-    if (tgl_state::instance()->DC_list[i] && !tgl_signed_dc(tgl_state::instance()->DC_list[i])) {
-      tgl_do_transfer_auth (i, std::bind(tgl_transfer_auth_callback, tgl_state::instance()->DC_list[i], std::placeholders::_1));
+  for (const auto& dc: tgl_state::instance()->dcs()) {
+    if (dc && !tgl_signed_dc(dc)) {
+      tgl_do_transfer_auth(dc, std::bind(tgl_transfer_auth_callback, dc, std::placeholders::_1));
     }
   }
 }
@@ -4837,7 +4836,7 @@ void tgl_bot_hash_cb (const void *code) {
 }
 
 void tgl_sign_in () {
-  if (!tgl_signed_dc(tgl_state::instance()->DC_working)) {
+  if (!tgl_signed_dc(tgl_state::instance()->working_dc())) {
     if (!(tgl_state::instance()->locks & TGL_LOCK_PHONE)) {
       tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone);
     }
@@ -4847,7 +4846,7 @@ void tgl_sign_in () {
 }
 
 static void check_authorized (std::shared_ptr<void> arg) {
-  std::shared_ptr<tgl_dc> DC = tgl_state::instance()->DC_working;
+  std::shared_ptr<tgl_dc> DC = tgl_state::instance()->working_dc();
   if (!DC) {
     TGL_ERROR("no working DC, can't check authorization");
     return;
@@ -4863,7 +4862,7 @@ static void check_authorized (std::shared_ptr<void> arg) {
 }
 
 void tgl_state::login () {
-  if (DC_working && tgl_signed_dc(DC_working) && tgl_authorized_dc(DC_working)) {
+  if (working_dc() && tgl_signed_dc(working_dc()) && tgl_authorized_dc(working_dc())) {
     tgl_sign_in();
   } else {
     tgl_state::instance()->ev_login = tgl_state::instance()->timer_factory()->create_timer(std::bind(&check_authorized, nullptr));
@@ -4962,7 +4961,7 @@ static void tgl_set_number_code(const std::shared_ptr<change_phone_state>& state
   q->out_string (state->phone.data(), state->phone.size());
   q->out_string (state->hash.data(), state->hash.size());
   q->out_string (code_strings[0], strlen (code_strings[0]));
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
 
 
@@ -4988,5 +4987,5 @@ void tgl_do_set_phone_number(const std::string& phonenumber, const std::function
   q->out_header ();
   q->out_i32(CODE_account_send_change_phone_code);
   q->out_std_string(state->phone);
-  q->execute(tgl_state::instance()->DC_working);
+  q->execute(tgl_state::instance()->working_dc());
 }
