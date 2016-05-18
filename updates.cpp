@@ -518,12 +518,9 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
 
   if (DS_U->pts) {
     assert (DS_U->pts_count);
-
-    //bl_do_set_pts (DS_LVAL (DS_U->pts));
     tgl_state::instance()->set_pts(DS_LVAL (DS_U->pts));
   }
   if (DS_U->qts) {
-    //bl_do_set_qts (DS_LVAL (DS_U->qts));
     tgl_state::instance()->set_qts(DS_LVAL (DS_U->qts));
   }
   if (DS_U->channel_pts) {

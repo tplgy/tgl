@@ -136,11 +136,12 @@ void tgl_state::set_working_dc(int num)
     m_callback->change_active_dc(num);
 }
 
-void tgl_state::set_qts(int qts)
+void tgl_state::set_qts(int qts, bool force)
 {
     if (locks & TGL_LOCK_DIFF) { return; }
-    if (qts <= this->qts()) { return; }
+    if (qts <= this->qts() && !force) { return; }
     m_qts = qts;
+    m_callback->qts_changed(qts);
 }
 
 void tgl_state::set_pts(int pts, bool force)
@@ -148,6 +149,7 @@ void tgl_state::set_pts(int pts, bool force)
     if (locks & TGL_LOCK_DIFF && !force) { return; }
     if (pts <= this->pts() && !force) { return; }
     m_pts = pts;
+    m_callback->pts_changed(pts);
 }
 
 void tgl_state::set_date(int date, bool force)
@@ -155,6 +157,7 @@ void tgl_state::set_date(int date, bool force)
     if (locks & TGL_LOCK_DIFF && !force) { return; }
     if (date <= m_date && !force) { return; }
     m_date = date;
+    m_callback->date_changed(date);
 }
 
 void tgl_state::set_seq(int seq)

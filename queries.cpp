@@ -3073,7 +3073,7 @@ public:
 
     virtual void on_answer(void* D) override
     {
-        TGL_DEBUG2("get difference answer");
+        TGL_DEBUG("get difference answer");
 
         tl_ds_updates_difference* DS_UD = static_cast<tl_ds_updates_difference*>(D);
 
@@ -3084,7 +3084,7 @@ public:
             tgl_state::instance()->set_date(DS_LVAL(DS_UD->date));
             tgl_state::instance()->set_seq(DS_LVAL(DS_UD->seq));
 
-            TGL_DEBUG("Empty difference. Seq = " << tgl_state::instance()->seq());
+            TGL_DEBUG2("Empty difference. Seq = " << tgl_state::instance()->seq());
             if (m_callback) {
                 m_callback(true);
             }
@@ -3174,8 +3174,6 @@ void tgl_do_lookup_state () {
 }
 
 void tgl_do_get_difference(int sync_from_start, const std::function<void(bool success)>& callback) {
-  //get_difference_active = 1;
-  //difference_got = 0;
   if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
     if (callback) {
       callback(0);
@@ -4685,7 +4683,8 @@ void tgl_signed_in() {
 
   tgl_export_all_auth();
   tglm_send_all_unsent();
-  tgl_do_get_difference (0, tgl_started_cb);
+  tgl_started_cb(true);
+  //tgl_do_get_difference (0, tgl_started_cb);
 }
 
 struct sign_up_extra {

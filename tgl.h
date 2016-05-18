@@ -132,7 +132,7 @@ struct tgl_state {
   void set_dc_option (int flags, int id, std::string ip, int port);
   void set_dc_signed(int num);
   void set_working_dc(int num);
-  void set_qts(int qts);
+  void set_qts(int qts, bool force = false);
   void set_pts(int pts, bool force = false);
   void set_date(int date, bool force = false);
   void set_seq(int seq);
