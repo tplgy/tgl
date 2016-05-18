@@ -385,8 +385,8 @@ void tgl_download_manager::send_part(std::shared_ptr<send_file> f, const std::fu
             }
 
             TGLC_aes_key aes_key;
-            TGLC_aes_set_encrypt_key (f->key, 256, &aes_key);
-            TGLC_aes_ige_encrypt ((unsigned char *)buf, (unsigned char *)buf, x, &aes_key, f->iv, 1);
+            TGLC_aes_set_encrypt_key (f->key.data(), 256, &aes_key);
+            TGLC_aes_ige_encrypt ((unsigned char *)buf, (unsigned char *)buf, x, &aes_key, f->iv.data(), 1);
             memset (&aes_key, 0, sizeof (aes_key));
         }
         q->out_string (buf, x);
@@ -467,13 +467,10 @@ void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id_t to_id, const std::s
     f->caption = caption;
 
     if (tgl_get_peer_type (f->to_id) == TGL_PEER_ENCR_CHAT) {
-        f->encr = 1;
-        f->iv = (unsigned char *)malloc (32);
-        tglt_secure_random (f->iv, 32);
-        f->init_iv = (unsigned char *)malloc (32);
-        memcpy (f->init_iv, f->iv, 32);
-        f->key = (unsigned char *)malloc (32);
-        tglt_secure_random (f->key, 32);
+        f->encr = true;
+        tglt_secure_random (f->iv.data(), f->iv.size());
+        memcpy (f->init_iv.data(), f->iv.data(), f->iv.size());
+        tglt_secure_random (f->key.data(), f->key.size());
     }
 
     if (!f->encr && f->flags != -1 && thumb_len > 0) {

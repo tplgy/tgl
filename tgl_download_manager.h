@@ -5,6 +5,8 @@
 #include "types/tgl_file_location.h"
 #include "types/tgl_peer_id.h"
 
+#include <string.h>
+#include <array>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -26,16 +28,42 @@ struct send_file {
     tgl_peer_id_t to_id;
     int flags;
     std::string file_name;
-    int encr;
+    bool encr;
     int avatar;
     int reply;
-    unsigned char *iv;
-    unsigned char *init_iv;
-    unsigned char *key;
+    std::array<unsigned char, 32> iv;
+    std::array<unsigned char, 32> init_iv;
+    std::array<unsigned char, 32> key;
     int w;
     int h;
     int duration;
     std::string caption;
+
+    send_file()
+        : fd(-1)
+        , size(0)
+        , offset(0)
+        , part_num(0)
+        , part_size(0)
+        , id(0)
+        , thumb_id(0)
+        , to_id()
+        , flags(0)
+        , encr(false)
+        , avatar(0)
+        , reply(0)
+        , w(0)
+        , h(0)
+        , duration(0)
+    { }
+
+    ~send_file()
+    {
+        // For security reasion.
+        memset(iv.data(), 0, iv.size());
+        memset(init_iv.data(), 0, init_iv.size());
+        memset(key.data(), 0, key.size());
+    }
 };
 
 struct download {
@@ -46,6 +74,12 @@ struct download {
 
     download(int type, std::shared_ptr<tgl_document>);
     download(int type, std::shared_ptr<tgl_encr_document>);
+
+    ~download()
+    {
+        memset(iv.data(), 0, iv.size());
+        memset(key.data(), 0, key.size());
+    }
 
     tgl_file_location location;
     int offset;

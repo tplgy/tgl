@@ -669,8 +669,8 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
   }
   
   q->out_i32 (f->size);
-  q->out_string (reinterpret_cast<const char*>(f->key), 32);
-  q->out_string (reinterpret_cast<const char*>(f->init_iv), 32);
+  q->out_string (reinterpret_cast<const char*>(f->key.data()), f->key.size());
+  q->out_string (reinterpret_cast<const char*>(f->init_iv.data()), f->init_iv.size());
  
   tgl_in_buffer in = { q->serializer()->mutable_i32_data() + start, q->serializer()->mutable_i32_data() + q->serializer()->i32_size() };
 
@@ -698,13 +698,11 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
 
   unsigned char md5[16];
   unsigned char str[64];
-  memcpy (str, f->key, 32);
-  memcpy (str + 32, f->init_iv, 32);
+  memcpy (str, f->key.data(), 32);
+  memcpy (str + 32, f->init_iv.data(), 32);
   TGLC_md5 (str, 64, md5);
   q->out_i32 ((*(int *)md5) ^ (*(int *)(md5 + 4)));
 
-  tfree_secure (f->iv, 32);
- 
   tgl_peer_id_t from_id = tgl_state::instance()->our_id();
   
   int date = time (NULL);
