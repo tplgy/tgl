@@ -29,12 +29,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#ifdef __cplusplus
 #include <stdexcept>
 #include <memory>
 #include <string>
 #include <vector>
-#endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #define INT64_PRINTF_MODIFIER "I64"
@@ -106,13 +104,10 @@
 #define CODE_msg_detailed_info 0x276d3ec6
 #define MAX_PROTO_MESSAGE_INTS	1048576
 
-//TGLC_bn_ctx *bn_ctx;
-
 void tgl_prng_seed (const char *password_filename, int password_length);
 int tgl_serialize_bignum (const TGLC_bn *b, char *buffer, int maxlen);
 long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key);
 
-#ifdef __cplusplus
 class mtprotocol_serializer
 {
 public:
@@ -246,7 +241,6 @@ public:
 private:
     std::vector<int32_t> m_data;
 };
-#endif
 
 struct tgl_in_buffer {
     int* ptr;
@@ -359,7 +353,11 @@ static inline long have_prefetch_ints (struct tgl_in_buffer* in) {
 }
 
 int tgl_fetch_bignum (struct tgl_in_buffer* in, TGLC_bn *x);
-#define fetch_bignum tgl_fetch_bignum
+
+static inline int fetch_bignum(struct tgl_in_buffer* in, TGLC_bn *x)
+{
+    return tgl_fetch_bignum(in, x);
+}
 
 static inline int fetch_int (struct tgl_in_buffer* in) {
   assert (in->ptr + 1 <= in->end);
