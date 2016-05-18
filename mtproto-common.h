@@ -223,11 +223,12 @@ public:
         return old_size;
     }
 
-    size_t ensure_size(size_t bytes)
+    size_t ensure_char_size(size_t bytes)
     {
+        size_t new_size = (bytes + 3) / 4;
         size_t old_size = m_data.size();
-        if (old_size < bytes) {
-            m_data.resize(bytes);
+        if (old_size < new_size) {
+            m_data.resize(new_size, 0);
         }
         return old_size * 4;
     }
