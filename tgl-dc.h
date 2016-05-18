@@ -86,26 +86,26 @@ struct tgl_dc {
     void reset();
 
     int id;
-    int flags = 0;
-    int rsa_key_idx = 0;
-    enum tgl_dc_state state = st_init;
+    int flags;
+    int rsa_key_idx;
+    enum tgl_dc_state state;
     std::array<std::shared_ptr<tgl_session>, MAX_DC_SESSIONS> sessions;
     unsigned char auth_key[256];
     unsigned char temp_auth_key[256];
     unsigned char nonce[256];
     unsigned char new_nonce[256];
     unsigned char server_nonce[256];
-    long long auth_key_id = 0;
-    long long temp_auth_key_id = 0;
-    long long temp_auth_key_bind_query_id = 0;
+    long long auth_key_id;
+    long long temp_auth_key_id;
+    long long temp_auth_key_bind_query_id;
 
-    long long server_salt = 0;
-    std::shared_ptr<tgl_timer> ev = nullptr;
+    long long server_salt;
+    std::shared_ptr<tgl_timer> ev;
 
-    int server_time_delta = 0;
-    double server_time_udelta = 0;
+    int server_time_delta;
+    double server_time_udelta;
 
-    bool auth_transfer_in_process = false;
+    bool auth_transfer_in_process;
 
     // ipv4, ipv6, ipv4_media, ipv6_media
     std::array<tgl_dc_option, 4> options;

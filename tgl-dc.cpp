@@ -30,8 +30,24 @@
 static const float SESSION_CLEANUP_TIMEOUT = 5.0;
 
 tgl_dc::tgl_dc()
-    : session_cleanup_timer(tgl_state::instance()->timer_factory()->create_timer(std::bind(&tgl_dc::cleanup_timer_expired, this)))
+    : id(0)
+    , flags(0)
+    , rsa_key_idx(0)
+    , state(st_init)
+    , auth_key_id(0)
+    , temp_auth_key_id(0)
+    , temp_auth_key_bind_query_id(0)
+    , server_salt(0)
+    , server_time_delta(0)
+    , server_time_udelta(0)
+    , auth_transfer_in_process(false)
+    , session_cleanup_timer(tgl_state::instance()->timer_factory()->create_timer(std::bind(&tgl_dc::cleanup_timer_expired, this)))
 {
+    memset(auth_key, 0, 256);
+    memset(temp_auth_key, 0, 256);
+    memset(nonce, 0, 256);
+    memset(new_nonce, 0, 256);
+    memset(server_nonce, 0, 256);
 }
 
 void tgl_dc::reset()
