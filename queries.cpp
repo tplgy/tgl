@@ -1812,6 +1812,48 @@ void tgl_do_set_username (const std::string& username, std::function<void(bool s
 /* }}} */
 
 /* {{{ Contacts search */
+class query_contacts_search: public query
+{
+public:
+    explicit query_contacts_search(const std::function<void(const std::vector<std::shared_ptr<tgl_user>>)>& callback)
+        : query("contact search", TYPE_TO_PARAM(contacts_found))
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void *D) override
+    {
+        tl_ds_contacts_found* DS_CRU = static_cast<tl_ds_contacts_found*>(D);
+        std::vector<std::shared_ptr<tgl_user>> users;
+        for (int i = 0; i < DS_LVAL(DS_CRU->users->cnt); i++) {
+            users.push_back(tglf_fetch_alloc_user (DS_CRU->users->data[i], false));
+        }
+        if (m_callback) {
+            m_callback(users);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_code);
+        if (m_callback) {
+            std::vector<std::shared_ptr<tgl_user>> users;
+            m_callback(users);
+        }
+        return 0;
+    }
+
+private:
+    std::function<void(const std::vector<std::shared_ptr<tgl_user>>)> m_callback;
+};
+
+void tgl_do_contact_search(const std::string& name, int limit, std::function<void(const std::vector<std::shared_ptr<tgl_user>>&)> callback)
+{
+  auto q = std::make_shared<query_contacts_search>(callback);
+  q->out_i32(CODE_contacts_search);
+  q->out_string(name.c_str(), name.length());
+  q->out_i32(limit);
+  q->execute(tgl_state::instance()->working_dc());
+}
 
 class query_contact_resolve_username: public query
 {

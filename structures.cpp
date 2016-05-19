@@ -147,7 +147,7 @@ tgl_user_status tglf_fetch_user_status(struct tl_ds_user_status *DS_US) {
     return new_status;
 }
 
-std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U) {
+std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool invoke_callback) {
   if (!DS_U) { return nullptr; }
   if (DS_U->magic == CODE_user_empty) {
     return nullptr;
@@ -229,15 +229,17 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U) {
     DS_CSTR(username, DS_U->username);
 
     tgl_user_status status = tglf_fetch_user_status(DS_U->status);
-    tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username,
+    if (invoke_callback) {
+        tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username,
             DS_U->access_hash ? * DS_U->access_hash : 0, status, is_bot);
+    }
 
     free(firstname);
     free(lastname);
     free(phone);
     free(username);
 
-    if (DS_U->photo) {
+    if (DS_U->photo && invoke_callback) {
       tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
       tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
 

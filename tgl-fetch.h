@@ -29,7 +29,7 @@
 #include "types/tgl_message.h"
 #include "types/tgl_message_media.h"
 
-std::shared_ptr<tgl_user> tglf_fetch_alloc_user (struct tl_ds_user *DS_U);
+std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool invoke_callbacks = true);
 std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full (struct tl_ds_user_full *DS_U);
 std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C);
 std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat_full *DS_MCF);
