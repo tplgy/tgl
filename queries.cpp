@@ -1812,11 +1812,12 @@ void tgl_do_set_username (const std::string& username, std::function<void(bool s
 /* }}} */
 
 /* {{{ Contacts search */
-class query_contact_search: public query
+
+class query_contact_resolve_username: public query
 {
 public:
-    explicit query_contact_search(const std::function<void(bool)>& callback)
-        : query("contact search", TYPE_TO_PARAM(contacts_resolved_peer))
+    explicit query_contact_resolve_username(const std::function<void(bool)>& callback)
+        : query("contact resolve username", TYPE_TO_PARAM(contacts_resolved_peer))
         , m_callback(callback)
     { }
 
@@ -1849,10 +1850,10 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_contact_search (const char *name, int name_len, std::function<void(bool success)> callback) {
-  auto q = std::make_shared<query_contact_search>(callback);
-  q->out_i32 (CODE_contacts_resolve_username);
-  q->out_string (name, name_len);
+void tgl_do_contact_resolve_username(const std::string& name, std::function<void(bool success)> callback) {
+  auto q = std::make_shared<query_contact_resolve_username>(callback);
+  q->out_i32(CODE_contacts_resolve_username);
+  q->out_string(name.c_str(), name.length());
   q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */

@@ -172,7 +172,7 @@ void tgl_do_get_dialog_list(int limit, int offset,
                 const std::vector<int>& unread_count)>& callback);
 
 // resolves username
-void tgl_do_contact_search(const char *name, std::function<void(bool success)> callback);
+void tgl_do_contact_resolve_username(const std::string& name, std::function<void(bool success)> callback);
 
 // requests contact list
 void tgl_do_update_contact_list ();
