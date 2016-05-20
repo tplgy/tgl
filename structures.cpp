@@ -227,6 +227,10 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool in
     DS_CSTR(lastname, DS_U->last_name);
     DS_CSTR(phone, DS_U->phone);
     DS_CSTR(username, DS_U->username);
+    user->firstname = firstname;
+    user->lastname = lastname;
+    user->username = username;
+    user->phone = phone;
 
     tgl_user_status status = tglf_fetch_user_status(DS_U->status);
     if (invoke_callback) {

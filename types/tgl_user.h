@@ -30,6 +30,10 @@ struct tgl_user {
     int flags;
     long long access_hash;
     struct tgl_user_status status;
+    std::string username;
+    std::string firstname;
+    std::string lastname;
+    std::string phone;
     tgl_user(): flags(0), access_hash(0) { }
 };
 
