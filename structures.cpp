@@ -440,13 +440,13 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
 }
 #endif
 
-std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
+std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C, bool invoke_callback) {
   if (!DS_C) { return nullptr; }
   if (DS_C->magic == CODE_chat_empty) { 
     return nullptr;
   }
   if (DS_C->magic == CODE_channel || DS_C->magic == CODE_channel_forbidden) {
-    return tglf_fetch_alloc_channel (DS_C);
+    return tglf_fetch_alloc_channel(DS_C, false);
   }
   tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_C->id));  
   chat_id.access_hash = 0; // chats don't have access hash
@@ -503,10 +503,17 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C) {
   C->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
   C->photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
 
-  tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, std::string(DS_C->title->data, DS_C->title->len), *(DS_C->date), creator,
-        admin, admins_enabled, kicked, left, deactivated);
-  tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), C->id.peer_type, C->photo_big, C->photo_small);
+  std::string title = DS_C->title ? std::string(DS_C->title->data, DS_C->title->len) : "";
+  std::string username = DS_C->username ? std::string(DS_C->username->data, DS_C->username->len) : "";
 
+  C->title = title;
+  C->username = username;
+
+  if (invoke_callback) {
+    tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, title, *(DS_C->date), creator,
+        admin, admins_enabled, kicked, left, deactivated);
+    tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), C->id.peer_type, C->photo_big, C->photo_small);
+  }
   return C;
 }
 
@@ -598,7 +605,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
   return C;
 }
 
-std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C) {
+std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C, bool invoke_callback) {
   if (!DS_C) { return nullptr; }
   
   tgl_peer_id_t chat_id = TGL_MK_CHANNEL (DS_LVAL (DS_C->id));  
@@ -680,9 +687,14 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C) 
 
   std::string title = DS_C->title ? std::string(DS_C->title->data, DS_C->title->len) : "";
   std::string username = DS_C->username ? std::string(DS_C->username->data, DS_C->username->len) : "";
-  tgl_state::instance()->callback()->channel_update(tgl_get_peer_id(C->id), *(DS_C->access_hash), *(DS_C->date), title, username);
-  tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), tgl_get_peer_type(C->id), C->photo_big, C->photo_small);
 
+  C->title = title;
+  C->username = username;
+
+  if (invoke_callback) {
+    tgl_state::instance()->callback()->channel_update(tgl_get_peer_id(C->id), *(DS_C->access_hash), *(DS_C->date), title, username);
+    tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), tgl_get_peer_type(C->id), C->photo_big, C->photo_small);
+  }
   return C;
 }
 

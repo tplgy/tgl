@@ -173,7 +173,8 @@ void tgl_do_get_dialog_list(int limit, int offset,
 
 // search for username
 void tgl_do_contact_search(const std::string& username, int limit,
-        std::function<void(const std::vector<std::shared_ptr<tgl_user>>&)> callback);
+        std::function<void(const std::vector<std::shared_ptr<tgl_user>>&,
+                           const std::vector<std::shared_ptr<tgl_chat>>&)> callback);
 
 // resolves username
 void tgl_do_contact_resolve_username(const std::string& name, std::function<void(bool success)> callback);

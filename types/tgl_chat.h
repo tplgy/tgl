@@ -18,14 +18,14 @@ struct tgl_chat {
     tgl_peer_id_t id;
     int flags;
     //std::string print_title;
-    //std::string username;
+    std::string username;
     //int structure_version;
     tgl_file_location photo_big;
     tgl_file_location photo_small;
     //int last_read_in;
     //int last_read_out;
     //struct tgl_photo *photo;
-    //std::string title;
+    std::string title;
     //int users_num;
     //int user_list_version;
     //std::vector<std::shared_ptr<tgl_chat_user>> user_list;

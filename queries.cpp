@@ -1815,7 +1815,8 @@ void tgl_do_set_username (const std::string& username, std::function<void(bool s
 class query_contacts_search: public query
 {
 public:
-    explicit query_contacts_search(const std::function<void(const std::vector<std::shared_ptr<tgl_user>>)>& callback)
+    explicit query_contacts_search(const std::function<void(const std::vector<std::shared_ptr<tgl_user>>&,
+            const std::vector<std::shared_ptr<tgl_chat>>&)> callback)
         : query("contact search", TYPE_TO_PARAM(contacts_found))
         , m_callback(callback)
     { }
@@ -1827,8 +1828,12 @@ public:
         for (int i = 0; i < DS_LVAL(DS_CRU->users->cnt); i++) {
             users.push_back(tglf_fetch_alloc_user (DS_CRU->users->data[i], false));
         }
+        std::vector<std::shared_ptr<tgl_chat>> chats;
+        for (int i = 0; i < DS_LVAL(DS_CRU->chats->cnt); i++) {
+            chats.push_back(tglf_fetch_alloc_chat(DS_CRU->chats->data[i], false));
+        }
         if (m_callback) {
-            m_callback(users);
+            m_callback(users, chats);
         }
     }
 
@@ -1836,17 +1841,19 @@ public:
     {
         TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_code);
         if (m_callback) {
-            std::vector<std::shared_ptr<tgl_user>> users;
-            m_callback(users);
+            m_callback({},{});
         }
         return 0;
     }
 
 private:
-    std::function<void(const std::vector<std::shared_ptr<tgl_user>>)> m_callback;
+    std::function<void(const std::vector<std::shared_ptr<tgl_user>>&,
+            const std::vector<std::shared_ptr<tgl_chat>>&)> m_callback;
 };
 
-void tgl_do_contact_search(const std::string& name, int limit, std::function<void(const std::vector<std::shared_ptr<tgl_user>>&)> callback)
+void tgl_do_contact_search(const std::string& name, int limit,
+        std::function<void(const std::vector<std::shared_ptr<tgl_user>>&,
+                           const std::vector<std::shared_ptr<tgl_chat>>&)> callback)
 {
   auto q = std::make_shared<query_contacts_search>(callback);
   q->out_i32(CODE_contacts_search);
