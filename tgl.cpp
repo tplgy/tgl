@@ -37,6 +37,8 @@
 #include "queries.h"
 
 #include <assert.h>
+#include <limits>
+#include <random>
 #include <stdlib.h>
 
 tgl_state::tgl_state()
@@ -233,9 +235,13 @@ void tgl_state::set_error(std::string error, int error_code)
 
 std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat()
 {
-    int chat_id = rand();
+    std::random_device device;
+    std::mt19937 generator(device());
+    std::uniform_int_distribution<> distribution(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+
+    int chat_id = distribution(generator);
     while (tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(chat_id))) {
-        chat_id = rand();
+        chat_id = distribution(generator);
     }
 
     auto secret_chat = std::make_shared<tgl_secret_chat>();
