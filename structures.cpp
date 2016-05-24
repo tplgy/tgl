@@ -682,9 +682,6 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C, 
   );
 #endif
 
-  C->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
-  C->photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
-
   std::string title = DS_C->title ? std::string(DS_C->title->data, DS_C->title->len) : "";
   std::string username = DS_C->username ? std::string(DS_C->username->data, DS_C->username->len) : "";
 
@@ -693,7 +690,12 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C, 
 
   if (invoke_callback) {
     tgl_state::instance()->callback()->channel_update(tgl_get_peer_id(C->id), *(DS_C->access_hash), *(DS_C->date), title, username);
-    tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), tgl_get_peer_type(C->id), C->photo_big, C->photo_small);
+    
+      if (DS_C->photo) {
+          C->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
+          C->photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
+          tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), tgl_get_peer_type(C->id), C->photo_big, C->photo_small);
+      }
   }
   return C;
 }
