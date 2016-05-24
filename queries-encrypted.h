@@ -40,9 +40,9 @@ void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const int* ttl,
         const int* layer,
         const int* in_seq_no,
-        const int* last_in_seq_no,
-        const int* out_seq_no,
         int flags);
+
+void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 
 #endif
 

@@ -20,6 +20,7 @@
 */
 
 #define _FILE_OFFSET_BITS 64
+#include <algorithm>
 #include <errno.h>
 #include <string.h>
 #include <memory.h>
@@ -1328,6 +1329,7 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
     //bl_do_edit_message_encr (&id, &from_id, &peer_id, &date, text, text_len, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
     M = tglm_create_encr_message(&id, &from_id, &peer_id, &date, text, text_len, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
+    tgl_state::instance()->callback()->new_message(M);
   }
 
   tgl_do_send_msg(M, callback);
@@ -3152,13 +3154,28 @@ public:
                 messages.push_back(tglf_fetch_alloc_message(DS_UD->new_messages->data[i], NULL));
             }
 
-            int encrypted_message_count = DS_LVAL(DS_UD->new_encrypted_messages->cnt);
-            std::vector<std::shared_ptr<tgl_message>> encrypted_messages;
-            for (int i = 0; i < encrypted_message_count; i++) {
 #ifdef ENABLE_SECRET_CHAT
-                encrypted_messages.push_back(tglf_fetch_alloc_encrypted_message(DS_UD->new_encrypted_messages->data[i]));
-#endif
+            int encrypted_message_count = DS_LVAL(DS_UD->new_encrypted_messages->cnt);
+            std::vector<std::shared_ptr<tgl_secret_message>> secret_messages;
+            for (int i = 0; i < encrypted_message_count; i++) {
+                if (auto secret_message = tglf_fetch_encrypted_message(DS_UD->new_encrypted_messages->data[i])) {
+                    TGL_DEBUG("received secret message, layer = " << secret_message->layer
+                            << ", in_seq_no = " << secret_message->in_seq_no
+                            << ", out_seq_no = " << secret_message->out_seq_no);
+                    secret_messages.push_back(secret_message);
+                }
             }
+            std::sort(secret_messages.begin(), secret_messages.end(),
+                    [&](const std::shared_ptr<tgl_secret_message>& a, const std::shared_ptr<tgl_secret_message>& b) {
+                        return a->out_seq_no < b->out_seq_no;
+                    });
+            for (const auto& secret_message: secret_messages) {
+                    TGL_DEBUG("received secret message after sorting, layer = " << secret_message->layer
+                            << ", in_seq_no = " << secret_message->in_seq_no
+                            << ", out_seq_no = " << secret_message->out_seq_no);
+                tglf_encrypted_message_received(secret_message);
+            }
+#endif
 
 #if 0
             for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
@@ -3175,13 +3192,6 @@ public:
                 tgl_state::instance()->callback()->new_message(messages[i]);
             }
 #endif
-
-            for (int i = 0; i < encrypted_message_count; i++) {
-                // messages to secret chats that no longer exist are not initialized and NULL
-                if (encrypted_messages[i]) {
-                    tgl_state::instance()->callback()->new_message(encrypted_messages[i]);
-                }
-            }
 
             if (DS_UD->state) {
                 tgl_state::instance()->set_pts(DS_LVAL (DS_UD->state->pts));

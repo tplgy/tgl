@@ -159,7 +159,7 @@ static void do_set_dh_params(const std::shared_ptr<tgl_secret_chat>& secret_chat
     TGL_ASSERT_UNUSED(res, res >= 0);
 }
 
-static void secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat)
+void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 {
      tgl_secret_chat_state state = sc_deleted;
      tgl_update_secret_chat(secret_chat,
@@ -170,8 +170,6 @@ static void secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_c
          NULL,
          NULL,
          &state,
-         NULL,
-         NULL,
          NULL,
          NULL,
          NULL,
@@ -189,8 +187,6 @@ void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const int* ttl,
         const int* layer,
         const int* in_seq_no,
-        const int* last_in_seq_no,
-        const int* out_seq_no,
         int flags)
 {
     assert(secret_chat);
@@ -227,14 +223,6 @@ void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
 
     if (in_seq_no) {
         secret_chat->in_seq_no = *in_seq_no;
-    }
-
-    if (out_seq_no) {
-        secret_chat->out_seq_no = *out_seq_no;
-    }
-
-    if (last_in_seq_no) {
-        secret_chat->last_in_seq_no = *last_in_seq_no;
     }
 
     if (g_key) {
@@ -279,6 +267,7 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
       TGLMF_PENDING | TGLMF_OUT | TGLMF_UNREAD | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
 
   assert (M);
+  tgl_state::instance()->callback()->new_message(M);
   tgl_do_send_msg (M, 0);
 }
 
@@ -333,7 +322,7 @@ public:
     virtual int on_error(int error_code, const std::string& error_string) override
     {
         if (m_secret_chat && m_secret_chat->state != sc_deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-            secret_chat_deleted(m_secret_chat);
+            tgl_secret_chat_deleted(m_secret_chat);
         }
 
         if (m_callback) {
@@ -524,7 +513,7 @@ public:
     virtual int on_error(int error_code, const std::string& error_string) override
     {
         if (m_secret_chat->state != sc_deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-            secret_chat_deleted(m_secret_chat);
+            tgl_secret_chat_deleted(m_secret_chat);
         }
 
         if (m_callback) {
@@ -589,7 +578,7 @@ public:
     virtual int on_error(int error_code, const std::string& error_string) override
     {
         if (m_secret_chat && m_secret_chat->state != sc_deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-            secret_chat_deleted(m_secret_chat);
+            tgl_secret_chat_deleted(m_secret_chat);
         }
 
         if (m_callback) {
@@ -720,6 +709,7 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
 
   free_ds_type_decrypted_message_media (DS_DMM, &decrypted_message_media);
   assert (M);
+  tgl_state::instance()->callback()->new_message(M);
   q->set_message(M);
 
   q->execute(tgl_state::instance()->working_dc());
@@ -757,6 +747,7 @@ void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double 
   free(TDSM.latitude);
   free(TDSM.longitude);
 
+  tgl_state::instance()->callback()->new_message(M);
   tgl_do_send_encr_msg(M, callback);
 }
 
@@ -791,7 +782,7 @@ public:
     virtual int on_error(int error_code, const std::string& error_string) override
     {
         if (m_secret_chat && m_secret_chat->state != sc_deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-            secret_chat_deleted(m_secret_chat);
+            tgl_secret_chat_deleted(m_secret_chat);
         }
 
         if (m_callback) {
@@ -895,8 +886,6 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
           NULL,
           NULL,
           NULL,
-          NULL,
-          NULL,
           TGL_FLAGS_UNCHANGED);
 
   auto q = std::make_shared<query_send_encr_accept>(secret_chat, callback);
@@ -996,8 +985,6 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
         random.data(),
         NULL,
         &state,
-        NULL,
-        NULL,
         NULL,
         NULL,
         NULL,

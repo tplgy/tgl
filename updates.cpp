@@ -332,7 +332,11 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   case CODE_update_new_encrypted_message:
     {
 #ifdef ENABLE_SECRET_CHAT
-      tglf_fetch_alloc_encrypted_message (DS_U->encr_message);
+      auto message = tglf_fetch_encrypted_message(DS_U->encr_message);
+      if (!message) {
+          return;
+      }
+      tglf_encrypted_message_received(message);
 #endif
     }
     break;

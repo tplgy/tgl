@@ -55,4 +55,24 @@ struct tgl_message {
     { }
 };
 
+struct tgl_secret_message {
+    std::shared_ptr<tgl_message> message;
+    int layer;
+    int in_seq_no;
+    int out_seq_no;
+
+    tgl_secret_message()
+        : layer(-1)
+        , in_seq_no(-1)
+        , out_seq_no(-1)
+    { }
+
+    tgl_secret_message(const std::shared_ptr<tgl_message>& message, int layer, int in_seq_no, int out_seq_no)
+        : message(message)
+        , layer(layer)
+        , in_seq_no(in_seq_no)
+        , out_seq_no(out_seq_no)
+    { }
+};
+
 #endif
