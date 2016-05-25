@@ -310,8 +310,6 @@ void str_to_32 (unsigned char *dst, char *src, int src_len) {
   }
 }
 
-#ifdef ENABLE_SECRET_CHAT
-
 std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_encrypted_chat *DS_EC) {
   if (!DS_EC) {
     return nullptr;
@@ -431,7 +429,6 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
 
   return secret_chat;
 }
-#endif
 
 std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C, bool invoke_callback) {
   if (!DS_C) { return nullptr; }
@@ -1570,7 +1567,6 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
   return M;
 }
 
-#ifdef ENABLE_SECRET_CHAT
 static int *decr_ptr;
 static int *decr_end;
 
@@ -1779,7 +1775,6 @@ void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>&
     media->encr_document->key_fingerprint = DS_LVAL (DS_EF->key_fingerprint);
   }
 }
-#endif
 
 #if 0
 static int id_cmp (struct tgl_message *M1, struct tgl_message *M2) {
@@ -1806,7 +1801,6 @@ static void increase_peer_size () {
 }
 #endif
 
-#ifdef ENABLE_SECRET_CHAT
 void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& secret_message) {
     const auto& message = secret_message->message;
     if (!(message->flags & TGLMF_CREATED)) {
@@ -1900,7 +1894,6 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
     tgl_update_secret_chat(secret_chat, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ttl_ptr, &layer, our_in_seq_no_ptr, TGL_FLAGS_UNCHANGED);
     tgl_state::instance()->callback()->new_message(message);
 }
-#endif
 
 std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info (struct tl_ds_bot_info *DS_BI) {
     if (!DS_BI || DS_BI->magic == CODE_bot_info_empty) { return NULL; }
@@ -2144,7 +2137,6 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
     return M;
 }
 
-#ifdef ENABLE_SECRET_CHAT
 std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
         const tgl_peer_id_t* from_id,
         const tgl_peer_id_t* to_id,
@@ -2238,8 +2230,6 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
 
     return M;
 }
-
-#endif
 
 #if 0
 void tglm_message_insert_tree (struct tgl_message *M) {

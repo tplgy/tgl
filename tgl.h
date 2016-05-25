@@ -32,8 +32,6 @@
 #include <string.h>
 #include <vector>
 
-//#define ENABLE_SECRET_CHAT
-
 #define TGL_MAX_DC_NUM 100
 #define TG_SERVER_1 "149.154.175.50"
 #define TG_SERVER_2 "149.154.167.50"

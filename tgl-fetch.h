@@ -47,11 +47,9 @@ std::shared_ptr<tgl_message_media> tglf_fetch_message_media(const tl_ds_message_
 std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_message_action *DS_MA);
 //void tglf_fetch_chat_full (struct tgl_chat *C);
 
-#ifdef ENABLE_SECRET_CHAT
 void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>& M, const tl_ds_encrypted_file *DS_EF);
 std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_ds_decrypted_message_media *DS_DMM);
 std::shared_ptr<tgl_message_action> tglf_fetch_message_action_encrypted(const tl_ds_decrypted_message_action *DS_DMA);
-#endif
 
 tgl_user_status tglf_fetch_user_status(tl_ds_user_status *DS_US);
 enum tgl_typing_status tglf_fetch_typing (struct tl_ds_send_message_action *DS_SMA);

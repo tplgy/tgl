@@ -1,7 +1,3 @@
-
-// This file will be included
-
-#ifdef ENABLE_SECRET_CHAT
 #include "queries-encrypted.h"
 #include "tgl-layout.h"
 
@@ -1166,4 +1162,3 @@ void tgl_do_abort_exchange(const std::shared_ptr<tgl_secret_chat>&) {
 }
 
 /* }}} */
-#endif

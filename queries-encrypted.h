@@ -1,8 +1,6 @@
 #ifndef __TGL_QUERIES_ENCRYPTED_H__
 #define __TGL_QUERIES_ENCRYPTED_H__
 
-#ifdef ENABLE_SECRET_CHAT
-
 #include "types/tgl_peer_id.h"
 #include "types/tgl_secret_chat.h"
 
@@ -43,7 +41,5 @@ void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         int flags);
 
 void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat);
-
-#endif
 
 #endif

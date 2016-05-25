@@ -348,9 +348,7 @@ void tgl_download_manager::send_file_end (std::shared_ptr<send_file> f, const st
         send_file_unencrypted_end (f, callback);
         return;
     }
-#ifdef ENABLE_SECRET_CHAT
     send_file_encrypted_end (f, callback);
-#endif
     return;
 }
 

@@ -34,7 +34,6 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
                                         int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags);
 
-#ifdef ENABLE_SECRET_CHAT
 std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
         const tgl_peer_id_t* from_id,
         const tgl_peer_id_t* to_id,
@@ -48,7 +47,6 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
 
 std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_encrypted_message*);
 void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& secret_message);
-#endif
 
 std::shared_ptr<tgl_message> tglm_message_alloc(const tgl_message_id_t* id);
 
@@ -68,10 +66,8 @@ void tglm_message_del_temp_id (struct tgl_message *M);
 void tglm_message_del_random_id (struct tgl_message *M);
 #endif
 
-#ifdef ENABLE_SECRET_CHAT
 //enum tgl_typing_status tglf_fetch_typing_buf (void);
 //void tgls_messages_mark_read (struct tgl_message *M, int out, int seq);
-#endif
 
 //void tgls_insert_random2local (long long random_id, tgl_message_id_t *local_id);
 //void tgls_insert_temp2local (int temp_id, tgl_message_id_t *local_id);

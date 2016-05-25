@@ -1159,12 +1159,10 @@ private:
 };
 
 void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M)> callback) {
-#ifdef ENABLE_SECRET_CHAT
-    if (tgl_get_peer_type (M->to_id) == TGL_PEER_ENCR_CHAT) {
-        tgl_do_send_encr_msg(M, callback);
-        return;
-    }
-#endif
+  if (tgl_get_peer_type (M->to_id) == TGL_PEER_ENCR_CHAT) {
+      tgl_do_send_encr_msg(M, callback);
+      return;
+  }
   auto q = std::make_shared<query_msg_send>(M, callback);
   q->out_i32(CODE_messages_send_message);
 
@@ -1244,7 +1242,6 @@ void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M, std::function<void(b
 void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
 {
   if (tgl_get_peer_type (peer_id) == TGL_PEER_ENCR_CHAT) {
-#ifdef ENABLE_SECRET_CHAT
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
     if (!secret_chat) {
       tgl_set_query_error (EINVAL, "unknown secret chat");
@@ -1260,7 +1257,6 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
       }
       return;
     }
-#endif
   }
 
   int date = time (0);
@@ -1497,7 +1493,6 @@ void tgl_do_mark_read (tgl_peer_id_t id, std::function<void(bool success)> callb
     tgl_do_messages_mark_read (id, 0, 0, callback);
     return;
   }
-#ifdef ENABLE_SECRET_CHAT
   assert (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT);
   std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(id);
   if (!secret_chat) {
@@ -1508,7 +1503,6 @@ void tgl_do_mark_read (tgl_peer_id_t id, std::function<void(bool success)> callb
     return;
   }
   tgl_do_messages_mark_read_encr(secret_chat, callback);
-#endif
 }
 /* }}} */
 
@@ -1612,11 +1606,9 @@ static void _tgl_do_get_history(const tgl_peer_id_t& id, int limit, int offset, 
 void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, int offline_mode,
     std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& list)> callback) {
   if (tgl_get_peer_type (id) == TGL_PEER_ENCR_CHAT || offline_mode) {
-#ifdef ENABLE_SECRET_CHAT
     // FIXME
     //tgl_do_get_local_history (id, offset, limit, callback, callback_extra);
     //tgl_do_mark_read (id, 0, 0);
-#endif
     return;
   }
   _tgl_do_get_history(id, limit, offset, -1, callback);
@@ -2268,9 +2260,7 @@ void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, uns
 void tgl_do_send_location (tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
 {
   if (tgl_get_peer_type (peer_id) == TGL_PEER_ENCR_CHAT) {
-#ifdef ENABLE_SECRET_CHAT
     tgl_do_send_location_encr (peer_id, latitude, longitude, flags, callback);
-#endif
   } else {
     int reply_id = flags >> 32;
 
@@ -3154,7 +3144,6 @@ public:
                 messages.push_back(tglf_fetch_alloc_message(DS_UD->new_messages->data[i], NULL));
             }
 
-#ifdef ENABLE_SECRET_CHAT
             int encrypted_message_count = DS_LVAL(DS_UD->new_encrypted_messages->cnt);
             std::vector<std::shared_ptr<tgl_secret_message>> secret_messages;
             for (int i = 0; i < encrypted_message_count; i++) {
@@ -3175,7 +3164,6 @@ public:
                             << ", out_seq_no = " << secret_message->out_seq_no);
                 tglf_encrypted_message_received(secret_message);
             }
-#endif
 
 #if 0
             for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
@@ -3460,12 +3448,10 @@ void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, std::
 
 /* {{{ Create secret chat */
 
-#ifdef ENABLE_SECRET_CHAT
 void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id,
         const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>& callback) {
     tgl_do_create_encr_chat_request(user_id, callback);
 }
-#endif
 /* }}} */
 
 /* {{{ Create group chat */
