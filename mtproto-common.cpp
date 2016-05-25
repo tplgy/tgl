@@ -192,6 +192,7 @@ int tgl_serialize_bignum (const TGLC_bn *b, char *buffer, int maxlen) {
 }
 
 
+// get last 8 bytes of SHA1 of RSA key's n and e
 long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key) {
   unsigned char sha[20];
   memset(sha, 0, sizeof(sha));
@@ -205,7 +206,9 @@ long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key) {
   int l2 = tgl_serialize_bignum (TGLC_rsa_e (key), temp_buffer.get() + l1, 4096 - l1);
   assert (l2 > 0 && l1 + l2 <= 4096);
   TGLC_sha1 ((unsigned char *)temp_buffer.get(), l1 + l2, sha);
-  return *(long long *)(sha + 12);
+  long long fingerprint;
+  memcpy(&fingerprint, sha + 12, 8);
+  return fingerprint;
 }
 
 int *tgl_in_ptr, *tgl_in_end;

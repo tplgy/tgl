@@ -139,13 +139,14 @@ public:
 
     void out_i64(int64_t i)
     {
-        m_data.resize(m_data.size() + 2);
-        *reinterpret_cast<int64_t*>(m_data.data() + m_data.size() - 2) = i;
+        size_t old_size = m_data.size();
+        m_data.resize(old_size + 2);
+        out_i64_at(old_size, i);
     }
 
     void out_i64_at(size_t at, int64_t i)
     {
-        *reinterpret_cast<int64_t*>(m_data.data() + at) = i;
+        memcpy(m_data.data() + at, &i, 8);
     }
 
     void out_double(double d)
@@ -389,14 +390,16 @@ static inline void fetch_data (struct tgl_in_buffer* in, void *data, int size) {
 
 static inline long long fetch_long (struct tgl_in_buffer* in) {
   assert (in->ptr + 2 <= in->end);
-  long long r = *(long long *)in->ptr;
+  long long r;
+  memcpy(&r, in->ptr, 8);
   in->ptr += 2;
   return r;
 }
 
 static inline double fetch_double (struct tgl_in_buffer* in) {
   assert (in->ptr + 2 <= in->end);
-  double r = *(double *)in->ptr;
+  double r;
+  memcpy(&r, in->ptr, 8);
   in->ptr += 2;
   return r;
 }

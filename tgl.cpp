@@ -77,7 +77,7 @@ void tgl_state::set_auth_key(int num, const char *buf)
 
     static unsigned char sha1_buffer[20];
     TGLC_sha1 ((unsigned char *)m_dcs[num]->auth_key, 256, sha1_buffer);
-    m_dcs[num]->auth_key_id = *(long long *)(sha1_buffer + 12);
+    memcpy(&m_dcs[num]->auth_key_id, sha1_buffer + 12, 8);
 
     m_dcs[num]->flags |= TGLDCF_AUTHORIZED;
 
