@@ -3165,7 +3165,7 @@ public:
                     secret_messages.push_back(secret_message);
                 }
             }
-            std::sort(secret_messages.begin(), secret_messages.end(),
+            std::stable_sort(secret_messages.begin(), secret_messages.end(),
                     [&](const std::shared_ptr<tgl_secret_message>& a, const std::shared_ptr<tgl_secret_message>& b) {
                         return a->out_seq_no < b->out_seq_no;
                     });

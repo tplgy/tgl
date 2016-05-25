@@ -1729,8 +1729,8 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
         struct paramed_type decrypted_message = TYPE_TO_PARAM(decrypted_message);
         tgl_in_buffer skip_in = in;
         if (skip_type_decrypted_message(&skip_in, &decrypted_message) < 0 || skip_in.ptr != skip_in.end) {
-          TGL_WARNING("can not fetch message");
-          return NULL;
+            TGL_WARNING("can not fetch message");
+            return NULL;
         }
 
         struct tl_ds_decrypted_message *DS_DM = fetch_ds_type_decrypted_message(&in, &decrypted_message);
