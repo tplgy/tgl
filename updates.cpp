@@ -65,7 +65,7 @@ int tgl_check_pts_diff (int pts, int pts_count) {
 }
 
 int tgl_check_qts_diff (int qts, int qts_count) {
-    TGL_ERROR("qts = " << qts << ", qts_count = " << qts_count);
+    TGL_NOTICE("qts = " << qts << ", qts_count = " << qts_count);
     if (qts < tgl_state::instance()->qts() + qts_count) {
         TGL_NOTICE("Duplicate message with qts=" << qts);
         return -1;
