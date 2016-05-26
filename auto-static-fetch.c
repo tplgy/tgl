@@ -108,6 +108,7 @@ char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T) {
 #ifdef DISABLE_EXTF
   TGL_UNUSED(T);
   assert (0);
+  return nullptr;
 #else
   out_buf_pos = 0;
   if (fetch_type_any (T) < 0) { return 0; }
