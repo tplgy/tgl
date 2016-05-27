@@ -34,7 +34,18 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
                                         int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags);
 
-std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
+std::shared_ptr<tgl_message> tglm_create_encr_message(const tgl_message_id* id,
+        const tgl_peer_id_t* from_id,
+        const tgl_peer_id_t* to_id,
+        const int* date,
+        const char* message,
+        int message_len,
+        const tl_ds_decrypted_message_media* media,
+        const tl_ds_decrypted_message_action* action,
+        const tl_ds_encrypted_file* file,
+        int flags);
+
+void tglm_edit_encr_message(const std::shared_ptr<tgl_message>& m,
         const tgl_peer_id_t* from_id,
         const tgl_peer_id_t* to_id,
         const int* date,

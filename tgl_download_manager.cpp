@@ -134,22 +134,30 @@ private:
     std::function<void(bool, const std::string&)> m_callback;
 };
 
-download::download(int type, std::shared_ptr<tgl_document> doc) : size(doc->size)
+download::download(int type, const std::shared_ptr<tgl_document>& doc)
+    : offset(0)
+    , size(doc->size)
+    , fd(-1)
+    , type(type)
+    , refcnt(0)
 {
-    this->type = type;
     location.set_dc(doc->dc_id);
-    location.set_local_id(doc->id);
+    location.set_local_id(0);
     location.set_secret(doc->access_hash);
-    location.set_volume(0);
+    location.set_volume(doc->id);
 }
 
-download::download(int type, std::shared_ptr<tgl_encr_document> doc) : size(doc->size)
+download::download(int type, const std::shared_ptr<tgl_encr_document>& doc)
+    : offset(0)
+    , size(doc->size)
+    , fd(-1)
+    , type(type)
+    , refcnt(0)
 {
-    this->type = type;
     location.set_dc(doc->dc_id);
-    location.set_local_id(doc->id);
+    location.set_local_id(0);
     location.set_secret(doc->access_hash);
-    location.set_volume(0);
+    location.set_volume(doc->id);
 }
 
 tgl_download_manager::tgl_download_manager(std::string download_directory)
@@ -415,7 +423,7 @@ void tgl_download_manager::send_file_thumb(std::shared_ptr<send_file> f, const v
 }
 
 
-void tgl_download_manager::_tgl_do_send_photo (tgl_peer_id_t to_id, const std::string &file_name, int avatar, int w, int h, int duration,
+void tgl_download_manager::_tgl_do_send_photo(const tgl_peer_id_t& to_id, const std::string &file_name, int avatar, int w, int h, int duration,
                                 const void *thumb_data, int thumb_len, const std::string& caption, unsigned long long flags,
                                 const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback) {
     int fd = -1;
@@ -500,7 +508,7 @@ void tgl_download_manager::set_profile_photo (const std::string &file_name, cons
             });
 }
 
-void tgl_download_manager::send_document (tgl_peer_id_t to_id, const std::string &file_name, const std::string &caption, unsigned long long flags,
+void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const std::string &file_name, const std::string &caption, unsigned long long flags,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     TGL_DEBUG("send_document - file_name: " + file_name);
@@ -660,7 +668,7 @@ void tgl_download_manager::load_next_part (std::shared_ptr<download> D, std::fun
     q->execute(tgl_state::instance()->dc_at(D->location.dc()));
 }
 
-void tgl_download_manager::download_photo_size (const std::shared_ptr<tgl_photo_size>& P, std::function<void(bool success, const std::string &filename)> callback)
+void tgl_download_manager::download_photo_size (const std::shared_ptr<tgl_photo_size>& P, const std::function<void(bool success, const std::string &filename)>& callback)
 {
     if (!P->loc.dc()) {
         TGL_WARNING("Bad video thumb");
@@ -675,7 +683,7 @@ void tgl_download_manager::download_photo_size (const std::shared_ptr<tgl_photo_
     load_next_part (D, callback);
 }
 
-void tgl_download_manager::download_file_location(const tgl_file_location& file_location, std::function<void(bool success, const std::string &filename)> callback)
+void tgl_download_manager::download_file_location(const tgl_file_location& file_location, const std::function<void(bool success, const std::string &filename)>& callback)
 {
     if (!file_location.dc()) {
         TGL_ERROR("Bad file location");
@@ -689,7 +697,7 @@ void tgl_download_manager::download_file_location(const tgl_file_location& file_
     load_next_part(D, callback);
 }
 
-void tgl_download_manager::download_photo(struct tgl_photo *photo, std::function<void(bool success, const std::string &filename)> callback)
+void tgl_download_manager::download_photo(const std::shared_ptr<tgl_photo>& photo, const std::function<void(bool success, const std::string &filename)>& callback)
 {
     if (!photo->sizes.size()) {
         TGL_ERROR("Bad photo (no photo sizes");
@@ -710,12 +718,12 @@ void tgl_download_manager::download_photo(struct tgl_photo *photo, std::function
     download_photo_size(photo->sizes[maxi], callback);
 }
 
-void tgl_download_manager::download_document_thumb (struct tgl_document *video, std::function<void(bool success, const std::string &filename)> callback)
+void tgl_download_manager::download_document_thumb(const std::shared_ptr<tgl_document>& video, const std::function<void(bool success, const std::string &filename)>& callback)
 {
     download_photo_size(video->thumb, callback);
 }
 
-void tgl_download_manager::_tgl_do_load_document(std::shared_ptr<tgl_document> doc, std::shared_ptr<download> D, std::function<void(bool success, const std::string &filename)> callback)
+void tgl_download_manager::_tgl_do_load_document(const std::shared_ptr<tgl_document>& doc, const std::shared_ptr<download>& D, const std::function<void(bool success, const std::string &filename)>& callback)
 {
     assert(doc);
 
@@ -729,35 +737,35 @@ void tgl_download_manager::_tgl_do_load_document(std::shared_ptr<tgl_document> d
     load_next_part(D, callback);
 }
 
-void tgl_download_manager::download_document(std::shared_ptr<tgl_document> document, std::function<void(bool success, const std::string &filename)> callback)
+void tgl_download_manager::download_document(const std::shared_ptr<tgl_document>& document, const std::function<void(bool success, const std::string &filename)>& callback)
 {
     std::shared_ptr<download> D = std::make_shared<download>(CODE_input_document_file_location, document);
 
     _tgl_do_load_document (document, D, callback);
 }
 
-void tgl_download_manager::download_video (std::shared_ptr<tgl_document> V, std::function<void(bool success, const std::string &filename)> callback)
+void tgl_download_manager::download_video(const std::shared_ptr<tgl_document>& doc, const std::function<void(bool success, const std::string &filename)>& callback)
 {
-    std::shared_ptr<download> D = std::make_shared<download>(CODE_input_video_file_location, V);
+    std::shared_ptr<download> D = std::make_shared<download>(CODE_input_video_file_location, doc);
 
-    _tgl_do_load_document (V, D, callback);
+    _tgl_do_load_document (doc, D, callback);
 }
 
-void tgl_download_manager::download_audio(std::shared_ptr<tgl_document> V, std::function<void(bool success, const std::string &filename)> callback)
+void tgl_download_manager::download_audio(const std::shared_ptr<tgl_document>& doc, const std::function<void(bool success, const std::string &filename)>& callback)
 {
-    std::shared_ptr<download> D = std::make_shared<download>(CODE_input_audio_file_location, V);
+    std::shared_ptr<download> D = std::make_shared<download>(CODE_input_audio_file_location, doc);
 
-    _tgl_do_load_document(V, D, callback);
+    _tgl_do_load_document(doc, D, callback);
 }
 
-void tgl_download_manager::download_encr_document(std::shared_ptr<tgl_encr_document> V, std::function<void(bool success, const std::string &filename)> callback)
+void tgl_download_manager::download_encr_document(const std::shared_ptr<tgl_encr_document>& doc, const std::function<void(bool success, const std::string &filename)>& callback)
 {
-    assert (V);
-    std::shared_ptr<download> D = std::make_shared<download>(V->size, V);
-    D->key = V->key;
-    D->iv = V->iv;
-    if (!V->mime_type.empty()) {
-        const char *r = tg_extension_by_mime (V->mime_type.c_str());
+    assert (doc);
+    std::shared_ptr<download> D = std::make_shared<download>(doc->size, doc);
+    D->key = doc->key;
+    D->iv = doc->iv;
+    if (!doc->mime_type.empty()) {
+        const char *r = tg_extension_by_mime (doc->mime_type.c_str());
         if (r) {
             D->ext = std::string(r);
         }
@@ -766,8 +774,8 @@ void tgl_download_manager::download_encr_document(std::shared_ptr<tgl_encr_docum
 
     unsigned char md5[16];
     unsigned char str[64];
-    memcpy (str, V->key.data(), 32);
-    memcpy (str + 32, V->iv.data(), 32);
+    memcpy (str, doc->key.data(), 32);
+    memcpy (str + 32, doc->iv.data(), 32);
     TGLC_md5 (str, 64, md5);
-    assert (V->key_fingerprint == ((*(int *)md5) ^ (*(int *)(md5 + 4))));
+    assert (doc->key_fingerprint == ((*(int *)md5) ^ (*(int *)(md5 + 4))));
 }

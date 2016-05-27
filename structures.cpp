@@ -893,7 +893,6 @@ std::shared_ptr<tgl_document> tglf_fetch_alloc_document(const tl_ds_document *DS
   document->access_hash = DS_LVAL (DS_D->access_hash);
   //D->user_id = DS_LVAL (DS_D->user_id);
   document->date = DS_LVAL (DS_D->date);
-  //D->caption = DS_STR_DUP (DS_D->file_name);
   if (DS_D->mime_type && DS_D->mime_type->data) {
     document->mime_type = std::string(DS_D->mime_type->data, DS_D->mime_type->len);
   }
@@ -905,8 +904,7 @@ std::shared_ptr<tgl_document> tglf_fetch_alloc_document(const tl_ds_document *DS
   }
 
   if (DS_D->attributes) {
-    int i;
-    for (i = 0; i < DS_LVAL (DS_D->attributes->cnt); i++) {
+    for (int i = 0; i < DS_LVAL (DS_D->attributes->cnt); i++) {
       tglf_fetch_document_attribute (document, DS_D->attributes->data[i]);
     }
   }
@@ -1311,9 +1309,11 @@ std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_d
 
     media->encr_document = std::make_shared<tgl_encr_document>();
 
+    std::string default_mime;
     switch (DS_DMM->magic) {
     case CODE_decrypted_message_media_photo:
         media->encr_document->flags = TGLDF_IMAGE;
+        media->encr_document->mime_type = "image/jpeg"; // Default mime in case there is no mime from the message media
         break;
     case CODE_decrypted_message_media_video:
     case CODE_decrypted_message_media_video_l12:
@@ -1334,11 +1334,15 @@ std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_d
     if (DS_DMM->mime_type && DS_DMM->mime_type->data) {
       media->encr_document->mime_type = std::string(DS_DMM->mime_type->data, DS_DMM->mime_type->len);
     }
+    if (DS_DMM->thumb && DS_DMM->magic != CODE_photo_size_empty) {
+      media->encr_document->thumb = tglf_fetch_photo_size(DS_DMM->thumb);
+    }
 
     media->encr_document->key.resize(32);
     str_to_32 (media->encr_document->key.data(), DS_STR(DS_DMM->key));
     media->encr_document->iv.resize(32);
     str_to_32 (media->encr_document->iv.data(), DS_STR(DS_DMM->iv));
+
     return media;
   }
   case CODE_decrypted_message_media_geo_point:
@@ -1758,21 +1762,25 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
 
 void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>& M, const tl_ds_encrypted_file *DS_EF) {
   if (DS_EF->magic == CODE_encrypted_file_empty) {
-    assert (M->type() != tgl_message_media_type_document_encr);
+      assert (M->type() != tgl_message_media_type_document_encr);
   } else {
-    assert (M->type() == tgl_message_media_type_document_encr);
-    if (M->type() != tgl_message_media_type_document_encr) {
-        return;
-    }
+      assert (M->type() == tgl_message_media_type_document_encr);
+      if (M->type() != tgl_message_media_type_document_encr) {
+          return;
+      }
 
-    auto media = std::static_pointer_cast<tgl_message_media_document_encr>(M);
+      auto media = std::static_pointer_cast<tgl_message_media_document_encr>(M);
 
-    media->encr_document = std::make_shared<tgl_encr_document>();
-    media->encr_document->id = DS_LVAL (DS_EF->id);
-    media->encr_document->access_hash = DS_LVAL (DS_EF->access_hash);
-    media->encr_document->size = DS_LVAL (DS_EF->size);
-    media->encr_document->dc_id = DS_LVAL (DS_EF->dc_id);
-    media->encr_document->key_fingerprint = DS_LVAL (DS_EF->key_fingerprint);
+      assert(media->encr_document);
+      if (!media->encr_document) {
+          return;
+      }
+
+      media->encr_document->id = DS_LVAL(DS_EF->id);
+      media->encr_document->access_hash = DS_LVAL(DS_EF->access_hash);
+      media->encr_document->size = DS_LVAL(DS_EF->size);
+      media->encr_document->dc_id = DS_LVAL(DS_EF->dc_id);
+      media->encr_document->key_fingerprint = DS_LVAL(DS_EF->key_fingerprint);
   }
 }
 
@@ -2137,7 +2145,9 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
     return M;
 }
 
-std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
+static std::shared_ptr<tgl_message> create_or_edit_encr_message(
+        const std::shared_ptr<tgl_message>& m,
+        const tgl_message_id* id,
         const tgl_peer_id_t* from_id,
         const tgl_peer_id_t* to_id,
         const int* date,
@@ -2150,14 +2160,14 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
 {
     assert (!(flags & 0xfffe0000));
 
-    std::shared_ptr<tgl_message> M = tglm_message_alloc(id);
+    std::shared_ptr<tgl_message> M = m;
 
     if (flags & (1 << 16)) {
-      //if (!M) {
-      //  M = tglm_message_alloc (TLS, id);
-      //} else {
-      //  assert (!(M->flags & TGLMF_CREATED));
-      //}
+      if (!M) {
+        M = tglm_message_alloc(id);
+      } else {
+        assert (!(M->flags & TGLMF_CREATED));
+      }
       assert (!(M->flags & TGLMF_CREATED));
     } else {
       assert (M->flags & TGLMF_CREATED);
@@ -2230,6 +2240,38 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(tgl_message_id* id,
 
     return M;
 }
+
+std::shared_ptr<tgl_message> tglm_create_encr_message(
+        const tgl_message_id* id,
+        const tgl_peer_id_t* from_id,
+        const tgl_peer_id_t* to_id,
+        const int* date,
+        const char* message,
+        int message_len,
+        const tl_ds_decrypted_message_media* media,
+        const tl_ds_decrypted_message_action* action,
+        const tl_ds_encrypted_file* file,
+        int flags)
+{
+    return create_or_edit_encr_message(nullptr, id, from_id, to_id, date,
+            message, message_len, media, action, file, flags);
+}
+
+void tglm_edit_encr_message(const std::shared_ptr<tgl_message>& m,
+        const tgl_peer_id_t* from_id,
+        const tgl_peer_id_t* to_id,
+        const int* date,
+        const char* message,
+        int message_len,
+        const tl_ds_decrypted_message_media* media,
+        const tl_ds_decrypted_message_action* action,
+        const tl_ds_encrypted_file* file,
+        int flags)
+{
+    create_or_edit_encr_message(m, &m->permanent_id, from_id, to_id, date,
+            message, message_len, media, action, file, flags);
+}
+
 
 #if 0
 void tglm_message_insert_tree (struct tgl_message *M) {

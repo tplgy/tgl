@@ -552,22 +552,17 @@ public:
         m_message = message;
     }
 
-    virtual void on_answer(void*) override
+    virtual void on_answer(void* D) override
     {
-#if 0 // FIXME
-        struct tl_ds_messages_sent_encrypted_message *DS_MSEM = (struct tl_ds_messages_sent_encrypted_message*)D;
-        struct tgl_message *M = q->extra;
+        tl_ds_messages_sent_encrypted_message* DS_MSEM = static_cast<tl_ds_messages_sent_encrypted_message*>(D);
 
-        if (M->flags & TGLMF_PENDING) {
-          //bl_do_edit_message_encr (&M->permanent_id, NULL, NULL, DS_MSEM->date,
-          //NULL, 0, NULL, NULL, DS_MSEM->file, M->flags ^ TGLMF_PENDING);
-          //bl_do_msg_update (&M->permanent_id);
-          tgl_state::instance()->callback.new_msg(M);
-        }
-#endif
+        tglm_edit_encr_message(m_message, nullptr, nullptr, DS_MSEM->date, nullptr, 0, nullptr, nullptr, DS_MSEM->file, m_message->flags & (~TGLMF_PENDING));
+        tgl_state::instance()->callback()->new_message(m_message);
+
         if (m_callback) {
             m_callback(true, m_message);
         }
+
         tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id.id, m_secret_chat->out_seq_no);
     }
 
