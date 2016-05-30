@@ -112,14 +112,14 @@ public:
 
     std::string get_file_path(long long int secret);  // parameter is either secret or access hash depending on file type
 
-    void download_encr_document(const std::shared_ptr<tgl_encr_document>& doc, const std::function<void(bool success, const std::string &filename)>& callback);
-    void download_audio(const std::shared_ptr<tgl_document>& doc, const std::function<void(bool success, const std::string &filename)>& callback);
-    void download_video(const std::shared_ptr<tgl_document>& doc, const std::function<void(bool success, const std::string &filename)>& callback);
-    void download_document_thumb(const std::shared_ptr<tgl_document>& doc, const std::function<void(bool success, const std::string &filename)>& callback);
-    void download_photo(const std::shared_ptr<tgl_photo>& photo, const std::function<void(bool success, const std::string &filename)>& callback);
-    void download_photo_size(const std::shared_ptr<tgl_photo_size>& P, const std::function<void(bool success, const std::string &filename)>& callback);
-    void download_file_location(const tgl_file_location& location, const std::function<void(bool success, const std::string &filename)>& callback);
-    void download_document(const std::shared_ptr<tgl_document>& document, const std::function<void(bool success, const std::string &filename)>& callback);
+    void download_encr_document(const std::shared_ptr<tgl_encr_document>& doc, const std::function<void(bool success, const std::string &filename, float progress)>& callback);
+    void download_audio(const std::shared_ptr<tgl_document>& doc, const std::function<void(bool success, const std::string &filename, float progress)>& callback);
+    void download_video(const std::shared_ptr<tgl_document>& doc, const std::function<void(bool success, const std::string &filename, float progress)>& callback);
+    void download_document_thumb(const std::shared_ptr<tgl_document>& doc, const std::function<void(bool success, const std::string &filename, float progress)>& callback);
+    void download_photo(const std::shared_ptr<tgl_photo>& photo, const std::function<void(bool success, const std::string &filename, float progress)> &callback);
+    void download_photo_size(const std::shared_ptr<tgl_photo_size>& P, const std::function<void(bool success, const std::string &filename, float progress)>& callback);
+    void download_file_location(const tgl_file_location& location, int32_t file_size, const std::function<void(bool success, const std::string &filename, float progress)>& callback);
+    void download_document(const std::shared_ptr<tgl_document>& document, const std::function<void(bool success, const std::string &filename, float progress)>& callback);
 
     void send_document(const tgl_peer_id_t& to_id, const std::string &file_name, const std::string &caption, unsigned long long flags,
             const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
@@ -148,11 +148,11 @@ private:
             const void *thumb_data, int thumb_len, const std::string& caption, unsigned long long flags,
             const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
     void _tgl_do_load_document(const std::shared_ptr<tgl_document>& doc, const std::shared_ptr<download>& D,
-             const std::function<void(bool success, const std::string &filename)>& callback);
+             const std::function<void(bool success, const std::string &filename, float progress)>& callback);
 
     void begin_download(std::shared_ptr<download>);
-    void load_next_part(std::shared_ptr<download>, std::function<void(bool, const std::string &)> callback);
-    void end_load(std::shared_ptr<download>, std::function<void(bool, const std::string &)> callback);
+    void load_next_part(std::shared_ptr<download>, std::function<void(bool, const std::string&, float)> callback);
+    void end_load(std::shared_ptr<download>, std::function<void(bool, const std::string&, float)> callback);
 
     std::vector<std::shared_ptr<download>> m_downloads;
     std::string m_download_directory;
