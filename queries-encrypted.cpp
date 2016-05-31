@@ -625,9 +625,9 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
     q->out_i32 (CODE_decrypted_message_media_document);
   }
   if (f->flags == -1 || !(f->flags & TGLDF_AUDIO)) {
-    q->out_string ("", 0);
-    q->out_i32 (90);
-    q->out_i32 (90);
+    q->out_string(f->thumb.data(), f->thumb.size());
+    q->out_i32 (f->thumb_w);
+    q->out_i32 (f->thumb_h);
   }
   
   if (f->flags == -1) {
