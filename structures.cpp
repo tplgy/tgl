@@ -1565,7 +1565,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
       DS_M->action,
       DS_M->reply_to_msg_id,
       DS_M->reply_markup,
-      flags | TGLMF_CREATE | TGLMF_CREATED
+      flags
       );
   free(msg_text);
   return M;
@@ -2081,21 +2081,7 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
 {
     std::shared_ptr<tgl_message> M = tglm_message_alloc(id);
 
-    assert (!(M->flags & TGLMF_ENCRYPTED));
-    assert (!(flags & TGLMF_ENCRYPTED));
-
-//    if ((M->flags & TGLMF_PENDING) && !(flags & TGLMF_PENDING)){
-//        tglm_message_remove_unsent (TLS, M);
-//    }
-//    if (!(M->flags & TGLMF_PENDING) && (flags & TGLMF_PENDING)){
-//        tglm_message_insert_unsent (TLS, M);
-//    }
-
-    if ((M->flags & TGLMF_UNREAD) && !(flags & TGLMF_UNREAD)) {
-        M->flags = (flags & 0xffff) | TGLMF_UNREAD;
-    } else {
-        M->flags = (flags & 0xffff);
-    }
+    M->flags = flags;
 
     if (flags & TGLMF_TEMP_MSG_ID) {
         M->flags |= TGLMF_TEMP_MSG_ID;
@@ -2105,7 +2091,6 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
         M->from_id = *from_id;
     }
     if (to_id) {
-        assert (flags & 0x10000);
         M->to_id = *to_id;
         assert (to_id->peer_type != TGL_PEER_ENCR_CHAT);
     }
