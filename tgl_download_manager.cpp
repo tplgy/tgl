@@ -10,6 +10,7 @@
 
 #include <fcntl.h>
 #include <boost/filesystem.hpp>
+#include <boost/lexical_cast.hpp>
 #include <fstream>
 
 class query_send_file_part: public query
@@ -651,7 +652,7 @@ void tgl_download_manager::begin_download(std::shared_ptr<download> new_download
 
 void tgl_download_manager::load_next_part (std::shared_ptr<download> D, std::function<void(bool, const std::string &, float progress)> callback)
 {
-    std::string message = "load_next_part - D->size: " + std::to_string(D->size);
+    std::string message = "load_next_part - D->size: " + boost::lexical_cast<std::string>(D->size);
     TGL_DEBUG(message);
     if (!D->offset) {
         std::string path = get_file_path(D->location.access_hash());
@@ -724,7 +725,7 @@ void tgl_download_manager::download_file_location(const tgl_file_location& file_
     }
 
     std::shared_ptr<download> D = std::make_shared<download>(file_size, file_location);
-    std::string message = "download_file_location - file_size: " + std::to_string(file_size);
+    std::string message = "download_file_location - file_size: " + boost::lexical_cast<std::string>(file_size);
     TGL_DEBUG(message);
     load_next_part(D, callback);
 }
