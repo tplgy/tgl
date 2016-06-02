@@ -136,7 +136,7 @@ static int do_skip_seq (int seq) {
     }
 }
 
-void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
+void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_ptr<void> extra) {
   if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     TGL_DEBUG("Update during get_difference. DROP");
     return;
@@ -195,6 +195,10 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
     };
   case CODE_update_message_i_d:
     {
+      auto message = std::static_pointer_cast<tgl_message>(extra);
+      if (message) {
+          tgl_state::instance()->callback()->message_sent(message, DS_LVAL(DS_U->id), -1);
+      }
 #if 0 // FIXME
       tgl_message_id_t msg_id;
       msg_id.peer_type = TGL_PEER_RANDOM_ID;
@@ -486,7 +490,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U) {
   }
 }
 
-void tglu_work_updates (int check_only, struct tl_ds_updates *DS_U) {
+void tglu_work_updates (int check_only, struct tl_ds_updates *DS_U, std::shared_ptr<void> extra) {
   if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
@@ -507,7 +511,7 @@ void tglu_work_updates (int check_only, struct tl_ds_updates *DS_U) {
   }
   if (DS_U->updates) {
     for (i = 0; i < DS_LVAL (DS_U->updates->cnt); i++) {
-      tglu_work_update (check_only, DS_U->updates->data[i]);
+      tglu_work_update (check_only, DS_U->updates->data[i], extra);
     }
   }
 
@@ -535,7 +539,7 @@ void tglu_work_updates_combined (int check_only, struct tl_ds_updates *DS_U) {
     tglf_fetch_alloc_chat (DS_U->chats->data[i]);
   }
   for (i = 0; i < DS_LVAL (DS_U->updates->cnt); i++) {
-    tglu_work_update (check_only, DS_U->updates->data[i]);
+    tglu_work_update (check_only, DS_U->updates->data[i], nullptr);
   }
 
   if (check_only) { return; }
@@ -626,7 +630,7 @@ void tglu_work_update_short (int check_only, struct tl_ds_updates *DS_U) {
   if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
-  tglu_work_update (check_only, DS_U->update);
+  tglu_work_update (check_only, DS_U->update, nullptr);
 }
 
 void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *DS_U, std::shared_ptr<void> extra) {
@@ -709,10 +713,10 @@ void tglu_work_any_updates (int check_only, struct tl_ds_updates *DS_U, std::sha
     tglu_work_updates_combined (check_only, DS_U);
     return;
   case CODE_updates:
-    tglu_work_updates (check_only, DS_U);    
+    tglu_work_updates (check_only, DS_U, extra);
     return;
   case CODE_update_short_sent_message:
-    tglu_work_update_short_sent_message (check_only, DS_U, extra);    
+    tglu_work_update_short_sent_message (check_only, DS_U, extra);
     return;
   default:
     assert (0);

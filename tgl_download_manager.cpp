@@ -6,7 +6,6 @@
 #include "crypto/md5.h"
 #include "mtproto-common.h"
 #include "tools.h"
-#include "types/tgl_message.h"
 
 #include <fcntl.h>
 #include <boost/filesystem.hpp>
@@ -250,8 +249,15 @@ void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, const 
 
 void tgl_download_manager::send_file_unencrypted_end(std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&)>&  callback) {
     std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-    E->id = tgl_peer_id_to_random_msg_id (f->to_id);
+    E->id = f->message_id;
     auto q = std::make_shared<query_send_msgs>(E, callback);
+
+    auto message = std::make_shared<tgl_message>();
+    message->permanent_id = f->message_id;
+    message->to_id = f->to_id;
+    message->from_id = tgl_state::instance()->our_id();
+    q->set_message(message);
+
     q->out_i32 (CODE_messages_send_media);
     q->out_i32 ((f->reply ? 1 : 0));
     q->out_peer_id(f->to_id);
@@ -429,7 +435,7 @@ void tgl_download_manager::send_file_thumb(const std::shared_ptr<send_file>& f, 
 }
 
 
-void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const std::string &file_name, int avatar, int w, int h, int duration,
+void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name, int avatar, int w, int h, int duration,
         const std::string& caption, unsigned long long flags,
         const std::string& thumb_path, int thumb_w, int thumb_h,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback) {
@@ -455,6 +461,7 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const std::
     f->offset = 0;
     f->part_num = 0;
     f->avatar = avatar;
+    f->message_id = message_id;
     f->reply = flags >> 32;
     int tmp = ((size + 2999) / 3000);
     f->part_size = (1 << 14);
@@ -517,7 +524,7 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const std::
 void tgl_download_manager::set_chat_photo (tgl_peer_id_t chat_id, const std::string &file_name, const std::function<void(bool success)>& callback)
 {
     assert (tgl_get_peer_type (chat_id) == TGL_PEER_CHAT);
-    send_document(chat_id, file_name, tgl_get_peer_id (chat_id), 0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::string(), 0 , 0,
+    send_document(chat_id, tgl_message_id_t(), file_name, tgl_get_peer_id (chat_id), 0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::string(), 0 , 0,
             [=](bool success, const std::shared_ptr<tgl_message>&) {
                 if (callback) {
                     callback(success);
@@ -527,7 +534,7 @@ void tgl_download_manager::set_chat_photo (tgl_peer_id_t chat_id, const std::str
 
 void tgl_download_manager::set_profile_photo (const std::string &file_name, const std::function<void(bool success)>& callback)
 {
-    send_document (tgl_state::instance()->our_id(), file_name, -1, 0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::string(), 0, 0,
+    send_document (tgl_state::instance()->our_id(), tgl_message_id_t(), file_name, -1, 0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::string(), 0, 0,
             [=](bool success, const std::shared_ptr<tgl_message>&) {
                 if (callback) {
                     callback(success);
@@ -535,7 +542,7 @@ void tgl_download_manager::set_profile_photo (const std::string &file_name, cons
             });
 }
 
-void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const std::string &file_name, const std::string &caption, const std::string& thumb_path, unsigned long long flags,
+void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name, const std::string &caption, const std::string& thumb_path, unsigned long long flags,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     TGL_DEBUG("send_document - file_name: " + file_name);
@@ -552,7 +559,7 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const std::
             flags |= TGLDF_AUDIO;
         }
     }
-    send_document(to_id, file_name, 0, 100, 100, 100, caption, flags, thumb_path, 90, 90, callback); // FIXME: thumb_w and thumb_h
+    send_document(to_id, message_id, file_name, 0, 100, 100, 100, caption, flags, thumb_path, 90, 90, callback); // FIXME: thumb_w and thumb_h
 }
 
 void tgl_download_manager::end_load (std::shared_ptr<download> D, std::function<void(bool success, const std::string &filename, float progress)> callback)

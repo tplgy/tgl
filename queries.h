@@ -168,12 +168,14 @@ public:
     explicit query_send_msgs(const std::function<void(bool)>& bool_callback);
     virtual void on_answer(void *D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
+    void set_message(const std::shared_ptr<tgl_message>& message);
 
 private:
     std::shared_ptr<messages_send_extra> m_extra;
     std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_single_callback;
     std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>& messages)> m_multi_callback;
     std::function<void(bool)> m_bool_callback;
+    std::shared_ptr<tgl_message> m_message;
 };
 
 void tglq_query_ack (long long id);

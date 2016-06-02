@@ -1909,6 +1909,7 @@ query_send_msgs::query_send_msgs(const std::shared_ptr<messages_send_extra>& ext
     , m_single_callback(single_callback)
     , m_multi_callback(nullptr)
     , m_bool_callback(nullptr)
+    , m_message(nullptr)
 {
     assert(m_extra);
     assert(!m_extra->multi);
@@ -1921,6 +1922,7 @@ query_send_msgs::query_send_msgs(const std::shared_ptr<messages_send_extra>& ext
     , m_single_callback(nullptr)
     , m_multi_callback(multi_callback)
     , m_bool_callback(nullptr)
+    , m_message(nullptr)
 {
     assert(m_extra);
     assert(m_extra->multi);
@@ -1932,12 +1934,15 @@ query_send_msgs::query_send_msgs(const std::function<void(bool)>& bool_callback)
     , m_single_callback(nullptr)
     , m_multi_callback(nullptr)
     , m_bool_callback(bool_callback)
+    , m_message(nullptr)
 { }
 
 void query_send_msgs::on_answer(void *D)
 {
-    tglu_work_any_updates(1, static_cast<tl_ds_updates*>(D), NULL);
-    tglu_work_any_updates(0, static_cast<tl_ds_updates*>(D), NULL);
+    tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
+
+    tglu_work_any_updates(1, DS_U, NULL);
+    tglu_work_any_updates(0, DS_U, m_message);
 
     if (!m_extra) {
         if (m_bool_callback) {
@@ -1986,6 +1991,11 @@ int query_send_msgs::on_error(int error_code, const std::string& error_string)
         }
     }
     return 0;
+}
+
+void query_send_msgs::set_message(const std::shared_ptr<tgl_message>& message)
+{
+    m_message = message;
 }
 
 void tgl_do_forward_messages(const tgl_peer_id_t& id, const std::vector<tgl_message_id_t>& ids_in, unsigned long long flags,
@@ -3172,7 +3182,7 @@ public:
 #endif
 
             for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
-                tglu_work_update(-1, DS_UD->other_updates->data[i]);
+                tglu_work_update(-1, DS_UD->other_updates->data[i], nullptr);
             }
 #if 0
             for (int i = 0; i < message_count; i++) {
@@ -3289,11 +3299,11 @@ public:
             }
 
             for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
-                tglu_work_update(1, DS_UD->other_updates->data[i]);
+                tglu_work_update(1, DS_UD->other_updates->data[i], nullptr);
             }
 
             for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
-                tglu_work_update(-1, DS_UD->other_updates->data[i]);
+                tglu_work_update(-1, DS_UD->other_updates->data[i], nullptr);
             }
 
 #if 0
