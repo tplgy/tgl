@@ -1145,12 +1145,18 @@ public:
             bl_do_message_delete (TLS, &M->permanent_id);
         }
 #endif
+        m_message->flags &=  ~TGLMF_PENDING;
+        m_message->flags |= TGLMF_SEND_FAILED;
+
         if (m_callback) {
             m_callback(false, m_message);
         }
 
         // FIXME: is this correct? Maybe when we implement message deletion disabled above.
-        tgl_state::instance()->callback()->message_deleted(m_message->permanent_id.id);
+        // <--- I think it is not correct. The message will still be shown to the user and has a
+        // sent error status. So the user can choose to send it again.
+        //tgl_state::instance()->callback()->message_deleted(m_message->permanent_id.id);
+        tgl_state::instance()->callback()->new_message(m_message);
         return 0;
     }
 private:

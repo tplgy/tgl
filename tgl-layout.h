@@ -27,9 +27,9 @@
 #define TGLDF_VIDEO 16
 
 #define TGLMF_UNREAD 1
-#define TGLMF_OUT 2
-#define TGLMF_DISABLE_PREVIEW 4
-#define TGLMF_MENTION 16
+#define TGLMF_OUT (1<<1)
+#define TGLMF_DISABLE_PREVIEW (1<<2)
+#define TGLMF_MENTION (1<<4)
 #define TGLMF_CREATED (1 << 8)
 #define TGLMF_PENDING (1 << 9)
 #define TGLMF_DELETED (1 << 10)
@@ -38,10 +38,10 @@
 #define TGLMF_SERVICE (1 << 13)
 #define TGLMF_SESSION_OUTBOUND (1 << 14)
 #define TGLMF_TEMP_MSG_ID (1 << 15)
-#define TGLMF_POST_AS_CHANNEL (1 << 8)
-#define TGLMF_HTML (1 << 9)
-
-#define TGLMF_CREATE 0x10000
+#define TGLMF_CREATE (1 << 16)
+#define TGLMF_POST_AS_CHANNEL (1 << 17)
+#define TGLMF_HTML (1 << 18)
+#define TGLMF_SEND_FAILED (1 << 19)
 
 #define TGLPF_CREATED (1 << 0)
 #define TGLPF_CREATE 0x80000000
