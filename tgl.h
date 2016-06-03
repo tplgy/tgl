@@ -219,41 +219,6 @@ private:
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);
 int tgl_do_send_bot_auth (const char *code, int code_len, std::function<void(bool success, const std::shared_ptr<tgl_user>&)> callback);
 
-#define TGL_PEER_USER 1
-#define TGL_PEER_CHAT 2
-#define TGL_PEER_GEO_CHAT 3
-#define TGL_PEER_ENCR_CHAT 4
-#define TGL_PEER_CHANNEL 5
-#define TGL_PEER_TEMP_ID 100
-#define TGL_PEER_RANDOM_ID 101
-#define TGL_PEER_UNKNOWN 0
-
-#define TGL_MK_USER(id) tgl_set_peer_id (TGL_PEER_USER,id)
-#define TGL_MK_CHAT(id) tgl_set_peer_id (TGL_PEER_CHAT,id)
-#define TGL_MK_CHANNEL(id) tgl_set_peer_id (TGL_PEER_CHANNEL,id)
-#define TGL_MK_GEO_CHAT(id) tgl_set_peer_id (TGL_PEER_GEO_CHAT,id)
-#define TGL_MK_ENCR_CHAT(id) tgl_set_peer_id (TGL_PEER_ENCR_CHAT,id)
-
-static inline int tgl_get_peer_type (const tgl_peer_id_t& id) {
-  return id.peer_type;
-}
-
-static inline int tgl_get_peer_id (const tgl_peer_id_t& id) {
-  return id.peer_id;
-}
-
-static inline tgl_peer_id_t tgl_set_peer_id (int type, int id) {
-  tgl_peer_id_t ID;
-  ID.peer_id = id;
-  ID.peer_type = type;
-  ID.access_hash = 0;
-  return ID;
-}
-
-static inline int tgl_cmp_peer_id (tgl_peer_id_t a, tgl_peer_id_t b) {
-  return memcmp (&a, &b, 8);
-}
-
 int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& DC);
 int tgl_signed_dc(const std::shared_ptr<tgl_dc>& DC);
 

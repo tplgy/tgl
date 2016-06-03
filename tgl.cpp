@@ -91,6 +91,7 @@ void tgl_state::set_our_id(int id)
         return;
     }
     m_our_id.peer_id = id;
+    m_our_id.peer_type = tgl_peer_type::user;
     assert (our_id().peer_id > 0);
     m_callback->our_id(our_id().peer_id);
 }
@@ -240,12 +241,12 @@ std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat()
     std::uniform_int_distribution<> distribution(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
 
     int chat_id = distribution(generator);
-    while (tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(chat_id))) {
+    while (tgl_state::instance()->secret_chat_for_id(tgl_peer_id_enc_chat(chat_id))) {
         chat_id = distribution(generator);
     }
 
     auto secret_chat = std::make_shared<tgl_secret_chat>();
-    secret_chat->id = TGL_MK_ENCR_CHAT(chat_id);
+    secret_chat->id = tgl_peer_id_enc_chat(chat_id);
     m_secret_chats[chat_id] = secret_chat;
 
     return secret_chat;
@@ -275,7 +276,7 @@ std::shared_ptr<tgl_secret_chat> tgl_state::secret_chat_for_id(int chat_id) cons
 
 void tgl_state::add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 {
-    m_secret_chats[tgl_get_peer_id(secret_chat->id)] = secret_chat;
+    m_secret_chats[secret_chat->id.peer_id] = secret_chat;
 }
 
 void tgl_state::add_query(const std::shared_ptr<query>& q)

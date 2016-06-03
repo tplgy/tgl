@@ -16,11 +16,11 @@ struct tgl_message_reply_markup {
 };
 
 typedef struct tgl_message_id {
-    unsigned peer_type;
+    tgl_peer_type peer_type;
     unsigned peer_id;
     long long id;
     long long access_hash;
-    tgl_message_id(): peer_type(0), peer_id(0), id(0), access_hash(0) { }
+    tgl_message_id(): peer_type(tgl_peer_type::unknown), peer_id(0), id(0), access_hash(0) { }
 } tgl_message_id_t;
 
 struct tgl_message {

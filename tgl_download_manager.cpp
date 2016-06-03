@@ -488,7 +488,7 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_m
     f->duration = duration;
     f->caption = caption;
 
-    if (tgl_get_peer_type (f->to_id) == TGL_PEER_ENCR_CHAT) {
+    if (f->to_id.peer_type == tgl_peer_type::enc_chat) {
         f->encr = true;
         tglt_secure_random (f->iv.data(), f->iv.size());
         memcpy (f->init_iv.data(), f->iv.data(), f->iv.size());
@@ -523,8 +523,8 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_m
 
 void tgl_download_manager::set_chat_photo (tgl_peer_id_t chat_id, const std::string &file_name, const std::function<void(bool success)>& callback)
 {
-    assert (tgl_get_peer_type (chat_id) == TGL_PEER_CHAT);
-    send_document(chat_id, tgl_message_id_t(), file_name, tgl_get_peer_id (chat_id), 0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::string(), 0 , 0,
+    assert (chat_id.peer_type == tgl_peer_type::chat);
+    send_document(chat_id, tgl_message_id_t(), file_name, chat_id.peer_id, 0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::string(), 0 , 0,
             [=](bool success, const std::shared_ptr<tgl_message>&) {
                 if (callback) {
                     callback(success);

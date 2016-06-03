@@ -88,11 +88,11 @@ enum tgl_typing_status tglf_fetch_typing (struct tl_ds_send_message_action *DS_S
 tgl_peer_id_t tglf_fetch_peer_id (struct tl_ds_peer *DS_P) {
   switch (DS_P->magic) {
   case CODE_peer_user:
-    return TGL_MK_USER (DS_LVAL (DS_P->user_id));
+    return tgl_peer_id_user (DS_LVAL (DS_P->user_id));
   case CODE_peer_chat:
-    return TGL_MK_CHAT (DS_LVAL (DS_P->chat_id));
+    return tgl_peer_id_chat (DS_LVAL (DS_P->chat_id));
   case CODE_peer_channel:
-    return TGL_MK_CHANNEL (DS_LVAL (DS_P->channel_id));
+    return tgl_peer_id_channel (DS_LVAL (DS_P->channel_id));
   default: 
     assert (0);
     exit (2);
@@ -154,7 +154,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool in
     return nullptr;
   } 
 
-  tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->id));  
+  tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->id));
   user_id.access_hash = DS_LVAL (DS_U->access_hash);
 
   std::shared_ptr<tgl_user> user = std::make_shared<tgl_user>();
@@ -164,7 +164,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool in
 
   if (DS_LVAL (DS_U->flags) & (1 << 10)) {
     //bl_do_set_our_id (user->id);
-    tgl_state::instance()->set_our_id (tgl_get_peer_id(user_id));
+    tgl_state::instance()->set_our_id (user_id.peer_id);
     flags |= TGLUF_SELF;
   } else {
     flags &= ~TGLUF_SELF;
@@ -221,7 +221,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool in
 #endif
 
   if (DS_LVAL (DS_U->flags) & (1 << 13)) {
-    tgl_state::instance()->callback()->user_deleted(tgl_get_peer_id(user_id));
+    tgl_state::instance()->callback()->user_deleted(user_id.peer_id);
     return user;
   } else {
     DS_CSTR(firstname, DS_U->first_name);
@@ -235,7 +235,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool in
 
     tgl_user_status status = tglf_fetch_user_status(DS_U->status);
     if (invoke_callback) {
-        tgl_state::instance()->callback()->new_user(tgl_get_peer_id(user_id), phone, firstname, lastname, username,
+        tgl_state::instance()->callback()->new_user(user_id.peer_id, phone, firstname, lastname, username,
             DS_U->access_hash ? * DS_U->access_hash : 0, status, is_bot);
     }
 
@@ -248,7 +248,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool in
       tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
       tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
 
-      tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(user_id), user_id.peer_type, photo_small, photo_big);
+      tgl_state::instance()->callback()->avatar_update(user_id.peer_id, user_id.peer_type, photo_small, photo_big);
     }
     return user;
   }
@@ -286,7 +286,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(struct tl_ds_user_full *DS_
     if (DS_UF->user->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_UF->user->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location(DS_UF->user->photo->photo_small);
-        tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(user->id), user->id.peer_type,photo_small, photo_big);
+        tgl_state::instance()->callback()->avatar_update(user->id.peer_id, user->id.peer_type,photo_small, photo_big);
     }
 
   return user;
@@ -319,7 +319,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
     return nullptr;
   }
 
-  tgl_peer_id_t chat_id = TGL_MK_ENCR_CHAT (DS_LVAL (DS_EC->id));  
+  tgl_peer_id_t chat_id = tgl_peer_id_enc_chat (DS_LVAL (DS_EC->id));
   chat_id.access_hash = DS_LVAL (DS_EC->access_hash);
   
   std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(chat_id);
@@ -376,7 +376,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
 
     str_to_256 (g_key, DS_STR (DS_EC->g_a));
  
-    int user_id =  DS_LVAL (DS_EC->participant_id) + DS_LVAL (DS_EC->admin_id) - tgl_get_peer_id (tgl_state::instance()->our_id());
+    int user_id =  DS_LVAL (DS_EC->participant_id) + DS_LVAL (DS_EC->admin_id) - tgl_state::instance()->our_id().peer_id;
     tgl_secret_chat_state state = sc_request;
     tgl_update_secret_chat(secret_chat,
             DS_EC->access_hash,
@@ -438,7 +438,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C, bool i
   if (DS_C->magic == CODE_channel || DS_C->magic == CODE_channel_forbidden) {
     return tglf_fetch_alloc_channel(DS_C, false);
   }
-  tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_C->id));  
+  tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_C->id));
   chat_id.access_hash = 0; // chats don't have access hash
 
   std::shared_ptr<tgl_chat> C = std::make_shared<tgl_chat>();
@@ -500,9 +500,9 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C, bool i
   C->username = username;
 
   if (invoke_callback) {
-    tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(C->id), *DS_C->participants_count, title, *(DS_C->date), creator,
+    tgl_state::instance()->callback()->chat_update(C->id.peer_id, *DS_C->participants_count, title, *(DS_C->date), creator,
         admin, admins_enabled, kicked, left, deactivated);
-    tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), C->id.peer_type, C->photo_big, C->photo_small);
+    tgl_state::instance()->callback()->avatar_update(C->id.peer_id, C->id.peer_type, C->photo_big, C->photo_small);
   }
   return C;
 }
@@ -536,7 +536,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
 #if 0
       struct tl_ds_bot_info *DS_BI = DS_CF->bot_info->data[i];
 
-      tgl_peer_id_t peer_id = TGL_MK_USER (DS_LVAL (DS_BI->user_id));
+      tgl_peer_id_t peer_id = tgl_peer_id_user (DS_LVAL (DS_BI->user_id));
       if (P && (P->flags & TGLCF_CREATED)) {
         bl_do_user (tgl_get_peer_id (P->id), 
             NULL,
@@ -555,7 +555,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
     }
   }
 
-  tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_CF->id));  
+  tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_CF->id));
   std::shared_ptr<tgl_chat> C = std::make_shared<tgl_chat>();
   C->id = chat_id;
 
@@ -585,7 +585,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
   //tgl_state::instance()->callback()->chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, DS_CF->);
   if (DS_CF->participants && DS_CF->participants->participants) {
         for (int i=0; i<*(DS_CF->participants->participants->cnt); ++i) {
-            tgl_state::instance()->callback()->chat_add_user(tgl_get_peer_id (C->id), *DS_CF->participants->participants->data[i]->user_id,
+            tgl_state::instance()->callback()->chat_add_user(C->id.peer_id, *DS_CF->participants->participants->data[i]->user_id,
                     DS_CF->participants->participants->data[i]->inviter_id ? *DS_CF->participants->participants->data[i]->inviter_id : 0,
                     DS_CF->participants->participants->data[i]->date ? *DS_CF->participants->participants->data[i]->date : 0);
         }
@@ -598,7 +598,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
 std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C, bool invoke_callback) {
   if (!DS_C) { return nullptr; }
   
-  tgl_peer_id_t chat_id = TGL_MK_CHANNEL (DS_LVAL (DS_C->id));  
+  tgl_peer_id_t chat_id = tgl_peer_id_channel (DS_LVAL (DS_C->id));
   chat_id.access_hash = DS_LVAL (DS_C->access_hash); 
 
   std::shared_ptr<tgl_channel> C = std::make_shared<tgl_channel>();
@@ -679,12 +679,12 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C, 
   C->username = username;
 
   if (invoke_callback) {
-    tgl_state::instance()->callback()->channel_update(tgl_get_peer_id(C->id), *(DS_C->access_hash), *(DS_C->date), title, username);
+    tgl_state::instance()->callback()->channel_update(C->id.peer_id, *(DS_C->access_hash), *(DS_C->date), title, username);
     
       if (DS_C->photo) {
           C->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
           C->photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
-          tgl_state::instance()->callback()->avatar_update(tgl_get_peer_id(C->id), tgl_get_peer_type(C->id), C->photo_big, C->photo_small);
+          tgl_state::instance()->callback()->avatar_update(C->id.peer_id, C->id.peer_type, C->photo_big, C->photo_small);
       }
   }
   return C;
@@ -708,7 +708,7 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full (struct tl_ds_message
   }
   struct tl_ds_chat_full *DS_CF = DS_MCF->full_chat;
 
-  tgl_peer_id_t chat_id = TGL_MK_CHANNEL (DS_LVAL (DS_CF->id));
+  tgl_peer_id_t chat_id = tgl_peer_id_channel (DS_LVAL (DS_CF->id));
 
   std::shared_ptr<tgl_channel> C = std::make_shared<tgl_channel>();
   C->id = chat_id;
@@ -1040,7 +1040,7 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_messag
 }
 
 void tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
-  tgl_peer_id_t peer_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+  tgl_peer_id_t peer_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
 
   tgl_message_id_t msg_id = tgl_peer_id_to_msg_id (peer_id, DS_LVAL (DS_U->id));
   //struct tgl_message *M = (struct tgl_message *)talloc0 (sizeof (*M));
@@ -1078,7 +1078,7 @@ void tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
   if (DS_U->fwd_from_id) {
     fwd_from_id = tglf_fetch_peer_id (DS_U->fwd_from_id);
   } else {
-    fwd_from_id = TGL_MK_USER (0);
+    fwd_from_id = tgl_peer_id_user (0);
   }
 
 #if 0
@@ -1116,8 +1116,8 @@ void tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
 }
 
 void tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
-  tgl_peer_id_t from_id = TGL_MK_USER (DS_LVAL (DS_U->from_id));
-  tgl_peer_id_t to_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
+  tgl_peer_id_t from_id = tgl_peer_id_user (DS_LVAL (DS_U->from_id));
+  tgl_peer_id_t to_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
   
   tgl_message_id_t msg_id = tgl_peer_id_to_msg_id (to_id, DS_LVAL (DS_U->id));
   //struct tgl_message *M = (struct tgl_message *)talloc0 (sizeof (*M));
@@ -1153,7 +1153,7 @@ void tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
   if (DS_U->fwd_from_id) {
     fwd_from_id = tglf_fetch_peer_id (DS_U->fwd_from_id);
   } else {
-    fwd_from_id = TGL_MK_USER (0);
+    fwd_from_id = tgl_peer_id_user (0);
   }
 
 #if 0
@@ -1504,13 +1504,13 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
 
   tgl_peer_id_t from_id;
   if (DS_M->from_id) {
-    from_id = TGL_MK_USER (DS_LVAL (DS_M->from_id));
+    from_id = tgl_peer_id_user (DS_LVAL (DS_M->from_id));
   } else {
-    from_id = TGL_MK_USER (0);
+    from_id = tgl_peer_id_user (0);
   }
 
   tgl_message_id_t msg_id;
-  if (DS_M->from_id && !tgl_cmp_peer_id (to_id, tgl_state::instance()->our_id())) {
+  if (DS_M->from_id && to_id == tgl_state::instance()->our_id()) {
     msg_id = tgl_peer_id_to_msg_id (from_id, DS_LVAL (DS_M->id));
   } else {
     msg_id = tgl_peer_id_to_msg_id (to_id, DS_LVAL (DS_M->id));
@@ -1534,7 +1534,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
   if (DS_M->fwd_from_id) {
     fwd_from_id = tglf_fetch_peer_id (DS_M->fwd_from_id);
   } else {
-    fwd_from_id = TGL_MK_USER (0);
+    fwd_from_id = tgl_peer_id_user (0);
   }
 
 #if 0
@@ -1640,7 +1640,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
         return nullptr;
     }
 
-    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(DS_LVAL(DS_EM->chat_id)));
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(tgl_peer_id_enc_chat(DS_LVAL(DS_EM->chat_id)));
     if (!secret_chat || secret_chat->state != sc_ok) {
         TGL_WARNING("encrypted message to unknown chat, dropping");
         return nullptr;
@@ -1708,7 +1708,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
             return nullptr;
         }
 
-        tgl_peer_id_t from_id = TGL_MK_USER(secret_chat->user_id);
+        tgl_peer_id_t from_id = tgl_peer_id_user(secret_chat->user_id);
         tgl_peer_id_t to_id = tgl_state::instance()->our_id();
 
         secret_message = std::make_shared<tgl_secret_message>(
@@ -1741,7 +1741,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
             layer = *(DS_DM->action->layer);
         }
 
-        tgl_peer_id_t from_id = TGL_MK_USER(secret_chat->user_id);
+        tgl_peer_id_t from_id = tgl_peer_id_user(secret_chat->user_id);
         tgl_peer_id_t to_id = tgl_state::instance()->our_id();
 
         secret_message = std::make_shared<tgl_secret_message>(
@@ -1815,7 +1815,7 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
         return;
     }
 
-    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(message->permanent_id.peer_id));
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(tgl_peer_id_enc_chat(message->permanent_id.peer_id));
     assert(secret_chat);
 
     int* our_in_seq_no_ptr = nullptr;
@@ -1847,8 +1847,8 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
             return;
         }
 
-        if ((out_seq_no & 1)  != 1 - (secret_chat->admin_id == tgl_get_peer_id (tgl_state::instance()->our_id())) ||
-            (in_seq_no & 1) != (secret_chat->admin_id == tgl_get_peer_id (tgl_state::instance()->our_id()))) {
+        if ((out_seq_no & 1)  != 1 - (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id) ||
+            (in_seq_no & 1) != (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id)) {
             TGL_WARNING("bad msg admin");
             return;
         }
@@ -1989,14 +1989,14 @@ void tglp_insert_channel (tgl_peer_t *P) {
 }
 
 void tgl_insert_empty_user (int uid) {
-    tgl_peer_id_t id = TGL_MK_USER (uid);
+    tgl_peer_id_t id = tgl_peer_id_user (uid);
     if (tgl_peer_get (id)) { return; }
     tgl_peer_t *P = (tgl_peer_t *)talloc0 (sizeof (*P));
     P->id = id;
 }
 
 void tgl_insert_empty_chat (int cid) {
-    tgl_peer_id_t id = TGL_MK_CHAT (cid);
+    tgl_peer_id_t id = tgl_peer_id_chat (cid);
     if (tgl_peer_get (id)) { return; }
     tgl_peer_t *P = (tgl_peer_t *)talloc0 (sizeof (*P));
     P->id = id;
@@ -2009,7 +2009,7 @@ void tgl_insert_empty_chat (int cid) {
 #if 0
 void tglm_message_add_peer ( struct tgl_message *M) {
   tgl_peer_id_t id;
-  if (!tgl_cmp_peer_id (M->to_id, tgl_state::instance()->our_id())) {
+  if (M->to_id == tgl_state::instance()->our_id()) {
     id = M->from_id;
   } else {
     id = M->to_id;
@@ -2020,7 +2020,7 @@ void tglm_message_add_peer ( struct tgl_message *M) {
     P->last = M;
     M->prev = M->next = 0;
   } else {
-    if (tgl_get_peer_type (P->id) != TGL_PEER_ENCR_CHAT) {
+    if (tgl_get_peer_type (P->id) != tgl_peer_type::enc_chat) {
       struct tgl_message *N = P->last;
       struct tgl_message *NP = 0;
       while (N && N->permanent_id.id > M->permanent_id.id) {
@@ -2049,7 +2049,7 @@ void tglm_message_add_peer ( struct tgl_message *M) {
 
 void tglm_message_del_peer (struct tgl_message *M) {
   tgl_peer_id_t id;
-  if (!tgl_cmp_peer_id (M->to_id, tgl_state::instance()->our_id())) {
+  if (M->to_id == tgl_state::instance()->our_id()) {
     id = M->from_id;
   } else {
     id = M->to_id;
@@ -2092,7 +2092,7 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
     }
     if (to_id) {
         M->to_id = *to_id;
-        assert (to_id->peer_type != TGL_PEER_ENCR_CHAT);
+        assert (to_id->peer_type != tgl_peer_type::enc_chat);
     }
 
     if (date) {
@@ -2186,7 +2186,7 @@ static std::shared_ptr<tgl_message> create_or_edit_encr_message(
         M->date = *date;
     }
 
-    std::shared_ptr<tgl_secret_chat> E = tgl_state::instance()->secret_chat_for_id(TGL_MK_ENCR_CHAT(M->permanent_id.peer_id));
+    std::shared_ptr<tgl_secret_chat> E = tgl_state::instance()->secret_chat_for_id(tgl_peer_id_enc_chat(M->permanent_id.peer_id));
     assert(E);
 
     if (action) {

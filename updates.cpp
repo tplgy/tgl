@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -171,7 +171,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
       channel_id = DS_LVAL (DS_U->message->to_id->channel_id);
     }    
 
-    tgl_peer_id_t E = TGL_MK_CHANNEL (channel_id);
+    tgl_peer_id_t E = tgl_peer_id_channel (channel_id);
 
     if (!check_only && tgl_check_channel_pts_diff (E, DS_LVAL (DS_U->channel_pts), DS_LVAL (DS_U->channel_pts_count)) <= 0) {
       return;
@@ -216,20 +216,20 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_user_typing:
     {
-      //tgl_peer_id_t id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+      //tgl_peer_id_t id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
       //tgl_peer_t *U = tgl_peer_get (id);
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
-      tgl_state::instance()->callback()->typing_status_changed(DS_LVAL(DS_U->user_id), DS_LVAL(DS_U->user_id), TGL_PEER_USER, status);
+      tgl_state::instance()->callback()->typing_status_changed(DS_LVAL(DS_U->user_id), DS_LVAL(DS_U->user_id), tgl_peer_type::user, status);
     }
     break;
   case CODE_update_chat_user_typing:
     {
-      tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
-      tgl_peer_id_t id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
+      tgl_peer_id_t id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
-      tgl_state::instance()->callback()->typing_status_changed(tgl_get_peer_id(id), tgl_get_peer_id(chat_id), TGL_PEER_CHAT, status);
+      tgl_state::instance()->callback()->typing_status_changed(id.peer_id, chat_id.peer_id, tgl_peer_type::chat, status);
     }
     break;
   case CODE_update_user_status:
@@ -240,15 +240,15 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_user_name:
     {
-      tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
       DS_CSTR (firstname, DS_U->first_name);
       DS_CSTR (lastname, DS_U->last_name);
       DS_CSTR (username, DS_U->username);
 
       //TODO make that one call with a map or vector of changes
-      tgl_state::instance()->callback()->user_update(tgl_get_peer_id(user_id), username, tgl_update_username);
-      tgl_state::instance()->callback()->user_update(tgl_get_peer_id(user_id), username, tgl_update_firstname);
-      tgl_state::instance()->callback()->user_update(tgl_get_peer_id(user_id), username, tgl_update_last_name);
+      tgl_state::instance()->callback()->user_update(user_id.peer_id, username, tgl_update_username);
+      tgl_state::instance()->callback()->user_update(user_id.peer_id, username, tgl_update_firstname);
+      tgl_state::instance()->callback()->user_update(user_id.peer_id, username, tgl_update_last_name);
       free(firstname);
       free(lastname);
       free(username);
@@ -259,7 +259,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
       if (DS_U->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
         tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
-        tgl_state::instance()->callback()->avatar_update(DS_LVAL (DS_U->user_id), TGL_PEER_USER, photo_small, photo_big);
+        tgl_state::instance()->callback()->avatar_update(DS_LVAL (DS_U->user_id), tgl_peer_type::user, photo_small, photo_big);
       }
       break;
     }
@@ -269,10 +269,10 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     }
     case CODE_update_chat_participants:
     {
-      tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
+      tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
       if (DS_U->participants->magic == CODE_chat_participants) {
         for (int i=0; i<*DS_U->participants->participants->cnt; ++i) {
-          tgl_state::instance()->callback()->chat_add_user(tgl_get_peer_id (chat_id), *DS_U->participants->participants->data[i]->user_id,
+          tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, *DS_U->participants->participants->data[i]->user_id,
               DS_U->participants->participants->data[i]->inviter_id ? *DS_U->participants->participants->data[i]->inviter_id : 0,
               DS_U->participants->participants->data[i]->date ? *DS_U->participants->participants->data[i]->date : 0);
         }
@@ -319,13 +319,13 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_encrypted_chat_typing:
     {
-      tgl_state::instance()->callback()->typing_status_changed(DS_LVAL(DS_U->chat_id), DS_LVAL(DS_U->chat_id), TGL_PEER_ENCR_CHAT, tgl_typing_status::tgl_typing_typing);
+      tgl_state::instance()->callback()->typing_status_changed(DS_LVAL(DS_U->chat_id), DS_LVAL(DS_U->chat_id), tgl_peer_type::enc_chat, tgl_typing_status::tgl_typing_typing);
     }
     break;
   case CODE_update_encrypted_messages_read:
     {
 #if 0
-      tgl_peer_id_t id = TGL_MK_ENCR_CHAT (DS_LVAL (DS_U->chat_id));
+      tgl_peer_id_t id = tgl_peer_id_enc_chat (DS_LVAL (DS_U->chat_id));
       tgl_peer_t *P = tgl_peer_get (id);
       
       if (P && P->last) {
@@ -342,23 +342,23 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_chat_participant_add:
     {
-      tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
-      tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      tgl_peer_id_t inviter_id = TGL_MK_USER (DS_LVAL (DS_U->inviter_id));
+      tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
+      tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t inviter_id = tgl_peer_id_user (DS_LVAL (DS_U->inviter_id));
       //int version = DS_LVAL (DS_U->version); 
 
-      //bl_do_chat_add_user (C->id, version, tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
-      tgl_state::instance()->callback()->chat_add_user(tgl_get_peer_id (chat_id), tgl_get_peer_id (user_id), tgl_get_peer_id (inviter_id), time (0));
+      //bl_do_chat_add_user (C->id, version, user_id.peer_id, inviter_id.peer_id, time (0));
+      tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, user_id.peer_id, inviter_id.peer_id, time (0));
     }
     break;
   case CODE_update_chat_participant_delete:
     {
-      tgl_peer_id_t chat_id = TGL_MK_CHAT (DS_LVAL (DS_U->chat_id));
-      tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
+      tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
       //int version = DS_LVAL (DS_U->version); 
       
-      //bl_do_chat_del_user (C->id, version, tgl_get_peer_id (user_id));
-      tgl_state::instance()->callback()->chat_delete_user(tgl_get_peer_id (chat_id), tgl_get_peer_id (user_id));
+      //bl_do_chat_del_user (C->id, version, user_id.peer_id);
+      tgl_state::instance()->callback()->chat_delete_user(chat_id.peer_id, user_id.peer_id);
     }
     break;
   case CODE_update_dc_options:
@@ -372,10 +372,10 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
   case CODE_update_user_blocked:
     {
       int blocked = DS_BVAL (DS_U->blocked);
-      tgl_peer_id_t peer_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t peer_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
 
       //bl_do_user (tgl_get_peer_id (peer_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, flags);
-      tgl_state::instance()->callback()->user_update(tgl_get_peer_id (peer_id), &blocked, tgl_update_blocked);
+      tgl_state::instance()->callback()->user_update(peer_id.peer_id, &blocked, tgl_update_blocked);
     }
     break;
   case CODE_update_notify_settings:
@@ -393,10 +393,10 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_user_phone:
     {
-      tgl_peer_id_t user_id = TGL_MK_USER (DS_LVAL (DS_U->user_id));
-      //bl_do_user (tgl_get_peer_id (user_id), NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
+      tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
+      //bl_do_user (user_id.peer_id, NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
       DS_CSTR (phone, DS_U->phone);
-      tgl_state::instance()->callback()->user_update(tgl_get_peer_id(user_id), phone, tgl_update_phone);
+      tgl_state::instance()->callback()->user_update(user_id.peer_id, phone, tgl_update_phone);
     }
     break;
   case CODE_update_read_history_inbox:

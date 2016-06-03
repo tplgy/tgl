@@ -190,7 +190,7 @@ void tgl_do_update_contact_list ();
 // if offline_mode=1 then no actual query is sent
 // only locally cached messages returned
 // also marks messages from this chat as read
-void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, std::function<void(bool success, int size, const std::vector<std::shared_ptr<tgl_message>>& list)> callback);
+void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& list)> callback);
 
 // sends typing event to chat
 // set status=tgl_typing_typing for default typing event
