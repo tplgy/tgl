@@ -686,8 +686,7 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
   tgl_peer_id_t from_id = tgl_state::instance()->our_id();
   
   int date = time (NULL);
-  struct tgl_message_id msg_id = tgl_peer_id_to_msg_id(secret_chat->id, r);
-  std::shared_ptr<tgl_message> M = tglm_create_encr_message(&msg_id,
+  std::shared_ptr<tgl_message> message = tglm_create_encr_message(&f->message_id,
       &from_id,
       &f->to_id,
       &date,
@@ -697,12 +696,23 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
       NULL,
       NULL,
       TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED | TGLMF_CREATE | TGLMF_CREATED);
-
   free_ds_type_decrypted_message_media (DS_DMM, &decrypted_message_media);
-  assert (M);
-  tgl_state::instance()->callback()->new_message(M);
-  q->set_message(M);
 
+  if (message->media->type() == tgl_message_media_type_document_encr) {
+      if (auto encr_document = std::static_pointer_cast<tgl_message_media_document_encr>(message->media)->encr_document) {
+          if (f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
+              encr_document->flags |= TGLDF_IMAGE;
+          }
+          if (f->flags & TGLDF_VIDEO) {
+              encr_document->flags |= TGLDF_VIDEO;
+          }
+          if (f->flags & TGLDF_AUDIO) {
+              encr_document->flags |= TGLDF_AUDIO;
+          }
+      }
+  }
+
+  q->set_message(message);
   q->execute(tgl_state::instance()->working_dc());
 }
 
