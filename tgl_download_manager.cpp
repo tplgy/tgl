@@ -290,6 +290,15 @@ void tgl_download_manager::send_file_unencrypted_end(std::shared_ptr<send_file> 
     }
 
     if (!(f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO)) {
+
+        if (f->thumb_id > 0) {
+            q->out_i32 (CODE_input_file);
+            q->out_i64 (f->thumb_id);
+            q->out_i32 (1);
+            q->out_string ("thumb.jpg");
+            q->out_string ("");
+        }
+
         q->out_string (tg_mime_by_filename (f->file_name.c_str()));
 
         q->out_i32 (CODE_vector);
@@ -329,13 +338,7 @@ void tgl_download_manager::send_file_unencrypted_end(std::shared_ptr<send_file> 
             q->out_string (file_name);
         }
 
-        if (f->thumb_id > 0) {
-            q->out_i32 (CODE_input_file);
-            q->out_i64 (f->thumb_id);
-            q->out_i32 (1);
-            q->out_string ("thumb.jpg");
-            q->out_string ("");
-        }
+
         q->out_string (f->caption.c_str());
     } else {
         q->out_string (f->caption.c_str());
