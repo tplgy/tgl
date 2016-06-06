@@ -807,7 +807,11 @@ std::shared_ptr<tgl_document> tglf_fetch_alloc_video(const tl_ds_video *DS_V) {
   document->date = DS_LVAL(DS_V->date);
   //document->caption = NULL;//DS_STR_DUP (DS_V->caption);
   document->duration = DS_LVAL(DS_V->duration);
-  document->mime_type = DS_STR_DUP (DS_V->mime_type);//"video/";
+  if (DS_V->mime_type && DS_V->mime_type->data) {
+      document->mime_type = std::string(DS_V->mime_type->data, DS_V->mime_type->len);
+  } else {
+      document->mime_type = "video/";
+  }
   document->size = DS_LVAL(DS_V->size);
 
   if (DS_V->thumb && DS_V->thumb->magic != CODE_photo_size_empty) {
