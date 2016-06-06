@@ -18,8 +18,9 @@
     Copyright Vitaly Valtman 2013-2015
 */
 
-
+#include <algorithm>
 #include <assert.h>
+#include <ctype.h>
 #include <string.h>
 #include <strings.h>
 #include "tgl-queries.h"
@@ -1309,18 +1310,33 @@ std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_d
 
     media->encr_document = std::make_shared<tgl_encr_document>();
 
-    std::string default_mime;
+    if (DS_DMM->mime_type && DS_DMM->mime_type->data) {
+        media->encr_document->mime_type.resize(DS_DMM->mime_type->len);
+        std::transform(DS_DMM->mime_type->data, DS_DMM->mime_type->data + DS_DMM->mime_type->len,
+                media->encr_document->mime_type.begin(), ::tolower);
+    }
+
     switch (DS_DMM->magic) {
     case CODE_decrypted_message_media_photo:
         media->encr_document->flags = TGLDF_IMAGE;
-        media->encr_document->mime_type = "image/jpeg"; // Default mime in case there is no mime from the message media
+        if (media->encr_document->mime_type.empty()) {
+            media->encr_document->mime_type = "image/jpeg"; // Default mime in case there is no mime from the message media
+        }
         break;
     case CODE_decrypted_message_media_video:
     case CODE_decrypted_message_media_video_l12:
         media->encr_document->flags = TGLDF_VIDEO;
         break;
     case CODE_decrypted_message_media_document:
-        //media->encr_document->flags = TGLDF_DOCUMENT;
+        if (media->encr_document->mime_type.size() >= 6) {
+            if (!media->encr_document->mime_type.compare(0, 6, "image/")) {
+                media->encr_document->flags = TGLDF_IMAGE;
+            } else if (!media->encr_document->mime_type.compare(0, 6, "video/")) {
+                media->encr_document->flags = TGLDF_VIDEO;
+            } else if (!media->encr_document->mime_type.compare(0, 6, "audio/")) {
+                media->encr_document->flags = TGLDF_AUDIO;
+            }
+        }
         break;
     case CODE_decrypted_message_media_audio:
         media->encr_document->flags = TGLDF_AUDIO;
@@ -1331,11 +1347,9 @@ std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_d
     media->encr_document->h = DS_LVAL(DS_DMM->h);
     media->encr_document->size = DS_LVAL(DS_DMM->size);
     media->encr_document->duration = DS_LVAL(DS_DMM->duration);
-    if (DS_DMM->mime_type && DS_DMM->mime_type->data) {
-      media->encr_document->mime_type = std::string(DS_DMM->mime_type->data, DS_DMM->mime_type->len);
-    }
+
     if (DS_DMM->thumb && DS_DMM->magic != CODE_photo_size_empty) {
-      media->encr_document->thumb = tglf_fetch_photo_size(DS_DMM->thumb);
+        media->encr_document->thumb = tglf_fetch_photo_size(DS_DMM->thumb);
     }
 
     media->encr_document->key.resize(32);
