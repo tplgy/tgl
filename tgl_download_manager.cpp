@@ -390,33 +390,63 @@ void tgl_download_manager::send_part(std::shared_ptr<send_file> f, const std::fu
             q->out_i32 (f->part_num ++);
             q->out_i32 ((f->size + f->part_size - 1) / f->part_size);
         }
-        static char buf[512 << 10];
-        int x = read (f->fd, buf, f->part_size);
-        assert (x > 0);
-        f->offset += x;
-        cur_uploaded_bytes += x;
+
+        if (f->sending_buffer.empty()) {
+            f->sending_buffer.resize(f->part_size);
+        }
+
+        int read_size = 0;
+        assert(f->part_size > 0);
+        while (read_size < f->part_size) {
+            ssize_t ret = read(f->fd, f->sending_buffer.data() + read_size, f->part_size - read_size);
+            if (ret < 0) {
+                if (ret == EINTR) {
+                    continue;
+                }
+                if (callback) {
+                    callback(false, nullptr);
+                }
+                return;
+            } else if (ret == 0) {
+                break;
+            }
+            read_size += ret;
+        }
+
+        if (read_size == 0) {
+            TGL_WARNING("could not send empty file");
+            if (callback) {
+                callback(false, nullptr);
+            }
+            return;
+        }
+
+        assert(read_size > 0);
+        f->offset += read_size;
+        cur_uploaded_bytes += read_size;
 
         if (f->encr) {
-            if (x & 15) {
-                assert (f->offset == f->size);
-                tglt_secure_random ((unsigned char*)buf + x, (-x) & 15);
-                x = (x + 15) & ~15;
+            if (read_size & 15) {
+                assert(f->offset == f->size);
+                tglt_secure_random(reinterpret_cast<unsigned char*>(f->sending_buffer.data()) + read_size, (-read_size) & 15);
+                read_size = (read_size + 15) & ~15;
             }
 
             TGLC_aes_key aes_key;
-            TGLC_aes_set_encrypt_key (f->key.data(), 256, &aes_key);
-            TGLC_aes_ige_encrypt ((unsigned char *)buf, (unsigned char *)buf, x, &aes_key, f->iv.data(), 1);
-            memset (&aes_key, 0, sizeof (aes_key));
+            TGLC_aes_set_encrypt_key(f->key.data(), 256, &aes_key);
+            TGLC_aes_ige_encrypt(reinterpret_cast<unsigned char*>(f->sending_buffer.data()),
+                    reinterpret_cast<unsigned char*>(f->sending_buffer.data()), read_size, &aes_key, f->iv.data(), 1);
+            memset(&aes_key, 0, sizeof(aes_key));
         }
-        q->out_string (buf, x);
+        q->out_string(f->sending_buffer.data(), read_size);
         TGL_DEBUG("offset=" << f->offset << " size=" << f->size);
         if (f->offset == f->size) {
-            close (f->fd);
+            f->sending_buffer.clear();
+            close(f->fd);
             f->fd = -1;
         } else {
-            assert (f->part_size == x);
+            assert(f->part_size == read_size);
         }
-
         q->execute(tgl_state::instance()->working_dc());
     } else {
         send_file_end (f, callback);
@@ -467,7 +497,7 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_m
     f->message_id = message_id;
     f->reply = flags >> 32;
     int tmp = ((size + 2999) / 3000);
-    f->part_size = (1 << 14);
+    f->part_size = (512 << 10);
     while (f->part_size < tmp) {
         f->part_size *= 2;
     }

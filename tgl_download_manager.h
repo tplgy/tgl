@@ -48,6 +48,8 @@ struct send_file {
 
     tgl_message_id_t message_id;
 
+    std::vector<char> sending_buffer;
+
     send_file()
         : fd(-1)
         , size(0)
