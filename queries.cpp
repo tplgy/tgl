@@ -1560,9 +1560,9 @@ public:
 //        }
         //assert (m_limit >= 0);
 
-//        if (m_callback) {
-//            m_callback(true, m_messages);
-//        }
+        if (m_callback) {
+            m_callback(true, m_messages);
+        }
 //        if (m_limit <= 0 || DS_MM->magic == CODE_messages_messages || DS_MM->magic == CODE_messages_channel_messages) {
 
 //            /*if (m_messages.size() > 0) {
