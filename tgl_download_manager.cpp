@@ -12,7 +12,7 @@
 #include <boost/lexical_cast.hpp>
 #include <fstream>
 
-static constexpr int BUG_FILE_THRESHOLD = 16 * 1024 * 1024;
+static constexpr int BIG_FILE_THRESHOLD = 16 * 1024 * 1024;
 
 class query_send_file_part: public query
 {
@@ -210,7 +210,7 @@ void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, const 
         q->out_i32 (CODE_messages_edit_chat_photo);
         q->out_i32 (f->avatar);
         q->out_i32 (CODE_input_chat_uploaded_photo);
-        if (f->size < BUG_FILE_THRESHOLD) {
+        if (f->size < BIG_FILE_THRESHOLD) {
             q->out_i32 (CODE_input_file);
         } else {
             q->out_i32 (CODE_input_file_big);
@@ -218,7 +218,7 @@ void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, const 
         q->out_i64 (f->id);
         q->out_i32 (f->part_num);
         q->out_string ("");
-        if (f->size < BUG_FILE_THRESHOLD) {
+        if (f->size < BIG_FILE_THRESHOLD) {
             q->out_string ("");
         }
         q->out_i32 (CODE_input_photo_crop_auto);
@@ -227,7 +227,7 @@ void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, const 
     } else {
         auto q = std::make_shared<query_set_photo>(callback);
         q->out_i32 (CODE_photos_upload_profile_photo);
-        if (f->size < BUG_FILE_THRESHOLD) {
+        if (f->size < BIG_FILE_THRESHOLD) {
             q->out_i32 (CODE_input_file);
         } else {
             q->out_i32 (CODE_input_file_big);
@@ -237,7 +237,7 @@ void tgl_download_manager::send_avatar_end (std::shared_ptr<send_file> f, const 
         const char *s = f->file_name.c_str() + f->file_name.length();  // TODO do that properly
         while (s >= f->file_name && *s != '/') { s --;}
         q->out_string (s + 1);
-        if (f->size < BUG_FILE_THRESHOLD) {
+        if (f->size < BIG_FILE_THRESHOLD) {
             q->out_string ("");
         }
         q->out_string ("profile photo");
@@ -276,7 +276,7 @@ void tgl_download_manager::send_file_unencrypted_end(std::shared_ptr<send_file> 
         }
     }
 
-    if (f->size < BUG_FILE_THRESHOLD) {
+    if (f->size < BIG_FILE_THRESHOLD) {
         q->out_i32 (CODE_input_file);
     } else {
         q->out_i32 (CODE_input_file_big);
@@ -287,7 +287,7 @@ void tgl_download_manager::send_file_unencrypted_end(std::shared_ptr<send_file> 
     boost::filesystem::path path = f->file_name;
     const char* file_name = path.filename().string().c_str();
     q->out_string (file_name);
-    if (f->size < BUG_FILE_THRESHOLD) {
+    if (f->size < BIG_FILE_THRESHOLD) {
         q->out_string ("");
     }
 
@@ -382,7 +382,7 @@ void tgl_download_manager::send_part(std::shared_ptr<send_file> f, const std::fu
             cur_uploading_bytes += f->size;
         }
         auto q = std::make_shared<query_send_file_part>(this, f, callback);
-        if (f->size < BUG_FILE_THRESHOLD) {
+        if (f->size < BIG_FILE_THRESHOLD) {
             q->out_i32 (CODE_upload_save_file_part);
             q->out_i64 (f->id);
             q->out_i32 (f->part_num ++);
