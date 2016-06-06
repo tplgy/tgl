@@ -15,7 +15,8 @@ struct tgl_peer_id_t {
     tgl_peer_type peer_type;
     int peer_id;
     long long access_hash;
-    tgl_peer_id_t(tgl_peer_type peer_type = tgl_peer_type::unknown, int peer_id = 0, int access_hash = 0)
+    tgl_peer_id_t() : peer_type(tgl_peer_type::unknown), peer_id(0), access_hash(0) {}
+    tgl_peer_id_t(tgl_peer_type peer_type, int peer_id, long long access_hash = 0)
         : peer_type(peer_type), peer_id(peer_id), access_hash(access_hash) {}
 };
 
