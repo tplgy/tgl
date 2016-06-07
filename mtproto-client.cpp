@@ -53,7 +53,7 @@
 #include "tgl-net.h"
 #include "mtproto-client.h"
 #include "updates.h"
-#include "auto.h"
+#include "auto/auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-skip.h"
 #include "crypto/aes.h"

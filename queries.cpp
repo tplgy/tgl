@@ -46,7 +46,7 @@
 #include "types/tgl_peer_id.h"
 
 #include "updates.h"
-#include "auto.h"
+#include "auto/auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"

@@ -39,7 +39,7 @@
 #include "mtproto-common.h"
 #include "tools.h"
 
-#include "auto.h"
+#include "auto/auto.h"
 #include "tgl.h"
 #include "tgl-log.h"
 

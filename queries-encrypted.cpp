@@ -18,7 +18,7 @@
 #include <array>
 #include <boost/filesystem.hpp>
 
-#include "auto.h"
+#include "auto/auto.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"

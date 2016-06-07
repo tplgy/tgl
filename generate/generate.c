@@ -2374,7 +2374,7 @@ int gen_what_cnt;
 
 
 void gen_skip_header (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
   printf ("struct tgl_in_buffer;\n");
@@ -2393,7 +2393,7 @@ void gen_skip_header (void) {
 }
 
 void gen_skip_source (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
   printf ("#include \"auto/auto-skip.h\"\n");
@@ -2420,7 +2420,7 @@ void gen_skip_source (void) {
 }
 
 void gen_fetch_header (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
@@ -2442,7 +2442,7 @@ void gen_fetch_header (void) {
 }
 
 void gen_fetch_source (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
   printf ("#include \"auto/auto-fetch.h\"\n");
@@ -2470,7 +2470,7 @@ void gen_fetch_source (void) {
 }
 
 void gen_store_header (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
   printf ("struct tgl_in_buffer;\n");
@@ -2496,7 +2496,7 @@ void gen_store_header (void) {
 }
 
 void gen_store_source (void ) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
   
   printf ("#include \"mtproto-common.h\"\n");
@@ -2549,7 +2549,7 @@ void gen_store_source (void ) {
 }
 
 void gen_autocomplete_header (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
   printf ("struct tgl_in_buffer;\n");
@@ -2572,7 +2572,7 @@ void gen_autocomplete_header (void) {
 }
 
 void gen_autocomplete_source (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
   
   printf ("#include \"mtproto-common.h\"\n");
@@ -2629,7 +2629,7 @@ void gen_autocomplete_source (void) {
 void gen_types_header (void) {
   printf ("#ifndef __AUTO_TYPES_H__\n");
   printf ("#define __AUTO_TYPES_H__\n");
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
 
   printf ("struct tgl_in_buffer;\n");
 
@@ -2695,7 +2695,7 @@ void gen_types_header (void) {
 }
 
 void gen_types_source (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   int i;
   for (i = 0; i < tn; i++) if (tps[i]->id[0] != '#' && strcmp (tps[i]->id, "Type")) {
     printf ("struct tl_type_descr tl_type_%s = {\n", tps[i]->print_id);
@@ -2714,7 +2714,7 @@ void gen_types_source (void) {
 }
 
 void gen_fetch_ds_source (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
   printf ("#include \"auto/auto-fetch-ds.h\"\n");
@@ -2741,7 +2741,7 @@ void gen_fetch_ds_source (void) {
 }
 
 void gen_fetch_ds_header (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
@@ -2766,7 +2766,7 @@ void gen_fetch_ds_header (void) {
 }
 
 void gen_free_ds_source (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
   printf ("#include \"auto/auto-free-ds.h\"\n");
@@ -2797,7 +2797,7 @@ void gen_free_ds_source (void) {
 }
 
 void gen_free_ds_header (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include \"auto/auto-types.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
@@ -2823,7 +2823,7 @@ void gen_free_ds_header (void) {
 }
 
 void gen_store_ds_source (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
   printf ("#include \"auto/auto-store-ds.h\"\n");
@@ -2850,7 +2850,7 @@ void gen_store_ds_source (void) {
 }
 
 void gen_store_ds_header (void) {
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include \"auto/auto-types.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
@@ -2882,7 +2882,7 @@ void gen_print_ds_header (void) {
   //printf ("#include \"config.h\"\n");
   printf ("#ifndef DISABLE_EXTF\n");
   printf ("\n");
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include \"auto-types.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
@@ -2916,7 +2916,7 @@ void gen_print_ds_source (void) {
   //printf ("#include \"config.h\"\n");
   printf ("#ifndef DISABLE_EXTF\n");
   printf ("\n");
-  printf ("#include \"auto.h\"\n");
+  printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("\n");
   printf ("#include \"auto/auto-print-ds.h\"\n");

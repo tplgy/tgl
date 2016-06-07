@@ -35,7 +35,7 @@
 #include "types/tgl_user.h"
 
 #include "tgl.h"
-#include "auto.h"
+#include "auto/auto.h"
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
 #include "auto/auto-free-ds.h"
