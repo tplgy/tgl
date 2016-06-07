@@ -11,7 +11,7 @@ public:
     virtual void qts_changed(int new_value) = 0;
     virtual void pts_changed(int new_value) = 0;
     virtual void date_changed(int new_value) = 0;
-    virtual void new_message(const std::shared_ptr<tgl_message>& M) = 0;
+    virtual void new_messages(const std::vector<std::shared_ptr<tgl_message>>& msgs) = 0;
     virtual void message_sent(const std::shared_ptr<tgl_message>& M, long long new_msg_id, int seq_no) = 0;
     virtual void message_deleted(long long msg_id) = 0;
     virtual void messages_mark_read_in(tgl_peer_id_t peer, int msg_id) = 0;

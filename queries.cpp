@@ -621,11 +621,6 @@ void tgl_set_query_error (int error_code, const char *format, ...) {
 }
 /* }}} */
 
-static void increase_ent (int *ent_size, int **ent, int s) {
-  *ent = (int *)trealloc (*ent, (*ent_size) * 4, (*ent_size) * 4 + 4 * s);
-  (*ent_size) +=s;
-}
-
 int utf8_len (const char *s, int len) {
   int i;
   int r = 0;
@@ -635,203 +630,6 @@ int utf8_len (const char *s, int len) {
     }
   }
   return r;
-}
-
-static char *process_html_text (const char *text, int text_len, int *ent_size, int **ent) {
-  char *new_text = (char *)talloc (2 * text_len + 1);
-  int stpos[100];
-  int sttype[100];
-  int stp = 0;
-  int p;
-  int cur_p = 0;
-  *ent = (int *)talloc (8);
-  *ent_size = 2;
-  (*ent)[0] = CODE_vector;
-  (*ent)[1] = 0;
-  int total = 0;
-  for (p = 0; p < text_len; p++) {
-    assert (cur_p <= 2 * text_len);
-    if (text[p] == '<') {
-      if (stp == 99) {
-        tgl_set_query_error (EINVAL, "Too nested tags...");
-        tfree (new_text, 2 * text_len + 1);
-        return NULL;
-      }
-      int old_p = *ent_size;
-      if (text_len - p >= 3 && !memcmp (text + p, "<b>", 3)) {
-        increase_ent (ent_size, ent, 3);
-        total ++;
-        (*ent)[old_p] = CODE_message_entity_bold;
-        (*ent)[old_p + 1] = utf8_len (new_text, cur_p);
-        stpos[stp] = old_p + 2;
-        sttype[stp] = 0;
-        stp ++;
-        p += 2;
-        continue;
-      }
-      if (text_len - p >= 4 && !memcmp (text + p, "</b>", 4)) {
-        if (stp == 0 || sttype[stp - 1]  != 0) {
-          tgl_set_query_error (EINVAL, "Invalid tag nest");
-          tfree (new_text, 2 * text_len + 1);
-          return NULL;
-        }
-        (*ent)[stpos[stp - 1]] = utf8_len (new_text, cur_p) - (*ent)[stpos[stp - 1] - 1];
-        stp --;
-        p += 3;
-        continue;
-      }
-      if (text_len - p >= 3 && !memcmp (text + p, "<i>", 3)) {
-        increase_ent (ent_size, ent, 3);
-        total ++;
-        (*ent)[old_p] = CODE_message_entity_italic;
-        (*ent)[old_p + 1] = utf8_len (new_text, cur_p);
-        stpos[stp] = old_p + 2;
-        sttype[stp] = 1;
-        stp ++;
-        p += 2;
-        continue;
-      }
-      if (text_len - p >= 4 && !memcmp (text + p, "</i>", 4)) {
-        if (stp == 0 || sttype[stp - 1]  != 1) {
-          tgl_set_query_error (EINVAL, "Invalid tag nest");
-          tfree (new_text, 2 * text_len + 1);
-          return NULL;
-        }
-        (*ent)[stpos[stp - 1]] = utf8_len (new_text, cur_p) - (*ent)[stpos[stp - 1] - 1];
-        stp --;
-        p += 3;
-        continue;
-      }
-      if (text_len - p >= 6 && !memcmp (text + p, "<code>", 6)) {
-        increase_ent (ent_size, ent, 3);
-        total ++;
-        (*ent)[old_p] = CODE_message_entity_code;
-        (*ent)[old_p + 1] = utf8_len (new_text, cur_p);
-        stpos[stp] = old_p + 2;
-        sttype[stp] = 2;
-        stp ++;
-        p += 5;
-        continue;
-      }
-      if (text_len - p >= 7 && !memcmp (text + p, "</code>", 7)) {
-        if (stp == 0 || sttype[stp - 1]  != 2) {
-          tgl_set_query_error (EINVAL, "Invalid tag nest");
-          tfree (new_text, 2 * text_len + 1);
-          return NULL;
-        }
-        (*ent)[stpos[stp - 1]] = utf8_len (new_text, cur_p) - (*ent)[stpos[stp - 1] - 1];
-        stp --;
-        p += 6;
-        continue;
-      }
-      if (text_len - p >= 9 && !memcmp (text + p, "<a href=\"", 9)) {
-        int pp = p + 9;
-        while (pp < text_len && text[pp] != '"') {
-          pp ++;
-        }
-        if (pp == text_len || pp == text_len - 1 || text[pp + 1] != '>') {
-          tgl_set_query_error (EINVAL, "<a> tag did not close");
-          tfree (new_text, 2 * text_len + 1);
-          return NULL;
-        }
-        int len = pp - p - 9;
-        assert (len >= 0);
-        if (len >= 250) {
-          tgl_set_query_error (EINVAL, "too long link");
-          tfree (new_text, 2 * text_len + 1);
-          return NULL;
-        }
-
-        increase_ent (ent_size, ent, 3 + (len + 1 + ((-len-1) & 3)) / 4);
-        total ++;
-        (*ent)[old_p] = CODE_message_entity_text_url;
-        (*ent)[old_p + 1] = utf8_len (new_text, cur_p);
-        stpos[stp] = old_p + 2;
-        sttype[stp] = 3;
-        stp ++;
-
-        unsigned char *r = (unsigned char *)((*ent) + old_p + 3);
-        r[0] = len;
-        memcpy (r + 1, text + p + 9, len);
-        memset (r + 1 + len, 0, (-len-1) & 3);
-
-        p = pp + 1;
-        continue;
-      }
-      if (text_len - p >= 4 && !memcmp (text + p, "</a>", 4)) {
-        if (stp == 0 || sttype[stp - 1]  != 3) {
-          tgl_set_query_error (EINVAL, "Invalid tag nest");
-          tfree (new_text, 2 * text_len + 1);
-          return NULL;
-        }
-        (*ent)[stpos[stp - 1]] = utf8_len (new_text, cur_p) - (*ent)[stpos[stp - 1] - 1];
-        stp --;
-        p += 3;
-        continue;
-      }
-      if (text_len - p >= 4 && !memcmp (text + p, "<br>", 4)) {
-        new_text[cur_p ++] = '\n';
-        p += 3;
-        continue;
-      }
-      tgl_set_query_error (EINVAL, "Unknown tag");
-      tfree (new_text, 2 * text_len + 1);
-      return NULL;
-    } else if (text_len - p >= 4  && !memcmp (text + p, "&gt;", 4)) {
-      p += 3;
-      new_text[cur_p ++] = '>';
-    } else if (text_len - p >= 4  && !memcmp (text + p, "&lt;", 4)) {
-      p += 3;
-      new_text[cur_p ++] = '<';
-    } else if (text_len - p >= 5  && !memcmp (text + p, "&amp;", 5)) {
-      p += 4;
-      new_text[cur_p ++] = '&';
-    } else if (text_len - p >= 6  && !memcmp (text + p, "&nbsp;", 6)) {
-      p += 5;
-      new_text[cur_p ++] = 0xc2;
-      new_text[cur_p ++] = 0xa0;
-    } else if (text_len - p >= 3  && text[p] == '&' && text[p + 1] == '#') {
-      p += 2;
-      int num = 0;
-      int ok = 0;
-      while (p < text_len) {
-        if (text[p] >= '0' && text[p] <= '9') {
-          num = num * 10 + text[p] - '0';
-          if (num >= 127) {
-            tgl_set_query_error (EINVAL, "Too big number in &-sequence");
-            tfree (new_text, text_len + 1);
-            return NULL;
-          }
-          p ++;
-        } else if (text[p] == ';') {
-          new_text[cur_p ++] =  num;
-          ok = 1;
-          break;
-        } else {
-          tgl_set_query_error (EINVAL, "Bad &-sequence");
-          tfree (new_text, text_len + 1);
-          return NULL;
-        }
-      }
-      if (ok) { continue; }
-      tgl_set_query_error (EINVAL, "Unterminated &-sequence");
-      tfree (new_text, text_len + 1);
-      return NULL;
-    } else {
-      new_text[cur_p ++] = text[p];
-    }
-  }
-  if (stp != 0) {
-    tgl_set_query_error (EINVAL, "Invalid tag nest");
-    tfree (new_text, text_len + 1);
-    return NULL;
-  }
-  (*ent)[1] = total;
-  char *n = (char *)talloc (cur_p + 1);
-  memcpy (n, new_text, cur_p);
-  n[cur_p] = 0;
-  tfree (new_text, 2 * text_len + 1);
-  return n;
 }
 
 /* {{{ Get config */
@@ -1159,7 +957,7 @@ public:
         // <--- I think it is not correct. The message will still be shown to the user and has a
         // sent error status. So the user can choose to send it again.
         //tgl_state::instance()->callback()->message_deleted(m_message->permanent_id.id);
-        tgl_state::instance()->callback()->new_message(m_message);
+        tgl_state::instance()->callback()->new_messages({m_message});
         return 0;
     }
 private:
@@ -1248,7 +1046,7 @@ void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M, std::function<void(b
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
 {
   if (peer_id.peer_type == tgl_peer_type::enc_chat) {
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
@@ -1296,31 +1094,31 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
     //struct tl_ds_vector *EN = NULL;
     char *new_text = NULL;
 
-    if (flags & TGLMF_HTML) {
-      int ent_size = 0;
-      int *ent = NULL;
-      text = new_text = process_html_text (text, text_len, &ent_size, &ent);
-      if (!text) {
-        tfree (ent, ent_size);
-        if (callback) {
-          callback(0, 0);
-        }
-        return;
-      }
-      text_len = strlen (new_text);
-#if 0
-      tgl_in_buffer in = { ent, ent + ent_size };
-      EN = fetch_ds_type_any (&in, TYPE_TO_PARAM_1 (vector, TYPE_TO_PARAM (message_entity)));
-      assert (EN);
-      assert (in.ptr == in.end);
-#endif
-      tfree (ent, 4 * ent_size);
-    }
+//    if (flags & TGLMF_HTML) {
+//      int ent_size = 0;
+//      int *ent = NULL;
+//      text = new_text = process_html_text (text, text_len, &ent_size, &ent);
+//      if (!text) {
+//        tfree (ent, ent_size);
+//        if (callback) {
+//          callback(0, 0);
+//        }
+//        return;
+//      }
+//      text_len = strlen (new_text);
+//#if 0
+//      tgl_in_buffer in = { ent, ent + ent_size };
+//      EN = fetch_ds_type_any (&in, TYPE_TO_PARAM_1 (vector, TYPE_TO_PARAM (message_entity)));
+//      assert (EN);
+//      assert (in.ptr == in.end);
+//#endif
+//      tfree (ent, 4 * ent_size);
+//    }
 
 
-    //bl_do_edit_message (&id, &from_id, &peer_id, NULL, NULL, &date, text, text_len, &TDSM, NULL, reply ? &reply : NULL, reply_markup, EN, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | disable_preview);
     M = tglm_message_create (&id, &from_id, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, NULL,
         reply_markup, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_TEMP_MSG_ID);
+    tgl_state::instance()->callback()->new_messages({M});
 
     if (flags & TGLMF_HTML) {
       tfree_str (new_text);
@@ -1332,20 +1130,16 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len,
     TDSM.magic = CODE_decrypted_message_media_empty;
 
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
-    //bl_do_edit_message_encr (&id, &from_id, &peer_id, &date, text, text_len, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
-    M = tglm_create_encr_message(&id, &from_id, &peer_id, &date, text, text_len, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
-    tgl_state::instance()->callback()->new_message(M);
+
+    M = tglm_create_encr_message(&id, &from_id, &peer_id, &date, text, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
+    tgl_state::instance()->callback()->new_messages({M});
   }
 
   tgl_do_send_msg(M, callback);
 }
 
-void tgl_do_reply_message (tgl_message_id_t *_reply_id, const char *text, int text_len, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+void tgl_do_reply_message (const tgl_message_id_t& reply_id, const std::string& text, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
 {
-  tgl_message_id_t reply_id = *_reply_id;
-  if (reply_id.peer_type == tgl_peer_type::temp_id) {
-    reply_id = tgl_convert_temp_msg_id (reply_id);
-  }
   if (reply_id.peer_type == tgl_peer_type::temp_id) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
@@ -1361,66 +1155,7 @@ void tgl_do_reply_message (tgl_message_id_t *_reply_id, const char *text, int te
 
     tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id (reply_id);
 
-    tgl_do_send_message (peer_id, text, text_len, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), NULL, callback);
-  }
-}
-/* }}} */
-
-/* {{{ Send text file */
-void tgl_do_send_text (tgl_peer_id_t id, const char *file_name, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
-{
-  int fd = open (file_name, O_RDONLY | O_BINARY);
-  if (fd < 0) {
-    tgl_set_query_error (EBADF, "Can not open file: %s", strerror(errno));
-    if (callback) {
-      callback(0, NULL);
-    }
-    return;
-  }
-  static char buf[(1 << 20) + 1];
-  int x = read (fd, buf, (1 << 20) + 1);
-  if (x < 0) {
-    tgl_set_query_error (EBADF, "Can not read from file: %s", strerror(errno));
-    close (fd);
-    if (callback) {
-      callback(0, NULL);
-    }
-
-    assert (x >= 0);
-    close (fd);
-    if (x == (1 << 20) + 1) {
-        tgl_set_query_error (E2BIG, "text file is too big");
-        if (callback) {
-            callback(0, NULL);
-        }
-    } else {
-        tgl_do_send_message (id, buf, x, flags, NULL, callback);
-    }
-  }
-}
-
-void tgl_do_reply_text (tgl_message_id_t *_reply_id, const char *file_name, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
-{
-  tgl_message_id_t reply_id = *_reply_id;
-  if (reply_id.peer_type == tgl_peer_type::temp_id) {
-    reply_id = tgl_convert_temp_msg_id (reply_id);
-  }
-  if (reply_id.peer_type == tgl_peer_type::temp_id) {
-    tgl_set_query_error (EINVAL, "unknown message");
-    if (callback) {
-      callback(0, 0);
-    }
-    return;
-  }
-  if (reply_id.peer_type == tgl_peer_type::enc_chat) {
-    tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
-    if (callback) {
-      callback(0, 0);
-    }
-
-    tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id (reply_id);
-
-    tgl_do_send_text (peer_id, file_name, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), callback);
+    tgl_do_send_message (peer_id, text, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), NULL, callback);
   }
 }
 /* }}} */
@@ -1545,8 +1280,10 @@ public:
 
         int n = DS_LVAL(DS_MM->messages->cnt);
         for (int i = 0; i < n; i++) {
-            m_messages.push_back(tglf_fetch_alloc_message(DS_MM->messages->data[i], NULL));
+            m_messages.push_back(tglf_fetch_alloc_message(DS_MM->messages->data[i]));
         }
+
+        tgl_state::instance()->callback()->new_messages(m_messages);
 //        m_offset += n;
 //        m_limit -= n;
 
@@ -1674,9 +1411,11 @@ public:
             m_state->read_box_max_id.push_back(DS_LVAL(DS_D->read_inbox_max_id));
         }
 
+        std::vector<std::shared_ptr<tgl_message>> new_messages;
         for (int i = 0; i < DS_LVAL (DS_MD->messages->cnt); i++) {
-            tglf_fetch_alloc_message (DS_MD->messages->data[i], NULL);
+            new_messages.push_back(tglf_fetch_alloc_message (DS_MD->messages->data[i]));
         }
+        tgl_state::instance()->callback()->new_messages(new_messages);
 
         TGL_DEBUG("dl_size = " << dl_size << ", total = " << m_state->peers.size());
 
@@ -2023,9 +1762,6 @@ void tgl_do_forward_messages(const tgl_peer_id_t& id, const std::vector<tgl_mess
   for (size_t i = 0; i < ids_in.size(); ++i) {
     tgl_message_id_t msg_id = ids_in[i];
     if (msg_id.peer_type == tgl_peer_type::temp_id) {
-      msg_id = tgl_convert_temp_msg_id (msg_id);
-    }
-    if (msg_id.peer_type == tgl_peer_type::temp_id) {
       tgl_set_query_error (EINVAL, "unknown message");
       if (callback) {
         callback(false, std::vector<std::shared_ptr<tgl_message>>());
@@ -2090,9 +1826,6 @@ void tgl_do_forward_messages(const tgl_peer_id_t& id, const std::vector<tgl_mess
 void tgl_do_forward_message (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
 {
   tgl_message_id_t msg_id = *_msg_id;
-  if (msg_id.peer_type == tgl_peer_type::temp_id) {
-    msg_id = tgl_convert_temp_msg_id (msg_id);
-  }
   if (msg_id.peer_type == tgl_peer_type::temp_id) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
@@ -2165,9 +1898,6 @@ void tgl_do_reply_contact (tgl_message_id_t *_reply_id, const char *phone, int p
 {
   tgl_message_id_t reply_id = *_reply_id;
   if (reply_id.peer_type == tgl_peer_type::temp_id) {
-    reply_id = tgl_convert_temp_msg_id (reply_id);
-  }
-  if (reply_id.peer_type == tgl_peer_type::temp_id) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
       callback(0, 0);
@@ -2196,9 +1926,6 @@ void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, uns
     return;
   }
   tgl_message_id_t msg_id = *_msg_id;
-  if (msg_id.peer_type == tgl_peer_type::temp_id) {
-    msg_id = tgl_convert_temp_msg_id (msg_id);
-  }
   if (msg_id.peer_type == tgl_peer_type::temp_id) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
@@ -2979,8 +2706,9 @@ public:
 
         int n = DS_LVAL (DS_MM->messages->cnt);
         for (int i = 0; i < n; i++) {
-            m_state->messages.push_back(tglf_fetch_alloc_message(DS_MM->messages->data[i], NULL));
+            m_state->messages.push_back(tglf_fetch_alloc_message(DS_MM->messages->data[i]));
         }
+        tgl_state::instance()->callback()->new_messages(m_state->messages);
         m_state->offset += n;
         m_state->limit -= n;
         if (m_state->limit + m_state->offset >= DS_LVAL(DS_MM->count)) {
@@ -3161,8 +2889,9 @@ public:
             int message_count = DS_LVAL (DS_UD->new_messages->cnt);
             std::vector<std::shared_ptr<tgl_message>> messages;
             for (int i = 0; i < message_count; i++) {
-                messages.push_back(tglf_fetch_alloc_message(DS_UD->new_messages->data[i], NULL));
+                messages.push_back(tglf_fetch_alloc_message(DS_UD->new_messages->data[i]));
             }
+            tgl_state::instance()->callback()->new_messages(messages);
 
             int encrypted_message_count = DS_LVAL(DS_UD->new_encrypted_messages->cnt);
             std::vector<std::shared_ptr<tgl_secret_message>> secret_messages;
@@ -3305,8 +3034,9 @@ public:
             int message_count = DS_LVAL(DS_UD->new_messages->cnt);
             std::vector<std::shared_ptr<tgl_message>> messages;
             for (int i = 0; i < message_count; i++) {
-                messages.push_back(tglf_fetch_alloc_message(DS_UD->new_messages->data[i], NULL));
+                messages.push_back(tglf_fetch_alloc_message(DS_UD->new_messages->data[i]));
             }
+            tgl_state::instance()->callback()->new_messages(messages);
 
             for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
                 tglu_work_update(1, DS_UD->other_updates->data[i], nullptr);
@@ -3577,9 +3307,6 @@ private:
 
 void tgl_do_delete_msg (tgl_message_id_t *_msg_id, std::function<void(bool success)> callback) {
   tgl_message_id_t msg_id = *_msg_id;
-  if (msg_id.peer_type == tgl_peer_type::temp_id) {
-    msg_id = tgl_convert_temp_msg_id (msg_id);
-  }
   if (msg_id.peer_type == tgl_peer_type::temp_id) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
@@ -3858,8 +3585,9 @@ public:
 
         std::vector<std::shared_ptr<tgl_message>> messages;
         for (int i = 0; i < DS_LVAL(DS_MM->messages->cnt); i++) {
-            messages.push_back(tglf_fetch_alloc_message(DS_MM->messages->data[i], NULL));
+            messages.push_back(tglf_fetch_alloc_message(DS_MM->messages->data[i]));
         }
+        tgl_state::instance()->callback()->new_messages(messages);
         if (m_multi_callback) {
             assert(!m_single_callback);
             m_multi_callback(true, messages);
@@ -3895,9 +3623,6 @@ private:
 void tgl_do_get_message (tgl_message_id_t *_msg_id, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
 {
   tgl_message_id_t msg_id = *_msg_id;
-  if (msg_id.peer_type == tgl_peer_type::temp_id) {
-    msg_id = tgl_convert_temp_msg_id (msg_id);
-  }
   if (msg_id.peer_type == tgl_peer_type::temp_id) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
@@ -4351,7 +4076,7 @@ void tgl_do_check_password (std::function<void(bool success)> callback) {
 /* }}} */
 
 /* {{{ send broadcast */
-void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, int text_len, unsigned long long flags,
+void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const std::string& text, int text_len, unsigned long long flags,
         std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& ML)> callback)
 {
   if (num > 1000) {
@@ -4387,7 +4112,8 @@ void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, 
     struct tl_ds_message_media TDSM;
     TDSM.magic = CODE_message_media_empty;
 
-    tglm_message_create (&id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
+    auto msg = tglm_message_create (&id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
+    tgl_state::instance()->callback()->new_messages({msg});
   }
 
   auto q = std::make_shared<query_send_msgs>(E, callback);
@@ -4407,7 +4133,7 @@ void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, 
   for (i = 0; i < num; i++) {
     q->out_i64 (E->message_ids[i].id);
   }
-  q->out_string (text, text_len);
+  q->out_std_string (text);
 
   q->out_i32 (CODE_message_media_empty);
 

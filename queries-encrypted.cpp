@@ -255,15 +255,14 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
       &from_id,
       &secret_chat->id,
       &date,
-      NULL,
-      0,
+      std::string(),
       NULL,
       &action,
       NULL,
       TGLMF_PENDING | TGLMF_OUT | TGLMF_UNREAD | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
 
   assert (M);
-  tgl_state::instance()->callback()->new_message(M);
+  tgl_state::instance()->callback()->new_messages({M});
   tgl_do_send_msg (M, 0);
 }
 
@@ -556,8 +555,8 @@ public:
     {
         tl_ds_messages_sent_encrypted_message* DS_MSEM = static_cast<tl_ds_messages_sent_encrypted_message*>(D);
 
-        tglm_edit_encr_message(m_message, nullptr, nullptr, DS_MSEM->date, nullptr, 0, nullptr, nullptr, DS_MSEM->file, m_message->flags & (~TGLMF_PENDING));
-        tgl_state::instance()->callback()->new_message(m_message);
+        tglm_edit_encr_message(m_message, nullptr, nullptr, DS_MSEM->date, std::string(), nullptr, nullptr, DS_MSEM->file, m_message->flags & (~TGLMF_PENDING));
+        tgl_state::instance()->callback()->new_messages({m_message});
 
         if (m_callback) {
             m_callback(true, m_message);
@@ -690,8 +689,7 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
       &from_id,
       &f->to_id,
       &date,
-      NULL,
-      0,
+      std::string(),
       DS_DMM,
       NULL,
       NULL,
@@ -738,8 +736,7 @@ void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double 
       &from_id,
       &id,
       &date,
-      NULL,
-      0,
+      std::string(),
       &TDSM,
       NULL,
       NULL,
@@ -748,7 +745,7 @@ void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double 
   free(TDSM.latitude);
   free(TDSM.longitude);
 
-  tgl_state::instance()->callback()->new_message(M);
+  tgl_state::instance()->callback()->new_messages({M});
   tgl_do_send_encr_msg(M, callback);
 }
 

@@ -182,15 +182,8 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
   switch (DS_U->magic) {
   case CODE_update_new_message:
     {
-      //struct tgl_message *N = tgl_message_get (TLS, DS_LVAL (DS_U->id));
-      //int new = (!N || !(N->flags & TGLMF_CREATED));
-      int new_msg = 0;
-      std::shared_ptr<tgl_message> M = tglf_fetch_alloc_message (DS_U->message, &new_msg);
-      assert (M);
-      if (new_msg) {
-        //bl_do_msg_update (&M->permanent_id);
-        tgl_state::instance()->callback()->new_message(M);
-      }
+      std::shared_ptr<tgl_message> M = tglf_fetch_alloc_message (DS_U->message);
+      tgl_state::instance()->callback()->new_messages({M});
       break;
     };
   case CODE_update_message_i_d:
@@ -435,9 +428,11 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_channel_group:
     break;
-  case CODE_update_new_channel_message:
-    tglf_fetch_alloc_message (DS_U->message, NULL);
+  case CODE_update_new_channel_message: {
+    auto msg = tglf_fetch_alloc_message (DS_U->message);
+    tgl_state::instance()->callback()->new_messages({msg});
     break;
+  }
   case CODE_update_read_channel_inbox:
     break;
   case CODE_update_delete_channel_messages:
@@ -564,19 +559,10 @@ void tglu_work_update_short_message (int check_only, struct tl_ds_updates *DS_U)
   //int new = (!N || !(N->flags & TGLMF_CREATED));
   
   tglf_fetch_alloc_message_short (DS_U);
-  
+
   if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
   }
-
-#if 0
-  assert (M);
-
-  if (1) {
-    //bl_do_msg_update (&M->permanent_id);
-    tgl_state::instance()->callback()->new_message(M);
-  }
-#endif
   
   if (check_only) { return; }
   //bl_do_set_pts (DS_LVAL (DS_U->pts));
@@ -597,7 +583,8 @@ void tglu_work_update_short_chat_message (int check_only, struct tl_ds_updates *
   //struct tgl_message *N = tgl_message_get (DS_LVAL (DS_U->id));
   //int new = (!N || !(N->flags & TGLMF_CREATED));
   
-  tglf_fetch_alloc_message_short_chat (DS_U);
+  auto msg = tglf_fetch_alloc_message_short_chat (DS_U);
+  tgl_state::instance()->callback()->new_messages({msg});
   
   if (check_only > 0 || (tgl_state::instance()->locks & TGL_LOCK_DIFF)) {
     return;
@@ -644,14 +631,6 @@ void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *
   std::shared_ptr<tgl_message> M = std::static_pointer_cast<tgl_message>(extra);
 
   if (!M) { return; }
-  
-#if 0 // FIXME
-  long long random_id = M->permanent_id.id;
-  tgl_message_id_t msg_id = M->permanent_id;
-  msg_id.id = DS_LVAL (DS_U->id);
-  bl_do_set_msg_id (&M->permanent_id, &msg_id);
-  tgls_insert_random2local (random_id, &msg_id);
-#endif
 
   int f = DS_LVAL (DS_U->flags);
 
@@ -666,28 +645,10 @@ void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *
     flags |= TGLMF_MENTION;
   }
 
-#if 0
-  bl_do_edit_message (&M->permanent_id, 
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL, 0,
-    DS_U->media,
-    NULL,
-    NULL,
-    NULL, 
-    NULL,
-    flags);
-#endif
- 
   if (check_only) { return; }
-  //bl_do_msg_update (&M->permanent_id);
-  tgl_state::instance()->callback()->new_message(M);
+  tgl_state::instance()->callback()->new_messages({M});
 
   if (DS_U->pts) {
-    //bl_do_set_pts (DS_LVAL (DS_U->pts));
     tgl_state::instance()->set_pts (DS_LVAL (DS_U->pts));
   }
 }

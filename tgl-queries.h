@@ -29,11 +29,11 @@ struct tl_ds_reply_markup;
 // send plain text message to peer id
 // flags is combination of TGL_SEND_MSG_FLAG_*
 // reply markup can be NULL
-void tgl_do_send_message (tgl_peer_id_t peer_id, const char *text, int text_len, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
+void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
 
 // sends plain text reply on message *reply_id*
 // message *reply_id* should be cached
-void tgl_do_reply_message (long long int reply_id, tgl_peer_id_t to_id, const char *text, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
+void tgl_do_reply_message (const tgl_message_id_t& reply_id, tgl_peer_id_t to_id, const std::string& text, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
 
 // forward message *msg_id* to peer *id*
 // message can not be encrypted and peer can not be secret chat
@@ -63,7 +63,7 @@ void tgl_do_send_location (tgl_peer_id_t id, double latitude, double longitude, 
 
 // sends broadcast (i.e. message to several users at once)
 // flags are same as in tgl_do_send_message
-void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const char *text, unsigned long long flags, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& ML)> callback);
+void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const std::string& text, unsigned long long flags, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& ML)> callback);
 /* }}} */
 
 /* {{{ EDITING SELF PROFILE */

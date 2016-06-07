@@ -1044,19 +1044,11 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_messag
   }
 }
 
-void tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
+std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
   tgl_peer_id_t peer_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
 
   tgl_message_id_t msg_id = tgl_peer_id_to_msg_id (peer_id, DS_LVAL (DS_U->id));
-  //struct tgl_message *M = (struct tgl_message *)talloc0 (sizeof (*M));
-  //M->permanent_id = msg_id;
-
-  //int flags = M->flags & 0xffff;
   int flags = 0;
-
-  //if (M->flags & TGLMF_PENDING) {
-  //  M->flags ^= TGLMF_PENDING;
-  //}
 
   if (!(flags & TGLMF_CREATED)) {
     flags |= TGLMF_CREATE | TGLMF_CREATED;
@@ -1086,41 +1078,24 @@ void tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
     fwd_from_id = tgl_peer_id_user (0);
   }
 
-#if 0
-  bl_do_edit_message (&msg_id, 
-    (f & 2) ? &our_id : &peer_id,
-    (f & 2) ? &peer_id : &our_id,
-    DS_U->fwd_from_id ? &fwd_from_id : NULL,
-    DS_U->fwd_date,
-    DS_U->date,
-    DS_STR (DS_U->message),
-    &A,
-    NULL,
-    DS_U->reply_to_msg_id,
-    NULL, 
-    (void *)DS_U->entities,
-    flags
-  );
-#endif
-
-  DS_CSTR (msg_text, DS_U->message);
-  tglm_message_create (&msg_id,
+  std::shared_ptr<tgl_message> msg = tglm_message_create (&msg_id,
           (f & 2) ? &our_id : &peer_id,
           (f & 2) ? &peer_id : &our_id,
           DS_U->fwd_from_id ? &fwd_from_id : NULL,
           DS_U->fwd_date,
           DS_U->date,
-          msg_text,
+          DS_STDSTR(DS_U->message),
           &A,
           NULL,
           DS_U->reply_to_msg_id,
           NULL,
           flags
           );
-  free(msg_text);
+  tgl_state::instance()->callback()->new_messages({msg});
+  return msg;
 }
 
-void tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
+std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
   tgl_peer_id_t from_id = tgl_peer_id_user (DS_LVAL (DS_U->from_id));
   tgl_peer_id_t to_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
   
@@ -1161,38 +1136,20 @@ void tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
     fwd_from_id = tgl_peer_id_user (0);
   }
 
-#if 0
-  bl_do_edit_message (&msg_id,
-    &from_id,
-    &to_id,
-    DS_U->fwd_from_id ? &fwd_from_id : NULL,
-    DS_U->fwd_date,
-    DS_U->date,
-    DS_STR (DS_U->message),
-    &A,
-    NULL,
-    DS_U->reply_to_msg_id,
-    NULL,
-    NULL,
-    flags
-  );
-#endif
 
-  DS_CSTR (msg_text, DS_U->message);
-  tglm_message_create (&msg_id,
+  return tglm_message_create (&msg_id,
       &from_id,
       &to_id,
       DS_U->fwd_from_id ? &fwd_from_id : NULL,
       DS_U->fwd_date,
       DS_U->date,
-      msg_text,
+      DS_STDSTR(DS_U->message),
       &A,
       NULL,
       DS_U->reply_to_msg_id,
       NULL,
       flags
       );
-  free(msg_text);
 }
 
 
@@ -1509,10 +1466,7 @@ void tglf_fetch_message_entities (const std::shared_ptr<tgl_message>& M, struct 
   }
 }
 
-std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M, int *new_msg) {
-  if (new_msg) {
-    *new_msg = 0;
-  }
+std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M) {
   if (!DS_M || DS_M->magic == CODE_message_empty) { 
     TGL_NOTICE("empty message");
     return NULL; 
@@ -1534,9 +1488,6 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
     msg_id = tgl_peer_id_to_msg_id (to_id, DS_LVAL (DS_M->id));
   }
 
-  if (new_msg) {
-    *new_msg = 1;
-  }
   int flags = 0;
   if (DS_LVAL (DS_M->flags) & 1) {
     flags |= TGLMF_UNREAD;
@@ -1555,37 +1506,19 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
     fwd_from_id = tgl_peer_id_user (0);
   }
 
-#if 0
-  bl_do_edit_message (&msg_id,
-      DS_M->from_id ? &from_id : NULL,
-      &to_id,
-      DS_M->fwd_from_id ? &fwd_from_id : NULL,
-      DS_M->fwd_date,
-      DS_M->date,
-      DS_STR (DS_M->message),
-      DS_M->media,
-      DS_M->action,
-      DS_M->reply_to_msg_id,
-      DS_M->reply_markup,
-      (void *)DS_M->entities,
-      flags | TGLMF_CREATE | TGLMF_CREATED
-      );
-#endif
-  DS_CSTR (msg_text, DS_M->message);
   std::shared_ptr<tgl_message> M = tglm_message_create(&msg_id,
       DS_M->from_id ? &from_id : NULL,
       &to_id,
       DS_M->fwd_from_id ? &fwd_from_id : NULL,
       DS_M->fwd_date,
       DS_M->date,
-      msg_text,
+      DS_STDSTR(DS_M->message),
       DS_M->media,
       DS_M->action,
       DS_M->reply_to_msg_id,
       DS_M->reply_markup,
       flags
       );
-  free(msg_text);
   return M;
 }
 
@@ -1734,7 +1667,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
                         &from_id,
                         &to_id,
                         DS_EM->date,
-                        DS_STR(DS_DM->message),
+                        DS_STDSTR(DS_DM->message),
                         DS_DM->media,
                         DS_DM->action,
                         DS_EM->file,
@@ -1767,7 +1700,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
                         &from_id,
                         &to_id,
                         DS_EM->date,
-                        DS_STR(DS_DM->message),
+                        DS_STDSTR(DS_DM->message),
                         DS_DM->media,
                         DS_DM->action,
                         DS_EM->file,
@@ -1918,7 +1851,7 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
     }
 
     tgl_update_secret_chat(secret_chat, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ttl_ptr, &layer, our_in_seq_no_ptr, TGL_FLAGS_UNCHANGED);
-    tgl_state::instance()->callback()->new_message(message);
+    tgl_state::instance()->callback()->new_messages({message});
 }
 
 std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info (struct tl_ds_bot_info *DS_BI) {
@@ -2093,9 +2026,9 @@ std::shared_ptr<tgl_message> tglm_message_alloc(const tgl_message_id_t *id) {
 
 std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *from_id,
                                         tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
-                                        int *date, const char *message,
+                                        int *date, const std::string& message,
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
-                                        int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags)
+                                        int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags, bool invoke_callback)
 {
     std::shared_ptr<tgl_message> M = tglm_message_alloc(id);
 
@@ -2127,10 +2060,7 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
         M->flags |= TGLMF_SERVICE;
     }
 
-    if (message && strlen(message) != 0) {
-        M->message = message;
-        assert (!(M->flags & TGLMF_SERVICE));
-    }
+    M->message = message;
 
     if (media) {
         M->media = tglf_fetch_message_media(media);
@@ -2144,7 +2074,7 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
     if (reply_markup) {
         M->reply_markup = tglf_fetch_alloc_reply_markup (reply_markup);
     }
-    tgl_state::instance()->callback()->new_message(M);
+    //tgl_state::instance()->callback()->new_messages({M});
     return M;
 }
 
@@ -2154,8 +2084,7 @@ static std::shared_ptr<tgl_message> create_or_edit_encr_message(
         const tgl_peer_id_t* from_id,
         const tgl_peer_id_t* to_id,
         const int* date,
-        const char* message,
-        int message_len,
+        const std::string& message,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
         const tl_ds_encrypted_file* file,
@@ -2212,10 +2141,7 @@ static std::shared_ptr<tgl_message> create_or_edit_encr_message(
         M->flags |= TGLMF_SERVICE;
     }
 
-    if (message) {
-        M->message = std::string(message, message_len);
-        assert(!(M->flags & TGLMF_SERVICE));
-    }
+    M->message = message;
 
     if (media) {
         M->media = tglf_fetch_message_media_encrypted(media);
@@ -2249,30 +2175,28 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(
         const tgl_peer_id_t* from_id,
         const tgl_peer_id_t* to_id,
         const int* date,
-        const char* message,
-        int message_len,
+        const std::string& message,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
         const tl_ds_encrypted_file* file,
         int flags)
 {
     return create_or_edit_encr_message(nullptr, id, from_id, to_id, date,
-            message, message_len, media, action, file, flags);
+            message, media, action, file, flags);
 }
 
 void tglm_edit_encr_message(const std::shared_ptr<tgl_message>& m,
         const tgl_peer_id_t* from_id,
         const tgl_peer_id_t* to_id,
         const int* date,
-        const char* message,
-        int message_len,
+        const std::string& message,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
         const tl_ds_encrypted_file* file,
         int flags)
 {
     create_or_edit_encr_message(m, &m->permanent_id, from_id, to_id, date,
-            message, message_len, media, action, file, flags);
+            message, media, action, file, flags);
 }
 
 
@@ -2420,17 +2344,6 @@ tgl_message_id_t *tgls_get_local_by_temp (int temp_id) {
   }
 }
 #endif
-
-tgl_message_id_t tgl_convert_temp_msg_id (tgl_message_id_t msg_id) {
-  //struct tgl_message M;
-  //M.temp_id = msg_id.id;
-  //struct tgl_message *N = tree_lookup_temp_id (tgl_state::instance()->temp_id_tree, &M);
-  //if (N) {
-    //return N->permanent_id;
-  //} else {
-    return msg_id;
-  //}
-}
 
 #if 0
 void tgls_message_change_temp_id (struct tgl_message *M, int temp_id) {
