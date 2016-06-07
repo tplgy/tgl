@@ -179,6 +179,9 @@ struct tgl_state {
   void remove_all_queries();
 
 private:
+  void state_lookup_timeout();
+
+private:
   bool m_is_started;
 
   int m_app_id;
@@ -214,6 +217,7 @@ private:
 
   std::vector<std::shared_ptr<tgl_dc>> m_dcs;
   std::shared_ptr<tgl_dc> m_working_dc;
+  std::shared_ptr<tgl_timer> m_state_lookup_timer;
 };
 
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);
