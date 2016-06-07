@@ -574,7 +574,7 @@ void tgl_download_manager::set_profile_photo (const std::string &file_name, cons
             });
 }
 
-void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name, const std::string &caption, const std::string& thumb_path, unsigned long long flags,
+void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string& file_name, int32_t width, int32_t height, const std::string& caption, const std::string& thumb_path, unsigned long long flags,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     TGL_DEBUG("send_document - file_name: " + file_name);
@@ -591,7 +591,7 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_m
             flags |= TGLDF_AUDIO;
         }
     }
-    send_document(to_id, message_id, file_name, 0, 100, 100, 100, caption, flags, thumb_path, 90, 90, callback); // FIXME: thumb_w and thumb_h
+    send_document(to_id, message_id, file_name, 0, width, height, 100, caption, flags, thumb_path, 90, 90, callback); // FIXME: thumb_w and thumb_h
 }
 
 void tgl_download_manager::end_load (std::shared_ptr<download> D, std::function<void(bool success, const std::string &filename, float progress)> callback)
