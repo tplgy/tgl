@@ -132,7 +132,9 @@ public:
     void download_file_location(const tgl_file_location& location, int32_t file_size, const std::function<void(bool success, const std::string &filename, float progress)>& callback);
     void download_document(const std::shared_ptr<tgl_document>& document, const std::function<void(bool success, const std::string &filename, float progress)>& callback);
 
-    void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name, int32_t width, int32_t height, const std::string &caption, const std::string& thumb_path, unsigned long long flags,
+    void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id,
+            const std::string& file_name, int32_t width, int32_t height, int32_t duration, const std::string& caption,
+            const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height, unsigned long long flags,
             const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
     // sets self profile photo
     // server will cut central square from this photo
