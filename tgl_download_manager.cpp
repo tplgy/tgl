@@ -481,7 +481,6 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_m
     }
     long long size = boost::filesystem::file_size(file_name);
     TGL_NOTICE("send_document " << file_name << " with size " << size);
-    TGL_NOTICE("thumbnail_path: " << thumb_path);
     if (size <= 0 || (fd = open (file_name.c_str(), O_RDONLY)) <= 0) {
         TGL_ERROR("file is empty");
         if (callback) {
@@ -531,6 +530,7 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_m
         boost::system::error_code ec;
         auto file_size = boost::filesystem::file_size(thumb_path, ec);
         if (ec == 0) {
+            TGL_NOTICE("thumbnail_path " << thumb_path << " with size " << file_size);
             std::ifstream ifs(thumb_path, std::ios_base::in | std::ios_base::binary);
             if (ifs.good()) {
                 f->thumb.resize(file_size);
