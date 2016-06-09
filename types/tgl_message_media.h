@@ -92,6 +92,7 @@ struct tgl_document {
 struct tgl_encr_document: public tgl_document {
     std::vector<unsigned char> key;
     std::vector<unsigned char> iv;
+    std::vector<char> thumb_data;
     int key_fingerprint;
     tgl_encr_document() : key_fingerprint(0) { }
 };

@@ -1313,6 +1313,11 @@ std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_d
         media->encr_document->thumb = tglf_fetch_photo_size(DS_DMM->thumb);
     }
 
+    if (DS_DMM->str_thumb && DS_DMM->str_thumb->data) {
+        media->encr_document->thumb_data.resize(DS_DMM->str_thumb->len);
+        memcpy(media->encr_document->thumb_data.data(), DS_DMM->str_thumb->data, DS_DMM->str_thumb->len);
+    }
+
     media->encr_document->key.resize(32);
     str_to_32 (media->encr_document->key.data(), DS_STR(DS_DMM->key));
     media->encr_document->iv.resize(32);
