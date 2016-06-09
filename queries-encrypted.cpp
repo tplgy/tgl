@@ -614,7 +614,7 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
 
   size_t start = q->serializer()->i32_size();
 
-  if (f->flags == -1) {
+  if (f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
     q->out_i32 (CODE_decrypted_message_media_photo);
   } else if ((f->flags & TGLDF_VIDEO)) {
     q->out_i32 (CODE_decrypted_message_media_video);
@@ -623,13 +623,13 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
   } else {
     q->out_i32 (CODE_decrypted_message_media_document);
   }
-  if (f->flags == -1 || !(f->flags & TGLDF_AUDIO)) {
+  if ((f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) || !(f->flags & TGLDF_AUDIO)) {
     q->out_string(f->thumb.data(), f->thumb.size());
     q->out_i32 (f->thumb_w);
     q->out_i32 (f->thumb_h);
   }
   
-  if (f->flags == -1) {
+  if (f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
     q->out_i32 (f->w);
     q->out_i32 (f->h);
   } else if (f->flags & TGLDF_VIDEO) {
