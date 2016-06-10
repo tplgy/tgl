@@ -312,7 +312,11 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_encrypted_chat_typing:
     {
-      tgl_state::instance()->callback()->typing_status_changed(DS_LVAL(DS_U->chat_id), DS_LVAL(DS_U->chat_id), tgl_peer_type::enc_chat, tgl_typing_status::tgl_typing_typing);
+        std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(DS_LVAL(DS_U->chat_id));
+        if (secret_chat) {
+            tgl_state::instance()->callback()->typing_status_changed(secret_chat->user_id, DS_LVAL(DS_U->chat_id),
+                    tgl_peer_type::enc_chat, tgl_typing_status::tgl_typing_typing);
+        }
     }
     break;
   case CODE_update_encrypted_messages_read:
