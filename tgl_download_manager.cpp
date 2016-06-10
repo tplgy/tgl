@@ -480,7 +480,7 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_m
         return;
     }
     long long size = boost::filesystem::file_size(file_name);
-    TGL_NOTICE("send_document " << file_name << " with size " << size);
+    TGL_NOTICE("send_document " << file_name << " with size " << size << " and dimession " << w << " X " << h);
     if (size <= 0 || (fd = open (file_name.c_str(), O_RDONLY)) <= 0) {
         TGL_ERROR("file is empty");
         if (callback) {
