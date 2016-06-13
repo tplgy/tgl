@@ -298,7 +298,7 @@ public:
     query_msg_send_encr(
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
             const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& callback)
         : query("send encrypted (message)", TYPE_TO_PARAM(messages_sent_encrypted_message))
         , m_secret_chat(secret_chat)
         , m_message(message)
@@ -310,7 +310,7 @@ public:
     {
         tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id.id, m_secret_chat->out_seq_no);
         if (m_callback) {
-            m_callback(true, m_message);
+            m_callback(true, m_message, 0);
         }
     }
 
@@ -321,7 +321,7 @@ public:
         }
 
         if (m_callback) {
-            m_callback(false, m_message);
+            m_callback(false, m_message, 0);
         }
 
         if (m_message) {
@@ -335,16 +335,16 @@ public:
 private:
     std::shared_ptr<tgl_secret_chat> m_secret_chat;
     std::shared_ptr<tgl_message> m_message;
-    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
+    std::function<void(bool, const std::shared_ptr<tgl_message>&, float)> m_callback;
 };
 
-void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M)> callback)
+void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M, float progress)> callback)
 {
   std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(tgl_peer_id_enc_chat(M->permanent_id.peer_id));
   if (!secret_chat || secret_chat->state != sc_ok) { 
     TGL_WARNING("Unknown encrypted chat");
     if (callback) {
-      callback(0, 0);
+      callback(0, 0, 0);
     }
     return;
   }
@@ -427,7 +427,7 @@ void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::fu
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M)> callback)
+void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M, float progress)> callback)
 {
   if (M->flags & TGLMF_SERVICE) {
     if (!M->action) {
@@ -440,7 +440,7 @@ void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<
   if (!secret_chat || secret_chat->state != sc_ok) { 
     TGL_WARNING("Unknown encrypted chat");
     if (callback) {
-      callback(0, M);
+      callback(0, M, 0);
     }
     return;
   }
@@ -539,7 +539,7 @@ public:
     query_send_encr_file(
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
             const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& callback)
         : query("send encrypted (file)", TYPE_TO_PARAM(messages_sent_encrypted_message))
         , m_secret_chat(secret_chat)
         , m_message(message)
@@ -559,7 +559,7 @@ public:
         tgl_state::instance()->callback()->new_messages({m_message});
 
         if (m_callback) {
-            m_callback(true, m_message);
+            m_callback(true, m_message, 0);
         }
 
         tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id.id, m_secret_chat->out_seq_no);
@@ -572,7 +572,7 @@ public:
         }
 
         if (m_callback) {
-            m_callback(false, m_message);
+            m_callback(false, m_message, 0);
         }
 
         if (m_message) {
@@ -586,10 +586,10 @@ public:
 private:
     std::shared_ptr<tgl_secret_chat> m_secret_chat;
     std::shared_ptr<tgl_message> m_message;
-    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
+    std::function<void(bool, const std::shared_ptr<tgl_message>&, float)> m_callback;
 };
 
-void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) {
+void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& callback) {
   std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(f->to_id);
   assert(secret_chat);
   auto q = std::make_shared<query_send_encr_file>(secret_chat, nullptr, callback);
@@ -714,7 +714,7 @@ void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback)
+void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
 {
   struct tl_ds_decrypted_message_media TDSM;
   TDSM.magic = CODE_decrypted_message_media_geo_point;

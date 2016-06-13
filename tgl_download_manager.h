@@ -135,7 +135,7 @@ public:
     void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id,
             const std::string& file_name, int32_t width, int32_t height, int32_t duration, const std::string& caption,
             const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height, unsigned long long flags,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
+            const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float)>& callback);
     // sets self profile photo
     // server will cut central square from this photo
     void set_profile_photo(const std::string &file_name, const std::function<void(bool success)>& callback);
@@ -151,16 +151,16 @@ private:
     int send_file_part_on_answer(const std::shared_ptr<query_send_file_part>& q, void *D);
 
     void send_avatar_end(std::shared_ptr<send_file> f, const std::function<void(bool)>& callback);
-    void send_file_end(std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
-    void send_file_unencrypted_end(std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
-    void send_file_thumb(const std::shared_ptr<send_file>& f, const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+    void send_file_end(std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&, float progress)>& callback);
+    void send_file_unencrypted_end(std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& callback);
+    void send_file_thumb(const std::shared_ptr<send_file>& f, const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& callback);
 
-    void send_part(std::shared_ptr<send_file> f, const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
+    void send_part(std::shared_ptr<send_file> f, const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback);
 
     void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name, int avatar, int w, int h, int duration,
             const std::string& caption, unsigned long long flags,
             const std::string& thumb_path, int thumb_w, int thumb_h,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
+            const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback);
     void _tgl_do_load_document(const std::shared_ptr<tgl_document>& doc, const std::shared_ptr<download>& D,
              const std::function<void(bool success, const std::string &filename, float progress)>& callback);
 

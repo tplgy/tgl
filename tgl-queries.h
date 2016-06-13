@@ -29,7 +29,7 @@ struct tl_ds_reply_markup;
 // send plain text message to peer id
 // flags is combination of TGL_SEND_MSG_FLAG_*
 // reply markup can be NULL
-void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
+void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
 
 // sends plain text reply on message *reply_id*
 // message *reply_id* should be cached
@@ -37,7 +37,7 @@ void tgl_do_reply_message (const tgl_message_id_t& reply_id, tgl_peer_id_t to_id
 
 // forward message *msg_id* to peer *id*
 // message can not be encrypted and peer can not be secret chat
-void tgl_do_forward_message (int id, int msg_id, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
+void tgl_do_forward_message (int id, int msg_id, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
 
 // forward messages *ids* to peer *id*
 // messages can not be encrypted and peer can not be secret chat
@@ -59,7 +59,7 @@ void tgl_do_reply_contact (int reply_id, tgl_peer_id_t peer_id, const char *phon
 void tgl_do_forward_media (tgl_peer_id_t id, struct tgl_message_media *media, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
 
 // sends location to chat *id*
-void tgl_do_send_location (tgl_peer_id_t id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
+void tgl_do_send_location (tgl_peer_id_t id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
 
 // sends broadcast (i.e. message to several users at once)
 // flags are same as in tgl_do_send_message
