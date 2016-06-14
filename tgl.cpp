@@ -32,6 +32,7 @@
 #include "tgl_download_manager.h"
 #include "tgl-structures.h"
 #include "tgl-timer.h"
+#include "tgl-queries.h"
 #include "types/tgl_update_callback.h"
 #include "types/tgl_rsa_key.h"
 #include "types/tgl_secret_chat.h"
@@ -354,4 +355,9 @@ void tgl_state::state_lookup_timeout()
     if (m_state_lookup_timer) {
         m_state_lookup_timer->start(3600);
     }
+}
+
+void tgl_state::logout()
+{
+    tgl_do_logout(nullptr);
 }

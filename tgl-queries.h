@@ -229,4 +229,6 @@ void tgl_do_get_message (long long id, std::function<void(bool success, const st
 void tgl_do_start_bot (tgl_peer_id_t bot, tgl_peer_id_t chat, const char *str, int str_len, std::function<void(bool success)> callback);
 /* }}} */
 
+void tgl_do_logout(const std::function<void(bool success)>& callback);
+
 #endif

@@ -854,6 +854,43 @@ int tgl_do_send_bot_auth (const char *code, int code_len, std::function<void(boo
 }
 /* }}} */
 
+class query_logout: public query
+{
+public:
+    explicit query_logout(const std::function<void(bool)>& callback)
+        : query("logout", TYPE_TO_PARAM(bool))
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void*) override
+    {
+        if (m_callback) {
+            m_callback(true);
+        }
+        tgl_state::instance()->callback()->logged_out(true);
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false);
+        }
+        tgl_state::instance()->callback()->logged_out(false);
+        return 0;
+    }
+
+private:
+    std::function<void(bool)> m_callback;
+};
+
+void tgl_do_logout(const std::function<void(bool)>& callback)
+{
+    auto q = std::make_shared<query_logout>(callback);
+    q->out_i32(CODE_auth_log_out);
+    q->execute(tgl_state::instance()->working_dc());
+}
+
 /* {{{ Get contacts */
 class query_get_contacts: public query
 {

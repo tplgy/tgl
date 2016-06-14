@@ -19,6 +19,7 @@ public:
     virtual void get_values(enum tgl_value_type type, const char *prompt, int num_values,
             std::function<void(const void *answer)>) = 0;
     virtual void logged_in() = 0;
+    virtual void logged_out(bool success) = 0;
     virtual void started() = 0;
     virtual void typing_status_changed(int user_id, int chat_id, tgl_peer_type chat_type, enum tgl_typing_status status) = 0;
     virtual void status_notification(int user_id, const tgl_user_status& status) = 0;

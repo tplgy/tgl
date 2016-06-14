@@ -122,6 +122,7 @@ struct tgl_state {
 
   int init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
   void login();
+  void logout();
 
   TGLC_bn_ctx* bn_ctx() { return m_bn_ctx.get(); }
 
