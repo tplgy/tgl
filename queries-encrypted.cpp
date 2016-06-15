@@ -21,7 +21,6 @@
 #include "auto/auto.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
-#include "auto/auto-skip.h"
 #include "auto/auto-types.h"
 #include "auto/constants.h"
 #include "crypto/aes.h"
@@ -31,7 +30,6 @@
 #include "mtproto-utils.h"
 #include "queries.h"
 #include "tgl.h"
-#include "tgl_download_manager.h"
 #include "tgl-log.h"
 #include "tgl-methods-in.h"
 #include "tg-mime-types.h"
@@ -51,49 +49,34 @@ static void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& se
         const unsigned char msg_sha[20], const int32_t* encr_ptr, const int32_t* encr_end, char* encrypted_data);
 
 /* {{{ Encrypt decrypted */
-class secret_chat_encryptor
+void secret_chat_encryptor::start()
 {
-public:
-    secret_chat_encryptor(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<mtprotocol_serializer>& serializer)
-        : m_secret_chat(secret_chat)
-        , m_serializer(serializer)
-    { }
+    m_encr_base = m_serializer->reserve_i32s(1/*str len*/ + 2/*fingerprint*/ + 4/*msg_key*/ + 1/*len*/);
+}
 
-    void start()
-    {
-        m_encr_base = m_serializer->reserve_i32s(1/*str len*/ + 2/*fingerprint*/ + 4/*msg_key*/ + 1/*len*/);
+void secret_chat_encryptor::end()
+{
+    size_t length = m_serializer->i32_size() - (m_encr_base + 8);
+    while ((m_serializer->i32_size() - m_encr_base - 3) & 3) {
+        int32_t i;
+        tglt_secure_random (reinterpret_cast<unsigned char*>(&i), 4);
+        m_serializer->out_i32(i);
     }
 
-    void end()
-    {
-        size_t length = m_serializer->i32_size() - (m_encr_base + 8);
-        while ((m_serializer->i32_size() - m_encr_base - 3) & 3) {
-            int32_t i;
-            tglt_secure_random (reinterpret_cast<unsigned char*>(&i), 4);
-            m_serializer->out_i32(i);
-        }
+    m_serializer->out_i32_at(m_encr_base, (m_serializer->i32_size() - m_encr_base - 1) * 4 * 256 + 0xfe); // str len
+    m_serializer->out_i64_at(m_encr_base + 1, m_secret_chat->key_fingerprint()); // fingerprint
+    m_serializer->out_i32_at(m_encr_base + 1 + 2 + 4, length * 4); // len
 
-        m_serializer->out_i32_at(m_encr_base, (m_serializer->i32_size() - m_encr_base - 1) * 4 * 256 + 0xfe); // str len
-        m_serializer->out_i64_at(m_encr_base + 1, m_secret_chat->key_fingerprint()); // fingerprint
-        m_serializer->out_i32_at(m_encr_base + 1 + 2 + 4, length * 4); // len
+    const int32_t* encr_ptr = m_serializer->i32_data() + m_encr_base + 1 + 2 + 4;
+    const int32_t* encr_end = m_serializer->i32_data() + m_serializer->i32_size();
 
-        const int32_t* encr_ptr = m_serializer->i32_data() + m_encr_base + 1 + 2 + 4;
-        const int32_t* encr_end = m_serializer->i32_data() + m_serializer->i32_size();
+    unsigned char sha1_buffer[20];
+    memset(sha1_buffer, 0, sizeof(sha1_buffer));
+    TGLC_sha1(reinterpret_cast<const unsigned char*>(encr_ptr), (length + 1) * 4, sha1_buffer);
+    m_serializer->out_i32s_at(m_encr_base + 1 + 2, reinterpret_cast<int32_t*>(sha1_buffer + 4), 4); // msg_key
 
-        unsigned char sha1_buffer[20];
-        memset(sha1_buffer, 0, sizeof(sha1_buffer));
-        TGLC_sha1(reinterpret_cast<const unsigned char*>(encr_ptr), (length + 1) * 4, sha1_buffer);
-        m_serializer->out_i32s_at(m_encr_base + 1 + 2, reinterpret_cast<int32_t*>(sha1_buffer + 4), 4); // msg_key
-
-        encrypt_decrypted_message(m_secret_chat, sha1_buffer, encr_ptr, encr_end, reinterpret_cast<char*>(const_cast<int32_t*>(encr_ptr)));
-    }
-
-private:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
-    std::shared_ptr<mtprotocol_serializer> m_serializer;
-    size_t m_encr_base;
-};
+    encrypt_decrypted_message(m_secret_chat, sha1_buffer, encr_ptr, encr_end, reinterpret_cast<char*>(const_cast<int32_t*>(encr_ptr)));
+}
 
 void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const unsigned char msg_sha[20], const int32_t* encr_ptr, const int32_t* encr_end, char* encrypted_data) {
@@ -531,187 +514,6 @@ void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secr
     q->out_i64(secret_chat->access_hash);
     q->out_i32(secret_chat->last ? secret_chat->last->date : time (0) - 10);
     q->execute(tgl_state::instance()->working_dc());
-}
-
-class query_send_encr_file: public query
-{
-public:
-    query_send_encr_file(
-            const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& callback)
-        : query("send encrypted (file)", TYPE_TO_PARAM(messages_sent_encrypted_message))
-        , m_secret_chat(secret_chat)
-        , m_message(message)
-        , m_callback(callback)
-    { }
-
-    void set_message(const std::shared_ptr<tgl_message>& message)
-    {
-        m_message = message;
-    }
-
-    virtual void on_answer(void* D) override
-    {
-        tl_ds_messages_sent_encrypted_message* DS_MSEM = static_cast<tl_ds_messages_sent_encrypted_message*>(D);
-
-        tglm_edit_encr_message(m_message, nullptr, nullptr, DS_MSEM->date, std::string(), nullptr, nullptr, DS_MSEM->file, m_message->flags & (~TGLMF_PENDING));
-        tgl_state::instance()->callback()->new_messages({m_message});
-
-        if (m_callback) {
-            m_callback(true, m_message, 0);
-        }
-
-        tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id.id, m_secret_chat->out_seq_no);
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        if (m_secret_chat && m_secret_chat->state != sc_deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-            tgl_secret_chat_deleted(m_secret_chat);
-        }
-
-        if (m_callback) {
-            m_callback(false, m_message, 0);
-        }
-
-        if (m_message) {
-            //bl_do_message_delete (&M->permanent_id);
-            // FIXME: is this correct?
-            tgl_state::instance()->callback()->message_deleted(m_message->permanent_id.id);
-        }
-        return 0;
-    }
-
-private:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
-    std::shared_ptr<tgl_message> m_message;
-    std::function<void(bool, const std::shared_ptr<tgl_message>&, float)> m_callback;
-};
-
-void send_file_encrypted_end (std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& callback) {
-  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(f->to_id);
-  assert(secret_chat);
-  auto q = std::make_shared<query_send_encr_file>(secret_chat, nullptr, callback);
-  secret_chat_encryptor encryptor(secret_chat, q->serializer());
-  q->out_i32 (CODE_messages_send_encrypted_file);
-  q->out_i32 (CODE_input_encrypted_chat);
-  q->out_i32 (f->to_id.peer_id);
-  q->out_i64 (secret_chat->access_hash);
-  long long r;
-  tglt_secure_random (reinterpret_cast<unsigned char*>(&r), 8);
-  q->out_i64 (r);
-  encryptor.start();
-  q->out_i32 (CODE_decrypted_message_layer);
-  q->out_random (15 + 4 * (rand () % 3));
-  q->out_i32 (TGL_ENCRYPTED_LAYER);
-  q->out_i32 (2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_state::instance()->our_id().peer_id));
-  q->out_i32 (2 * secret_chat->out_seq_no + (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id));
-  q->out_i32 (CODE_decrypted_message);
-  q->out_i64 (r);
-  q->out_i32 (secret_chat->ttl);
-  q->out_string ("");
-
-  size_t start = q->serializer()->i32_size();
-
-  if (f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
-    q->out_i32 (CODE_decrypted_message_media_photo);
-  } else if ((f->flags & TGLDF_VIDEO)) {
-    q->out_i32 (CODE_decrypted_message_media_video);
-  } else if ((f->flags & TGLDF_AUDIO)) {
-    q->out_i32 (CODE_decrypted_message_media_audio);
-  } else {
-    q->out_i32 (CODE_decrypted_message_media_document);
-  }
-  if ((f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) || !(f->flags & TGLDF_AUDIO)) {
-    q->out_string(f->thumb.data(), f->thumb.size());
-    q->out_i32 (f->thumb_w);
-    q->out_i32 (f->thumb_h);
-  }
-  
-  if (f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
-    q->out_i32 (f->w);
-    q->out_i32 (f->h);
-  } else if (f->flags & TGLDF_VIDEO) {
-    q->out_i32 (f->duration);
-    q->out_string (tg_mime_by_filename (f->file_name.c_str()));
-    q->out_i32 (f->w);
-    q->out_i32 (f->h);
-  } else if (f->flags & TGLDF_AUDIO) {
-    q->out_i32 (f->duration);
-    q->out_string (tg_mime_by_filename (f->file_name.c_str()));
-  } else {
-    boost::filesystem::path path(f->file_name);
-    q->out_std_string(path.filename().string());
-    q->out_string (tg_mime_by_filename (f->file_name.c_str()));
-    // document
-  }
-  
-  q->out_i32 (f->size);
-  q->out_string (reinterpret_cast<const char*>(f->key.data()), f->key.size());
-  q->out_string (reinterpret_cast<const char*>(f->init_iv.data()), f->init_iv.size());
- 
-  tgl_in_buffer in = { q->serializer()->mutable_i32_data() + start, q->serializer()->mutable_i32_data() + q->serializer()->i32_size() };
-
-  struct paramed_type decrypted_message_media = TYPE_TO_PARAM(decrypted_message_media);
-  auto result = skip_type_any(&in, &decrypted_message_media);
-  TGL_ASSERT_UNUSED(result, result >= 0);
-  assert (in.ptr == in.end);
-  
-  in = { q->serializer()->mutable_i32_data() + start, q->serializer()->mutable_i32_data() + q->serializer()->i32_size() };
-  struct tl_ds_decrypted_message_media *DS_DMM = fetch_ds_type_decrypted_message_media(&in, &decrypted_message_media);
-  assert (in.ptr == in.end);
-
-  encryptor.end();
-
-  if (f->size < (16 << 20)) {
-    q->out_i32 (CODE_input_encrypted_file_uploaded);
-  } else {
-    q->out_i32 (CODE_input_encrypted_file_big_uploaded);
-  }
-  q->out_i64 (f->id);
-  q->out_i32 (f->part_num);
-  if (f->size < (16 << 20)) {
-    q->out_string ("");
-  }
-
-  unsigned char md5[16];
-  unsigned char str[64];
-  memcpy (str, f->key.data(), 32);
-  memcpy (str + 32, f->init_iv.data(), 32);
-  TGLC_md5 (str, 64, md5);
-  q->out_i32 ((*(int *)md5) ^ (*(int *)(md5 + 4)));
-
-  tgl_peer_id_t from_id = tgl_state::instance()->our_id();
-  
-  int date = time (NULL);
-  std::shared_ptr<tgl_message> message = tglm_create_encr_message(&f->message_id,
-      &from_id,
-      &f->to_id,
-      &date,
-      std::string(),
-      DS_DMM,
-      NULL,
-      NULL,
-      TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED | TGLMF_CREATE | TGLMF_CREATED);
-  free_ds_type_decrypted_message_media (DS_DMM, &decrypted_message_media);
-
-  if (message->media->type() == tgl_message_media_type_document_encr) {
-      if (auto encr_document = std::static_pointer_cast<tgl_message_media_document_encr>(message->media)->encr_document) {
-          if (f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
-              encr_document->flags |= TGLDF_IMAGE;
-          }
-          if (f->flags & TGLDF_VIDEO) {
-              encr_document->flags |= TGLDF_VIDEO;
-          }
-          if (f->flags & TGLDF_AUDIO) {
-              encr_document->flags |= TGLDF_AUDIO;
-          }
-      }
-  }
-
-  q->set_message(message);
-  q->execute(tgl_state::instance()->working_dc());
 }
 
 void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)

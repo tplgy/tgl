@@ -188,9 +188,6 @@ void tglq_query_restart (long long id);
 
 double get_double_time (void);
 
-struct send_file;
-void send_file_encrypted_end(std::shared_ptr<send_file> f, const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& callback);
-
 void tgl_do_send_bind_temp_key (std::shared_ptr<tgl_dc> D, long long nonce, int expires_at, void *data, int len, long long msg_id);
 
 void tglq_regen_query (long long id);
