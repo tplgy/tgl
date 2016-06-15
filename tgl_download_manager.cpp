@@ -1012,7 +1012,7 @@ void tgl_download_manager::download_next_part(const std::shared_ptr<download>& d
         q->out_i64(d->location.access_hash());
     }
     q->out_i32(d->offset);
-    q->out_i32(d->size ? (1 << 14) : (1 << 19));
+    q->out_i32(512 * 1024);
 
     q->execute(tgl_state::instance()->dc_at(d->location.dc()));
 }
