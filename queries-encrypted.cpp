@@ -33,6 +33,7 @@
 #include "tgl-log.h"
 #include "tgl-methods-in.h"
 #include "tg-mime-types.h"
+#include "tools.h"
 #include "types/tgl_update_callback.h"
 
 struct secret_msg_callback_extra
@@ -344,7 +345,7 @@ void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::fu
   q->out_i64 (M->permanent_id.id);
   encryptor.start();
   q->out_i32 (CODE_decrypted_message_layer);
-  q->out_random (15 + 4 * (rand () % 3));
+  q->out_random (15 + 4 * (tgl_random<int>() % 3));
   q->out_i32 (TGL_ENCRYPTED_LAYER);
   q->out_i32 (2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_state::instance()->our_id().peer_id));
   q->out_i32 (2 * secret_chat->out_seq_no + (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id) - 2);
@@ -439,7 +440,7 @@ void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<
   q->out_i64 (M->permanent_id.id);
   encryptor.start();
   q->out_i32 (CODE_decrypted_message_layer);
-  q->out_random (15 + 4 * (rand () % 3));
+  q->out_random (15 + 4 * (tgl_random<int>() % 3));
   q->out_i32 (TGL_ENCRYPTED_LAYER);
   q->out_i32 (2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_state::instance()->our_id().peer_id));
   q->out_i32 (2 * secret_chat->out_seq_no + (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id) - 2);

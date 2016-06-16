@@ -51,6 +51,7 @@
 #include "tgl.h"
 #include "tgl-timer.h"
 #include "tgl-net.h"
+#include "tools.h"
 #include "mtproto-client.h"
 #include "updates.h"
 #include "auto/auto.h"
@@ -1507,7 +1508,7 @@ void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC) {
 void tgl_do_send_ping (const std::shared_ptr<tgl_connection>& c) {
   int x[3];
   x[0] = CODE_ping;
-  *(long long *)(x + 1) = rand () * (1ll << 32) + rand ();
+  *(long long *)(x + 1) = tgl_random<long long>();
   tglmp_encrypt_send_message (c, x, 3);
 }
 

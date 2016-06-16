@@ -20,11 +20,14 @@
 
 #ifndef __TOOLS_H__
 #define __TOOLS_H__
-#include <time.h>
+#include <assert.h>
+#include <limits>
+#include <random>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <string.h>
+#include <time.h>
+
 #include "crypto/err.h"
 #include "crypto/rand.h"
 
@@ -69,6 +72,17 @@ int tgl_asprintf (char **res, const char *format, ...) __attribute__ ((format (_
 void tglt_secure_random (unsigned char *s, int l);
 
 void tgl_my_clock_gettime (int clock_id, struct timespec *T);
+
+template<typename IntegerType>
+static inline IntegerType tgl_random()
+{
+    static std::random_device device;
+    static std::mt19937 generator(device());
+    static std::uniform_int_distribution<IntegerType> distribution(std::numeric_limits<IntegerType>::min(),
+            std::numeric_limits<IntegerType>::max());
+
+    return distribution(generator);
+}
 
 static inline void hexdump (void *ptr, void *end_ptr) {
   int total = 0;

@@ -33,14 +33,13 @@
 #include "tgl-structures.h"
 #include "tgl-timer.h"
 #include "tgl-queries.h"
+#include "tools.h"
 #include "types/tgl_update_callback.h"
 #include "types/tgl_rsa_key.h"
 #include "types/tgl_secret_chat.h"
 #include "queries.h"
 
 #include <assert.h>
-#include <limits>
-#include <random>
 #include <stdlib.h>
 
 tgl_state::tgl_state()
@@ -241,13 +240,9 @@ void tgl_state::set_error(std::string error, int error_code)
 
 std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat()
 {
-    std::random_device device;
-    std::mt19937 generator(device());
-    std::uniform_int_distribution<> distribution(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
-
-    int chat_id = distribution(generator);
+    int chat_id = tgl_random<int>();
     while (tgl_state::instance()->secret_chat_for_id(tgl_peer_id_enc_chat(chat_id))) {
-        chat_id = distribution(generator);
+        chat_id = tgl_random<int>();
     }
 
     auto secret_chat = std::make_shared<tgl_secret_chat>();
