@@ -75,9 +75,9 @@ private:
 
     void send_part(const std::shared_ptr<send_file>& f, const tgl_upload_callback& callback);
 
-    void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name, int avatar, int w, int h, int duration,
+    void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name, int avatar, int width, int height, int duration,
             const std::string& caption, unsigned long long flags,
-            const std::string& thumb_path, int thumb_w, int thumb_h,
+            const std::string& thumb_path, int thumb_width, int thumb_height,
             const tgl_upload_callback& callback);
 
     void download_document(const std::shared_ptr<tgl_document>& document, const std::shared_ptr<download>& d,

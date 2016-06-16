@@ -23,7 +23,6 @@ static constexpr int MAX_PART_SIZE = 512 * 1024;
 struct send_file {
     int fd;
     long long size;
-    long long offset;
     int part_num;
     int part_size;
     long long id;
@@ -37,14 +36,14 @@ struct send_file {
     std::array<unsigned char, 32> iv;
     std::array<unsigned char, 32> init_iv;
     std::array<unsigned char, 32> key;
-    int w;
-    int h;
+    int width;
+    int height;
     int duration;
     std::string caption;
 
     std::vector<char> thumb;
-    int thumb_w;
-    int thumb_h;
+    int thumb_width;
+    int thumb_height;
 
     tgl_message_id_t message_id;
 
@@ -53,7 +52,6 @@ struct send_file {
     send_file()
         : fd(-1)
         , size(0)
-        , offset(0)
         , part_num(0)
         , part_size(0)
         , id(0)
@@ -63,11 +61,11 @@ struct send_file {
         , encr(false)
         , avatar(0)
         , reply(0)
-        , w(0)
-        , h(0)
+        , width(0)
+        , height(0)
         , duration(0)
-        , thumb_w(0)
-        , thumb_h(0)
+        , thumb_width(0)
+        , thumb_height(0)
     { }
 
     ~send_file()
@@ -438,14 +436,14 @@ void tgl_download_manager::send_unencrypted_file_end(const std::shared_ptr<send_
             if (f->flags & TGLDF_ANIMATED) {
                 q->out_i32(2);
                 q->out_i32(CODE_document_attribute_image_size);
-                q->out_i32(f->w);
-                q->out_i32(f->h);
+                q->out_i32(f->width);
+                q->out_i32(f->height);
                 q->out_i32(CODE_document_attribute_animated);
             } else {
                 q->out_i32(1);
                 q->out_i32(CODE_document_attribute_image_size);
-                q->out_i32(f->w);
-                q->out_i32(f->h);
+                q->out_i32(f->width);
+                q->out_i32(f->height);
             }
         } else if (f->flags & TGLDF_AUDIO) {
             q->out_i32(2);
@@ -457,8 +455,8 @@ void tgl_download_manager::send_unencrypted_file_end(const std::shared_ptr<send_
             q->out_i32(2);
             q->out_i32(CODE_document_attribute_video);
             q->out_i32(f->duration);
-            q->out_i32(f->w);
-            q->out_i32(f->h);
+            q->out_i32(f->width);
+            q->out_i32(f->height);
             q->out_i32(CODE_document_attribute_filename);
             q->out_std_string(file_name);
         } else if (f->flags & TGLDF_STICKER) {
@@ -518,18 +516,18 @@ void tgl_download_manager::send_encrypted_file_end(const std::shared_ptr<send_fi
     }
     if ((f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) || !(f->flags & TGLDF_AUDIO)) {
         q->out_string(f->thumb.data(), f->thumb.size());
-        q->out_i32(f->thumb_w);
-        q->out_i32(f->thumb_h);
+        q->out_i32(f->thumb_width);
+        q->out_i32(f->thumb_height);
     }
 
     if (f->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
-        q->out_i32(f->w);
-        q->out_i32(f->h);
+        q->out_i32(f->width);
+        q->out_i32(f->height);
     } else if (f->flags & TGLDF_VIDEO) {
         q->out_i32(f->duration);
         q->out_string(tg_mime_by_filename(f->file_name.c_str()));
-        q->out_i32(f->w);
-        q->out_i32(f->h);
+        q->out_i32(f->width);
+        q->out_i32(f->height);
     } else if (f->flags & TGLDF_AUDIO) {
         q->out_i32(f->duration);
         q->out_string(tg_mime_by_filename(f->file_name.c_str()));
@@ -634,19 +632,20 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
         const tgl_upload_callback& callback)
 {
     if (f->fd >= 0) {
+        long long offset = static_cast<long long>(f->part_num) * f->part_size;
         auto q = std::make_shared<query_send_file_part>(this, f, callback);
         if (f->size < BIG_FILE_THRESHOLD) {
             q->out_i32(CODE_upload_save_file_part);
             q->out_i64(f->id);
-            q->out_i32(f->part_num ++);
+            q->out_i32(f->part_num++);
         } else {
             q->out_i32(CODE_upload_save_big_file_part);
             q->out_i64(f->id);
-            q->out_i32(f->part_num ++);
+            q->out_i32(f->part_num++);
             q->out_i32((f->size + f->part_size - 1) / f->part_size);
         }
 
-        if (f->sending_buffer.empty()) {
+        if (f->sending_buffer.size() < f->part_size) {
             f->sending_buffer.resize(f->part_size);
         }
 
@@ -677,11 +676,11 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
         }
 
         assert(read_size > 0);
-        f->offset += read_size;
+        offset += read_size;
 
         if (f->encr) {
             if (read_size & 15) {
-                assert(f->offset == f->size);
+                assert(offset == f->size);
                 tglt_secure_random(reinterpret_cast<unsigned char*>(f->sending_buffer.data()) + read_size, (-read_size) & 15);
                 read_size = (read_size + 15) & ~15;
             }
@@ -693,14 +692,14 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
             memset(&aes_key, 0, sizeof(aes_key));
         }
         q->out_string(f->sending_buffer.data(), read_size);
-        TGL_DEBUG("offset=" << f->offset << " size=" << f->size);
+        TGL_DEBUG("offset=" << offset << " size=" << f->size);
 
         if (callback) {
-            float progress = (float)f->offset/(float)f->size;
+            float progress = static_cast<float>(offset)/f->size;
             callback(false, nullptr, progress);
         }
 
-        if (f->offset == f->size) {
+        if (offset == f->size) {
             f->sending_buffer.clear();
             close(f->fd);
             f->fd = -1;
@@ -736,9 +735,9 @@ void tgl_download_manager::send_file_thumb(const std::shared_ptr<send_file>& f,
 
 
 void tgl_download_manager::send_document(const tgl_peer_id_t& to_id,
-        const tgl_message_id_t& message_id, const std::string &file_name, int avatar, int w, int h, int duration,
+        const tgl_message_id_t& message_id, const std::string &file_name, int avatar, int width, int height, int duration,
         const std::string& caption, unsigned long long flags,
-        const std::string& thumb_path, int thumb_w, int thumb_h,
+        const std::string& thumb_path, int thumb_width, int thumb_height,
         const tgl_upload_callback& callback)
 {
     int fd = -1;
@@ -747,7 +746,7 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id,
         return;
     }
     long long size = boost::filesystem::file_size(file_name);
-    TGL_NOTICE("send_document " << file_name << " with size " << size << " and dimession " << w << " X " << h);
+    TGL_NOTICE("send_document " << file_name << " with size " << size << " and dimension " << width << " X " << height);
     if (size <= 0 || (fd = open (file_name.c_str(), O_RDONLY)) <= 0) {
         TGL_ERROR("file is empty");
         if (callback) {
@@ -759,8 +758,6 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id,
     std::shared_ptr<send_file> f = std::make_shared<send_file>();
     f->fd = fd;
     f->size = size;
-    f->offset = 0;
-    f->part_num = 0;
     f->avatar = avatar;
     f->message_id = message_id;
     f->reply = flags >> 32;
@@ -781,8 +778,8 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id,
     f->to_id = to_id;
     f->flags = flags;
     f->file_name = file_name;
-    f->w = w;
-    f->h = h;
+    f->width = width;
+    f->height = height;
     f->duration = duration;
     f->caption = caption;
 
@@ -803,8 +800,8 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id,
                 f->thumb.resize(file_size);
                 ifs.read(f->thumb.data(), file_size);
                 if (ifs.gcount() == static_cast<std::streamsize>(file_size)) {
-                    f->thumb_w = thumb_w;
-                    f->thumb_h = thumb_h;
+                    f->thumb_width = thumb_width;
+                    f->thumb_height = thumb_height;
                 } else {
                     TGL_ERROR("failed to read thumbnail file: " << thumb_path);
                     f->thumb.clear();
