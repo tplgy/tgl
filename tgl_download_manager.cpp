@@ -18,6 +18,7 @@
 #include <fstream>
 
 static constexpr int BIG_FILE_THRESHOLD = 16 * 1024 * 1024;
+static constexpr int MAX_PART_SIZE = 512 * 1024;
 
 struct send_file {
     int fd;
@@ -300,10 +301,6 @@ download::download(int type, const std::shared_ptr<tgl_document>& document)
 
 tgl_download_manager::tgl_download_manager(std::string download_directory)
     : m_download_directory(download_directory)
-    , m_current_uploading_bytes(0)
-    , m_current_uploaded_bytes(0)
-    , m_current_downloading_bytes(0)
-    , m_current_downloaded_bytes(0)
 {
 }
 
@@ -613,8 +610,6 @@ void tgl_download_manager::send_file_end(const std::shared_ptr<send_file>& f,
         const tgl_upload_callback& callback)
 {
     TGL_NOTICE("send_file_end");
-    m_current_uploaded_bytes -= f->size;
-    m_current_uploading_bytes -= f->size;
 
     if (f->avatar) {
         send_avatar_end (f,
@@ -639,9 +634,6 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
         const tgl_upload_callback& callback)
 {
     if (f->fd >= 0) {
-        if (!f->part_num) {
-            m_current_uploading_bytes += f->size;
-        }
         auto q = std::make_shared<query_send_file_part>(this, f, callback);
         if (f->size < BIG_FILE_THRESHOLD) {
             q->out_i32(CODE_upload_save_file_part);
@@ -686,7 +678,6 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
 
         assert(read_size > 0);
         f->offset += read_size;
-        m_current_uploaded_bytes += read_size;
 
         if (f->encr) {
             if (read_size & 15) {
@@ -726,6 +717,12 @@ void tgl_download_manager::send_file_thumb(const std::shared_ptr<send_file>& f,
         const tgl_upload_callback& callback)
 {
     TGL_NOTICE("send_file_thumb");
+    if (f->thumb.size() > MAX_PART_SIZE) {
+        TGL_ERROR("the thumnail size of " << f->thumb.size() << " is larger than the maximum part size of " << MAX_PART_SIZE);
+        if (callback) {
+            callback(false, nullptr, 0);
+        }
+    }
 
     auto q = std::make_shared<query_send_file_part>(this, f, callback);
     f->thumb_id = lrand48 () * (1ll << 32) + lrand48 ();
@@ -767,13 +764,13 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id,
     f->avatar = avatar;
     f->message_id = message_id;
     f->reply = flags >> 32;
-    f->part_size = 512 * 1024;
+    f->part_size = MAX_PART_SIZE;
     f->flags = flags;
 
     static constexpr int MAX_PARTS = 3000; // How do we get this number?
     if (((size + f->part_size - 1) / f->part_size) > MAX_PARTS) {
         close(fd);
-        TGL_ERROR("File is too big");
+        TGL_ERROR("file is too big");
         if (callback) {
             callback(false, nullptr, 0);
         }
@@ -882,9 +879,6 @@ void tgl_download_manager::end_download(const std::shared_ptr<download>& d,
         }
     }
 
-    m_current_downloading_bytes -= d->size;
-    m_current_downloaded_bytes -= d->size;
-
     if (d->fd >= 0) {
         close (d->fd);
     }
@@ -912,7 +906,6 @@ int tgl_download_manager::download_on_answer(const std::shared_ptr<query_downloa
     }
 
     int len = DS_UF->bytes->len;
-    m_current_downloaded_bytes += len;
 
     if (!d->iv.empty()) {
         assert (!(len & 15));
@@ -983,16 +976,12 @@ void tgl_download_manager::download_next_part(const std::shared_ptr<download>& d
         if (boost::filesystem::exists(path)) {
             d->offset = boost::filesystem::file_size(path);
             if (d->offset >= d->size) {
-                m_current_downloading_bytes += d->size;
-                m_current_downloaded_bytes += d->offset;
                 TGL_NOTICE("Already downloaded");
                 end_download(d, callback);
                 return;
             }
         }
 
-        m_current_downloading_bytes += d->size;
-        m_current_downloaded_bytes += d->offset;
     }
     d->refcnt++;
     auto q = std::make_shared<query_download>(this, d, callback);
@@ -1012,7 +1001,7 @@ void tgl_download_manager::download_next_part(const std::shared_ptr<download>& d
         q->out_i64(d->location.access_hash());
     }
     q->out_i32(d->offset);
-    q->out_i32(512 * 1024);
+    q->out_i32(MAX_PART_SIZE);
 
     q->execute(tgl_state::instance()->dc_at(d->location.dc()));
 }

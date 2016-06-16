@@ -89,11 +89,6 @@ private:
 
     std::vector<std::shared_ptr<download>> m_downloads;
     std::string m_download_directory;
-
-    long long m_current_uploading_bytes;
-    long long m_current_uploaded_bytes;
-    long long m_current_downloading_bytes;
-    long long m_current_downloaded_bytes;
 };
 
 #endif // TGL_DOWNLOAD_MANAGER_H
