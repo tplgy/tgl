@@ -79,7 +79,7 @@ struct send_file {
 
 struct download {
     download(int size, const tgl_file_location& location)
-        : location(location), offset(0), size(size), fd(-1), iv(), key(), type(0), refcnt(0)
+        : location(location), offset(0), size(size), fd(-1), iv(), key(), type(0)
     {
     }
 
@@ -102,7 +102,6 @@ struct download {
     std::vector<unsigned char> key;
     // ---
     int type;
-    int refcnt; //Probably intended for being able to load multiple file parts simultaniously...however downloading is done sequentially
 };
 
 class query_send_file_part: public query
@@ -289,7 +288,6 @@ download::download(int type, const std::shared_ptr<tgl_document>& document)
     , size(document->size)
     , fd(-1)
     , type(type)
-    , refcnt(0)
 {
     location.set_dc(document->dc_id);
     location.set_local_id(0);
@@ -923,16 +921,13 @@ int tgl_download_manager::download_on_answer(const std::shared_ptr<query_downloa
     }
 
     d->offset += len;
-    d->refcnt--;
     if (d->offset < d->size) {
         float progress = static_cast<float>(d->offset)/d->size;
         (q->callback())(false, std::string(), progress);
         download_next_part(d, q->callback());
         return 0;
     } else {
-        if (!d->refcnt) {
-            end_download(d, q->callback());
-        }
+        end_download(d, q->callback());
         return 0;
     }
 }
@@ -980,7 +975,6 @@ void tgl_download_manager::download_next_part(const std::shared_ptr<download>& d
         }
 
     }
-    d->refcnt++;
     auto q = std::make_shared<query_download>(this, d, callback);
     q->out_i32 (CODE_upload_get_file);
     if (d->location.local_id()) {
@@ -1023,7 +1017,7 @@ void tgl_download_manager::download_by_file_location(const tgl_file_location& fi
         const tgl_download_callback& callback)
 {
     if (!file_location.dc()) {
-        TGL_ERROR("Bad file location");
+        TGL_ERROR("bad file location");
         if (callback) {
             callback(false, std::string(), 0);
         }
@@ -1045,16 +1039,16 @@ void tgl_download_manager::download_photo(const std::shared_ptr<tgl_photo>& phot
         }
         return;
     }
-    int max = -1;
-    int maxi = 0;
-    int i;
-    for (i = 0; i < static_cast<int>(photo->sizes.size()); i++) {
-        if (photo->sizes[i]->w + photo->sizes[i]->h > max) {
-            max = photo->sizes[i]->w + photo->sizes[i]->h;
-            maxi = i;
+    size_t max_i = 0;
+    int max = photo->sizes[0]->w + photo->sizes[0]->h;
+    for (size_t i = 1; i < photo->sizes.size(); ++i) {
+        int current = photo->sizes[i]->w + photo->sizes[i]->h;
+        if (current > max) {
+            max = current;
+            max_i = i;
         }
     }
-    download_by_photo_size(photo->sizes[maxi], callback);
+    download_by_photo_size(photo->sizes[max_i], callback);
 }
 
 void tgl_download_manager::download_document_thumb(const std::shared_ptr<tgl_document>& document,
