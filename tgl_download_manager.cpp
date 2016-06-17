@@ -647,7 +647,7 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
             f->sending_buffer.resize(f->part_size);
         }
 
-        int read_size = 0;
+        size_t read_size = 0;
         while (read_size < f->part_size) {
             ssize_t ret = read(f->fd, f->sending_buffer.data() + read_size, f->part_size - read_size);
             if (ret < 0) {
