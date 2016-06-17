@@ -24,7 +24,7 @@ struct send_file {
     int fd;
     long long size;
     int part_num;
-    int part_size;
+    size_t part_size;
     long long id;
     long long thumb_id;
     tgl_peer_id_t to_id;
@@ -648,7 +648,6 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
         }
 
         int read_size = 0;
-        assert(f->part_size > 0);
         while (read_size < f->part_size) {
             ssize_t ret = read(f->fd, f->sending_buffer.data() + read_size, f->part_size - read_size);
             if (ret < 0) {
