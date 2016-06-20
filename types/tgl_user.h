@@ -10,7 +10,7 @@
 class tgl_timer;
 struct tgl_message;
 
-enum class tgl_user_online_status: int {
+enum class tgl_user_online_status: int32_t {
     unknown = 0,
     online = 1,
     offline = 2,
@@ -21,14 +21,14 @@ enum class tgl_user_online_status: int {
 
 struct tgl_user_status {
     tgl_user_online_status online;
-    int when;
+    int32_t when;
     tgl_user_status(): online(tgl_user_online_status::unknown), when(0) { }
 };
 
 struct tgl_user {
     tgl_peer_id_t id;
-    int flags;
-    long long access_hash;
+    int32_t flags;
+    int64_t access_hash;
     struct tgl_user_status status;
     std::string username;
     std::string firstname;

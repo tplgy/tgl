@@ -1,6 +1,7 @@
 #ifndef __TGL_CHAT_H__
 #define __TGL_CHAT_H__
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -8,15 +9,15 @@
 #include "tgl_peer_id.h"
 
 struct tgl_chat_user {
-    int user_id;
-    int inviter_id;
-    int date;
+    int32_t user_id;
+    int32_t inviter_id;
+    int32_t date;
     tgl_chat_user(): user_id(0), inviter_id(0), date(0) { }
 };
 
 struct tgl_chat {
     tgl_peer_id_t id;
-    int flags;
+    int32_t flags;
     //std::string print_title;
     std::string username;
     //int structure_version;

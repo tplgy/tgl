@@ -31,33 +31,26 @@ enum tgl_secret_chat_exchange_state {
 
 struct tgl_secret_chat {
     tgl_peer_id_t id;
-    int flags;
-    struct tgl_message *last;
-    struct tgl_file_location photo_big;
-    struct tgl_file_location photo_small;
-    struct tgl_photo *photo;
-    int user_id;
-    int admin_id;
-    int date;
-    int ttl;
-    int layer;
-    int in_seq_no;
-    int out_seq_no;
-    int last_in_seq_no;
-    long long access_hash;
-    std::vector<unsigned char> g_key;
-
+    int64_t access_hash;
+    int64_t temp_key_fingerprint;
+    int64_t exchange_id;
+    int64_t exchange_key_fingerprint;
+    int32_t exchange_key[64];
+    int32_t flags;
+    int32_t user_id;
+    int32_t admin_id;
+    int32_t date;
+    int32_t ttl;
+    int32_t layer;
+    int32_t in_seq_no;
+    int32_t out_seq_no;
+    int32_t last_in_seq_no;
+    int32_t encr_root;
+    int32_t encr_param_version;
     enum tgl_secret_chat_state state;
-
-    long long temp_key_fingerprint;
-
-    long long exchange_id;
     enum tgl_secret_chat_exchange_state exchange_state;
-    int exchange_key[64];
-    long long exchange_key_fingerprint;
 
-    int encr_root;
-    int encr_param_version;
+    std::vector<unsigned char> g_key;
 
     TGLC_bn* encr_prime_bn()
     {
@@ -84,18 +77,19 @@ struct tgl_secret_chat {
     }
 
     const unsigned char* key() const { return m_key; }
-    long long key_fingerprint() const { return *reinterpret_cast<const long long*>(m_key_sha + 12); }
+    int64_t key_fingerprint() const { return *reinterpret_cast<const int64_t*>(m_key_sha + 12); }
     const unsigned char* key_sha() const { return m_key_sha; }
 
     static size_t key_size() { return 256; }
     static size_t key_sha_size() { return 20; }
 
     tgl_secret_chat()
-        : flags(0)
-        , last(nullptr)
-        , photo_big()
-        , photo_small()
-        , photo(nullptr)
+        : id()
+        , access_hash(0)
+        , temp_key_fingerprint(0)
+        , exchange_id(0)
+        , exchange_key_fingerprint(0)
+        , flags(0)
         , user_id(0)
         , admin_id(0)
         , date(0)
@@ -104,15 +98,11 @@ struct tgl_secret_chat {
         , in_seq_no(0)
         , out_seq_no(0)
         , last_in_seq_no(0)
-        , access_hash(0)
-        , g_key()
-        , state(sc_none)
-        , temp_key_fingerprint(0)
-        , exchange_id(0)
-        , exchange_state(tgl_sce_none)
-        , exchange_key_fingerprint(0)
         , encr_root(0)
         , encr_param_version(0)
+        , state(sc_none)
+        , exchange_state(tgl_sce_none)
+        , g_key()
         , m_encr_prime()
         , m_encr_prime_bn(nullptr)
     {

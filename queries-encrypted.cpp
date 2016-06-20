@@ -520,7 +520,7 @@ void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secr
     q->out_i32(CODE_input_encrypted_chat);
     q->out_i32(secret_chat->id.peer_id);
     q->out_i64(secret_chat->access_hash);
-    q->out_i32(secret_chat->last ? secret_chat->last->date : time (0) - 10);
+    q->out_i32(time(0) - 10); // FIXME
     q->execute(tgl_state::instance()->working_dc());
 }
 

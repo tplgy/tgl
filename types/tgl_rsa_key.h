@@ -2,6 +2,7 @@
 #define __TGL_RSA_KEY_H__
 
 #include <cassert>
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -31,7 +32,7 @@ public:
 
     const TGLC_rsa* public_key() const { return m_public_key.get(); }
     const std::string& public_key_string() const { return m_key; }
-    long long fingerprint() const { return m_fingerprint; }
+    int64_t fingerprint() const { return m_fingerprint; }
 
 private:
     struct RSA_deleter
@@ -44,7 +45,7 @@ private:
 private:
     std::string m_key;
     std::unique_ptr<TGLC_rsa, RSA_deleter> m_public_key;
-    long long m_fingerprint;
+    int64_t m_fingerprint;
 };
 
 #endif

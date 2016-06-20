@@ -3,6 +3,7 @@
 
 #include "types/tgl_file_location.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -27,9 +28,9 @@ enum tgl_message_media_type {
 struct tgl_photo_size {
     std::string type;
     struct tgl_file_location loc;
-    int w;
-    int h;
-    int size;
+    int32_t w;
+    int32_t h;
+    int32_t size;
     //char *data;
     //std::vector<char> data;
     tgl_photo_size()
@@ -46,10 +47,10 @@ struct tgl_geo {
 };
 
 struct tgl_photo {
-    long long id;
-    long long access_hash;
-    //int user_id;
-    int date;
+    int64_t id;
+    int64_t access_hash;
+    //int32_t user_id;
+    int32_t date;
     std::string caption;
     //struct tgl_geo geo;
     std::vector<std::shared_ptr<tgl_photo_size>> sizes;
@@ -61,20 +62,19 @@ struct tgl_photo {
 };
 
 struct tgl_document {
-    long long id;
-    long long access_hash;
-    //int user_id;
-    int date;
-    int size;
-    int dc_id;
+    int64_t id;
+    int64_t access_hash;
+    //int32_t user_id;
+    int32_t date;
+    int32_t size;
+    int32_t dc_id;
+    int32_t w;
+    int32_t h;
+    int32_t flags;
+    int32_t duration;
     std::shared_ptr<tgl_photo_size> thumb;
     std::string caption;
     std::string mime_type;
-
-    int w;
-    int h;
-    int flags;
-    int duration;
 
     tgl_document()
         : id(0)
@@ -93,14 +93,17 @@ struct tgl_encr_document: public tgl_document {
     std::vector<unsigned char> key;
     std::vector<unsigned char> iv;
     std::vector<char> thumb_data;
-    int thumb_width;
-    int thumb_height;
-    int key_fingerprint;
+    int32_t thumb_width;
+    int32_t thumb_height;
+    int32_t key_fingerprint;
     tgl_encr_document() : thumb_width(0), thumb_height(0), key_fingerprint(0) { }
 };
 
 struct tgl_webpage {
-    long long id;
+    int64_t id;
+    int32_t embed_width;
+    int32_t embed_height;
+    int32_t duration;
     std::string url;
     std::string display_url;
     std::string type;
@@ -111,9 +114,7 @@ struct tgl_webpage {
     std::string embed_url;
     std::string embed_type;
     std::string author;
-    int embed_width;
-    int embed_height;
-    int duration;
+
     tgl_webpage()
         : id(0)
         , embed_width(0)
@@ -154,7 +155,7 @@ struct tgl_message_media_contact: public tgl_message_media {
     std::string phone;
     std::string first_name;
     std::string last_name;
-    int user_id;
+    int32_t user_id;
 };
 
 struct tgl_message_media_unsupported: public tgl_message_media {

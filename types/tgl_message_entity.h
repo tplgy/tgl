@@ -1,6 +1,7 @@
 #ifndef __TGL_MESSAGE_ENTITY_H__
 #define __TGL_MESSAGE_ENTITY_H__
 
+#include <cstdint>
 #include <string>
 
 enum tgl_message_entity_type {
@@ -19,8 +20,8 @@ enum tgl_message_entity_type {
 
 struct tgl_message_entity {
     enum tgl_message_entity_type type;
-    int start;
-    int length;
+    int32_t start;
+    int32_t length;
     std::string text_url;
     tgl_message_entity()
         : type(tgl_message_entity_unknown)

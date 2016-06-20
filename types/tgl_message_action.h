@@ -4,6 +4,7 @@
 #include "tgl_message_media.h"
 #include "tgl_typing_status.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -45,7 +46,7 @@ struct tgl_message_action {
 struct tgl_message_action_chat_create: public tgl_message_action {
     virtual tgl_message_action_type type() override { return tgl_message_action_type_chat_create; }
     std::string title;
-    std::vector<int> users;
+    std::vector<int32_t> users;
 };
 
 struct tgl_message_action_chat_edit_title: public tgl_message_action {
@@ -66,21 +67,21 @@ struct tgl_message_action_chat_delete_photo: public tgl_message_action {
 
 struct tgl_message_action_chat_add_users: public tgl_message_action {
     virtual tgl_message_action_type type() override { return tgl_message_action_type_chat_add_users; }
-    std::vector<int> users;
+    std::vector<int32_t> users;
 };
 
 struct tgl_message_action_chat_delete_user: public tgl_message_action {
     tgl_message_action_chat_delete_user(): user_id(0) { }
-    explicit tgl_message_action_chat_delete_user(int user_id): user_id(user_id) { }
+    explicit tgl_message_action_chat_delete_user(int32_t user_id): user_id(user_id) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_chat_delete_user; }
-    int user_id;
+    int32_t user_id;
 };
 
 struct tgl_message_action_chat_add_user_by_link: public tgl_message_action {
     tgl_message_action_chat_add_user_by_link(): inviter_id(0) { }
-    explicit tgl_message_action_chat_add_user_by_link(int inviter_id): inviter_id(inviter_id) { }
+    explicit tgl_message_action_chat_add_user_by_link(int32_t inviter_id): inviter_id(inviter_id) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_chat_add_user_by_link; }
-    int inviter_id;
+    int32_t inviter_id;
 };
 
 struct tgl_message_action_channel_create: public tgl_message_action {
@@ -99,16 +100,16 @@ struct tgl_message_action_channel_migrate_from: public tgl_message_action {
 
 struct tgl_message_action_screenshot_messages: public tgl_message_action {
     tgl_message_action_screenshot_messages(): screenshot_count(0) { }
-    explicit tgl_message_action_screenshot_messages(int count): screenshot_count(count) { }
+    explicit tgl_message_action_screenshot_messages(int32_t count): screenshot_count(count) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_screenshot_messages; }
-    int screenshot_count;
+    int32_t screenshot_count;
 };
 
 struct tgl_message_action_notify_layer: public tgl_message_action {
     tgl_message_action_notify_layer(): layer(0) { }
-    explicit tgl_message_action_notify_layer(int l): layer(l) { }
+    explicit tgl_message_action_notify_layer(int32_t l): layer(l) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_notify_layer; }
-    int layer;
+    int32_t layer;
 };
 
 struct tgl_message_action_typing: public tgl_message_action {
@@ -120,10 +121,10 @@ struct tgl_message_action_typing: public tgl_message_action {
 
 struct tgl_message_action_resend: public tgl_message_action {
     tgl_message_action_resend(): start_seq_no(-1), end_seq_no(-1) { }
-    tgl_message_action_resend(int start, int end): start_seq_no(start), end_seq_no(end) { }
+    tgl_message_action_resend(int32_t start, int32_t end): start_seq_no(start), end_seq_no(end) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_resend; }
-    int start_seq_no;
-    int end_seq_no;
+    int32_t start_seq_no;
+    int32_t end_seq_no;
 };
 
 struct tgl_message_action_noop: public tgl_message_action {
@@ -133,45 +134,45 @@ struct tgl_message_action_noop: public tgl_message_action {
 struct tgl_message_action_request_key: public tgl_message_action {
     tgl_message_action_request_key(): exchange_id(0) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_request_key; }
-    long long exchange_id;
+    int64_t exchange_id;
     std::vector<unsigned char> g_a;
 };
 
 struct tgl_message_action_accept_key: public tgl_message_action {
     tgl_message_action_accept_key(): exchange_id(0), key_fingerprint(0) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_accept_key; }
-    long long exchange_id;
-    long long key_fingerprint;
+    int64_t exchange_id;
+    int64_t key_fingerprint;
     std::vector<unsigned char> g_a;
 };
 
 struct tgl_message_action_commit_key: public tgl_message_action {
     tgl_message_action_commit_key(): exchange_id(0), key_fingerprint(0) { }
-    tgl_message_action_commit_key(long long exchange_id, long long key_fingerprint): exchange_id(exchange_id), key_fingerprint(key_fingerprint) { }
+    tgl_message_action_commit_key(int64_t exchange_id, int64_t key_fingerprint): exchange_id(exchange_id), key_fingerprint(key_fingerprint) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_commit_key; }
-    long long exchange_id;
-    long long key_fingerprint;
+    int64_t exchange_id;
+    int64_t key_fingerprint;
 };
 
 struct tgl_message_action_abort_key: public tgl_message_action {
     tgl_message_action_abort_key(): exchange_id(0) { }
-    explicit tgl_message_action_abort_key(long long exchange_id): exchange_id(exchange_id) { }
+    explicit tgl_message_action_abort_key(int64_t exchange_id): exchange_id(exchange_id) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_abort_key; }
-    long long exchange_id;
+    int64_t exchange_id;
 };
 
 struct tgl_message_action_read_messages: public tgl_message_action {
     tgl_message_action_read_messages(): read_count(0) { }
-    explicit tgl_message_action_read_messages(int count): read_count(count) { }
+    explicit tgl_message_action_read_messages(int32_t count): read_count(count) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_read_messages; }
-    int read_count;
+    int32_t read_count;
 };
 
 struct tgl_message_action_set_message_ttl: public tgl_message_action {
     tgl_message_action_set_message_ttl(): ttl(0) { }
-    explicit tgl_message_action_set_message_ttl(int ttl): ttl(ttl) { }
+    explicit tgl_message_action_set_message_ttl(int32_t ttl): ttl(ttl) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_set_message_ttl; }
-    int ttl;
+    int32_t ttl;
 };
 
 struct tgl_message_action_delete_messages: public tgl_message_action {

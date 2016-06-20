@@ -1,18 +1,19 @@
 #ifndef __TGL_CHANNEL_H__
 #define __TGL_CHANNEL_H__
 
+#include <cstdint>
 #include <string>
 
 #include "types/tgl_chat.h"
 #include "types/tgl_file_location.h"
 
 struct tgl_channel: public tgl_chat {
-    long long access_hash;
+    int64_t access_hash;
+    int32_t participants_count;
+    int32_t admins_count;
+    int32_t kicked_count;
+    int32_t pts;
     std::string about;
-    int participants_count;
-    int admins_count;
-    int kicked_count;
-    int pts;
 
     tgl_channel()
         : access_hash(0)
