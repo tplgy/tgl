@@ -37,7 +37,7 @@ public:
 
     bool currently_donwloading(const tgl_file_location& location);
 
-    std::string get_file_path(long long int secret);  // parameter is either secret or access hash depending on file type
+    std::string get_file_path(int64_t secret);  // parameter is either secret or access hash depending on file type
 
     void download_encr_document(const std::shared_ptr<tgl_encr_document>& document, const tgl_download_callback& callback);
     void download_audio(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
@@ -50,7 +50,7 @@ public:
 
     void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id,
             const std::string& file_name, int32_t width, int32_t height, int32_t duration, const std::string& caption,
-            const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height, unsigned long long flags,
+            const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
             const tgl_upload_callback& callback);
 
     // sets self profile photo
@@ -75,8 +75,9 @@ private:
 
     void send_part(const std::shared_ptr<send_file>& f, const tgl_upload_callback& callback);
 
-    void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name, int avatar, int width, int height, int duration,
-            const std::string& caption, unsigned long long flags,
+    void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name,
+            int32_t avatar, int32_t width, int32_t height, int32_t duration,
+            const std::string& caption, uint64_t flags,
             const std::string& thumb_path, int thumb_width, int thumb_height,
             const tgl_upload_callback& callback);
 

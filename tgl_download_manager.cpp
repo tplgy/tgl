@@ -17,33 +17,33 @@
 #include <boost/filesystem.hpp>
 #include <fstream>
 
-static constexpr int BIG_FILE_THRESHOLD = 16 * 1024 * 1024;
-static constexpr int MAX_PART_SIZE = 512 * 1024;
+static constexpr size_t BIG_FILE_THRESHOLD = 16 * 1024 * 1024;
+static constexpr size_t MAX_PART_SIZE = 512 * 1024;
 
 struct send_file {
     int fd;
-    long long size;
-    int part_num;
+    uintmax_t size;
+    size_t part_num;
     size_t part_size;
-    long long id;
-    long long thumb_id;
+    int64_t id;
+    int64_t thumb_id;
     tgl_peer_id_t to_id;
-    int flags;
+    int32_t flags;
     std::string file_name;
     bool encr;
-    int avatar;
-    int reply;
+    int32_t avatar;
+    int32_t reply;
     std::array<unsigned char, 32> iv;
     std::array<unsigned char, 32> init_iv;
     std::array<unsigned char, 32> key;
-    int width;
-    int height;
-    int duration;
+    int32_t width;
+    int32_t height;
+    int32_t duration;
     std::string caption;
 
     std::vector<char> thumb;
-    int thumb_width;
-    int thumb_height;
+    int32_t thumb_width;
+    int32_t thumb_height;
 
     tgl_message_id_t message_id;
 
@@ -78,12 +78,12 @@ struct send_file {
 };
 
 struct download {
-    download(int size, const tgl_file_location& location)
+    download(int32_t size, const tgl_file_location& location)
         : location(location), offset(0), size(size), fd(-1), iv(), key(), type(0)
     {
     }
 
-    download(int type, const std::shared_ptr<tgl_document>&);
+    download(int32_t type, const std::shared_ptr<tgl_document>&);
 
     ~download()
     {
@@ -92,8 +92,8 @@ struct download {
     }
 
     tgl_file_location location;
-    int offset;
-    int size;
+    int32_t offset;
+    int32_t size;
     int fd;
     std::string name;
     std::string ext;
@@ -101,7 +101,7 @@ struct download {
     std::vector<unsigned char> iv;
     std::vector<unsigned char> key;
     // ---
-    int type;
+    int32_t type;
 };
 
 class query_send_file_part: public query
@@ -316,7 +316,7 @@ bool tgl_download_manager::currently_donwloading(const tgl_file_location& locati
     return false;
 }
 
-std::string tgl_download_manager::get_file_path(long long int secret)
+std::string tgl_download_manager::get_file_path(int64_t secret)
 {
     std::ostringstream stream;
     stream << download_directory() << "/download_" << secret;
@@ -630,7 +630,7 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
         const tgl_upload_callback& callback)
 {
     if (f->fd >= 0) {
-        long long offset = static_cast<long long>(f->part_num) * f->part_size;
+        size_t offset = f->part_num * f->part_size;
         auto q = std::make_shared<query_send_file_part>(this, f, callback);
         if (f->size < BIG_FILE_THRESHOLD) {
             q->out_i32(CODE_upload_save_file_part);
@@ -732,25 +732,27 @@ void tgl_download_manager::send_file_thumb(const std::shared_ptr<send_file>& f,
 
 
 void tgl_download_manager::send_document(const tgl_peer_id_t& to_id,
-        const tgl_message_id_t& message_id, const std::string &file_name, int avatar, int width, int height, int duration,
-        const std::string& caption, unsigned long long flags,
-        const std::string& thumb_path, int thumb_width, int thumb_height,
+        const tgl_message_id_t& message_id, const std::string &file_name,
+        int32_t avatar, int32_t width, int32_t height, int32_t duration,
+        const std::string& caption, uint64_t flags,
+        const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height,
         const tgl_upload_callback& callback)
 {
     int fd = -1;
     if (!boost::filesystem::exists(file_name)) {
-        TGL_ERROR("File " << file_name << " does not exist");
+        TGL_ERROR("file " << file_name << " does not exist");
         return;
     }
-    long long size = boost::filesystem::file_size(file_name);
-    TGL_NOTICE("send_document " << file_name << " with size " << size << " and dimension " << width << " X " << height);
-    if (size <= 0 || (fd = open (file_name.c_str(), O_RDONLY)) <= 0) {
-        TGL_ERROR("file is empty");
+    boost::system::error_code ec;
+    uintmax_t size = boost::filesystem::file_size(file_name, ec);
+    if (ec || !size || (fd = open (file_name.c_str(), O_RDONLY)) <= 0) {
+        TGL_ERROR("file " << file_name << " is empty or " << " failed to open");
         if (callback) {
             callback(false, nullptr, 0);
         }
         return;
     }
+    TGL_NOTICE("send_document " << file_name << " with size " << size << " and dimension " << width << " X " << height);
 
     std::shared_ptr<send_file> f = std::make_shared<send_file>();
     f->fd = fd;
@@ -841,7 +843,7 @@ void tgl_download_manager::set_profile_photo(const std::string& file_name,
 
 void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id,
         const std::string& file_name, int32_t width, int32_t height, int32_t duration, const std::string& caption,
-        const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height, unsigned long long flags,
+        const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
         const tgl_upload_callback& callback)
 {
     TGL_DEBUG("send_document - file_name: " + file_name);
@@ -965,8 +967,9 @@ void tgl_download_manager::download_next_part(const std::shared_ptr<download>& d
 
         d->name = path;
         if (boost::filesystem::exists(path)) {
-            d->offset = boost::filesystem::file_size(path);
-            if (d->offset >= d->size) {
+            boost::system::error_code ec;
+            d->offset = boost::filesystem::file_size(path, ec);
+            if (!ec && d->offset >= d->size) {
                 TGL_NOTICE("Already downloaded");
                 end_download(d, callback);
                 return;
