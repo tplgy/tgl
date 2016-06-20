@@ -93,8 +93,10 @@ struct tgl_encr_document: public tgl_document {
     std::vector<unsigned char> key;
     std::vector<unsigned char> iv;
     std::vector<char> thumb_data;
+    int thumb_width;
+    int thumb_height;
     int key_fingerprint;
-    tgl_encr_document() : key_fingerprint(0) { }
+    tgl_encr_document() : thumb_width(0), thumb_height(0), key_fingerprint(0) { }
 };
 
 struct tgl_webpage {

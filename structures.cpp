@@ -1300,6 +1300,8 @@ std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_d
     }
 
     if (DS_DMM->str_thumb && DS_DMM->str_thumb->data) {
+        media->encr_document->thumb_width = DS_LVAL(DS_DMM->thumb_w);
+        media->encr_document->thumb_height = DS_LVAL(DS_DMM->thumb_h);
         media->encr_document->thumb_data.resize(DS_DMM->str_thumb->len);
         memcpy(media->encr_document->thumb_data.data(), DS_DMM->str_thumb->data, DS_DMM->str_thumb->len);
     }
