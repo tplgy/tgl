@@ -21,6 +21,7 @@
 #define	_FILE_OFFSET_BITS	64
 
 #include <assert.h>
+#include <memory>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -264,27 +265,23 @@ int tgl_pad_rsa_decrypt (const char *from, int from_len, char *to, int size, TGL
   TGL_ASSERT_UNUSED(bits, bits >= 2041 && bits <= 2048);
   assert (size >= chunks * 255);
   int i;
-  TGLC_bn *x = TGLC_bn_new ();
-  TGLC_bn *y = TGLC_bn_new ();
-  assert(x);
-  assert(y);
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> x(TGLC_bn_new());
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> y(TGLC_bn_new());
+  assert(x.get());
+  assert(y.get());
   for (i = 0; i < chunks; i++) {
-    TGLC_bn_bin2bn ((unsigned char *) from, 256, x);
-    auto result = TGLC_bn_mod_exp (y, x, D, N, tgl_state::instance()->bn_ctx());
+    TGLC_bn_bin2bn ((unsigned char *) from, 256, x.get());
+    auto result = TGLC_bn_mod_exp (y.get(), x.get(), D, N, tgl_state::instance()->bn_ctx());
     TGL_ASSERT_UNUSED(result, result == 1);
-    int l = TGLC_bn_num_bytes (y);
+    int l = TGLC_bn_num_bytes (y.get());
     if (l > 255) {
-      TGLC_bn_free (x);
-      TGLC_bn_free (y);
       return -1;
     }
     assert (l >= 0 && l <= 255);
     memset (to, 0, 255 - l);
-    TGLC_bn_bn2bin (y, (unsigned char *) to + 255 - l);
+    TGLC_bn_bn2bin (y.get(), (unsigned char *) to + 255 - l);
     to += 255;
   }
-  TGLC_bn_free (x);
-  TGLC_bn_free (y);
   return chunks * 255;
 }
 

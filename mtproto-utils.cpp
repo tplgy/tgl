@@ -6,6 +6,8 @@
 #include "mtproto-utils.h"
 #include "tools.h"
 
+#include <memory>
+
 static unsigned long long gcd (unsigned long long a, unsigned long long b) {
   return b ? gcd (b, a % b) : a;
 }
@@ -25,16 +27,13 @@ int tglmp_check_DH_params (TGLC_bn *p, int g) {
   if (g < 2 || g > 7) { return -1; }
   if (TGLC_bn_num_bits (p) != 2048) { return -1; }
 
-  TGLC_bn *t = TGLC_bn_new ();
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> t(TGLC_bn_new());
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_g(TGLC_bn_new());
 
-  TGLC_bn *dh_g = TGLC_bn_new ();
-
-  ensure (TGLC_bn_set_word (dh_g, 4 * g));
-  ensure (TGLC_bn_mod (t, p, dh_g, tgl_state::instance()->bn_ctx()));
-  int x = TGLC_bn_get_word (t);
+  ensure (TGLC_bn_set_word (dh_g.get(), 4 * g));
+  ensure (TGLC_bn_mod (t.get(), p, dh_g.get(), tgl_state::instance()->bn_ctx()));
+  int x = TGLC_bn_get_word (t.get());
   assert (x >= 0 && x < 4 * g);
-
-  TGLC_bn_free (dh_g);
 
   int res = 0;
   switch (g) {
@@ -58,18 +57,15 @@ int tglmp_check_DH_params (TGLC_bn *p, int g) {
   }
 
   if (res < 0 || !check_prime (p)) {
-    TGLC_bn_free (t);
     return -1;
   }
 
-  TGLC_bn *b = TGLC_bn_new ();
-  ensure (TGLC_bn_set_word (b, 2));
-  ensure (TGLC_bn_div (t, 0, p, b, tgl_state::instance()->bn_ctx()));
-  if (!check_prime (t)) {
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> b(TGLC_bn_new());
+  ensure (TGLC_bn_set_word (b.get(), 2));
+  ensure (TGLC_bn_div (t.get(), 0, p, b.get(), tgl_state::instance()->bn_ctx()));
+  if (!check_prime (t.get())) {
     res = -1;
   }
-  TGLC_bn_free (b);
-  TGLC_bn_free (t);
   return res;
 }
 
@@ -85,13 +81,11 @@ int tglmp_check_g_a (TGLC_bn *p, TGLC_bn *g_a) {
     return -1;
   }
 
-  TGLC_bn *dif = TGLC_bn_new ();
-  TGLC_bn_sub (dif, p, g_a);
-  if (TGLC_bn_num_bits (dif) < 2048 - 64) {
-    TGLC_bn_free (dif);
+  std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dif(TGLC_bn_new());
+  TGLC_bn_sub (dif.get(), p, g_a);
+  if (TGLC_bn_num_bits (dif.get()) < 2048 - 64) {
     return -1;
   }
-  TGLC_bn_free (dif);
   return 0;
 }
 
