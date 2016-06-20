@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 
 struct tl_type_descr {
   unsigned name;
@@ -60,7 +61,7 @@ static inline void *memdup (const void *d, int len) {
 #define DS_CSTR(varname, x) char *varname = (char*)malloc((x ? x->len : 0) + 1); \
                             if (x) {memcpy(varname, x->data, x->len); varname[x->len]='\0';} \
                             else {varname[0]='\0';}
-#define DS_STDSTR(x) x ? std::string(x->data, x->len) : std::string()
+#define DS_STDSTR(x) ((x) && ((x)->data)) ? std::string(x->data, x->len) : std::string()
 #define DS_RSTR(x) ((x) ? (x)->len : 0), ((x) ? (x)->data : NULL)
 #define DS_STR_DUP(x) (char*)(memdup(((x) ? (x)->data : NULL), ((x) ? (x)->len + 1: 0)))
 #define DS_BVAL(x) ((x) && ((x)->magic == CODE_bool_true))
