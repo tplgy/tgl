@@ -143,8 +143,6 @@ static int rpc_send_packet(const std::shared_ptr<tgl_connection>& c, const char*
 
     memset(&unenc_msg_header, 0, sizeof(unenc_msg_header));
 
-    c->incr_out_packet_num();
-
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
     std::shared_ptr<tgl_session> S = c->get_session().lock();
     if (!DC || !S) {
@@ -186,7 +184,6 @@ static int rpc_send_message (const std::shared_ptr<tgl_connection>& c, void *dat
         TGL_ASSERT_UNUSED(result, result == 4);
     }
 
-    c->incr_out_packet_num();
     int result = c->write(data, len);
     TGL_ASSERT_UNUSED(result, result == len);
     c->flush();

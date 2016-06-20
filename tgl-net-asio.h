@@ -57,7 +57,6 @@ public:
     virtual void flush() override;
     virtual const std::weak_ptr<tgl_dc>& get_dc() const override { return m_dc; }
     virtual const std::weak_ptr<tgl_session>& get_session() const override { return m_session; }
-    virtual void incr_out_packet_num() override { m_out_packet_num++; }
 
     bool connect();
     void restart();
@@ -94,7 +93,6 @@ private:
     boost::asio::deadline_timer m_ping_timer;
     boost::asio::deadline_timer m_fail_timer;
 
-    size_t m_out_packet_num;
     std::deque<std::shared_ptr<std::vector<char>>> m_write_buffer_queue;
     std::deque<std::shared_ptr<std::vector<char>>> m_read_buffer_queue;
     std::shared_ptr<std::vector<char>> m_temp_read_buffer;

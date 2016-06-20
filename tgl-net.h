@@ -33,7 +33,6 @@ public:
     virtual ssize_t write(const void* data, size_t len) = 0;
     virtual ssize_t read(void* data, size_t len) = 0;
     virtual void flush() = 0;
-    virtual void incr_out_packet_num() = 0;
     virtual const std::weak_ptr<tgl_dc>& get_dc() const = 0;
     virtual const std::weak_ptr<tgl_session>& get_session() const = 0;
 

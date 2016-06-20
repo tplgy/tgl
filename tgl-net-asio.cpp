@@ -43,7 +43,6 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     , m_socket(io_service)
     , m_ping_timer(io_service)
     , m_fail_timer(io_service)
-    , m_out_packet_num(0)
     , m_in_bytes(0)
     , m_dc(dc)
     , m_session(session)
