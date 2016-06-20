@@ -58,6 +58,13 @@ struct TGLC_bn_deleter {
     }
 };
 
+struct TGLC_bn_clear_deleter {
+    void operator()(TGLC_bn* bn)
+    {
+        TGLC_bn_clear_free(bn);
+    }
+};
+
 struct TGLC_bn_ctx_deleter {
     void operator()(TGLC_bn_ctx* ctx)
     {

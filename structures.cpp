@@ -351,33 +351,19 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
         return nullptr;
     }
 
-    tgl_secret_chat_state state = sc_deleted;
-    tgl_update_secret_chat(secret_chat,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        &state,
-        NULL,
-        NULL,
-        NULL,
-        TGL_FLAGS_UNCHANGED);
-
+    tgl_secret_chat_deleted(secret_chat);
     return secret_chat;
   }
 
   static unsigned char g_key[256];
   if (is_new) {
     if (DS_EC->magic != CODE_encrypted_chat_requested) {
-      //TGL_WARNING("Unknown chat. May be we forgot something...");
       return secret_chat;
     }
 
     str_to_256 (g_key, DS_STR (DS_EC->g_a));
  
-    int user_id =  DS_LVAL (DS_EC->participant_id) + DS_LVAL (DS_EC->admin_id) - tgl_state::instance()->our_id().peer_id;
+    int user_id = DS_LVAL (DS_EC->participant_id) + DS_LVAL(DS_EC->admin_id) - tgl_state::instance()->our_id().peer_id;
     tgl_secret_chat_state state = sc_request;
     tgl_update_secret_chat(secret_chat,
             DS_EC->access_hash,
@@ -1629,7 +1615,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
 
     long long key_fingerprint = secret_chat->exchange_state != tgl_sce_committed ? secret_chat->key_fingerprint() : secret_chat->exchange_key_fingerprint;
     if (*(long long *)decr_ptr != key_fingerprint) {
-        TGL_WARNING("Encrypted message with bad fingerprint to chat " << secret_chat->print_name);
+        TGL_WARNING("encrypted message with bad fingerprint to chat " << secret_chat->id.peer_id);
         return nullptr;
     }
 

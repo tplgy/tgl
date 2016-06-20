@@ -33,9 +33,6 @@ struct tgl_secret_chat {
     tgl_peer_id_t id;
     int flags;
     struct tgl_message *last;
-    std::string print_name;
-    std::string username;
-    int structure_version;
     struct tgl_file_location photo_big;
     struct tgl_file_location photo_small;
     struct tgl_photo *photo;
@@ -96,9 +93,6 @@ struct tgl_secret_chat {
     tgl_secret_chat()
         : flags(0)
         , last(nullptr)
-        , print_name()
-        , username()
-        , structure_version(0)
         , photo_big()
         , photo_small()
         , photo(nullptr)
