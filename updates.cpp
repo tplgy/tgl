@@ -258,6 +258,12 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     }
     case CODE_update_delete_messages:
     {
+        if (DS_U->messages) {
+            int count = DS_LVAL(DS_U->messages->cnt);
+            for (int i=0; i<count; ++i) {
+                tgl_state::instance()->callback()->message_deleted(*(*(DS_U->messages->data)+i));
+            }
+        }
         break;
     }
     case CODE_update_chat_participants:
