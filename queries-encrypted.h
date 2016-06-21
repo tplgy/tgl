@@ -4,6 +4,7 @@
 #include "types/tgl_peer_id.h"
 #include "types/tgl_secret_chat.h"
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -46,17 +47,17 @@ void tgl_do_abort_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>& secret_chat, int start_seq_no, int end_seq_no);
 
 void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        const long long* access_hash,
-        const int* date,
-        const int* admin,
-        const int* user_id,
+        const int64_t* access_hash,
+        const int32_t* date,
+        const int32_t* admin,
+        const int32_t* user_id,
         const unsigned char* key,
         const unsigned char* g_key,
         const tgl_secret_chat_state* state,
-        const int* ttl,
-        const int* layer,
-        const int* in_seq_no,
-        int flags);
+        const int32_t* ttl,
+        const int32_t* layer,
+        const int32_t* in_seq_no,
+        int32_t flags);
 
 void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 

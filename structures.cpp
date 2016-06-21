@@ -2107,16 +2107,14 @@ void tglm_send_all_unsent () {
 /* }}} */
 
 void tglf_fetch_i32_array (int32_t *dst, struct tl_ds_vector *src, size_t len) {
-    int i;
-    assert (len <= *src->f1);
-    for (i = 0; i < len; i++) {
-        dst[i] = *(int32_t *)src->f2[i];
+    assert (len <= static_cast<size_t>(*src->f1));
+    for (size_t i = 0; i < len; i++) {
+        dst[i] = *static_cast<int32_t*>(src->f2[i]);
     }
 }
 
 void tglf_fetch_i32_tuple (int32_t *dst, int32_t **src, size_t len) {
-    int i;
-    for (i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++) {
         dst[i] = *src[i];
     }
 }
