@@ -208,7 +208,7 @@ void tgl_do_msg_search(const tgl_peer_id_t& id, int from, int to, int limit, int
         const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback);
 
 // deletes message *id*
-void tgl_do_delete_msg (const tgl_message_id_t& msg_id, std::function<void(bool success)> callback);
+void tgl_do_delete_msg (const tgl_message_id_t& msg_id, const std::function<void(bool success)>& callback);
 
 // gets message by *id*
 void tgl_do_get_message (long long id, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);

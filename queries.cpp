@@ -3342,7 +3342,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_delete_msg(const tgl_message_id_t& msg_id, std::function<void(bool success)> callback) {
+void tgl_do_delete_msg(const tgl_message_id_t& msg_id, const std::function<void(bool success)>& callback) {
   if (msg_id.peer_type == tgl_peer_type::temp_id) {
     tgl_set_query_error (EINVAL, "unknown message");
     if (callback) {
