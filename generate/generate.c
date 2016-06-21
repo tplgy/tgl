@@ -287,7 +287,7 @@ void print_c_type_name (struct tl_tree *t, char *offset, int in) {
   struct tl_type *T = ((struct tl_tree_type *)t)->type;
   if (!strcmp (T->id, "Vector") && in) {
     printf ("struct {\n");
-    printf ("%s  int *cnt;\n", offset);
+    printf ("%s  int32_t *cnt;\n", offset);
     printf ("%s  ", offset);
     print_c_type_name (((struct tl_tree_type *)t)->children[0], offset, in);
     printf ("*data;\n");
@@ -295,11 +295,11 @@ void print_c_type_name (struct tl_tree *t, char *offset, int in) {
     return;
   } 
   if (!strcmp (T->id, "Long")) {
-    printf ("long long *");
+    printf ("int64_t *");
     return;
   } 
   if (!strcmp (T->id, "#") || !strcmp (T->id, "Int")) {
-    printf ("int *");
+    printf ("int32_t *");
     return;
   } 
   if (!strcmp (T->id, "Double")) {
@@ -485,11 +485,11 @@ int gen_field_skip (struct arg *arg, int *vars, int num) {
       assert (t == NAME_VAR_NUM);
       if (vars[arg->var_num] == 0) {
         printf ("%sif (in_remaining (in) < 4) { return -1;}\n", offset);
-        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_int (in));\n", offset, arg->var_num);
+        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_i32 (in));\n", offset, arg->var_num);
         vars[arg->var_num] = 2;
       } else if (vars[arg->var_num] == 2) {
         printf ("%sif (in_remaining (in) < 4) { return -1;}\n", offset);
-        printf ("%sif (vars%d != INT2PTR (fetch_int (in))) { return -1; }\n", offset, arg->var_num);
+        printf ("%sif (vars%d != INT2PTR (fetch_i32 (in))) { return -1; }\n", offset, arg->var_num);
       } else {
         assert (0);
         return -1;
@@ -560,13 +560,13 @@ int gen_field_fetch (struct arg *arg, int *vars, int num, int empty) {
       assert (t == NAME_VAR_NUM);
       if (vars[arg->var_num] == 0) {
         printf ("%sif (in_remaining (in) < 4) { return -1;}\n", offset);
-        printf ("%seprintf (\" %%d\", prefetch_int (in));\n", offset);
-        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_int (in));\n", offset, arg->var_num);
+        printf ("%seprintf (\" %%d\", prefetch_i32 (in));\n", offset);
+        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_i32 (in));\n", offset, arg->var_num);
         vars[arg->var_num] = 2;
       } else if (vars[arg->var_num] == 2) {
         printf ("%sif (in_remaining (in) < 4) { return -1;}\n", offset);
-        printf ("%seprintf (\" %%d\", prefetch_int (in));\n", offset);
-        printf ("%sif (vars%d != INT2PTR (fetch_int (in))) { return -1; }\n", offset, arg->var_num);
+        printf ("%seprintf (\" %%d\", prefetch_i32 (in));\n", offset);
+        printf ("%sif (vars%d != INT2PTR (fetch_i32 (in))) { return -1; }\n", offset, arg->var_num);
       } else {
         assert (0);
         return -1;
@@ -818,16 +818,16 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
       printf ("%sassert (in_remaining (in) >= 4);\n", offset);
       if (arg->id && strlen (arg->id)) {
         printf ("%sresult->%s = (decltype(result->%s))malloc (4);", offset, arg->id, arg->id);
-        printf ("%s*result->%s = prefetch_int (in);", offset, arg->id);
+        printf ("%s*result->%s = prefetch_i32 (in);", offset, arg->id);
       } else {
         printf ("%sresult->f%d = (decltype(result->f%d))malloc (4);", offset, num - 1, num - 1);
-        printf ("%s*result->f%d = prefetch_int (in);", offset, num - 1);
+        printf ("%s*result->f%d = prefetch_i32 (in);", offset, num - 1);
       }
       if (vars[arg->var_num] == 0) {
-        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_int (in));\n", offset, arg->var_num);
+        printf ("%sstruct paramed_type *var%d = INT2PTR (fetch_i32 (in));\n", offset, arg->var_num);
         vars[arg->var_num] = 2;
       } else if (vars[arg->var_num] == 2) {
-        printf ("%sassert (vars%d == INT2PTR (fetch_int (in)));\n", offset, arg->var_num);
+        printf ("%sassert (vars%d == INT2PTR (fetch_i32 (in)));\n", offset, arg->var_num);
       } else {
         assert (0);
         return -1;
@@ -1242,18 +1242,18 @@ void gen_constructor_skip (struct tl_combinator *c) {
   
   if (c->name == NAME_INT) {
     printf ("  if (in_remaining (in) < 4) { return -1;}\n");
-    printf ("  fetch_int (in);\n");
+    printf ("  fetch_i32 (in);\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_LONG) {
     printf ("  if (in_remaining (in) < 8) { return -1;}\n");
-    printf ("  fetch_long (in);\n");
+    printf ("  fetch_i64 (in);\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_STRING) {
-    printf ("  int l = prefetch_strlen (in);\n");
+    printf ("  ssize_t l = prefetch_strlen (in);\n");
     printf ("  if (l < 0) { return -1;}\n");
     printf ("  fetch_str (in, l);\n");
     printf ("  return 0;\n");
@@ -1293,19 +1293,19 @@ void gen_constructor_fetch (struct tl_combinator *c) {
 
   if (c->name == NAME_INT) {
     printf ("  if (in_remaining (in) < 4) { return -1;}\n");
-    printf ("  eprintf (\" %%d\", fetch_int (in));\n");
+    printf ("  eprintf (\" %%d\", fetch_i32 (in));\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_LONG) {
     printf ("  if (in_remaining (in) < 8) { return -1;}\n");
-    printf ("  eprintf (\" %%" INT64_PRINTF_MODIFIER "d\", fetch_long (in));\n");
+    printf ("  eprintf (\" %%" INT64_PRINTF_MODIFIER "d\", fetch_i64 (in));\n");
     printf ("  return 0;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_STRING) {
     printf ("  static char buf[1 << 22];\n");
-    printf ("  int l = prefetch_strlen (in);\n");
+    printf ("  ssize_t l = prefetch_strlen (in);\n");
     printf ("  if (l < 0 || (l >= (1 << 22) - 2)) { return -1; }\n");
     printf ("  memcpy (buf, fetch_str (in, l), l);\n");
     printf ("  buf[l] = 0;\n");
@@ -1499,19 +1499,19 @@ void gen_constructor_fetch_ds (struct tl_combinator *c) {
 
   if (c->name == NAME_INT) {
     printf ("  assert (in_remaining (in) >= 4);\n");
-    printf ("  *result = fetch_int (in);\n");
+    printf ("  *result = fetch_i32 (in);\n");
     printf ("  return result;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_LONG) {
     printf ("  assert (in_remaining (in) >= 8);\n");
-    printf ("  *result = fetch_long (in);\n");
+    printf ("  *result = fetch_i64 (in);\n");
     printf ("  return result;\n");
     printf ("}\n");
     return;
   } else if (c->name == NAME_STRING || c->name == NAME_BYTES) {
     printf ("  assert (in_remaining (in) >= 4);\n");
-    printf ("  int l = prefetch_strlen (in);\n");
+    printf ("  ssize_t l = prefetch_strlen (in);\n");
     printf ("  assert (l >= 0);\n");
     printf ("  result->len = l;\n");
     printf ("  result->data = (decltype(result->data))malloc (l + 1);\n");
@@ -1708,7 +1708,7 @@ void gen_constructor_print_ds (struct tl_combinator *c) {
 void gen_type_skip (struct tl_type *t) {
   printf ("int skip_type_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", t->print_id);
   printf ("  if (in_remaining (in) < 4) { return -1;}\n");
-  printf ("  unsigned int magic = fetch_int (in);\n");
+  printf ("  uint32_t magic = fetch_i32 (in);\n");
   printf ("  switch (magic) {\n");
   int i;
   for (i = 0; i < t->constructors_num; i++) {
@@ -1741,7 +1741,7 @@ void gen_type_fetch (struct tl_type *t) {
     printf ("  if (multiline_output >= 2) { multiline_offset += multiline_offset_size; }\n");
     printf ("  eprintf (\" (\");\n");
   }
-  printf ("  unsigned int magic = fetch_int (in);\n");
+  printf ("  uint32_t magic = fetch_i32 (in);\n");
   printf ("  int res = -1;\n");
   printf ("  switch (magic) {\n");
   int i;
@@ -1868,7 +1868,7 @@ void gen_type_fetch_ds (struct tl_type *t) {
 
   printf ("fetch_ds_type_%s (struct tgl_in_buffer *in, const struct paramed_type *T) {\n", t->print_id);
   printf ("  assert (in_remaining (in) >= 4);\n");
-  printf ("  unsigned int magic = fetch_int (in);\n");
+  printf ("  uint32_t magic = fetch_i32 (in);\n");
   printf ("  switch (magic) {\n");
   int i;
   for (i = 0; i < t->constructors_num; i++) {

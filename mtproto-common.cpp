@@ -212,10 +212,8 @@ long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key) {
   return fingerprint;
 }
 
-int *tgl_in_ptr, *tgl_in_end;
-
-int tgl_fetch_bignum (tgl_in_buffer* in, TGLC_bn *x) {
-  int l = prefetch_strlen (in);
+ssize_t tgl_fetch_bignum (tgl_in_buffer* in, TGLC_bn *x) {
+  ssize_t l = prefetch_strlen (in);
   if (l < 0) {
     return l;
   }

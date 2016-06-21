@@ -21,6 +21,7 @@
 #define __AUTO_H__
 
 #include <assert.h>
+#include <cstdint>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
@@ -43,10 +44,10 @@ struct paramed_type {
 
 #define TYPE_TO_PARAM(NAME) ((struct paramed_type) {.type = tl_type_## NAME, .params=0})
 #define TYPE_TO_PARAM_1(NAME,PARAM1) ((struct paramed_type) {.type = tl_type_## NAME, .params=(struct paramed_type [1]){PARAM1}})
-#define ODDP(x) (((long)(x)) & 1)
+#define ODDP(x) (((intptr_t)(x)) & 1)
 #define EVENP(x) (!ODDP(x))
-#define INT2PTR(x) (struct paramed_type *)(long)(((long)x) * 2 + 1)
-#define PTR2INT(x) ((((long)x) - 1) / 2)
+#define INT2PTR(x) (struct paramed_type *)(intptr_t)(((intptr_t)x) * 2 + 1)
+#define PTR2INT(x) ((((intptr_t)x) - 1) / 2)
 
 static inline void *memdup (const void *d, int len) {
   assert (d || !len);

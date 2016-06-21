@@ -21,6 +21,7 @@
 #ifndef __MTPROTO_COMMON_H__
 #define __MTPROTO_COMMON_H__
 
+#include <cstdint>
 #include <string.h>
 #include "crypto/rsa_pem.h"
 #include "crypto/bn.h"
@@ -244,174 +245,145 @@ private:
 };
 
 struct tgl_in_buffer {
-    int* ptr;
-    int* end;
+    int32_t* ptr;
+    int32_t* end;
 };
 
-static inline int prefetch_strlen(struct tgl_in_buffer* in) {
-  if (in->ptr >= in->end) {
-    return -1; 
-  }
-  unsigned l = *in->ptr;
-  if ((l & 0xff) < 0xfe) { 
-    l &= 0xff;
-    return (in->end >= in->ptr + (l >> 2) + 1) ? (int)l : -1;
-  } else if ((l & 0xff) == 0xfe) {
-    l >>= 8;
-    return (l >= 254 && in->end >= in->ptr + ((l + 7) >> 2)) ? (int)l : -1;
-  } else {
-    return -1;
-  }
+static inline ssize_t prefetch_strlen(struct tgl_in_buffer* in)
+{
+    if (in->ptr >= in->end) {
+        return -1;
+    }
+    uint32_t l = *in->ptr;
+    if ((l & 0xff) < 0xfe) {
+        l &= 0xff;
+        return (in->end >= in->ptr + (l >> 2) + 1) ? static_cast<ssize_t>(l) : -1;
+    } else if ((l & 0xff) == 0xfe) {
+        l >>= 8;
+        return (l >= 254 && in->end >= in->ptr + ((l + 7) >> 2)) ? static_cast<ssize_t>(l) : -1;
+    } else {
+        return -1;
+    }
 }
 
-static inline char *fetch_str (struct tgl_in_buffer* in, int len) {
-  assert (len >= 0);
-  if (len < 254) {
-    char *str = (char *) in->ptr + 1;
-    in->ptr += 1 + (len >> 2);
-    return str;
-  } else {
-    char *str = (char *) in->ptr + 4;
-    in->ptr += (len + 7) >> 2;
-    return str;
-  }
+static inline char* fetch_str(struct tgl_in_buffer* in, size_t len)
+{
+    if (len < 254) {
+        char* str = reinterpret_cast<char*>(in->ptr) + 1;
+        in->ptr += 1 + (len >> 2);
+        return str;
+    } else {
+        char *str = (char *) in->ptr + 4;
+        in->ptr += (len + 7) >> 2;
+        return str;
+    }
 } 
 
-static inline char *fetch_str_dup (struct tgl_in_buffer* in) {
-  int l = prefetch_strlen (in);
-  assert (l >= 0);
-  int i;
-  char *s = fetch_str (in, l);
-  for (i = 0; i < l; i++) {
-    if (!s[i]) { break; }
-  }
-  char *r = (char *)malloc (i + 1);
-  memcpy (r, s, i);
-  r[i] = 0;
-  return r;
+static inline char* fetch_str_dup(struct tgl_in_buffer* in)
+{
+    ssize_t l = prefetch_strlen(in);
+    if (l < 0) {
+        return nullptr;
+    }
+    int i;
+    char* s = fetch_str(in, l);
+    for (i = 0; i < l; i++) {
+        if (!s[i]) { break; }
+    }
+    char* r = static_cast<char*>(malloc(i + 1));
+    memcpy(r, s, i);
+    r[i] = 0;
+    return r;
 }
 
-static inline int fetch_update_str (struct tgl_in_buffer* in, char **s) {
-  if (!*s) {
-    *s = fetch_str_dup (in);
-    return 1;
-  }
-  int l = prefetch_strlen (in);
-  char *r = fetch_str (in, l);
-  if (memcmp (*s, r, l) || (*s)[l]) {
-    tfree_str (*s);
-    *s = (char *)malloc (l + 1);
-    memcpy (*s, r, l);
-    (*s)[l] = 0;
-    return 1;
-  }
-  return 0;
+static inline void fetch_skip(struct tgl_in_buffer* in, size_t n)
+{
+    in->ptr += n;
+    assert (in->ptr <= in->end);
 }
 
-static inline int fetch_update_int (struct tgl_in_buffer* in, int *value) {
-  if (*value == *in->ptr) {
-    in->ptr ++;
-    return 0;
-  } else {
-    *value = *(in->ptr ++);
-    return 1;
-  }
+static inline void fetch_skip_str(struct tgl_in_buffer* in)
+{
+    ssize_t l = prefetch_strlen(in);
+    if (l < 0) {
+        return;
+    }
+    fetch_str(in, l);
 }
 
-static inline int fetch_update_long (struct tgl_in_buffer* in, long long int *value) {
-  if (*value == *(long long int *)in->ptr) {
-    in->ptr += 2;
-    return 0;
-  } else {
-    *value = *(long long int*)(in->ptr);
-    in->ptr += 2;
-    return 1;
-  }
+static inline bool have_prefetch_i32s (struct tgl_in_buffer* in)
+{
+    return in->end > in->ptr;
 }
 
-static inline int set_update_int (int *value, int new_value) {
-  if (*value == new_value) {
-    return 0;
-  } else {
-    *value = new_value;
-    return 1;
-  }
-}
+ssize_t tgl_fetch_bignum(struct tgl_in_buffer* in, TGLC_bn *x);
 
-static inline void fetch_skip (struct tgl_in_buffer* in, int n) {
-  in->ptr += n;
-  assert (in->ptr <= in->end);
-}
-
-static inline void fetch_skip_str (struct tgl_in_buffer* in) {
-  int l = prefetch_strlen (in);
-  assert (l >= 0);
-  fetch_str (in, l);
-}
-
-static inline long have_prefetch_ints (struct tgl_in_buffer* in) {
-  return in->end - in->ptr;
-}
-
-int tgl_fetch_bignum (struct tgl_in_buffer* in, TGLC_bn *x);
-
-static inline int fetch_bignum(struct tgl_in_buffer* in, TGLC_bn *x)
+static inline ssize_t fetch_bignum(struct tgl_in_buffer* in, TGLC_bn *x)
 {
     return tgl_fetch_bignum(in, x);
 }
 
-static inline int fetch_int (struct tgl_in_buffer* in) {
-  assert (in->ptr + 1 <= in->end);
-  return *(in->ptr ++);
+static inline int32_t fetch_i32(struct tgl_in_buffer* in)
+{
+    assert (in->ptr + 1 <= in->end);
+    return *(in->ptr ++);
 }
 
-static inline int fetch_bool (struct tgl_in_buffer* in) {
-  assert (in->ptr + 1 <= in->end);
-  assert (*(in->ptr) == (int)CODE_bool_true || *(in->ptr) == (int)CODE_bool_false);
-  return *(in->ptr ++) == (int)CODE_bool_true;
+static inline bool fetch_bool(struct tgl_in_buffer* in)
+{
+    assert(in->ptr + 1 <= in->end);
+    assert(*(in->ptr) == static_cast<int32_t>(CODE_bool_true) || *(in->ptr) == static_cast<int32_t>(CODE_bool_false));
+    return *(in->ptr ++) == static_cast<int32_t>(CODE_bool_true);
 }
 
-static inline int prefetch_int (struct tgl_in_buffer* in) {
-  assert (in->ptr < in->end);
-  return *(in->ptr);
+static inline int32_t prefetch_i32(struct tgl_in_buffer* in)
+{
+    assert(in->ptr < in->end);
+    return *(in->ptr);
 }
 
-static inline void prefetch_data (struct tgl_in_buffer* in, void *data, int size) {
-  assert (in->ptr + (size >> 2) <= in->end);
-  memcpy (data, in->ptr, size);
+static inline void prefetch_data(struct tgl_in_buffer* in, void* data, size_t size)
+{
+    assert(in->ptr + (size >> 2) <= in->end);
+    memcpy(data, in->ptr, size);
 }
 
-static inline void fetch_data (struct tgl_in_buffer* in, void *data, int size) {
-  assert (in->ptr + (size >> 2) <= in->end);
-  memcpy (data, in->ptr, size);
-  assert (!(size & 3));
-  in->ptr += (size >> 2);
+static inline void fetch_data(struct tgl_in_buffer* in, void* data, size_t size)
+{
+    assert(in->ptr + (size >> 2) <= in->end);
+    memcpy(data, in->ptr, size);
+    assert(!(size & 3));
+    in->ptr += (size >> 2);
 }
 
-static inline long long fetch_long (struct tgl_in_buffer* in) {
-  assert (in->ptr + 2 <= in->end);
-  long long r;
-  memcpy(&r, in->ptr, 8);
-  in->ptr += 2;
-  return r;
+static inline int64_t fetch_i64(struct tgl_in_buffer* in)
+{
+    assert(in->ptr + 2 <= in->end);
+    int64_t r;
+    memcpy(&r, in->ptr, 8);
+    in->ptr += 2;
+    return r;
 }
 
-static inline double fetch_double (struct tgl_in_buffer* in) {
-  assert (in->ptr + 2 <= in->end);
-  double r;
-  memcpy(&r, in->ptr, 8);
-  in->ptr += 2;
-  return r;
+static inline double fetch_double(struct tgl_in_buffer* in)
+{
+    assert(in->ptr + 2 <= in->end);
+    double r;
+    memcpy(&r, in->ptr, 8);
+    in->ptr += 2;
+    return r;
 }
 
-static inline void fetch_ints (struct tgl_in_buffer* in, void *data, int count) {
-  assert (in->ptr + count <= in->end);
-  memcpy (data, in->ptr, 4 * count);
-  in->ptr += count;
+static inline void fetch_i32s(struct tgl_in_buffer* in, int32_t* data, size_t count)
+{
+    assert(in->ptr + count <= in->end);
+    memcpy(data, in->ptr, 4 * count);
+    in->ptr += count;
 }
     
-static inline int in_remaining (struct tgl_in_buffer* in) {
-  return 4 * (in->end - in->ptr);
+static inline ssize_t in_remaining(struct tgl_in_buffer* in)
+{
+    return 4 * (in->end - in->ptr);
 }
 
 //int get_random_bytes (unsigned char *buf, int n);

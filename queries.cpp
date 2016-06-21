@@ -344,9 +344,9 @@ static void resend_query_cb(const std::shared_ptr<query>& q, bool success);
 
 int tglq_query_error(tgl_in_buffer* in, long long id)
 {
-    int result = fetch_int (in);
-    TGL_ASSERT_UNUSED(result, result == CODE_rpc_error);
-    int error_code = fetch_int (in);
+    int32_t result = fetch_i32 (in);
+    TGL_ASSERT_UNUSED(result, result == static_cast<int32_t>(CODE_rpc_error));
+    int32_t error_code = fetch_i32 (in);
     int error_len = prefetch_strlen (in);
     std::string error_string = std::string(fetch_str(in, error_len), error_len);
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
@@ -508,18 +508,18 @@ int tglq_query_result (tgl_in_buffer* in, long long id) {
 
 int query::handle_result(tgl_in_buffer* in)
 {
-    int op = prefetch_int (in);
+    int32_t op = prefetch_i32 (in);
 
     tgl_in_buffer save_in = { nullptr, nullptr };
-    std::unique_ptr<int[]> packed_buffer;
+    std::unique_ptr<int32_t[]> packed_buffer;
 
     if (op == CODE_gzip_packed) {
-        fetch_int (in);
+        fetch_i32 (in);
         int l = prefetch_strlen (in);
         char *s = fetch_str (in, l);
 
         constexpr size_t MAX_PACKED_SIZE = 1 << 24;
-        packed_buffer.reset(new int[MAX_PACKED_SIZE / 4]);
+        packed_buffer.reset(new int32_t[MAX_PACKED_SIZE / 4]);
 
         int total_out = tgl_inflate (s, l, packed_buffer.get(), MAX_PACKED_SIZE);
         TGL_DEBUG("inflated " << total_out << " bytes");

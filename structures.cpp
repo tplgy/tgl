@@ -1630,7 +1630,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
 
     int decrypted_data_length = *decr_ptr; // decrypted data length
     tgl_in_buffer in = { decr_ptr, decr_ptr + decrypted_data_length / 4 + 1 };
-    auto result = fetch_int(&in);
+    auto result = fetch_i32(&in);
     TGL_ASSERT_UNUSED(result, result == decrypted_data_length);
 
     std::shared_ptr<tgl_secret_message> secret_message;
@@ -2106,15 +2106,15 @@ void tglm_send_all_unsent () {
 }
 /* }}} */
 
-void tglf_fetch_int_array (int *dst, struct tl_ds_vector *src, int len) {
+void tglf_fetch_i32_array (int32_t *dst, struct tl_ds_vector *src, size_t len) {
     int i;
     assert (len <= *src->f1);
     for (i = 0; i < len; i++) {
-        dst[i] = *(int *)src->f2[i];
+        dst[i] = *(int32_t *)src->f2[i];
     }
 }
 
-void tglf_fetch_int_tuple (int *dst, int **src, int len) {
+void tglf_fetch_i32_tuple (int32_t *dst, int32_t **src, size_t len) {
     int i;
     for (i = 0; i < len; i++) {
         dst[i] = *src[i];

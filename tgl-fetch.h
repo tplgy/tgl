@@ -53,8 +53,8 @@ tgl_user_status tglf_fetch_user_status(tl_ds_user_status *DS_US);
 enum tgl_typing_status tglf_fetch_typing (struct tl_ds_send_message_action *DS_SMA);
 void tglf_fetch_chat_participants (const std::shared_ptr<tgl_chat>& C, struct tl_ds_chat_participants *DS_CP);
 
-void tglf_fetch_int_array (int *dst, struct tl_ds_vector *src, int len);
-void tglf_fetch_int_tuple (int *dst, int **src, int len);
+void tglf_fetch_i32_array (int32_t *dst, struct tl_ds_vector *src, size_t len);
+void tglf_fetch_int_tuple (int32_t *dst, int32_t **src, size_t len);
 tgl_file_location tglf_fetch_file_location (struct tl_ds_file_location *DS_FL);
 
 void tglf_fetch_message_short (const std::shared_ptr<tgl_message>& M, struct tl_ds_updates *DS_U);
