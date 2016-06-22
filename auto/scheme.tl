@@ -370,11 +370,11 @@ notifyAll#74d07c60 = NotifyPeer;
 sendMessageTypingAction#16bf744e = SendMessageAction;
 sendMessageCancelAction#fd5ec8f5 = SendMessageAction;
 sendMessageRecordVideoAction#a187d66f = SendMessageAction;
-sendMessageUploadVideoAction#e9763aec progress:int = SendMessageAction;
+sendMessageUploadVideoAction#92042ff7 progress:int = SendMessageAction;
 sendMessageRecordAudioAction#d52f73f7 = SendMessageAction;
-sendMessageUploadAudioAction#f351d7ab progress:int = SendMessageAction;
-sendMessageUploadPhotoAction#d1d34a26 progress:int = SendMessageAction;
-sendMessageUploadDocumentAction#aa0cd9e4 progress:int = SendMessageAction;
+sendMessageUploadAudioAction#e6ac8a6f progress:int = SendMessageAction;
+sendMessageUploadPhotoAction#990a3c1a progress:int = SendMessageAction;
+sendMessageUploadDocumentAction#8faee98e progress:int = SendMessageAction;
 sendMessageGeoLocationAction#176f8ba1 = SendMessageAction;
 sendMessageChooseContactAction#628cbc6f = SendMessageAction;
 
