@@ -124,7 +124,7 @@ void tgl_do_get_user_info(const tgl_peer_id_t& id, const std::function<void(bool
 void tgl_do_add_contact (const std::string& phone, const std::string& first_name, const std::string& last_name, bool replace, std::function<void(bool success, const std::vector<int>& user_ids)> callback);
 
 // deletes user *id* from contact listus
-void tgl_do_del_contact (tgl_peer_id_t id, std::function<void(bool success)> callback);
+void tgl_do_delete_contact(const tgl_peer_id_t& id, const std::function<void(bool success)>& callback);
 
 // imports card exported by another user
 void tgl_do_import_card (int size, int *card, std::function<void(bool success, const std::shared_ptr<tgl_user>& user)> callback);

@@ -2665,16 +2665,18 @@ void tgl_do_add_contact (const std::string& phone, const std::string& first_name
 /* }}} */
 
 /* {{{ Del contact */
-class query_del_contact: public query
+class query_delete_contact: public query
 {
 public:
-    explicit query_del_contact(const std::function<void(bool)>& callback)
-        : query("del contact", TYPE_TO_PARAM(contacts_link))
+    query_delete_contact(int32_t user_id, const std::function<void(bool)>& callback)
+        : query("delete contact", TYPE_TO_PARAM(contacts_link))
+        , m_user_id(user_id)
         , m_callback(callback)
     { }
 
     virtual void on_answer(void*) override
     {
+        tgl_state::instance()->callback()->user_deleted(m_user_id);
         if (m_callback) {
             m_callback(true);
         }
@@ -2690,16 +2692,18 @@ public:
     }
 
 private:
+    int32_t m_user_id;
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_del_contact (tgl_peer_id_t id, std::function<void(bool success)> callback) {
-  auto q = std::make_shared<query_del_contact>(callback);
-  q->out_i32 (CODE_contacts_delete_contact);
-  q->out_i32 (CODE_input_user);
-  q->out_i32 (id.peer_id);
-  q->out_i64 (id.access_hash);
-  q->execute(tgl_state::instance()->working_dc());
+void tgl_do_delete_contact(const tgl_peer_id_t& id, const std::function<void(bool success)>& callback)
+{
+    auto q = std::make_shared<query_delete_contact>(id.peer_id, callback);
+    q->out_i32(CODE_contacts_delete_contact);
+    q->out_i32(CODE_input_user);
+    q->out_i32(id.peer_id);
+    q->out_i64(id.access_hash);
+    q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
 
