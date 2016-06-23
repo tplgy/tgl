@@ -240,8 +240,6 @@ void tgl_dc_authorize (const std::shared_ptr<tgl_dc>& DC);
 #define TGL_SEND_MSG_FLAG_DOCUMENT_AUTO 32
 #define TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO 64
 
-#define TGL_SEND_MSG_FLAG_REPLY(x) (((unsigned long long)x) << 32)
-
 typedef int tgl_user_id_t;
 typedef int tgl_chat_id_t;
 typedef int tgl_secret_chat_id_t;

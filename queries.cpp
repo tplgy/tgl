@@ -1083,7 +1083,7 @@ void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M, std::function<void(b
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
+void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsigned long long flags, int reply_id, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
 {
   if (peer_id.peer_type == tgl_peer_type::enc_chat) {
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
@@ -1153,7 +1153,7 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsign
 //    }
 
 
-    M = tglm_message_create (&id, &from_id, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, NULL,
+    M = tglm_message_create (&id, &from_id, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, reply_id,
         reply_markup, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_TEMP_MSG_ID);
     tgl_state::instance()->callback()->new_messages({M});
 
@@ -1174,28 +1174,6 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsign
 
   tgl_do_send_msg(M, callback);
 }
-
-void tgl_do_reply_message (const tgl_message_id_t& reply_id, const std::string& text, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
-{
-  if (reply_id.peer_type == tgl_peer_type::temp_id) {
-    tgl_set_query_error (EINVAL, "unknown message");
-    if (callback) {
-      callback(0, 0, 0);
-    }
-    return;
-  }
-  if (reply_id.peer_type == tgl_peer_type::enc_chat) {
-    tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
-    if (callback) {
-      callback(0, 0, 0);
-    }
-
-    tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id (reply_id);
-
-    tgl_do_send_message (peer_id, text, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), NULL, callback);
-  }
-}
-/* }}} */
 
 /* {{{ Mark read */
 class query_mark_read: public query
@@ -1930,28 +1908,28 @@ void tgl_do_send_contact (tgl_peer_id_t id, const char *phone, int phone_len,
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_reply_contact (tgl_message_id_t *_reply_id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name,
-        int last_name_len, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
-{
-  tgl_message_id_t reply_id = *_reply_id;
-  if (reply_id.peer_type == tgl_peer_type::temp_id) {
-    tgl_set_query_error (EINVAL, "unknown message");
-    if (callback) {
-      callback(0, 0, 0);
-    }
-    return;
-  }
-  if (reply_id.peer_type == tgl_peer_type::enc_chat) {
-    tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
-    if (callback) {
-      callback(0, 0, 0);
-    }
+//void tgl_do_reply_contact (tgl_message_id_t *_reply_id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name,
+//        int last_name_len, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
+//{
+//  tgl_message_id_t reply_id = *_reply_id;
+//  if (reply_id.peer_type == tgl_peer_type::temp_id) {
+//    tgl_set_query_error (EINVAL, "unknown message");
+//    if (callback) {
+//      callback(0, 0, 0);
+//    }
+//    return;
+//  }
+//  if (reply_id.peer_type == tgl_peer_type::enc_chat) {
+//    tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
+//    if (callback) {
+//      callback(0, 0, 0);
+//    }
 
-    tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id (reply_id);
+//    tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id (reply_id);
 
-    tgl_do_send_contact (peer_id, phone, phone_len, first_name, first_name_len, last_name, last_name_len, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), callback);
-  }
-}
+//    tgl_do_send_contact (peer_id, phone, phone_len, first_name, first_name_len, last_name, last_name_len, flags | TGL_SEND_MSG_FLAG_REPLY (reply_id.id), callback);
+//  }
+//}
 
 void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
 {
@@ -4152,7 +4130,7 @@ void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const std::string&
     struct tl_ds_message_media TDSM;
     TDSM.magic = CODE_message_media_empty;
 
-    auto msg = tglm_message_create (&id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
+    auto msg = tglm_message_create (&id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, 0, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
     tgl_state::instance()->callback()->new_messages({msg});
   }
 

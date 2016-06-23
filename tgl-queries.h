@@ -29,11 +29,7 @@ struct tl_ds_reply_markup;
 // send plain text message to peer id
 // flags is combination of TGL_SEND_MSG_FLAG_*
 // reply markup can be NULL
-void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsigned long long flags, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
-
-// sends plain text reply on message *reply_id*
-// message *reply_id* should be cached
-void tgl_do_reply_message (const tgl_message_id_t& reply_id, tgl_peer_id_t to_id, const std::string& text, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
+void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsigned long long flags, int reply_id, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
 
 // forward message *msg_id* to peer *id*
 // message can not be encrypted and peer can not be secret chat

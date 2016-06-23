@@ -32,7 +32,7 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
                                         tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const std::string& message,
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
-                                        int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags, bool invoke_callback = true);
+                                        int reply_id, struct tl_ds_reply_markup *reply_markup, int flags, bool invoke_callback = true);
 
 std::shared_ptr<tgl_message> tglm_create_encr_message(const tgl_message_id* id,
         const tgl_peer_id_t* from_id,

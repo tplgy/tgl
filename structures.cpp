@@ -1073,7 +1073,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short (struct tl_ds_update
           DS_STDSTR(DS_U->message),
           &A,
           NULL,
-          DS_U->reply_to_msg_id,
+          DS_LVAL(DS_U->reply_to_msg_id),
           NULL,
           flags
           );
@@ -1132,7 +1132,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat (struct tl_ds_u
       DS_STDSTR(DS_U->message),
       &A,
       NULL,
-      DS_U->reply_to_msg_id,
+      DS_LVAL(DS_U->reply_to_msg_id),
       NULL,
       flags
       );
@@ -1508,7 +1508,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
       DS_STDSTR(DS_M->message),
       DS_M->media,
       DS_M->action,
-      DS_M->reply_to_msg_id,
+      DS_LVAL(DS_M->reply_to_msg_id),
       DS_M->reply_markup,
       flags
       );
@@ -1915,7 +1915,7 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
                                         tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const std::string& message,
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
-                                        int *reply_id, struct tl_ds_reply_markup *reply_markup, int flags, bool invoke_callback)
+                                        int reply_id, struct tl_ds_reply_markup *reply_markup, int flags, bool invoke_callback)
 {
     std::shared_ptr<tgl_message> M = tglm_message_alloc(id);
 
@@ -1955,7 +1955,7 @@ std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_
     }
 
     if (reply_id) {
-        M->reply_id = DS_LVAL (reply_id);
+        M->reply_id = reply_id;
     }
 
     if (reply_markup) {
