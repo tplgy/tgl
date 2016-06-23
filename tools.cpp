@@ -42,11 +42,13 @@
 #ifdef __MACH__
 #include <mach/clock.h>
 #include <mach/mach.h>
-#endif
 
-#ifdef __MACH__
+#ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
+#endif
+#ifndef CLOCK_MONOTONIC
 #define CLOCK_MONOTONIC 1
+#endif
 #endif
 
 #ifdef VALGRIND_FIXES
