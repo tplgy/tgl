@@ -249,7 +249,13 @@ public:
     {
         tl_ds_messages_sent_encrypted_message* DS_MSEM = static_cast<tl_ds_messages_sent_encrypted_message*>(D);
 
-        tglm_edit_encr_message(m_message, nullptr, nullptr, DS_MSEM->date, std::string(), nullptr, nullptr, DS_MSEM->file, m_message->flags & (~TGLMF_PENDING));
+        m_message->flags = m_message->flags & (~TGLMF_PENDING);
+        if (DS_MSEM->date) {
+            m_message->date = *DS_MSEM->date;
+        }
+        if(DS_MSEM->file) {
+            tglf_fetch_encrypted_message_file(m_message->media, DS_MSEM->file);
+        }
         tgl_state::instance()->callback()->new_messages({m_message});
 
         if (m_callback) {
@@ -270,9 +276,9 @@ public:
         }
 
         if (m_message) {
-            //bl_do_message_delete (&M->permanent_id);
-            // FIXME: is this correct?
-            tgl_state::instance()->callback()->message_deleted(m_message->permanent_id.id);
+            m_message->flags &= (~TGLMF_PENDING);
+            m_message->flags |= (TGLMF_SEND_FAILED);
+            tgl_state::instance()->callback()->new_messages({m_message});
         }
         return 0;
     }
@@ -573,9 +579,9 @@ void tgl_download_manager::send_encrypted_file_end(const std::shared_ptr<send_fi
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 
     int date = time(NULL);
-    std::shared_ptr<tgl_message> message = tglm_create_encr_message(&f->message_id,
-        &from_id,
-        &f->to_id,
+    std::shared_ptr<tgl_message> message = tglm_create_encr_message(f->message_id,
+        from_id,
+        f->to_id,
         &date,
         std::string(),
         DS_DMM,

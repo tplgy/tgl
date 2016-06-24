@@ -242,9 +242,9 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
   struct tgl_message_id msg_id = tgl_peer_id_to_random_msg_id(secret_chat->id);
   
   tgl_peer_id_t from_id = tgl_state::instance()->our_id();
-  std::shared_ptr<tgl_message> M = tglm_create_encr_message(&msg_id,
-      &from_id,
-      &secret_chat->id,
+  std::shared_ptr<tgl_message> M = tglm_create_encr_message(msg_id,
+      from_id,
+      secret_chat->id,
       &date,
       std::string(),
       NULL,
@@ -542,9 +542,9 @@ void tgl_do_send_location_encr(const tgl_peer_id_t& id, double latitude, double 
   assert(secret_chat);
   
   struct tgl_message_id msg_id = tgl_peer_id_to_random_msg_id (id);;
-  std::shared_ptr<tgl_message> M = tglm_create_encr_message(&msg_id,
-      &from_id,
-      &id,
+  std::shared_ptr<tgl_message> M = tglm_create_encr_message(msg_id,
+      from_id,
+      id,
       &date,
       std::string(),
       &TDSM,

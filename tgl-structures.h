@@ -28,15 +28,15 @@
 
 void tgls_free_bot_info (struct tgl_bot_info *B);
 
-std::shared_ptr<tgl_message> tglm_message_create(tgl_message_id_t *id, tgl_peer_id_t *from_id,
-                                        tgl_peer_id_t *to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
+std::shared_ptr<tgl_message> tglm_message_create(const tgl_message_id_t& id, const tgl_peer_id_t& from_id,
+                                        const tgl_peer_id_t& to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const std::string& message,
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
-                                        int reply_id, struct tl_ds_reply_markup *reply_markup, int flags, bool invoke_callback = true);
+                                        int reply_id, struct tl_ds_reply_markup *reply_markup, int flags);
 
-std::shared_ptr<tgl_message> tglm_create_encr_message(const tgl_message_id* id,
-        const tgl_peer_id_t* from_id,
-        const tgl_peer_id_t* to_id,
+std::shared_ptr<tgl_message> tglm_create_encr_message(const tgl_message_id& id,
+        const tgl_peer_id_t& from_id,
+        const tgl_peer_id_t& to_id,
         const int* date,
         const std::string& message,
         const tl_ds_decrypted_message_media* media,
@@ -44,48 +44,22 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(const tgl_message_id* id,
         const tl_ds_encrypted_file* file,
         int flags);
 
-void tglm_edit_encr_message(const std::shared_ptr<tgl_message>& m,
-        const tgl_peer_id_t* from_id,
-        const tgl_peer_id_t* to_id,
-        const int* date,
-        const std::string& message,
-        const tl_ds_decrypted_message_media* media,
-        const tl_ds_decrypted_message_action* action,
-        const tl_ds_encrypted_file* file,
-        int flags);
+//void tglm_edit_encr_message(const std::shared_ptr<tgl_message>& m,
+//        const tgl_peer_id_t& from_id,
+//        const tgl_peer_id_t& to_id,
+//        const int* date,
+//        const std::string& message,
+//        const tl_ds_decrypted_message_media* media,
+//        const tl_ds_decrypted_message_action* action,
+//        const tl_ds_encrypted_file* file,
+//        int flags);
 
 std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_encrypted_message*);
 void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& secret_message);
 
-std::shared_ptr<tgl_message> tglm_message_alloc(const tgl_message_id_t* id);
+std::shared_ptr<tgl_message> tglm_message_alloc(const tgl_message_id_t& id);
 
-//void tglm_message_insert_tree (struct tgl_message *M);
-void tglm_update_message_id (struct tgl_message *M, long long id);
-#if 0
-void tglm_message_insert (struct tgl_message *M);
-void tglm_message_insert_unsent (struct tgl_message *M);
-void tglm_message_remove_unsent (struct tgl_message *M);
-#endif
 void tglm_send_all_unsent ();
-#if 0
-void tglm_message_remove_tree (struct tgl_message *M);
-void tglm_message_add_peer (struct tgl_message *M);
-void tglm_message_del_peer (struct tgl_message *M);
-void tglm_message_del_temp_id (struct tgl_message *M);
-void tglm_message_del_random_id (struct tgl_message *M);
-#endif
-
-//enum tgl_typing_status tglf_fetch_typing_buf (void);
-//void tgls_messages_mark_read (struct tgl_message *M, int out, int seq);
-
-//void tgls_insert_random2local (long long random_id, tgl_message_id_t *local_id);
-//void tgls_insert_temp2local (int temp_id, tgl_message_id_t *local_id);
-tgl_message_id_t *tgls_get_local_by_random (long long random_id);
-tgl_message_id_t *tgls_get_local_by_temp (int temp_id);
-
-
-void tgls_message_change_temp_id (struct tgl_message *M, int temp_id);
-void tgls_message_change_random_id (struct tgl_message *M, long long random_id);
 
 static inline tgl_peer_id_t tgl_msg_id_to_peer_id (tgl_message_id_t msg_id) {
   tgl_peer_id_t id;

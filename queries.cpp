@@ -1153,7 +1153,7 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsign
 //    }
 
 
-    M = tglm_message_create (&id, &from_id, &peer_id, NULL, NULL, &date, text, &TDSM, NULL, reply_id,
+    M = tglm_message_create (id, from_id, peer_id, NULL, NULL, &date, text, &TDSM, NULL, reply_id,
         reply_markup, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_TEMP_MSG_ID);
     tgl_state::instance()->callback()->new_messages({M});
 
@@ -1168,7 +1168,7 @@ void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsign
 
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 
-    M = tglm_create_encr_message(&id, &from_id, &peer_id, &date, text, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
+    M = tglm_create_encr_message(id, from_id, peer_id, &date, text, &TDSM, NULL, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
     tgl_state::instance()->callback()->new_messages({M});
   }
 
@@ -1266,9 +1266,6 @@ void tgl_do_mark_read (tgl_peer_id_t id, std::function<void(bool success)> callb
 /* }}} */
 
 /* {{{ Get history */
-static void _tgl_do_get_history(const tgl_peer_id_t& id, int limit, int offset, int max_id,
-        const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& list)>& callback);
-
 class query_get_history: public query
 {
 public:
@@ -1322,7 +1319,7 @@ public:
 //        } else {
 //            /*m_offset = 0;
 //            m_max_id = m_messages[m_messages.size()-1]->permanent_id.id;
-//            _tgl_do_get_history (m_id, m_limit, m_offset, m_max_id,
+//            _tgl_do_get_history (m_id, m_offset, m_limit, m_max_id,
 //                    m_callback);*/
 //        }
     }
@@ -1344,10 +1341,11 @@ private:
     std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)> m_callback;
 };
 
-static void _tgl_do_get_history(const tgl_peer_id_t& id, int limit, int offset, int max_id,
+void tgl_do_get_history(const tgl_peer_id_t& id, int offset, int limit,
         const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>& list)>& callback) {
   //tgl_peer_t *C = tgl_peer_get (id);
-  auto q = std::make_shared<query_get_history>(id, limit, offset, max_id, callback);
+  assert(id.peer_type != tgl_peer_type::enc_chat);
+  auto q = std::make_shared<query_get_history>(id, limit, offset, 0/*max_id*/, callback);
   if (id.peer_type != tgl_peer_type::channel) {// || (C && (C->flags & TGLCHF_MEGAGROUP))) {
     q->out_i32 (CODE_messages_get_history);
     q->out_peer_id (id);
@@ -1360,21 +1358,11 @@ static void _tgl_do_get_history(const tgl_peer_id_t& id, int limit, int offset, 
   q->out_i32 (0);
   q->out_i32 (offset);
   q->out_i32 (limit);
-  q->out_i32 (max_id);
+  q->out_i32 (0/*max_id*/);
   q->out_i32 (0);
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_get_history (tgl_peer_id_t id, int offset, int limit,
-    std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& list)> callback) {
-  if (id.peer_type == tgl_peer_type::enc_chat) {
-    // FIXME
-    //tgl_do_get_local_history (id, offset, limit, callback, callback_extra);
-    //tgl_do_mark_read (id, 0, 0);
-    return;
-  }
-  _tgl_do_get_history(id, limit, offset, 0, callback);
-}
 /* }}} */
 
 /* {{{ Get dialogs */
@@ -3483,7 +3471,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_send_typing (tgl_peer_id_t id, enum tgl_typing_status status, std::function<void(bool success)> callback) {
+void tgl_do_send_typing (const tgl_peer_id_t& id, enum tgl_typing_status status, std::function<void(bool success)> callback) {
     if (id.peer_type != tgl_peer_type::enc_chat) {
         auto q = std::make_shared<query_send_typing>(callback);
         q->out_i32 (CODE_messages_set_typing);
@@ -4130,7 +4118,7 @@ void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const std::string&
     struct tl_ds_message_media TDSM;
     TDSM.magic = CODE_message_media_empty;
 
-    auto msg = tglm_message_create (&id, &from_id, &peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, 0, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
+    auto msg = tglm_message_create (id, from_id, peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, 0, NULL, TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
     tgl_state::instance()->callback()->new_messages({msg});
   }
 

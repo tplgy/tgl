@@ -8,4 +8,5 @@ bin/
 objs/
 dep/
 libs/
+.DS_Store
 .*.swp
