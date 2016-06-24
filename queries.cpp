@@ -2843,7 +2843,7 @@ public:
         int qts = DS_LVAL(DS_US->qts);
         int seq = DS_LVAL(DS_US->seq);
         if (pts > tgl_state::instance()->pts() || qts > tgl_state::instance()->qts() || seq > tgl_state::instance()->seq()) {
-            tgl_do_get_difference (0, 0);
+            tgl_do_get_difference(false, nullptr);
         }
     }
 
@@ -2949,7 +2949,7 @@ public:
                 tgl_state::instance()->set_pts(DS_LVAL (DS_UD->intermediate_state->pts));
                 tgl_state::instance()->set_qts(DS_LVAL (DS_UD->intermediate_state->qts));
                 tgl_state::instance()->set_date(DS_LVAL (DS_UD->intermediate_state->date));
-                tgl_do_get_difference (0, m_callback);
+                tgl_do_get_difference(false, m_callback);
             }
         }
     }
@@ -2977,7 +2977,7 @@ void tgl_do_lookup_state () {
     q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_get_difference(int sync_from_start, const std::function<void(bool success)>& callback) {
+void tgl_do_get_difference(bool sync_from_start, const std::function<void(bool success)>& callback) {
   if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
     if (callback) {
       callback(0);
@@ -4482,7 +4482,7 @@ void tgl_signed_in() {
   tgl_export_all_auth();
   tglm_send_all_unsent();
   tgl_started_cb(true);
-  //tgl_do_get_difference (0, tgl_started_cb);
+  //tgl_do_get_difference(false, tgl_started_cb);
 }
 
 struct sign_up_extra {

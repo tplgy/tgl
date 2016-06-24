@@ -34,7 +34,7 @@ void tgl_do_check_password (std::function<void(bool success)> callback);
 
 void tgl_do_export_auth (int num, std::function<void(bool success)> callback);
 
-void tgl_do_get_difference(int sync_from_start, const std::function<void(bool success)>& callback);
+void tgl_do_get_difference(bool sync_from_start, const std::function<void(bool success)>& callback);
 
 void tgl_do_get_channel_difference(int id, const std::function<void(bool success)>& callback);
 

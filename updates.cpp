@@ -53,7 +53,7 @@ int tgl_check_pts_diff (int pts, int pts_count) {
     }
     if (pts > tgl_state::instance()->pts() + pts_count) {
         TGL_NOTICE("Hole in pts: pts = "<< pts <<", count = "<< pts_count <<", cur_pts = "<< tgl_state::instance()->pts());
-        tgl_do_get_difference(0, 0);
+        tgl_do_get_difference(false, nullptr);
         return -1;
     }
     if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
@@ -67,16 +67,16 @@ int tgl_check_pts_diff (int pts, int pts_count) {
 int tgl_check_qts_diff (int qts, int qts_count) {
     TGL_NOTICE("qts = " << qts << ", qts_count = " << qts_count);
     if (qts < tgl_state::instance()->qts() + qts_count) {
-        TGL_NOTICE("Duplicate message with qts=" << qts);
+        TGL_NOTICE("Duplicate message (qts = " << qts << ", count = " << qts_count << ", cur_qts = " << tgl_state::instance()->qts() << ")");
         return -1;
     }
     if (qts > tgl_state::instance()->qts() + qts_count) {
         TGL_NOTICE("Hole in qts (qts = " << qts << ", count = " << qts_count << ", cur_qts = " << tgl_state::instance()->qts() << ")");
-        tgl_do_get_difference (0, 0);
+        tgl_do_get_difference(false, nullptr);
         return -1;
     }
     if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
-        TGL_DEBUG("Update during get_difference. qts = " << qts);
+        TGL_NOTICE("Update during get_difference. qts = " << qts);
         return -1;
     }
     TGL_DEBUG("Ok update. qts = " << qts);
@@ -122,7 +122,7 @@ static int do_skip_seq (int seq) {
         if (seq > tgl_state::instance()->seq() + 1) {
             TGL_NOTICE("Hole in seq (seq = " << seq <<", cur_seq = " << tgl_state::instance()->seq() << ")");
             //vlogprintf (E_NOTICE, "lock_diff = %s", (TLS->locks & TGL_LOCK_DIFF) ? "true" : "false");
-            tgl_do_get_difference (0, 0);
+            tgl_do_get_difference(false, nullptr);
             return -1;
         }
         if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
@@ -620,7 +620,7 @@ void tglu_work_updates_too_long (int check_only, struct tl_ds_updates *DS_U) {
   }
   TGL_NOTICE("updates too long... Getting difference");
   if (check_only) { return; }
-  tgl_do_get_difference (0, 0);
+  tgl_do_get_difference(false, nullptr);
 }
 
 void tglu_work_update_short (int check_only, struct tl_ds_updates *DS_U) {
