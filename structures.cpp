@@ -462,21 +462,6 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C, bool i
     deactivated |= TGLCF_DEACTIVATED;
   }
 
-#if 0
-  bl_do_chat (tgl_get_peer_id (C->id),
-    DS_STR (DS_C->title),
-    DS_C->participants_count, 
-    DS_C->date,
-    NULL,
-    NULL,
-    DS_C->photo,
-    NULL,
-    NULL,
-    NULL, NULL,
-    flags
-  );
-#endif
-
   C->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
   C->photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
 
@@ -545,22 +530,6 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
   tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_CF->id));
   std::shared_ptr<tgl_chat> C = std::make_shared<tgl_chat>();
   C->id = chat_id;
-
-#if 0
-  bl_do_chat (tgl_get_peer_id (C->id),
-      NULL, 0,
-      NULL, 
-      NULL,
-      DS_CF->participants->version,
-      (struct tl_ds_vector *)DS_CF->participants->participants,
-      NULL,
-      DS_CF->chat_photo,
-      NULL,
-      //DS_CF->participants->admin_id,
-      NULL, NULL,
-      C->flags & 0xffff
-      );
-#endif
 
   if (DS_CF->chat_photo && DS_CF->chat_photo->sizes && *DS_CF->chat_photo->sizes->cnt > 1) {
     C->photo_big = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[1]->location);

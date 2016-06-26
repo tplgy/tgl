@@ -83,8 +83,7 @@ void tgl_do_export_card(const std::function<void(bool success, const std::vector
 void tgl_do_rename_chat (int id, const char *new_title, int new_title_len, std::function<void(bool success)> callback);
 
 // requests full info about chat *id*.
-// if *offline_mode* is set no actual query is sent
-void tgl_do_get_chat_info (int id, int offline_mode, std::function<void(bool success, const std::shared_ptr<tgl_chat>& C)> callback);
+void tgl_do_get_chat_info (int id, std::function<void(bool success, const std::shared_ptr<tgl_chat>& C)> callback);
 
 // adds user *id* to chat *chat_id*
 // sends *limit* last messages from this chat to user

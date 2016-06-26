@@ -2319,23 +2319,7 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_chat>&)> m_callback;
 };
 
-void tgl_do_get_chat_info (int id, int offline_mode, std::function<void(bool success, const std::shared_ptr<tgl_chat>& C)> callback) {
-  if (offline_mode) {
-#if 0
-    tgl_peer_t *C = tgl_peer_get (id);
-    if (!C) {
-      tgl_set_query_error (EINVAL, "unknown chat id");
-      if (callback) {
-        callback(0, 0);
-      }
-    } else {
-      if (callback) {
-        callback(1, &C->chat);
-      }
-    }
-#endif
-    return;
-  }
+void tgl_do_get_chat_info (int id, std::function<void(bool success, const std::shared_ptr<tgl_chat>& C)> callback) {
   auto q = std::make_shared<query_chat_info>(callback);
   q->out_i32 (CODE_messages_get_full_chat);
   q->out_i32 (id);
