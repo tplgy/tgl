@@ -2648,6 +2648,14 @@ private:
 
 void tgl_do_delete_contact(const tgl_peer_id_t& id, const std::function<void(bool success)>& callback)
 {
+    if (id.peer_type != tgl_peer_type::user) {
+        TGL_ERROR("the peer id user be user id");
+        if (callback) {
+            callback(false);
+        }
+        return;
+    }
+
     auto q = std::make_shared<query_delete_contact>(id.peer_id, callback);
     q->out_i32(CODE_contacts_delete_contact);
     q->out_i32(CODE_input_user);
