@@ -204,25 +204,6 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool in
     flags &= ~TGLUF_OFFICIAL;
   }
 
-  if (!(flags & TGLUF_CREATED)) {
-      flags |= TGLUF_CREATE | TGLUF_CREATED;
-  }
-
-#if 0
-  bl_do_user (tgl_get_peer_id (user->id),
-    DS_U->access_hash,
-    DS_STR (DS_U->first_name), 
-    DS_STR (DS_U->last_name), 
-    DS_STR (DS_U->phone),
-    DS_STR (DS_U->username),
-    NULL,
-    DS_U->photo,
-    NULL, NULL,
-    NULL,
-    flags
-  );
-#endif
-
   if (DS_LVAL (DS_U->flags) & (1 << 13)) {
     tgl_state::instance()->callback()->user_deleted(user_id.peer_id);
     return user;

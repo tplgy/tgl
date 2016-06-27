@@ -1343,7 +1343,6 @@ private:
 
 void tgl_do_get_history(const tgl_peer_id_t& id, int offset, int limit,
         const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>& list)>& callback) {
-  //tgl_peer_t *C = tgl_peer_get (id);
   assert(id.peer_type != tgl_peer_type::enc_chat);
   auto q = std::make_shared<query_get_history>(id, limit, offset, 0/*max_id*/, callback);
   if (id.peer_type != tgl_peer_type::channel) {// || (C && (C->flags & TGLCHF_MEGAGROUP))) {
