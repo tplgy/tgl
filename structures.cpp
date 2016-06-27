@@ -425,7 +425,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C, bool i
     return nullptr;
   }
   if (DS_C->magic == CODE_channel || DS_C->magic == CODE_channel_forbidden) {
-    return tglf_fetch_alloc_channel(DS_C, false);
+    return tglf_fetch_alloc_channel(DS_C, invoke_callback);
   }
   tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_C->id));
   chat_id.access_hash = 0; // chats don't have access hash
