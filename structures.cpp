@@ -183,10 +183,12 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool in
     flags &= ~TGLUF_MUTUAL_CONTACT;
   }
   
-  bool is_bot = false;
   if (DS_LVAL (DS_U->flags) & (1 << 14)) {
-    is_bot = true;
+    flags |= TGLUF_BOT;
+  } else {
+    flags &= ~TGLUF_BOT;
   }
+
   /*
   if (DS_LVAL (DS_U->flags) & (1 << 15)) {
     flags |= TGLUF_BOT_FULL_ACCESS;
@@ -237,7 +239,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool in
     tgl_user_status status = tglf_fetch_user_status(DS_U->status);
     if (invoke_callback) {
         tgl_state::instance()->callback()->new_user(user_id.peer_id, phone, firstname, lastname, username,
-            DS_U->access_hash ? * DS_U->access_hash : 0, status, is_bot);
+            DS_U->access_hash ? * DS_U->access_hash : 0, status, flags);
     }
 
     free(firstname);
