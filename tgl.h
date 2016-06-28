@@ -25,6 +25,7 @@
 #include "tgl-dc.h"
 #include "tgl-layout.h"
 #include "tgl-log.h"
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
@@ -75,12 +76,12 @@ enum tgl_value_type {
     tgl_bot_hash
 };
 
-enum tgl_user_update_type {
-    tgl_update_firstname = 0,
-    tgl_update_last_name,
-    tgl_update_username,
-    tgl_update_phone,
-    tgl_update_blocked
+enum class tgl_user_update_type: int8_t {
+    firstname = 0,
+    lastname,
+    username,
+    phone,
+    blocked
 };
 
 enum tgl_user_status_type {

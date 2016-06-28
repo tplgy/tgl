@@ -234,17 +234,11 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
   case CODE_update_user_name:
     {
       tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
-      DS_CSTR (firstname, DS_U->first_name);
-      DS_CSTR (lastname, DS_U->last_name);
-      DS_CSTR (username, DS_U->username);
-
-      //TODO make that one call with a map or vector of changes
-      tgl_state::instance()->callback()->user_update(user_id.peer_id, username, tgl_update_username);
-      tgl_state::instance()->callback()->user_update(user_id.peer_id, username, tgl_update_firstname);
-      tgl_state::instance()->callback()->user_update(user_id.peer_id, username, tgl_update_last_name);
-      free(firstname);
-      free(lastname);
-      free(username);
+      std::map<tgl_user_update_type, std::string> updates;
+      updates.emplace(tgl_user_update_type::username, DS_STDSTR(DS_U->username));
+      updates.emplace(tgl_user_update_type::firstname, DS_STDSTR(DS_U->first_name));
+      updates.emplace(tgl_user_update_type::lastname, DS_STDSTR(DS_U->last_name));
+      tgl_state::instance()->callback()->user_update(user_id.peer_id, updates);
       break;
     }
   case CODE_update_user_photo:
@@ -377,8 +371,9 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
       int blocked = DS_BVAL (DS_U->blocked);
       tgl_peer_id_t peer_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
 
-      //bl_do_user (tgl_get_peer_id (peer_id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, flags);
-      tgl_state::instance()->callback()->user_update(peer_id.peer_id, &blocked, tgl_update_blocked);
+      std::map<tgl_user_update_type, std::string> updates;
+      updates.emplace(tgl_user_update_type::blocked, blocked ? "Yes" : "No");
+      tgl_state::instance()->callback()->user_update(peer_id.peer_id, updates);
     }
     break;
   case CODE_update_notify_settings:
@@ -397,9 +392,9 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
   case CODE_update_user_phone:
     {
       tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
-      //bl_do_user (user_id.peer_id, NULL, NULL, 0, NULL, 0, DS_STR (DS_U->phone), NULL, 0, NULL, NULL, NULL, NULL, NULL, TGL_FLAGS_UNCHANGED);
-      DS_CSTR (phone, DS_U->phone);
-      tgl_state::instance()->callback()->user_update(user_id.peer_id, phone, tgl_update_phone);
+      std::map<tgl_user_update_type, std::string> updates;
+      updates.emplace(tgl_user_update_type::phone, DS_STDSTR(DS_U->phone));
+      tgl_state::instance()->callback()->user_update(user_id.peer_id, updates);
     }
     break;
   case CODE_update_read_history_inbox:
