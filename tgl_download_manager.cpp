@@ -453,6 +453,8 @@ void tgl_download_manager::send_unencrypted_file_end(const std::shared_ptr<send_
             q->out_i32(2);
             q->out_i32(CODE_document_attribute_audio);
             q->out_i32(f->duration);
+            q->out_std_string("");
+            q->out_std_string("");
             q->out_i32(CODE_document_attribute_filename);
             q->out_std_string(file_name);
         } else if (f->flags & TGLDF_VIDEO) {
