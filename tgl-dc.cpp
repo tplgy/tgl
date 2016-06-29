@@ -38,7 +38,7 @@ void tgl_session::clear()
     received_messages = 0;
     c->close();
     c = nullptr;
-    ack_tree.clear();
+    ack_set.clear();
     ev->cancel();
     ev = nullptr;
 }

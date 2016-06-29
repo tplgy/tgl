@@ -50,7 +50,7 @@ void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC);
 std::shared_ptr<tgl_dc> tglmp_alloc_dc(int flags, int id, const std::string &ip, int port);
 void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& D);
 
-void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& S, long long id);
+void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& s, int64_t id);
 int tglmp_on_start();
 void tgl_dc_authorize(const std::shared_ptr<tgl_dc>& DC);
 void tgls_free_pubkey();

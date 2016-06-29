@@ -24,6 +24,7 @@
 #include <array>
 #include <list>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 #include "types/tgl_peer_id.h"
@@ -60,7 +61,7 @@ struct tgl_session {
     int seq_no;
     int received_messages;
     std::shared_ptr<tgl_connection> c;
-    std::vector<long> ack_tree;
+    std::set<int64_t> ack_set;
     std::shared_ptr<tgl_timer> ev;
     tgl_session()
         : dc()
@@ -69,7 +70,7 @@ struct tgl_session {
         , seq_no(0)
         , received_messages(0)
         , c()
-        , ack_tree()
+        , ack_set()
         , ev()
     { }
 

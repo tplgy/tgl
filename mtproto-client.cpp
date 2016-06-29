@@ -1435,18 +1435,18 @@ void tgl_dc_authorize(const std::shared_ptr<tgl_dc>& DC) {
   //net_loop (0, auth_ok);
 }
 
-static int send_all_acks(const std::shared_ptr<tgl_session>& S) {
-  mtprotocol_serializer s;
-  s.out_i32 (CODE_msgs_ack);
-  s.out_i32 (CODE_vector);
-  s.out_i32 (S->ack_tree.size());
-  while (S->ack_tree.begin() != S->ack_tree.end()) {
-    auto it = std::min_element(std::begin(S->ack_tree), std::end(S->ack_tree));
-    s.out_i64 (*it);
-    S->ack_tree.erase(it);
-  }
-  tglmp_encrypt_send_message (S->c, s.i32_data(), s.i32_size());
-  return 0;
+static int send_all_acks(const std::shared_ptr<tgl_session>& session)
+{
+    mtprotocol_serializer s;
+    s.out_i32(CODE_msgs_ack);
+    s.out_i32(CODE_vector);
+    s.out_i32(session->ack_set.size());
+    for (int64_t id: session->ack_set) {
+        s.out_i64(id);
+    }
+    session->ack_set.clear();
+    tglmp_encrypt_send_message (session->c, s.i32_data(), s.i32_size());
+    return 0;
 }
 
 static void send_all_acks_gateway (std::shared_ptr<tgl_session> session) {
@@ -1454,16 +1454,12 @@ static void send_all_acks_gateway (std::shared_ptr<tgl_session> session) {
 }
 
 
-void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& S, long long id) {
-  if (S->ack_tree.empty()) {
-    S->ev->start(ACK_TIMEOUT);
-  }
-  for (auto it = S->ack_tree.begin(); it!=S->ack_tree.end(); it++) {
-    if (*it == id) {
-      return;
+void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& s, int64_t id)
+{
+    if (s->ack_set.empty()) {
+        s->ev->start(ACK_TIMEOUT);
     }
-  }
-  S->ack_tree.push_back(id);
+    s->ack_set.insert(id);
 }
 
 //extern struct tgl_dc *DC_list[];
@@ -1536,7 +1532,7 @@ void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& DC) {
   S->seq_no = 0;
 
   S->ev->cancel();
-  S->ack_tree.clear();
+  S->ack_set.clear();
 
   if (DC->state != st_authorized) {
     return;
