@@ -1093,7 +1093,6 @@ static int rpc_execute_answer (const std::shared_ptr<tgl_connection>& c, tgl_in_
   return 0;
 }
 
-void tgls_free_session(std::shared_ptr<tgl_session> S);
 /*
 static char *get_ipv6 (int num) {
   static char res[1<< 10];
@@ -1178,18 +1177,18 @@ static void fail_connection (const std::shared_ptr<tgl_connection>& c) {
     create_session_connect(S);
 }
 
-static void fail_session(std::shared_ptr<tgl_session> S) {
-  TGL_NOTICE("failing session " << S->session_id);
-  std::shared_ptr<tgl_dc> DC = S->dc.lock();
-  tgls_free_session(S);
+static void fail_session(const std::shared_ptr<tgl_session>& s) {
+    TGL_NOTICE("failing session " << s->session_id);
+    std::shared_ptr<tgl_dc> dc = s->dc.lock();
+    s->clear();
 
-  if (!DC) {
-    TGL_WARNING("no dc found for session");
-    return;
-  }
+    if (!dc) {
+      TGL_WARNING("no dc found for session");
+      return;
+    }
 
-  DC->sessions[0] = NULL;
-  tglmp_dc_create_session(DC);
+    dc->session = NULL;
+    tglmp_dc_create_session(dc);
 }
 
 static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct encrypted_message *enc, int len) {
@@ -1429,7 +1428,7 @@ int tglmp_on_start () {
 
 void tgl_dc_authorize(const std::shared_ptr<tgl_dc>& DC) {
   //c_state = 0;
-  if (!DC->sessions[0]) {
+  if (!DC->session) {
     tglmp_dc_create_session (DC);
   }
   TGL_DEBUG("Starting authorization for DC #" << DC->id);
@@ -1496,8 +1495,8 @@ void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC) {
 
   create_session_connect (S);
   S->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&send_all_acks_gateway, S));
-  assert (!DC->sessions[0]);
-  DC->sessions[0] = S;
+  assert (!DC->session);
+  DC->session = S;
 }
 
 void tgl_do_send_ping (const std::shared_ptr<tgl_connection>& c) {
@@ -1527,12 +1526,12 @@ void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& DC) {
   DC->temp_auth_key_id = 0;
   memset (DC->temp_auth_key, 0, 256);
 
-  if (!DC->sessions[0]) {
+  if (!DC->session) {
     tgl_dc_authorize (DC);
     return;
   }
 
-  std::shared_ptr<tgl_session> S = DC->sessions[0];
+  std::shared_ptr<tgl_session> S = DC->session;
   tglt_secure_random ((unsigned char*)&S->session_id, 8);
   S->seq_no = 0;
 
@@ -1552,20 +1551,3 @@ void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& DC) {
   }
 }
 #endif
-
-void tgls_free_session(std::shared_ptr<tgl_session> S) {
-  S->ack_tree.clear();
-  if (S->ev) { S->ev = nullptr; }
-  if (S->c) {
-    S->c->close();
-  }
-}
-
-void tgls_free_dc (std::shared_ptr<tgl_dc> DC) {
-  //if (DC->ip) { tfree_str (DC->ip); }
-
-  std::shared_ptr<tgl_session> S = DC->sessions[0];
-  if (S) { tgls_free_session (S); }
-
-  if (DC->ev) { DC->ev = nullptr; }
-}

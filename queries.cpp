@@ -99,7 +99,7 @@ void query::alarm()
     double timeout = timeout_interval();
     m_timer->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
 
-    if (m_session && m_session_id && m_dc && m_dc->sessions[0] == m_session && m_session->session_id == m_session_id) {
+    if (m_session && m_session_id && m_dc && m_dc->session == m_session && m_session->session_id == m_session_id) {
         mtprotocol_serializer s;
         s.out_i32(CODE_msg_container);
         s.out_i32(1);
@@ -108,10 +108,10 @@ void query::alarm()
         s.out_i32(m_serializer->char_size());
         s.out_i32s(m_serializer->i32_data(), m_serializer->i32_size());
         tglmp_encrypt_send_message(m_session->c, s.i32_data(), s.i32_size(), m_msg_id_override, is_force());
-    } else if (m_dc->sessions[0]) {
+    } else if (m_dc->session) {
         m_ack_received = false;
         tgl_state::instance()->remove_query(shared_from_this());
-        m_session = m_dc->sessions[0];
+        m_session = m_dc->session;
         long long old_id = m_msg_id;
         m_msg_id = tglmp_encrypt_send_message(m_session->c, m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
         TGL_NOTICE("Resent query #" << old_id << " as #" << m_msg_id << " of size " << m_serializer->char_size() << " to DC " << m_dc->id);
@@ -138,7 +138,7 @@ void tglq_regen_query (long long id) {
 void query::regen()
 {
     m_ack_received = false;
-    if (!(m_session && m_session_id && m_dc && m_dc->sessions[0] == m_session && m_session->session_id == m_session_id)) {
+    if (!(m_session && m_session_id && m_dc && m_dc->session == m_session && m_session->session_id == m_session_id)) {
         m_session_id = 0;
     } else {
         auto dc = m_session->dc.lock();
@@ -202,7 +202,7 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
     m_dc = dc;
     assert(m_dc);
     bool pending = false;
-    if (!m_dc->sessions[0]) {
+    if (!m_dc->session) {
         tglmp_dc_create_session(m_dc);
         pending = true;
     }
@@ -226,8 +226,8 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
         m_session_id = 0;
         m_seq_no = 0;
     } else {
-        m_msg_id = tglmp_encrypt_send_message(m_dc->sessions[0]->c, m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
-        m_session = m_dc->sessions[0];
+        m_msg_id = tglmp_encrypt_send_message(m_dc->session->c, m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
+        m_session = m_dc->session;
         m_session_id = m_session->session_id;
         m_seq_no = m_session->seq_no - 1;
         TGL_DEBUG("Sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << ": #" << m_msg_id);
@@ -255,7 +255,7 @@ bool query::execute_after_pending()
 
     double timeout = timeout_interval();
 
-    if (!m_dc->sessions[0]) {
+    if (!m_dc->session) {
         tglmp_dc_create_session(m_dc);
     }
 
@@ -272,7 +272,7 @@ bool query::execute_after_pending()
 
     m_ack_received = false;
     tgl_state::instance()->remove_query(shared_from_this());
-    m_session = m_dc->sessions[0];
+    m_session = m_dc->session;
     m_msg_id = tglmp_encrypt_send_message(m_session->c, m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
     tgl_state::instance()->add_query(shared_from_this());
     m_session_id = m_session->session_id;

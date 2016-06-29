@@ -338,7 +338,6 @@ std::shared_ptr<tgl_dc> tgl_state::allocate_dc(int id)
 
     std::shared_ptr<tgl_dc> dc = std::make_shared<tgl_dc>();
     dc->id = id;
-    dc->sessions[0] = nullptr;
     m_dcs[id] = dc;
 
     return dc;

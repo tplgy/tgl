@@ -29,6 +29,20 @@
 
 static const float SESSION_CLEANUP_TIMEOUT = 5.0;
 
+void tgl_session::clear()
+{
+    dc.reset();
+    session_id = 0;
+    last_msg_id = 0;
+    seq_no = 0;
+    received_messages = 0;
+    c->close();
+    c = nullptr;
+    ack_tree.clear();
+    ev->cancel();
+    ev = nullptr;
+}
+
 tgl_dc::tgl_dc()
     : id(0)
     , flags(0)
@@ -53,15 +67,12 @@ tgl_dc::tgl_dc()
 void tgl_dc::reset()
 {
     TGL_DEBUG("resetting DC " << id);
-    for (size_t i = 0; i < sessions.size(); ++i) {
-        std::shared_ptr<tgl_session> session = sessions[i];
-        if (session) {
-            session->c->close();
-            session->ev->cancel();
-            session->c = nullptr;
-            session->ev = nullptr;
-            sessions[i] = nullptr;
-        }
+    if (session) {
+        session->c->close();
+        session->ev->cancel();
+        session->c = nullptr;
+        session->ev = nullptr;
+        session = nullptr;
     }
     if (temp_auth_key_bind_query_id) {
         tglq_query_delete(temp_auth_key_bind_query_id);
@@ -120,16 +131,13 @@ void tgl_dc::remove_pending_query(std::shared_ptr<query> q) {
 
 void tgl_dc::cleanup_timer_expired() {
     if (active_queries.empty() && pending_queries.empty()) {
-        TGL_DEBUG("cleanup timer expired for DC " << id << ", deleting sessions");
-        for (size_t i = 0; i < sessions.size(); ++i) {
-            std::shared_ptr<tgl_session> session = sessions[i];
-            if (session) {
-                session->c->close();
-                session->ev->cancel();
-                session->c = nullptr;
-                session->ev = nullptr;
-                sessions[i] = nullptr;
-            }
+        TGL_DEBUG("cleanup timer expired for DC " << id << ", deleting session");
+        if (session) {
+            session->c->close();
+            session->ev->cancel();
+            session->c = nullptr;
+            session->ev = nullptr;
+            session = nullptr;
         }
     }
 }

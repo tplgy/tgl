@@ -53,7 +53,6 @@ void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& D);
 void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& S, long long id);
 int tglmp_on_start();
 void tgl_dc_authorize(const std::shared_ptr<tgl_dc>& DC);
-void tgls_free_dc(const std::shared_ptr<tgl_dc>& DC);
 void tgls_free_pubkey();
 void tgl_do_send_ping(const std::shared_ptr<tgl_connection>& c);
 #endif

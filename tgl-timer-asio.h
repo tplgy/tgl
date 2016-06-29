@@ -58,8 +58,10 @@ public:
 
     virtual void cancel() override
     {
-        m_cancelled = true;
-        m_timer.cancel();
+        if (!m_cancelled) {
+            m_cancelled = true;
+            m_timer.cancel();
+        }
     }
 
 private:

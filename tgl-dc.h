@@ -48,32 +48,32 @@ enum tgl_dc_state {
 #define TGLDCF_CONFIGURED 4
 #define TGLDCF_LOGGED_IN 8
 
-#define MAX_DC_SESSIONS 3
-
 struct tgl_dc;
 class tgl_connection;
 class tgl_timer;
 class query;
 
 struct tgl_session {
-  std::weak_ptr<tgl_dc> dc;
-  long long session_id;
-  long long last_msg_id;
-  int seq_no;
-  int received_messages;
-  std::shared_ptr<tgl_connection> c;
-  std::vector<long> ack_tree;
-  std::shared_ptr<tgl_timer> ev;
-  tgl_session()
-      : dc()
-      , session_id(0)
-      , last_msg_id(0)
-      , seq_no(0)
-      , received_messages(0)
-      , c()
-      , ack_tree()
-      , ev()
-  { }
+    std::weak_ptr<tgl_dc> dc;
+    long long session_id;
+    long long last_msg_id;
+    int seq_no;
+    int received_messages;
+    std::shared_ptr<tgl_connection> c;
+    std::vector<long> ack_tree;
+    std::shared_ptr<tgl_timer> ev;
+    tgl_session()
+        : dc()
+        , session_id(0)
+        , last_msg_id(0)
+        , seq_no(0)
+        , received_messages(0)
+        , c()
+        , ack_tree()
+        , ev()
+    { }
+
+    void clear();
 };
 
 struct tgl_dc_option {
@@ -89,7 +89,7 @@ struct tgl_dc {
     int flags;
     int rsa_key_idx;
     enum tgl_dc_state state;
-    std::array<std::shared_ptr<tgl_session>, MAX_DC_SESSIONS> sessions;
+    std::shared_ptr<tgl_session> session;
     unsigned char auth_key[256];
     unsigned char temp_auth_key[256];
     unsigned char nonce[256];
