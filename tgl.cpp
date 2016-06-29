@@ -282,13 +282,9 @@ void tgl_state::add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_c
 void tgl_state::add_query(const std::shared_ptr<query>& q)
 {
     auto id = q->msg_id();
-    if (id == -1) {
-        assert(false);
-    } else if (id == 0) {
-        m_pending_queries.insert(q);
-    } else {
-        m_active_queries[id] = q;
-    }
+    assert(id);
+    m_active_queries[id] = q;
+    q->dc()->increase_active_queries();
 }
 
 std::shared_ptr<query> tgl_state::get_query(long long id)
@@ -304,18 +300,13 @@ std::shared_ptr<query> tgl_state::get_query(long long id)
 void tgl_state::remove_query(const std::shared_ptr<query>& q)
 {
     auto id = q->msg_id();
-    if (id == -1) {
-        assert(false);
-    } else if (id == 0) {
-        m_pending_queries.erase(q);
-    } else {
-        m_active_queries.erase(id);
-    }
+    assert(id);
+    m_active_queries.erase(id);
+    q->dc()->decrease_active_queries();
 }
 
 void tgl_state::remove_all_queries()
 {
-    m_pending_queries.clear();
     m_active_queries.clear();
 }
 

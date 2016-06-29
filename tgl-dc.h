@@ -110,19 +110,19 @@ struct tgl_dc {
     // ipv4, ipv6, ipv4_media, ipv6_media
     std::array<tgl_dc_option, 4> options;
 
-    void add_query(std::shared_ptr<query> q);
-    void remove_query(std::shared_ptr<query> q);
+    void increase_active_queries(size_t num = 1);
+    void decrease_active_queries(size_t num = 1);
 
-    void add_pending_query(std::shared_ptr<query> q);
-    void remove_pending_query(std::shared_ptr<query> q);
+    void add_pending_query(const std::shared_ptr<query>& q);
+    void remove_pending_query(const std::shared_ptr<query>& q);
     void send_pending_queries();
 
 private:
-    std::list<std::shared_ptr<query>> active_queries;
-    std::list<std::shared_ptr<query>> pending_queries;
+    size_t m_active_queries;
+    std::list<std::shared_ptr<query>> m_pending_queries;
 
     void cleanup_timer_expired();
-    std::shared_ptr<tgl_timer> session_cleanup_timer;
+    std::shared_ptr<tgl_timer> m_session_cleanup_timer;
 };
 
 #pragma pack(pop)

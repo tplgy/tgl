@@ -206,7 +206,6 @@ private:
   std::vector<std::unique_ptr<tgl_rsa_key>> m_rsa_key_list;
   std::map<int/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
   std::map<long long/*msg_id*/, std::shared_ptr<query>> m_active_queries;
-  std::set<std::shared_ptr<query>> m_pending_queries; /*msg_id of the query must be 0*/
 
   tgl_state();
 

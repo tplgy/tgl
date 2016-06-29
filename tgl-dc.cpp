@@ -55,7 +55,7 @@ tgl_dc::tgl_dc()
     , server_time_delta(0)
     , server_time_udelta(0)
     , auth_transfer_in_process(false)
-    , session_cleanup_timer(tgl_state::instance()->timer_factory()->create_timer(std::bind(&tgl_dc::cleanup_timer_expired, this)))
+    , m_session_cleanup_timer(tgl_state::instance()->timer_factory()->create_timer(std::bind(&tgl_dc::cleanup_timer_expired, this)))
 {
     memset(auth_key, 0, 256);
     memset(temp_auth_key, 0, 256);
@@ -89,48 +89,58 @@ void tgl_dc::reset()
     auth_key_id = 0;
     temp_auth_key_id = 0;
     server_salt = 0;
-    if (!pending_queries.empty()) {
+    if (!m_pending_queries.empty()) {
         send_pending_queries();
     }
 }
 
-void tgl_dc::send_pending_queries() {
+void tgl_dc::send_pending_queries()
+{
     TGL_NOTICE("sending pending queries for DC " << id);
-    std::list<std::shared_ptr<query>> queries = pending_queries; // make a copy since queries can get re-enqueued
+    std::list<std::shared_ptr<query>> queries = m_pending_queries; // make a copy since queries can get re-enqueued
     for (std::shared_ptr<query> q : queries) {
         if (q->execute_after_pending()) {
-            pending_queries.remove(q);
+            m_pending_queries.remove(q);
         } else {
             TGL_DEBUG("sending pending query failed for DC " << id);
         }
     }
 }
 
-void tgl_dc::add_query(std::shared_ptr<query> q) {
-    active_queries.push_back(q);
-    session_cleanup_timer->cancel();
+void tgl_dc::increase_active_queries(size_t num)
+{
+    m_active_queries += num;
+    m_session_cleanup_timer->cancel();
 }
 
-void tgl_dc::remove_query(std::shared_ptr<query> q) {
-    active_queries.remove(q);
+void tgl_dc::decrease_active_queries(size_t num)
+{
+    if (m_active_queries >= num) {
+        m_active_queries -= num;
+    } else {
+        assert(false);
+    }
 
-    if (active_queries.empty() && pending_queries.empty() && tgl_state::instance()->working_dc().get() != this) {
-        session_cleanup_timer->start(SESSION_CLEANUP_TIMEOUT);
+    if (!m_active_queries && m_pending_queries.empty() && tgl_state::instance()->working_dc().get() != this) {
+        m_session_cleanup_timer->start(SESSION_CLEANUP_TIMEOUT);
     }
 }
 
-void tgl_dc::add_pending_query(std::shared_ptr<query> q) {
-    if (std::find(pending_queries.cbegin(), pending_queries.cend(), q) == pending_queries.cend()) {
-        pending_queries.push_back(q);
+void tgl_dc::add_pending_query(const std::shared_ptr<query>& q)
+{
+    if (std::find(m_pending_queries.cbegin(), m_pending_queries.cend(), q) == m_pending_queries.cend()) {
+        m_pending_queries.push_back(q);
     }
 }
 
-void tgl_dc::remove_pending_query(std::shared_ptr<query> q) {
-    pending_queries.remove(q);
+void tgl_dc::remove_pending_query(const std::shared_ptr<query>& q)
+{
+    m_pending_queries.remove(q);
 }
 
-void tgl_dc::cleanup_timer_expired() {
-    if (active_queries.empty() && pending_queries.empty()) {
+void tgl_dc::cleanup_timer_expired()
+{
+    if (!m_active_queries && m_pending_queries.empty()) {
         TGL_DEBUG("cleanup timer expired for DC " << id << ", deleting session");
         if (session) {
             session->c->close();
