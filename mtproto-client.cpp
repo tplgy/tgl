@@ -1145,7 +1145,7 @@ static int tc_close (const std::shared_ptr<tgl_connection>& c, int who) {
     return 0;
 }
 
-static void create_session_connect(const std::shared_ptr<tgl_session>& S) {
+static void create_connection(const std::shared_ptr<tgl_session>& S) {
     std::shared_ptr<tgl_dc> DC = S->dc.lock();
     if (!DC) {
         TGL_WARNING("no dc found for session");
@@ -1174,7 +1174,7 @@ static void fail_connection (const std::shared_ptr<tgl_connection>& c) {
     if (!S) {
         return;
     }
-    create_session_connect(S);
+    create_connection(S);
 }
 
 static void fail_session(const std::shared_ptr<tgl_session>& s) {
@@ -1493,7 +1493,7 @@ void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC) {
   S->dc = DC;
   //S->c = tgl_state::instance()->connection_factory()->create_connection (DC->ip, DC->port, S, DC, &mtproto_methods);
 
-  create_session_connect (S);
+  create_connection(S);
   S->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&send_all_acks_gateway, S));
   assert (!DC->session);
   DC->session = S;
