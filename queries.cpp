@@ -281,7 +281,6 @@ bool query::execute_after_pending()
         return false;
     }
 
-    assert(m_msg_id == 0);
     m_msg_id = tglmp_encrypt_send_message(m_dc->session->c, m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
     if (m_msg_id == -1) {
         m_msg_id = 0;
