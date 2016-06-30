@@ -283,8 +283,12 @@ void tgl_state::add_query(const std::shared_ptr<query>& q)
 {
     auto id = q->msg_id();
     assert(id);
-    m_active_queries[id] = q;
-    q->dc()->increase_active_queries();
+    auto inserted_iterator_pair = m_active_queries.emplace(id, q);
+    if (inserted_iterator_pair.second) {
+        q->dc()->increase_active_queries();
+    } else {
+        inserted_iterator_pair.first->second = q;
+    }
 }
 
 std::shared_ptr<query> tgl_state::get_query(long long id)
@@ -301,8 +305,11 @@ void tgl_state::remove_query(const std::shared_ptr<query>& q)
 {
     auto id = q->msg_id();
     assert(id);
-    m_active_queries.erase(id);
-    q->dc()->decrease_active_queries();
+    auto it = m_active_queries.find(id);
+    if (it != m_active_queries.end()) {
+        m_active_queries.erase(it);
+        q->dc()->decrease_active_queries();
+    }
 }
 
 void tgl_state::remove_all_queries()

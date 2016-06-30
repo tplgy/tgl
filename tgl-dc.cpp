@@ -117,8 +117,6 @@ void tgl_dc::decrease_active_queries(size_t num)
 {
     if (m_active_queries >= num) {
         m_active_queries -= num;
-    } else {
-        assert(false);
     }
 
     if (!m_active_queries && m_pending_queries.empty() && tgl_state::instance()->working_dc().get() != this) {
