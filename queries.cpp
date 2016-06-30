@@ -1310,7 +1310,9 @@ public:
 
         int n = DS_LVAL(DS_MM->messages->cnt);
         for (int i = 0; i < n; i++) {
-            m_messages.push_back(tglf_fetch_alloc_message(DS_MM->messages->data[i]));
+            auto msg = tglf_fetch_alloc_message(DS_MM->messages->data[i]);
+            msg->flags |= TGLMF_HISTORY;
+            m_messages.push_back(msg);
         }
 
         tgl_state::instance()->callback()->new_messages(m_messages);

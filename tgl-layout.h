@@ -42,6 +42,7 @@
 #define TGLMF_POST_AS_CHANNEL (1 << 17)
 #define TGLMF_HTML (1 << 18)
 #define TGLMF_SEND_FAILED (1 << 19)
+#define TGLMF_HISTORY (1 << 20)
 
 #define TGLPF_CREATED (1 << 0)
 #define TGLPF_CREATE 0x80000000
