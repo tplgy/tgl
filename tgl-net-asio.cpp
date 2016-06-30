@@ -31,25 +31,22 @@
 constexpr size_t TEMP_READ_BUFFER_SIZE = (1 << 20);
 
 tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
-        const std::string& host, int port,
+        const std::string& host,
+        int port,
         const std::weak_ptr<tgl_session>& session,
         const std::weak_ptr<tgl_dc>& dc,
         const std::shared_ptr<mtproto_client>& client)
-    : m_closed(false)
-    , m_ip(host)
+    : m_ip(host)
     , m_port(port)
     , m_state(conn_none)
     , m_io_service(io_service)
     , m_socket(io_service)
     , m_ping_timer(io_service)
-    , m_fail_timer(io_service)
     , m_in_bytes(0)
     , m_dc(dc)
     , m_session(session)
     , m_mtproto_client(client)
-    , m_last_connect_time(0)
     , m_last_receive_time(0)
-    , m_in_fail_timer(false)
     , m_write_pending(false)
 {
 }
@@ -63,15 +60,14 @@ void tgl_connection_asio::ping_alarm(const boost::system::error_code& error) {
     if (error == boost::asio::error::operation_aborted) {
         return;
     }
-    if (m_state == conn_failed) {
+    if (m_state == conn_failed || m_state == conn_closed) {
         return;
     }
-    //TGL_DEBUG("ping alarm");
     TGL_ASSERT(m_state == conn_ready || m_state == conn_connecting);
     if (tglt_get_double_time() - m_last_receive_time > 6 * PING_TIMEOUT) {
         TGL_WARNING("fail connection: reason: ping timeout");
         m_state = conn_failed;
-        fail();
+        restart();
     } else if (tglt_get_double_time() - m_last_receive_time > 3 * PING_TIMEOUT && m_state == conn_ready) {
         tgl_do_send_ping(shared_from_this());
         start_ping_timer();
@@ -87,24 +83,6 @@ void tgl_connection_asio::stop_ping_timer() {
 void tgl_connection_asio::start_ping_timer() {
     m_ping_timer.expires_from_now(boost::posix_time::seconds(PING_TIMEOUT));
     m_ping_timer.async_wait(std::bind(&tgl_connection_asio::ping_alarm, shared_from_this(), std::placeholders::_1));
-}
-
-void tgl_connection_asio::fail_alarm(const boost::system::error_code& error) {
-    m_in_fail_timer = false;
-    if (error == boost::asio::error::operation_aborted) {
-        return;
-    }
-    restart();
-}
-
-void tgl_connection_asio::start_fail_timer() {
-    if (m_in_fail_timer) {
-        return;
-    }
-    m_in_fail_timer = true;
-
-    m_fail_timer.expires_from_now(boost::posix_time::seconds(10));
-    m_fail_timer.async_wait(std::bind(&tgl_connection_asio::fail_alarm, shared_from_this(), std::placeholders::_1));
 }
 
 ssize_t tgl_connection_asio::read_in_lookup(void* data_out, size_t len) {
@@ -167,53 +145,29 @@ bool tgl_connection_asio::open()
 }
 
 void tgl_connection_asio::restart() {
-    if (m_closed) {
+    if (m_state == conn_closed) {
         TGL_WARNING("Can't restart a closed connection");
         return;
     }
 
-    if (m_last_connect_time == time(0)) {
-        start_fail_timer();
+    if (m_state == conn_connecting) {
         return;
     }
 
-    m_socket.close();
-    m_last_connect_time = time(0);
-    if (!connect()) {
-        TGL_WARNING("Can not reconnect to " << m_ip << ":" << m_port);
-        start_fail_timer();
-        return;
-    }
-
-    TGL_DEBUG("restarting connection to " << m_ip << ":" << m_port);
-
-    start_ping_timer();
-
-    char byte = 0xef; // use abridged protocol
-    ssize_t result = write(&byte, 1);
-    TGL_ASSERT_UNUSED(result, result == 1);
-    flush();
-}
-
-void tgl_connection_asio::fail() {
-    if (m_state == conn_ready || m_state == conn_connecting) {
-        stop_ping_timer();
-    }
-
+    stop_ping_timer();
+    clear_buffers();
+    m_state = conn_failed;
     if (m_socket.is_open()) {
         m_socket.close();
     }
 
-    clear_buffers();
-
     m_port = rotate_port(m_port);
-    m_state = conn_failed;
-    TGL_NOTICE("Lost connection to server... " << m_ip << ":" << m_port);
-    restart();
+    TGL_NOTICE("restarting connection to " << m_ip << ":" << m_port);
+    open();
 }
 
 void tgl_connection_asio::try_rpc_read() {
-    if (m_closed) {
+    if (m_state == conn_closed) {
         return;
     }
 
@@ -256,23 +210,34 @@ void tgl_connection_asio::try_rpc_read() {
         int op;
         result = read_in_lookup(&op, 4);
         TGL_ASSERT_UNUSED(result, result == 4);
-        if (m_mtproto_client->execute(shared_from_this(), op, len) < 0) {
-            fail();
-            return;
+        switch (m_mtproto_client->execute(shared_from_this(), op, len)) {
+        case mtproto_client::execute_result::ok:
+            break;
+        case mtproto_client::execute_result::bad_session:
+            // The client has already handled this case
+            // and the connection should be closed.
+            assert(m_state == conn_closed);
+            break;
+        case mtproto_client::execute_result::bad_connection:
+            m_state = conn_failed;
+            restart();
+            break;
+        case mtproto_client::execute_result::bad_dc:
+            close();
+            break;
         }
     }
 }
 
 void tgl_connection_asio::close()
 {
-    if (m_closed) {
+    if (m_state == conn_closed) {
         return;
     }
 
     m_mtproto_client->close(shared_from_this());
-    m_closed = true;
+    m_state = conn_closed;
     m_ping_timer.cancel();
-    m_fail_timer.cancel();
     m_socket.close();
     clear_buffers();
 }
@@ -285,7 +250,7 @@ void tgl_connection_asio::clear_buffers()
 }
 
 bool tgl_connection_asio::connect() {
-    if (m_closed) {
+    if (m_state == conn_closed) {
         return false;
     }
 
@@ -316,8 +281,17 @@ bool tgl_connection_asio::connect() {
 void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
 {
     if (ec) {
-        TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message());
-        fail();
+        if (ec != boost::asio::error::operation_aborted) {
+            TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message());
+            restart();
+        }
+        return;
+    }
+
+    if (m_state == conn_connecting) {
+        m_state = conn_ready;
+        m_mtproto_client->ready(shared_from_this());
+    } else {
         return;
     }
 
@@ -367,7 +341,7 @@ ssize_t tgl_connection_asio::read(void* data_out, size_t len) {
 }
 
 void tgl_connection_asio::start_read() {
-    if (m_closed) {
+    if (m_state == conn_closed) {
         return;
     }
 
@@ -396,13 +370,8 @@ ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
 }
 
 void tgl_connection_asio::start_write() {
-    if (m_closed) {
+    if (m_state == conn_closed) {
         return;
-    }
-
-    if (m_state == conn_connecting) {
-        m_state = conn_ready;
-        m_mtproto_client->ready(shared_from_this());
     }
 
     if (!m_write_pending && m_write_buffer_queue.size() > 0) {
@@ -431,12 +400,12 @@ void tgl_connection_asio::handle_read(const std::shared_ptr<std::vector<char>>& 
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
             TGL_WARNING("read error: " << ec << " (" << ec.message() << ")");
-            fail();
+            restart();
         }
         return;
     }
 
-    if (m_closed) {
+    if (m_state == conn_closed) {
         TGL_WARNING("invalid read from closed connection");
         return;
     }
@@ -491,12 +460,14 @@ void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::ve
     m_write_buffer_queue.erase(m_write_buffer_queue.begin(), m_write_buffer_queue.begin() + buffers.size());
 
     if (ec) {
-        TGL_WARNING("write error: " << ec << " (" << ec.message() << ")");
-        fail();
+        if (ec != boost::asio::error::operation_aborted) {
+            TGL_WARNING("write error: " << ec << " (" << ec.message() << ")");
+            restart();
+        }
         return;
     }
 
-    if (m_closed) {
+    if (m_state == conn_closed) {
         TGL_WARNING("invalid write to closed connection");
         return;
     }

@@ -98,7 +98,7 @@ static_assert(!(sizeof(encrypted_message) & 3), "the encrypted_message has to be
 static long long generate_next_msg_id(const std::shared_ptr<tgl_dc>& DC, const std::shared_ptr<tgl_session>& S);
 static double get_server_time(const std::shared_ptr<tgl_dc>& DC);
 
-static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int len);
+static mtproto_client::execute_result rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int len);
 static int rpc_becomes_ready (const std::shared_ptr<tgl_connection>& c);
 static int rpc_close (const std::shared_ptr<tgl_connection>& c);
 
@@ -112,7 +112,7 @@ int mtproto_client::close(const std::shared_ptr<tgl_connection>& c)
     return rpc_close(c);
 }
 
-int mtproto_client::execute(const std::shared_ptr<tgl_connection>& c, int op, int len)
+mtproto_client::execute_result mtproto_client::execute(const std::shared_ptr<tgl_connection>& c, int op, int len)
 {
     return rpc_execute(c, op, len);
 }
@@ -386,26 +386,26 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
 
 /* {{{ RECV RESPQ */
 // resPQ#05162463 nonce:int128 server_nonce:int128 pq:string server_public_key_fingerprints:Vector long = ResPQ
-static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char *packet, int len, int temp_key) {
+static mtproto_client::execute_result process_respq_answer (const std::shared_ptr<tgl_connection>& c, char *packet, int len, int temp_key) {
   TGL_DEBUG(__FUNCTION__);
   assert (!(len & 3));
   tgl_in_buffer in;
   in.ptr = reinterpret_cast<int*>(packet);
   in.end = in.ptr + (len / 4);
   if (check_unauthorized_header (&in) < 0) {
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   tgl_in_buffer skip_in = in;
   struct paramed_type type = TYPE_TO_PARAM (res_p_q);
   if (skip_type_any (&skip_in, &type) < 0 || skip_in.ptr != skip_in.end) {
     TGL_ERROR("can not parse req_p_q answer");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
   if (!DC) {
-    return -1;
+    return mtproto_client::execute_result::bad_dc;
   }
 
   auto result = fetch_i32(&in);
@@ -415,7 +415,7 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
   fetch_i32s (&in, tmp, 4);
   if (memcmp (tmp, DC->nonce, 16)) {
     TGL_ERROR("nonce mismatch");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   fetch_i32s (&in, reinterpret_cast<int32_t*>(DC->server_nonce), 4);
 
@@ -442,12 +442,12 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
   assert (in.ptr == in.end);
   if (DC->rsa_key_idx == -1) {
     TGL_ERROR("fatal: don't have any matching keys");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   send_req_dh_packet(c, pq.get(), temp_key);
 
-  return 1;
+  return mtproto_client::execute_result::ok;
 }
 /* }}} */
 
@@ -455,26 +455,26 @@ static int process_respq_answer (const std::shared_ptr<tgl_connection>& c, char 
 // server_DH_params_fail#79cb045d nonce:int128 server_nonce:int128 new_nonce_hash:int128 = Server_DH_Params;
 // server_DH_params_ok#d0e8075c nonce:int128 server_nonce:int128 encrypted_answer:string = Server_DH_Params;
 // server_DH_inner_data#b5890dba nonce:int128 server_nonce:int128 g:int dh_prime:string g_a:string server_time:int = Server_DH_inner_data;
-static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *packet, int len, int temp_key) {
+static mtproto_client::execute_result process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *packet, int len, int temp_key) {
   TGL_DEBUG(__FUNCTION__);
   assert (!(len & 3));
   tgl_in_buffer in;
   in.ptr = reinterpret_cast<int*>(packet);
   in.end = in.ptr + (len / 4);
   if (check_unauthorized_header (&in) < 0) {
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   tgl_in_buffer skip_in = in;
   struct paramed_type type = TYPE_TO_PARAM (server_d_h_params);
   if (skip_type_any (&skip_in, &type) < 0 || skip_in.ptr != skip_in.end) {
     TGL_ERROR("can not parse server_DH_params answer");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
   if (!DC) {
-    return -1;
+    return mtproto_client::execute_result::bad_dc;
   }
 
   uint32_t op = fetch_i32 (&in);
@@ -484,17 +484,17 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   fetch_i32s (&in, tmp, 4);
   if (memcmp (tmp, DC->nonce, 16)) {
     TGL_ERROR("nonce mismatch");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   fetch_i32s (&in, tmp, 4);
   if (memcmp (tmp, DC->server_nonce, 16)) {
     TGL_ERROR("nonce mismatch");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   if (op == CODE_server__d_h_params_fail) {
     TGL_ERROR("DH params fail");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   TGLC_aes_key aes_key;
@@ -505,13 +505,13 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   assert (l > 0);
   if (l <= 0) {
     TGL_ERROR("non-empty encrypted part expected");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   int decrypted_buffer_size = tgl_pad_aes_decrypt_dest_buffer_size(l);
   assert(decrypted_buffer_size > 0);
   if (decrypted_buffer_size <= 0) {
     TGL_ERROR("failed to get decrypted buffer size");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   std::unique_ptr<int[]> decrypted_buffer(new int[(decrypted_buffer_size + 3) / 4]);
@@ -522,7 +522,7 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   struct paramed_type type2 = TYPE_TO_PARAM (server_d_h_inner_data);
   if (skip_type_any (&skip, &type2) < 0) {
     TGL_ERROR("can not parse server_DH_inner_data answer");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   in.ptr = decrypted_buffer.get() + 5;
   in.end = decrypted_buffer.get() + (decrypted_buffer_size >> 2);
@@ -532,12 +532,12 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   fetch_i32s (&in, tmp, 4);
   if (memcmp (tmp, DC->nonce, 16)) {
     TGL_ERROR("nonce mismatch");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   fetch_i32s (&in, tmp, 4);
   if (memcmp (tmp, DC->server_nonce, 16)) {
     TGL_ERROR("nonce mismatch");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   int32_t g = fetch_i32 (&in);
 
@@ -550,11 +550,11 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
 
   if (tglmp_check_DH_params (dh_prime.get(), g) < 0) {
     TGL_ERROR("bad DH params");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   if (tglmp_check_g_a (dh_prime.get(), g_a.get()) < 0) {
     TGL_ERROR("bad dh_prime");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   int32_t server_time = fetch_i32 (&in);
@@ -565,11 +565,11 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
   TGLC_sha1 ((unsigned char *) decrypted_buffer.get() + 20, (in.ptr - decrypted_buffer.get() - 5) * 4, (unsigned char *) sha1_buffer);
   if (memcmp (decrypted_buffer.get(), sha1_buffer, 20)) {
     TGL_ERROR("bad encrypted message SHA1");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   if ((char *) in.end - (char *) in.ptr >= 16) {
     TGL_ERROR("too much padding");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   DC->server_time_delta = server_time - get_utime (CLOCK_REALTIME);
@@ -577,7 +577,7 @@ static int process_dh_answer (const std::shared_ptr<tgl_connection>& c, char *pa
 
   send_dh_params (c, dh_prime.get(), g_a.get(), g, temp_key);
 
-  return 1;
+  return mtproto_client::execute_result::ok;
 }
 /* }}} */
 
@@ -594,10 +594,10 @@ static void bind_temp_auth_key (const std::shared_ptr<tgl_connection>& c);
 // dh_gen_ok#3bcbf734 nonce:int128 server_nonce:int128 new_nonce_hash1:int128 = Set_client_DH_params_answer;
 // dh_gen_retry#46dc1fb9 nonce:int128 server_nonce:int128 new_nonce_hash2:int128 = Set_client_DH_params_answer;
 // dh_gen_fail#a69dae02 nonce:int128 server_nonce:int128 new_nonce_hash3:int128 = Set_client_DH_params_answer;
-static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char *packet, int len, int temp_key) {
+static mtproto_client::execute_result process_auth_complete (const std::shared_ptr<tgl_connection>& c, char *packet, int len, int temp_key) {
   std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
   if (!DC) {
-    return -1;
+    return mtproto_client::execute_result::bad_dc;
   }
 
   assert (!(len & 3));
@@ -605,14 +605,14 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
   in.ptr = reinterpret_cast<int*>(packet);
   in.end = in.ptr + (len / 4);
   if (check_unauthorized_header (&in) < 0) {
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   tgl_in_buffer skip_in = in;
   struct paramed_type type = TYPE_TO_PARAM (set_client_d_h_params_answer);
   if (skip_type_any (&skip_in, &type) < 0 || skip_in.ptr != skip_in.end) {
     TGL_ERROR("can not parse server_DH_params answer");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   uint32_t op = fetch_i32 (&in);
@@ -622,16 +622,16 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
   fetch_i32s (&in, tmp, 4);
   if (memcmp (DC->nonce, tmp, 16)) {
     TGL_ERROR("nonce mismatch");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   fetch_i32s (&in, tmp, 4);
   if (memcmp (DC->server_nonce, tmp, 16)) {
     TGL_ERROR("nonce mismatch");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   if (op != CODE_dh_gen_ok) {
     TGL_ERROR("DH failed. Retry");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   fetch_i32s (&in, tmp, 4);
@@ -650,7 +650,7 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
   TGLC_sha1 (th, 41, sha1_buffer);
   if (memcmp (tmp, sha1_buffer + 4, 16)) {
     TGL_ERROR("hash mismatch");
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   if (!temp_key) {
@@ -682,7 +682,7 @@ static int process_auth_complete (const std::shared_ptr<tgl_connection>& c, char
     }
   }
 
-  return 1;
+  return mtproto_client::execute_result::ok;
 }
 /* }}} */
 
@@ -1168,48 +1168,34 @@ static void create_connection(const std::shared_ptr<tgl_session>& S) {
     S->c->open();
 }
 
-static void fail_connection (const std::shared_ptr<tgl_connection>& c) {
-    c->close();
-    std::shared_ptr<tgl_session> S = c->get_session().lock();
-    if (!S) {
-        return;
+static void restart_session(const std::shared_ptr<tgl_dc>& dc)
+{
+    if (dc->session) {
+        TGL_NOTICE("failing session " << dc->session->session_id);
+        dc->session->clear();
+        dc->session = nullptr;
     }
-    create_connection(S);
-}
-
-static void fail_session(const std::shared_ptr<tgl_session>& s) {
-    TGL_NOTICE("failing session " << s->session_id);
-    std::shared_ptr<tgl_dc> dc = s->dc.lock();
-    s->clear();
-
-    if (!dc) {
-      TGL_WARNING("no dc found for session");
-      return;
-    }
-
-    dc->session = NULL;
     tglmp_dc_create_session(dc);
 }
 
-static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct encrypted_message *enc, int len) {
+static mtproto_client::execute_result process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct encrypted_message *enc, int len) {
   const int MINSZ = offsetof (struct encrypted_message, message);
   const int UNENCSZ = offsetof (struct encrypted_message, server_salt);
   TGL_DEBUG("process_rpc_message(), len=" << len);
   if (len < MINSZ || (len & 15) != (UNENCSZ & 15)) {
     TGL_WARNING("Incorrect packet from server. Closing connection");
-    fail_connection (c);
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   assert (len >= MINSZ && (len & 15) == (UNENCSZ & 15));
   std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
   if (!DC) {
-    return -1;
+    return mtproto_client::execute_result::bad_dc;
   }
 
   if (enc->auth_key_id != DC->temp_auth_key_id && enc->auth_key_id != DC->auth_key_id) {
     TGL_WARNING("received msg from dc " << DC->id << " with auth_key_id " << enc->auth_key_id <<
         " (perm_auth_key_id " << DC->auth_key_id << " temp_auth_key_id "<< DC->temp_auth_key_id << "). Dropping");
-    return 0;
+    return mtproto_client::execute_result::ok;
   }
 
   TGLC_aes_key aes_key;
@@ -1229,15 +1215,14 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
 
   if (!(!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12)) {
     TGL_WARNING("Incorrect packet from server. Closing connection");
-    fail_connection(c);
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
   assert (!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12);
 
   std::shared_ptr<tgl_session> S = c->get_session().lock();
   if (!S || S->session_id != enc->session_id) {
       TGL_WARNING("Message to bad session. Drop.");
-      return 0;
+      return mtproto_client::execute_result::ok;
   }
 
   unsigned char sha1_buffer[20];
@@ -1245,8 +1230,7 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
   TGLC_sha1 ((unsigned char *)&enc->server_salt, enc->msg_len + (MINSZ - UNENCSZ), sha1_buffer);
   if (memcmp (&enc->msg_key, sha1_buffer + 4, 16)) {
     TGL_WARNING("Incorrect packet from server. Closing connection");
-    fail_connection(c);
-    return -1;
+    return mtproto_client::execute_result::bad_connection;
   }
 
   int this_server_time = enc->msg_id >> 32LL;
@@ -1263,8 +1247,8 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
   if (this_server_time < st - 300 || this_server_time > st + 30) {
     TGL_WARNING("bad msg time: salt = " << enc->server_salt << ", session_id = " << enc->session_id << ", msg_id = " << enc->msg_id
         << ", seq_no = " << enc->seq_no << ", st = " << st << ", now = " << get_utime (CLOCK_REALTIME));
-    fail_session(S);
-    return -1;
+    restart_session(DC);
+    return mtproto_client::execute_result::bad_session;
   }
   S->received_messages ++;
 
@@ -1292,22 +1276,22 @@ static int process_rpc_message (const std::shared_ptr<tgl_connection>& c, struct
   assert (S->session_id == enc->session_id);
 
   if (rpc_execute_answer (c, &in, enc->msg_id) < 0) {
-    fail_session (S);
-    return -1;
+    restart_session(DC);
+    return mtproto_client::execute_result::bad_session;
   }
   assert (in.ptr == in.end);
-  return 0;
+  return mtproto_client::execute_result::ok;
 }
 
-static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int len) {
+static mtproto_client::execute_result rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int len) {
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
-    if (!DC) {
-        return -1;
+    if (!DC || !DC->session || DC->session->c != c) {
+        return mtproto_client::execute_result::bad_dc;
     }
 
     if (len >= MAX_RESPONSE_SIZE/* - 12*/ || len < 0/*12*/) {
         TGL_WARNING("answer too long, skipping. lengeth:" << len);
-        return 0;
+        return mtproto_client::execute_result::ok;
     }
 
     std::unique_ptr<char[]> response(new char[len]);
@@ -1340,19 +1324,19 @@ static int rpc_execute (const std::shared_ptr<tgl_connection>& c, int op, int le
         if (op < 0 && op >= -999) {
             TGL_WARNING("Server error " << op << " from DC " << DC->id);
             DC->reset();
-            return -1;
+            return mtproto_client::execute_result::bad_connection;
         } else {
             return process_rpc_message(c, (struct encrypted_message *)(response.get()/* + 8*/), len/* - 12*/);
         }
     default:
         TGL_ERROR("cannot receive answer in state " << DC->state);
-        return -2;
+        return mtproto_client::execute_result::bad_connection;
     }
 }
 
 static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
   std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
-  if (!DC) {
+  if (!DC || !DC->session || DC->session->c != c) {
     return -1;
   }
 

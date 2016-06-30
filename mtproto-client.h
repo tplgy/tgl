@@ -38,7 +38,14 @@ class mtproto_client
 public:
     int ready(const std::shared_ptr<tgl_connection>& c);
     int close(const std::shared_ptr<tgl_connection>& c);
-    int execute(const std::shared_ptr<tgl_connection>& c, int op, int len);
+
+    enum class execute_result {
+        ok,
+        bad_connection,
+        bad_session,
+        bad_dc,
+    };
+    execute_result execute(const std::shared_ptr<tgl_connection>& c, int op, int len);
 };
 
 long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,

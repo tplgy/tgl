@@ -32,7 +32,7 @@ enum conn_state {
     conn_connecting,
     conn_ready,
     conn_failed,
-    conn_stopped
+    conn_closed,
 };
 
 struct tgl_dc;
@@ -60,7 +60,6 @@ public:
 
     bool connect();
     void restart();
-    void fail();
 
     void start_ping_timer();
 
@@ -74,16 +73,11 @@ private:
     void stop_ping_timer();
     void ping_alarm(const boost::system::error_code&);
 
-    void start_fail_timer();
-    void fail_alarm(const boost::system::error_code&);
-
     ssize_t read_in_lookup(void *data, size_t len);
     void try_rpc_read();
 
     void handle_connect(const boost::system::error_code&);
     void clear_buffers();
-
-    bool m_closed;
 
     std::string m_ip;
     int m_port;
@@ -91,7 +85,6 @@ private:
     boost::asio::io_service& m_io_service;
     boost::asio::ip::tcp::socket m_socket;
     boost::asio::deadline_timer m_ping_timer;
-    boost::asio::deadline_timer m_fail_timer;
 
     std::deque<std::shared_ptr<std::vector<char>>> m_write_buffer_queue;
     std::deque<std::shared_ptr<std::vector<char>>> m_read_buffer_queue;
@@ -101,10 +94,8 @@ private:
     std::weak_ptr<tgl_session> m_session;
     std::shared_ptr<mtproto_client> m_mtproto_client;
 
-    double m_last_connect_time;
     double m_last_receive_time;
 
-    bool m_in_fail_timer;
     bool m_write_pending;
 };
 
