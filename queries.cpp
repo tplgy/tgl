@@ -466,8 +466,22 @@ int query::handle_error(int error_code, const std::string& error_string)
                 }
                 res = 1;
                 error_handled = true;
+            } else if (error_string == "AUTH_KEY_UNREGISTERED" || error_string == "AUTH_KEY_INVALID") {
+                for (const auto& dc: tgl_state::instance()->dcs()) {
+                    if (!dc) {
+                        continue;
+                    }
+                    if (dc->session) {
+                        dc->session->clear();
+                        dc->session = nullptr;
+                    }
+                    dc->flags &= ~TGLDCF_LOGGED_IN;
+                }
+                tgl_state::instance()->locks = 0;
+                tgl_state::instance()->login();
+                res = 1;
+                error_handled = true;
             }
-            // TODO: handle AUTH_KEY_INVALID and AUTH_KEY_UNREGISTERED
             break;
         case 403: // privacy violation
             break;
