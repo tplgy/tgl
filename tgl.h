@@ -145,6 +145,9 @@ struct tgl_state {
   void set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory) { m_timer_factory = factory; }
   void set_enable_ipv6 (bool val);
 
+  bool is_online() const { return m_is_online; }
+  void set_online(bool online) { m_is_online = online; }
+
   const std::string& app_version() const { return m_app_version; }
   const std::string& app_hash() const { return m_app_hash; }
   int app_id() const { return m_app_id; }
@@ -185,6 +188,7 @@ private:
 
 private:
   bool m_is_started;
+  bool m_is_online;
 
   int m_app_id;
   std::string m_app_hash;

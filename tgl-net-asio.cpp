@@ -127,30 +127,33 @@ static int rotate_port(int port) {
     return -1;
 }
 
-bool tgl_connection_asio::open()
+void tgl_connection_asio::open()
 {
     if (!connect()) {
-        TGL_ERROR("Can not connect to " << m_ip << ":" << m_port);
-        return false;
+        TGL_ERROR("can not connect to " << m_ip << ":" << m_port);
+        return;
     }
-
-    start_ping_timer();
 
     char byte = 0xef; // use abridged protocol
     ssize_t result = write(&byte, 1);
     TGL_ASSERT_UNUSED(result, result == 1);
     flush();
-
-    return true;
 }
 
 void tgl_connection_asio::restart() {
     if (m_state == conn_closed) {
-        TGL_WARNING("Can't restart a closed connection");
+        TGL_WARNING("can not restart a closed connection");
         return;
     }
 
     if (m_state == conn_connecting) {
+        TGL_DEBUG("restart is already in process");
+        return;
+    }
+
+    if (!tgl_state::instance()->is_online()) {
+        // Don't try to reconnect if we are offline
+        TGL_NOTICE("not restarting because we are offline");
         return;
     }
 
@@ -254,6 +257,9 @@ bool tgl_connection_asio::connect() {
         return false;
     }
 
+    start_ping_timer();
+    m_state = conn_connecting;
+
     boost::system::error_code ec;
     m_socket.open(tgl_state::instance()->ipv6_enabled() ? boost::asio::ip::tcp::v6() : boost::asio::ip::tcp::v4(), ec);
     if (ec) {
@@ -272,7 +278,6 @@ bool tgl_connection_asio::connect() {
 
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_ip), m_port);
     m_socket.async_connect(endpoint, std::bind(&tgl_connection_asio::handle_connect, shared_from_this(), std::placeholders::_1));
-    m_state = conn_connecting;
     m_write_pending = false;
     m_last_receive_time = tglt_get_double_time();
     return true;
@@ -283,6 +288,7 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
             TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message());
+            m_state = conn_failed;
             restart();
         }
         return;

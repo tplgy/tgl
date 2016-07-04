@@ -28,7 +28,7 @@ struct tgl_session;
 
 class tgl_connection {
 public:
-    virtual bool open() = 0;
+    virtual void open() = 0;
     virtual void close() = 0;
     virtual ssize_t write(const void* data, size_t len) = 0;
     virtual ssize_t read(void* data, size_t len) = 0;

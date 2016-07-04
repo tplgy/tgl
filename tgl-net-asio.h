@@ -50,7 +50,7 @@ public:
             const std::shared_ptr<mtproto_client>& client);
     virtual ~tgl_connection_asio();
 
-    virtual bool open() override;
+    virtual void open() override;
     virtual void close() override;
     virtual ssize_t read(void* buffer, size_t len) override;
     virtual ssize_t write(const void* data, size_t len) override;
@@ -58,12 +58,10 @@ public:
     virtual const std::weak_ptr<tgl_dc>& get_dc() const override { return m_dc; }
     virtual const std::weak_ptr<tgl_session>& get_session() const override { return m_session; }
 
+private:
     bool connect();
     void restart();
-
     void start_ping_timer();
-
-private:
     void start_read();
     void handle_read(const std::shared_ptr<std::vector<char>>& buffer, const boost::system::error_code&, size_t);
 
