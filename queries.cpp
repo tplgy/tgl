@@ -1387,11 +1387,11 @@ void tgl_do_get_history(const tgl_peer_id_t& id, int offset, int limit,
     q->out_i32 (id.peer_id);
     q->out_i64 (id.access_hash);
   }
-  q->out_i32 (0);
-  q->out_i32 (offset);
+  q->out_i32 (0); // offset_id
+  q->out_i32 (offset); // add_offset
   q->out_i32 (limit);
-  q->out_i32 (0/*max_id*/);
-  q->out_i32 (0);
+  q->out_i32 (0); // max_id
+  q->out_i32 (0); // min_id
   q->execute(tgl_state::instance()->working_dc());
 }
 
