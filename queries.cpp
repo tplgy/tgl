@@ -3513,18 +3513,22 @@ void tgl_do_send_typing (const tgl_peer_id_t& id, enum tgl_typing_status status,
             break;
         case tgl_typing_upload_video:
             q->out_i32 (CODE_send_message_upload_video_action);
+            q->out_i32 (0);
             break;
         case tgl_typing_record_audio:
             q->out_i32 (CODE_send_message_record_audio_action);
             break;
         case tgl_typing_upload_audio:
             q->out_i32 (CODE_send_message_upload_audio_action);
+            q->out_i32 (0);
             break;
         case tgl_typing_upload_photo:
             q->out_i32 (CODE_send_message_upload_photo_action);
+            q->out_i32 (0);
             break;
         case tgl_typing_upload_document:
             q->out_i32 (CODE_send_message_upload_document_action);
+            q->out_i32 (0);
             break;
         case tgl_typing_geo:
             q->out_i32 (CODE_send_message_geo_location_action);
