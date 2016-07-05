@@ -25,7 +25,9 @@
 #include "tgl-net.h"
 
 #include <boost/asio.hpp>
+#include <chrono>
 #include <deque>
+#include <memory>
 
 enum conn_state {
     conn_none,
@@ -60,7 +62,8 @@ public:
 
 private:
     bool connect();
-    void restart();
+    void schedule_restart();
+    void restart(const boost::system::error_code& error);
     void start_ping_timer();
     void start_read();
     void handle_read(const std::shared_ptr<std::vector<char>>& buffer, const boost::system::error_code&, size_t);
@@ -69,7 +72,7 @@ private:
     void handle_write(const std::vector<std::shared_ptr<std::vector<char>>>& buffers, const boost::system::error_code&, size_t);
 
     void stop_ping_timer();
-    void ping_alarm(const boost::system::error_code&);
+    void ping(const boost::system::error_code&);
 
     ssize_t read_in_lookup(void *data, size_t len);
     void try_rpc_read();
@@ -83,6 +86,11 @@ private:
     boost::asio::io_service& m_io_service;
     boost::asio::ip::tcp::socket m_socket;
     boost::asio::deadline_timer m_ping_timer;
+    std::chrono::time_point<std::chrono::steady_clock>  m_last_receive_time;
+
+    std::unique_ptr<boost::asio::deadline_timer> m_restart_timer;
+    std::chrono::time_point<std::chrono::steady_clock> m_last_restart_time;
+    std::chrono::milliseconds m_restart_duration;
 
     std::deque<std::shared_ptr<std::vector<char>>> m_write_buffer_queue;
     std::deque<std::shared_ptr<std::vector<char>>> m_read_buffer_queue;
@@ -91,8 +99,6 @@ private:
     std::weak_ptr<tgl_dc> m_dc;
     std::weak_ptr<tgl_session> m_session;
     std::shared_ptr<mtproto_client> m_mtproto_client;
-
-    double m_last_receive_time;
 
     bool m_write_pending;
 };

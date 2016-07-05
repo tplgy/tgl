@@ -26,9 +26,12 @@
 
 #include "tools.h"
 
-#define PING_TIMEOUT 10
-
-constexpr size_t TEMP_READ_BUFFER_SIZE = (1 << 20);
+constexpr size_t TEMP_READ_BUFFER_SIZE = 1024 * 1024;
+constexpr std::chrono::milliseconds MIN_RESTART_DURATION(250);
+constexpr std::chrono::milliseconds MAX_RESTART_DURATION(59000); // a little bit less than PING_FAIL_DURATION
+constexpr std::chrono::milliseconds PING_CHECK_DURATION(10000);
+constexpr std::chrono::milliseconds PING_DURATION(30000);
+constexpr std::chrono::milliseconds PING_FAIL_DURATION(60000);
 
 tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
         const std::string& host,
@@ -42,11 +45,14 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     , m_io_service(io_service)
     , m_socket(io_service)
     , m_ping_timer(io_service)
+    , m_last_receive_time()
+    , m_restart_timer()
+    , m_last_restart_time()
+    , m_restart_duration(MIN_RESTART_DURATION)
     , m_in_bytes(0)
     , m_dc(dc)
     , m_session(session)
     , m_mtproto_client(client)
-    , m_last_receive_time(0)
     , m_write_pending(false)
 {
 }
@@ -56,7 +62,7 @@ tgl_connection_asio::~tgl_connection_asio()
     clear_buffers();
 }
 
-void tgl_connection_asio::ping_alarm(const boost::system::error_code& error) {
+void tgl_connection_asio::ping(const boost::system::error_code& error) {
     if (error == boost::asio::error::operation_aborted) {
         return;
     }
@@ -64,11 +70,12 @@ void tgl_connection_asio::ping_alarm(const boost::system::error_code& error) {
         return;
     }
     TGL_ASSERT(m_state == conn_ready || m_state == conn_connecting);
-    if (tglt_get_double_time() - m_last_receive_time > 6 * PING_TIMEOUT) {
+    auto duration_since_last_receive = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_last_receive_time);
+    if (duration_since_last_receive > PING_FAIL_DURATION) {
         TGL_WARNING("fail connection: reason: ping timeout");
         m_state = conn_failed;
-        restart();
-    } else if (tglt_get_double_time() - m_last_receive_time > 3 * PING_TIMEOUT && m_state == conn_ready) {
+        schedule_restart();
+    } else if (duration_since_last_receive > PING_DURATION && m_state == conn_ready) {
         tgl_do_send_ping(shared_from_this());
         start_ping_timer();
     } else {
@@ -81,8 +88,8 @@ void tgl_connection_asio::stop_ping_timer() {
 }
 
 void tgl_connection_asio::start_ping_timer() {
-    m_ping_timer.expires_from_now(boost::posix_time::seconds(PING_TIMEOUT));
-    m_ping_timer.async_wait(std::bind(&tgl_connection_asio::ping_alarm, shared_from_this(), std::placeholders::_1));
+    m_ping_timer.expires_from_now(boost::posix_time::milliseconds(PING_CHECK_DURATION.count()));
+    m_ping_timer.async_wait(std::bind(&tgl_connection_asio::ping, shared_from_this(), std::placeholders::_1));
 }
 
 ssize_t tgl_connection_asio::read_in_lookup(void* data_out, size_t len) {
@@ -140,7 +147,8 @@ void tgl_connection_asio::open()
     flush();
 }
 
-void tgl_connection_asio::restart() {
+void tgl_connection_asio::schedule_restart()
+{
     if (m_state == conn_closed) {
         TGL_WARNING("can not restart a closed connection");
         return;
@@ -154,8 +162,37 @@ void tgl_connection_asio::restart() {
     if (!tgl_state::instance()->is_online()) {
         // Don't try to reconnect if we are offline
         TGL_NOTICE("not restarting because we are offline");
+        start_ping_timer();
         return;
     }
+
+    if (m_restart_timer) {
+        return;
+    }
+
+    auto duration_since_last_restart = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_last_restart_time);
+    std::chrono::milliseconds timeout(0);
+    if (duration_since_last_restart < m_restart_duration) {
+        timeout = m_restart_duration - duration_since_last_restart;
+        m_restart_duration *= 2;
+        if (m_restart_duration > MAX_RESTART_DURATION) {
+            m_restart_duration = MAX_RESTART_DURATION;
+        }
+    }
+
+    m_restart_timer.reset(new boost::asio::deadline_timer(m_io_service));
+    m_restart_timer->expires_from_now(boost::posix_time::milliseconds(timeout.count()));
+    m_restart_timer->async_wait(std::bind(&tgl_connection_asio::restart, shared_from_this(), std::placeholders::_1));
+}
+
+void tgl_connection_asio::restart(const boost::system::error_code& error)
+{
+    m_restart_timer.reset();
+    if (error == boost::asio::error::operation_aborted) {
+        return;
+    }
+
+    m_last_restart_time = std::chrono::steady_clock::now();
 
     stop_ping_timer();
     clear_buffers();
@@ -223,7 +260,7 @@ void tgl_connection_asio::try_rpc_read() {
             break;
         case mtproto_client::execute_result::bad_connection:
             m_state = conn_failed;
-            restart();
+            schedule_restart();
             break;
         case mtproto_client::execute_result::bad_dc:
             close();
@@ -279,7 +316,7 @@ bool tgl_connection_asio::connect() {
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_ip), m_port);
     m_socket.async_connect(endpoint, std::bind(&tgl_connection_asio::handle_connect, shared_from_this(), std::placeholders::_1));
     m_write_pending = false;
-    m_last_receive_time = tglt_get_double_time();
+    m_last_receive_time = std::chrono::steady_clock::now();
     return true;
 }
 
@@ -289,10 +326,12 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
         if (ec != boost::asio::error::operation_aborted) {
             TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message());
             m_state = conn_failed;
-            restart();
+            schedule_restart();
         }
         return;
     }
+
+    m_restart_duration = MIN_RESTART_DURATION;
 
     if (m_state == conn_connecting) {
         m_state = conn_ready;
@@ -303,7 +342,7 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
 
     TGL_NOTICE("connected to " << m_ip << ":" << m_port);
 
-    m_last_receive_time = tglt_get_double_time();
+    m_last_receive_time = std::chrono::steady_clock::now();
     m_io_service.post(std::bind(&tgl_connection_asio::start_read, shared_from_this()));
 }
 
@@ -406,7 +445,7 @@ void tgl_connection_asio::handle_read(const std::shared_ptr<std::vector<char>>& 
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
             TGL_WARNING("read error: " << ec << " (" << ec.message() << ")");
-            restart();
+            schedule_restart();
         }
         return;
     }
@@ -419,7 +458,7 @@ void tgl_connection_asio::handle_read(const std::shared_ptr<std::vector<char>>& 
     TGL_DEBUG("received " << bytes_transferred << " bytes");
 
     if (bytes_transferred > 0) {
-        m_last_receive_time = tglt_get_double_time();
+        m_last_receive_time = std::chrono::steady_clock::now();
         stop_ping_timer();
         start_ping_timer();
 
@@ -468,7 +507,7 @@ void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::ve
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
             TGL_WARNING("write error: " << ec << " (" << ec.message() << ")");
-            restart();
+            schedule_restart();
         }
         return;
     }
