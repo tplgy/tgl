@@ -107,142 +107,141 @@ struct tgl_message;
 struct tgl_secret_chat;
 
 struct tgl_state {
-  static tgl_state *instance();
+    static tgl_state *instance();
 
-  long long locks;
-  std::vector<std::shared_ptr<tgl_message>> unsent_messages;
-  std::shared_ptr<tgl_timer> ev_login;
+    long long locks;
+    std::vector<std::shared_ptr<tgl_message>> unsent_messages;
+    std::shared_ptr<tgl_timer> ev_login;
 
-  bool is_started() const { return m_is_started; }
-  void set_started(bool b) { m_is_started = b; }
+    bool is_started() const { return m_is_started; }
+    void set_started(bool b) { m_is_started = b; }
 
-  const std::vector<std::shared_ptr<tgl_dc>>& dcs() { return m_dcs; }
-  std::shared_ptr<tgl_dc> working_dc() { return m_working_dc; }
-  std::shared_ptr<tgl_dc> allocate_dc(int id);
-  std::shared_ptr<tgl_dc> dc_at(int id);
-  int temp_key_expire_time() const { return m_temp_key_expire_time; }
+    const std::vector<std::shared_ptr<tgl_dc>>& dcs() { return m_dcs; }
+    std::shared_ptr<tgl_dc> working_dc() { return m_working_dc; }
+    std::shared_ptr<tgl_dc> allocate_dc(int id);
+    std::shared_ptr<tgl_dc> dc_at(int id);
+    int temp_key_expire_time() const { return m_temp_key_expire_time; }
 
-  int init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
-  void login();
-  void logout();
+    int init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
+    void login();
+    void logout();
 
-  TGLC_bn_ctx* bn_ctx() { return m_bn_ctx.get(); }
+    TGLC_bn_ctx* bn_ctx() { return m_bn_ctx.get(); }
 
-  void set_auth_key(int num, const char *buf);
-  void set_our_id(int id);
-  void set_dc_option (int flags, int id, std::string ip, int port);
-  void set_dc_signed(int num);
-  void set_working_dc(int num);
-  void set_qts(int qts, bool force = false);
-  void set_pts(int pts, bool force = false);
-  void set_date(int date, bool force = false);
-  void set_seq(int seq);
-  void reset_server_state();
-  void set_callback(const std::shared_ptr<tgl_update_callback>& cb) { m_callback = cb; }
-  void add_rsa_key(const std::string& key);
-  void set_enable_pfs (bool); // enable perfect forward secrecy (does not work properly right now)
-  void set_test_mode (bool);
-  void set_connection_factory(const std::shared_ptr<tgl_connection_factory>& factory) { m_connection_factory = factory; }
-  void set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory) { m_timer_factory = factory; }
-  void set_enable_ipv6 (bool val);
+    void set_auth_key(int num, const char *buf);
+    void set_our_id(int id);
+    void set_dc_option (int flags, int id, std::string ip, int port);
+    void set_dc_signed(int num);
+    void set_working_dc(int num);
+    void set_qts(int qts, bool force = false);
+    void set_pts(int pts, bool force = false);
+    void set_date(int date, bool force = false);
+    void set_seq(int seq);
+    void reset_server_state();
+    void set_callback(const std::shared_ptr<tgl_update_callback>& cb) { m_callback = cb; }
+    void add_rsa_key(const std::string& key);
+    void set_enable_pfs(bool); // enable perfect forward secrecy (does not work properly right now)
+    void set_test_mode(bool);
+    void set_connection_factory(const std::shared_ptr<tgl_connection_factory>& factory) { m_connection_factory = factory; }
+    void set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory) { m_timer_factory = factory; }
+    void set_enable_ipv6 (bool val);
 
-  bool is_online() const { return m_is_online; }
-  void set_online(bool online);
-  void add_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer)
-  {
-      m_online_status_observers.insert(observer);
-  }
+    bool is_online() const { return m_is_online; }
+    void set_online(bool online);
+    void add_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer)
+    {
+        m_online_status_observers.insert(observer);
+    }
 
-  void remove_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer)
-  {
-      m_online_status_observers.erase(observer);
-  }
+    void remove_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer)
+    {
+        m_online_status_observers.erase(observer);
+    }
 
-  const std::string& app_version() const { return m_app_version; }
-  const std::string& app_hash() const { return m_app_hash; }
-  int app_id() const { return m_app_id; }
-  const std::vector<std::unique_ptr<tgl_rsa_key>>& rsa_key_list() const { return m_rsa_key_list; }
+    const std::string& app_version() const { return m_app_version; }
+    const std::string& app_hash() const { return m_app_hash; }
+    int app_id() const { return m_app_id; }
+    const std::vector<std::unique_ptr<tgl_rsa_key>>& rsa_key_list() const { return m_rsa_key_list; }
 
-  const std::shared_ptr<tgl_download_manager>& download_manager() const { return m_download_manager; }
-  const std::shared_ptr<tgl_connection_factory>& connection_factory() const { return m_connection_factory; }
-  const std::shared_ptr<tgl_timer_factory>& timer_factory() const { return m_timer_factory; }
-  const std::shared_ptr<tgl_update_callback>& callback() const { return m_callback; }
+    const std::shared_ptr<tgl_download_manager>& download_manager() const { return m_download_manager; }
+    const std::shared_ptr<tgl_connection_factory>& connection_factory() const { return m_connection_factory; }
+    const std::shared_ptr<tgl_timer_factory>& timer_factory() const { return m_timer_factory; }
+    const std::shared_ptr<tgl_update_callback>& callback() const { return m_callback; }
 
-  void set_error(std::string error, int error_code);
+    void set_error(std::string error, int error_code);
 
-  int pts() { return m_pts; }
-  int qts() { return m_qts; }
-  int seq() { return m_seq; }
-  int date() { return m_date; }
-  bool test_mode() { return m_test_mode; }
-  tgl_peer_id_t our_id() { return m_our_id; }
-  bool ipv6_enabled() { return m_ipv6_enabled; }
-  bool pfs_enabled() { return m_enable_pfs; }
+    int pts() const { return m_pts; }
+    int qts() const { return m_qts; }
+    int seq() const { return m_seq; }
+    int date() const { return m_date; }
+    bool test_mode() const { return m_test_mode; }
+    tgl_peer_id_t our_id() const { return m_our_id; }
+    bool ipv6_enabled() const { return m_ipv6_enabled; }
+    bool pfs_enabled() const { return m_enable_pfs; }
 
-  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(const tgl_peer_id_t& id) const
-  {
-      return secret_chat_for_id(id.peer_id);
-  }
-  std::shared_ptr<tgl_secret_chat> create_secret_chat();
-  std::shared_ptr<tgl_secret_chat> create_secret_chat(const tgl_peer_id_t& chat_id);
-  std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int chat_id) const;
-  void add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat);
+    std::shared_ptr<tgl_secret_chat> secret_chat_for_id(const tgl_peer_id_t& id) const
+    {
+        return secret_chat_for_id(id.peer_id);
+    }
+    std::shared_ptr<tgl_secret_chat> create_secret_chat();
+    std::shared_ptr<tgl_secret_chat> create_secret_chat(const tgl_peer_id_t& chat_id);
+    std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int chat_id) const;
+    void add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 
-  void add_query(const std::shared_ptr<query>& q);
-  std::shared_ptr<query> get_query(long long id);
-  void remove_query(const std::shared_ptr<query>& q);
-  void remove_all_queries();
-
-private:
-  void state_lookup_timeout();
+    void add_query(const std::shared_ptr<query>& q);
+    std::shared_ptr<query> get_query(long long id) const;
+    void remove_query(const std::shared_ptr<query>& q);
+    void remove_all_queries();
 
 private:
-  bool m_is_started;
-  bool m_is_online;
+    tgl_state();
+    void state_lookup_timeout();
 
-  int m_app_id;
-  std::string m_app_hash;
+private:
+    bool m_is_started;
+    bool m_is_online;
 
-  std::string m_error;
-  int m_error_code;
+    int m_app_id;
+    std::string m_app_hash;
 
-  int m_temp_key_expire_time;
+    std::string m_error;
+    int m_error_code;
 
-  int m_pts;
-  int m_qts;
-  int m_date;
-  int m_seq;
-  bool m_test_mode; // Connects to the telegram test servers instead of the regular servers
-  tgl_peer_id_t m_our_id; // ID of logged in user
-  bool m_enable_pfs;
-  std::string m_app_version;
-  bool m_ipv6_enabled;
-  std::vector<std::unique_ptr<tgl_rsa_key>> m_rsa_key_list;
-  std::map<int/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
-  std::map<long long/*msg_id*/, std::shared_ptr<query>> m_active_queries;
+    int m_temp_key_expire_time;
 
-  tgl_state();
+    int m_pts;
+    int m_qts;
+    int m_date;
+    int m_seq;
+    bool m_test_mode; // Connects to the telegram test servers instead of the regular servers
+    tgl_peer_id_t m_our_id; // ID of logged in user
+    bool m_enable_pfs;
+    std::string m_app_version;
+    bool m_ipv6_enabled;
+    std::vector<std::unique_ptr<tgl_rsa_key>> m_rsa_key_list;
+    std::map<int/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
+    std::map<long long/*msg_id*/, std::shared_ptr<query>> m_active_queries;
 
-  std::shared_ptr<tgl_download_manager> m_download_manager;
-  std::shared_ptr<tgl_timer_factory> m_timer_factory;
-  std::shared_ptr<tgl_connection_factory> m_connection_factory;
-  std::shared_ptr<tgl_update_callback> m_callback;
+    std::shared_ptr<tgl_download_manager> m_download_manager;
+    std::shared_ptr<tgl_timer_factory> m_timer_factory;
+    std::shared_ptr<tgl_connection_factory> m_connection_factory;
+    std::shared_ptr<tgl_update_callback> m_callback;
 
-  std::unique_ptr<TGLC_bn_ctx, TGLC_bn_ctx_deleter> m_bn_ctx;
+    std::unique_ptr<TGLC_bn_ctx, TGLC_bn_ctx_deleter> m_bn_ctx;
 
-  std::vector<std::shared_ptr<tgl_dc>> m_dcs;
-  std::shared_ptr<tgl_dc> m_working_dc;
-  std::shared_ptr<tgl_timer> m_state_lookup_timer;
-  std::set<std::weak_ptr<tgl_online_status_observer>, std::owner_less<std::weak_ptr<tgl_online_status_observer>>> m_online_status_observers;
+    std::vector<std::shared_ptr<tgl_dc>> m_dcs;
+    std::shared_ptr<tgl_dc> m_working_dc;
+    std::shared_ptr<tgl_timer> m_state_lookup_timer;
+    std::set<std::weak_ptr<tgl_online_status_observer>, std::owner_less<std::weak_ptr<tgl_online_status_observer>>> m_online_status_observers;
 };
 
-int tgl_secret_chat_for_user (tgl_peer_id_t user_id);
-int tgl_do_send_bot_auth (const char *code, int code_len, std::function<void(bool success, const std::shared_ptr<tgl_user>&)> callback);
+int tgl_secret_chat_for_user(tgl_peer_id_t user_id);
+int tgl_do_send_bot_auth(const char *code, int code_len, std::function<void(bool success, const std::shared_ptr<tgl_user>&)> callback);
 
-int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& DC);
-int tgl_signed_dc(const std::shared_ptr<tgl_dc>& DC);
+int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& dc);
+int tgl_signed_dc(const std::shared_ptr<tgl_dc>& dc);
 
-void tgl_dc_authorize (const std::shared_ptr<tgl_dc>& DC);
+void tgl_dc_authorize (const std::shared_ptr<tgl_dc>& dc);
 
 #define TGL_SEND_MSG_FLAG_DISABLE_PREVIEW 1
 #define TGL_SEND_MSG_FLAG_ENABLE_PREVIEW 2

@@ -145,32 +145,56 @@ void tgl_state::set_working_dc(int num)
 
 void tgl_state::set_qts(int qts, bool force)
 {
-    if (locks & TGL_LOCK_DIFF) { return; }
-    if (qts <= this->qts() && !force) { return; }
+    if (locks & TGL_LOCK_DIFF) {
+        return;
+    }
+
+    if (qts <= m_qts && !force) {
+        return;
+    }
+
     m_qts = qts;
     m_callback->qts_changed(qts);
 }
 
 void tgl_state::set_pts(int pts, bool force)
 {
-    if (locks & TGL_LOCK_DIFF && !force) { return; }
-    if (pts <= this->pts() && !force) { return; }
+    if (locks & TGL_LOCK_DIFF && !force) {
+        return;
+    }
+
+    if (pts <= m_pts && !force) {
+        return;
+    }
+
     m_pts = pts;
     m_callback->pts_changed(pts);
 }
 
 void tgl_state::set_date(int date, bool force)
 {
-    if (locks & TGL_LOCK_DIFF && !force) { return; }
-    if (date <= m_date && !force) { return; }
+    if (locks & TGL_LOCK_DIFF && !force) {
+        return;
+    }
+
+    if (date <= m_date && !force) {
+        return;
+    }
+
     m_date = date;
     m_callback->date_changed(date);
 }
 
 void tgl_state::set_seq(int seq)
 {
-    if (locks & TGL_LOCK_DIFF) { return; }
-    if (seq <= m_seq) { return; }
+    if (locks & TGL_LOCK_DIFF) {
+        return;
+    }
+
+    if (seq <= m_seq) {
+        return;
+    }
+
     m_seq = seq;
 }
 
@@ -189,50 +213,55 @@ void tgl_state::add_rsa_key(const std::string& key)
 
 int tgl_state::init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version)
 {
-  m_download_manager = std::make_shared<tgl_download_manager>(download_dir);
-  m_app_id = app_id;
-  m_app_hash = app_hash;
-  m_app_version = app_version;
-  assert(m_timer_factory);
-  assert(m_connection_factory);
-  if (!m_temp_key_expire_time) {
-    m_temp_key_expire_time = 100000;
-  }
+    m_download_manager = std::make_shared<tgl_download_manager>(download_dir);
+    m_app_id = app_id;
+    m_app_hash = app_hash;
+    m_app_version = app_version;
+    assert(m_timer_factory);
+    assert(m_connection_factory);
+    if (!m_temp_key_expire_time) {
+        m_temp_key_expire_time = 100000;
+    }
 
-  if (tglmp_on_start () < 0) {
-    return -1;
-  }
+    if (tglmp_on_start () < 0) {
+        return -1;
+    }
 
-  if (!m_app_id) {
-    m_app_id = TG_APP_ID;
-    m_app_hash = tstrdup (TG_APP_HASH);
-  }
+    if (!m_app_id) {
+        m_app_id = TG_APP_ID;
+        m_app_hash = tstrdup (TG_APP_HASH);
+    }
 
-  m_state_lookup_timer = m_timer_factory->create_timer(std::bind(&tgl_state::state_lookup_timeout, this));
-  m_state_lookup_timer->start(3600);
-  return 0;
+    m_state_lookup_timer = m_timer_factory->create_timer(std::bind(&tgl_state::state_lookup_timeout, this));
+    m_state_lookup_timer->start(3600);
+    return 0;
 }
 
-int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& DC) {
-  assert (DC);
-  return DC->flags & TGLDCF_AUTHORIZED;
+int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& dc)
+{
+    assert (dc);
+    return dc->flags & TGLDCF_AUTHORIZED;
 }
 
-int tgl_signed_dc(const std::shared_ptr<tgl_dc>& DC) {
-  assert (DC);
-  return (DC->flags & TGLDCF_LOGGED_IN) != 0;
+int tgl_signed_dc(const std::shared_ptr<tgl_dc>& dc)
+{
+    assert (dc);
+    return (dc->flags & TGLDCF_LOGGED_IN) != 0;
 }
 
-void tgl_state::set_enable_pfs (bool val) {
-  this->m_enable_pfs = val;
+void tgl_state::set_enable_pfs(bool val)
+{
+    m_enable_pfs = val;
 }
 
-void tgl_state::set_test_mode (bool val) {
-  this->m_test_mode = val;
+void tgl_state::set_test_mode(bool val)
+{
+    m_test_mode = val;
 }
 
-void tgl_state::set_enable_ipv6 (bool val) {
-  m_ipv6_enabled = val;
+void tgl_state::set_enable_ipv6(bool val)
+{
+    m_ipv6_enabled = val;
 }
 
 void tgl_state::set_error(std::string error, int error_code)
@@ -294,7 +323,7 @@ void tgl_state::add_query(const std::shared_ptr<query>& q)
     }
 }
 
-std::shared_ptr<query> tgl_state::get_query(long long id)
+std::shared_ptr<query> tgl_state::get_query(long long id) const
 {
     assert(id);
     auto it = m_active_queries.find(id);
