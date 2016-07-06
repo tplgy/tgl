@@ -54,25 +54,23 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     , m_session(session)
     , m_mtproto_client(client)
     , m_write_pending(false)
+    , m_restart_paused(false)
 {
 }
 
 tgl_connection_asio::~tgl_connection_asio()
 {
-    clear_buffers();
+    close();
 }
 
 void tgl_connection_asio::ping(const boost::system::error_code& error) {
     if (error == boost::asio::error::operation_aborted) {
         return;
     }
-    if (m_state == conn_failed || m_state == conn_closed) {
-        return;
-    }
-    TGL_ASSERT(m_state == conn_ready || m_state == conn_connecting);
+
     auto duration_since_last_receive = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_last_receive_time);
     if (duration_since_last_receive > PING_FAIL_DURATION) {
-        TGL_WARNING("fail connection: reason: ping timeout");
+        TGL_WARNING("connection failed or ping timeout, scheduling restart");
         m_state = conn_failed;
         schedule_restart();
     } else if (duration_since_last_receive > PING_DURATION && m_state == conn_ready) {
@@ -136,6 +134,8 @@ static int rotate_port(int port) {
 
 void tgl_connection_asio::open()
 {
+    tgl_state::instance()->add_online_status_observer(shared_from_this());
+
     if (!connect()) {
         TGL_ERROR("can not connect to " << m_ip << ":" << m_port);
         return;
@@ -160,11 +160,17 @@ void tgl_connection_asio::schedule_restart()
     }
 
     if (!tgl_state::instance()->is_online()) {
-        // Don't try to reconnect if we are offline
         TGL_NOTICE("not restarting because we are offline");
+
+        m_restart_paused = true;
+
+        // FIXME: remove this when tgl_state::set_online() is called while networking status changes.
         start_ping_timer();
+
         return;
     }
+
+    m_restart_paused = false;
 
     if (m_restart_timer) {
         return;
@@ -259,8 +265,10 @@ void tgl_connection_asio::try_rpc_read() {
             assert(m_state == conn_closed);
             break;
         case mtproto_client::execute_result::bad_connection:
-            m_state = conn_failed;
-            schedule_restart();
+            if (m_state != conn_closed) {
+                m_state = conn_failed;
+                schedule_restart();
+            }
             break;
         case mtproto_client::execute_result::bad_dc:
             close();
@@ -275,6 +283,7 @@ void tgl_connection_asio::close()
         return;
     }
 
+    tgl_state::instance()->remove_online_status_observer(shared_from_this());
     m_mtproto_client->close(shared_from_this());
     m_state = conn_closed;
     m_ping_timer.cancel();
@@ -521,5 +530,13 @@ void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::ve
 
     if (m_write_buffer_queue.size() > 0) {
         m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));
+    }
+}
+
+void tgl_connection_asio::on_online_status_changed(bool online)
+{
+    if (online && m_restart_paused) {
+        m_restart_duration = MIN_RESTART_DURATION;
+        schedule_restart();
     }
 }

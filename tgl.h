@@ -60,6 +60,7 @@
 #define TGL_SCHEME_LAYER 45
 
 class tgl_connection;
+class tgl_online_status_observer;
 struct tgl_session;
 struct tgl_dc;
 class query;
@@ -146,7 +147,16 @@ struct tgl_state {
   void set_enable_ipv6 (bool val);
 
   bool is_online() const { return m_is_online; }
-  void set_online(bool online) { m_is_online = online; }
+  void set_online(bool online);
+  void add_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer)
+  {
+      m_online_status_observers.insert(observer);
+  }
+
+  void remove_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer)
+  {
+      m_online_status_observers.erase(observer);
+  }
 
   const std::string& app_version() const { return m_app_version; }
   const std::string& app_hash() const { return m_app_hash; }
@@ -223,6 +233,7 @@ private:
   std::vector<std::shared_ptr<tgl_dc>> m_dcs;
   std::shared_ptr<tgl_dc> m_working_dc;
   std::shared_ptr<tgl_timer> m_state_lookup_timer;
+  std::set<std::weak_ptr<tgl_online_status_observer>, std::owner_less<std::weak_ptr<tgl_online_status_observer>>> m_online_status_observers;
 };
 
 int tgl_secret_chat_for_user (tgl_peer_id_t user_id);

@@ -34,6 +34,7 @@
 #include "tgl-timer.h"
 #include "tgl-queries.h"
 #include "tools.h"
+#include "types/tgl_online_status_observer.h"
 #include "types/tgl_update_callback.h"
 #include "types/tgl_rsa_key.h"
 #include "types/tgl_secret_chat.h"
@@ -59,6 +60,7 @@ tgl_state::tgl_state()
     , m_enable_pfs(false)
     , m_ipv6_enabled(false)
     , m_bn_ctx(TGLC_bn_ctx_new())
+    , m_online_status_observers()
 {
 }
 
@@ -353,4 +355,18 @@ void tgl_state::state_lookup_timeout()
 void tgl_state::logout()
 {
     tgl_do_logout(nullptr);
+}
+
+void tgl_state::set_online(bool online)
+{
+    if (online == m_is_online) {
+        return;
+    }
+
+    m_is_online = online;
+    for (const auto& weak_observer: m_online_status_observers) {
+        if (auto observer = weak_observer.lock()) {
+            observer->on_online_status_changed(online);
+        }
+    }
 }

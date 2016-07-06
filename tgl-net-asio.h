@@ -23,6 +23,7 @@
 #define __TGL_NET_ASIO_H__
 
 #include "tgl-net.h"
+#include "types/tgl_online_status_observer.h"
 
 #include <boost/asio.hpp>
 #include <chrono>
@@ -41,7 +42,7 @@ struct tgl_dc;
 struct tgl_session;
 
 class tgl_connection_asio : public std::enable_shared_from_this<tgl_connection_asio>
-        , public tgl_connection
+        , public tgl_connection, public tgl_online_status_observer
 {
 public:
     tgl_connection_asio(boost::asio::io_service& io_service,
@@ -59,6 +60,8 @@ public:
     virtual void flush() override;
     virtual const std::weak_ptr<tgl_dc>& get_dc() const override { return m_dc; }
     virtual const std::weak_ptr<tgl_session>& get_session() const override { return m_session; }
+
+    virtual void on_online_status_changed(bool online) override;
 
 private:
     bool connect();
@@ -101,6 +104,7 @@ private:
     std::shared_ptr<mtproto_client> m_mtproto_client;
 
     bool m_write_pending;
+    bool m_restart_paused;
 };
 
 class tgl_connection_factory_asio : public tgl_connection_factory
