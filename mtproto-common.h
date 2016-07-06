@@ -42,6 +42,7 @@
 #endif
 
 #include "tools.h"
+#include "tgl-log.h"
 
 #include "constants.h"
 
@@ -203,7 +204,7 @@ public:
         int num = required_size / 4;
         m_data.resize(m_data.size() + num);
         int actual_size = tgl_serialize_bignum(n, reinterpret_cast<char*>(m_data.data() + m_data.size() - num), required_size);
-        assert(required_size == actual_size);
+        TGL_ASSERT_UNUSED(actual_size, required_size == actual_size);
     }
 
     void out_random(int length)
