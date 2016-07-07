@@ -117,6 +117,7 @@ public:
     }
 
     void out_peer_id(const tgl_peer_id_t& id);
+    void out_peer_id(const tgl_input_peer_t& id);
 
     void out_header();
 

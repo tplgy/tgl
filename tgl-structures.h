@@ -55,23 +55,21 @@ static inline tgl_peer_id_t tgl_msg_id_to_peer_id (tgl_message_id_t msg_id) {
   tgl_peer_id_t id;
   id.peer_type = msg_id.peer_type;
   id.peer_id = msg_id.peer_id;
-  id.access_hash = msg_id.access_hash;
   return id;
 }
 
-static inline tgl_message_id_t tgl_peer_id_to_msg_id (tgl_peer_id_t peer_id, long long msg_id) {
+static inline tgl_message_id_t tgl_peer_id_to_msg_id(const tgl_peer_id_t& peer_id, long long msg_id) {
   tgl_message_id_t id;
   id.peer_type = peer_id.peer_type;
   id.peer_id = peer_id.peer_id;
-  id.access_hash = peer_id.access_hash;
   id.id = msg_id;
   return id;
 }
 
-static inline tgl_message_id_t tgl_peer_id_to_random_msg_id (tgl_peer_id_t peer_id) {
+static inline tgl_message_id_t tgl_peer_id_to_random_msg_id(const tgl_peer_id_t& peer_id) {
   long long id;
-  tglt_secure_random ((unsigned char*)&id, 8);
-  return tgl_peer_id_to_msg_id (peer_id, id);
+  tglt_secure_random((unsigned char*)&id, 8);
+  return tgl_peer_id_to_msg_id(peer_id, id);
 }
 
 #endif

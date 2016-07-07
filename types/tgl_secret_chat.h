@@ -30,7 +30,7 @@ enum tgl_secret_chat_exchange_state {
 };
 
 struct tgl_secret_chat {
-    tgl_peer_id_t id;
+    tgl_input_peer_t id;
     int64_t access_hash;
     int64_t temp_key_fingerprint;
     int64_t exchange_id;

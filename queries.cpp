@@ -314,6 +314,23 @@ void query::out_peer_id(const tgl_peer_id_t& id)
     case tgl_peer_type::user:
         if (id.peer_id == tgl_state::instance()->our_id().peer_id) {
             m_serializer->out_i32(CODE_input_peer_self);
+            break;
+        }
+    default:
+        assert (0);
+    }
+}
+
+void query::out_peer_id(const tgl_input_peer_t& id)
+{
+    switch (id.peer_type) {
+    case tgl_peer_type::chat:
+        m_serializer->out_i32(CODE_input_peer_chat);
+        m_serializer->out_i32(id.peer_id);
+        break;
+    case tgl_peer_type::user:
+        if (id.peer_id == tgl_state::instance()->our_id().peer_id) {
+            m_serializer->out_i32(CODE_input_peer_self);
         } else {
             m_serializer->out_i32(CODE_input_peer_user);
             m_serializer->out_i32(id.peer_id);
@@ -1114,7 +1131,7 @@ void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M, std::function<void(b
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsigned long long flags, int reply_id, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
+void tgl_do_send_message (const tgl_input_peer_t& peer_id, const std::string& text, unsigned long long flags, int reply_id, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
 {
   if (peer_id.peer_type == tgl_peer_type::enc_chat) {
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
@@ -1254,7 +1271,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_messages_mark_read(const tgl_peer_id_t& id, int max_id, int offset, const std::function<void(bool)>& callback) {
+void tgl_do_messages_mark_read(const tgl_input_peer_t& id, int max_id, int offset, const std::function<void(bool)>& callback) {
   //if (tgl_state::instance()->is_bot) { return; }
   if (id.peer_type == tgl_peer_type::enc_chat) {
     //tgl_do_mark_read (id, callback, callback_extra);
@@ -1278,7 +1295,7 @@ void tgl_do_messages_mark_read(const tgl_peer_id_t& id, int max_id, int offset, 
   }
 }
 
-void tgl_do_mark_read (tgl_peer_id_t id, std::function<void(bool success)> callback) {
+void tgl_do_mark_read (const tgl_input_peer_t& id, std::function<void(bool success)> callback) {
   if (id.peer_type == tgl_peer_type::user || id.peer_type == tgl_peer_type::chat || id.peer_type == tgl_peer_type::channel) {
     tgl_do_messages_mark_read (id, 0, 0, callback);
     return;
@@ -1374,7 +1391,7 @@ private:
     std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)> m_callback;
 };
 
-void tgl_do_get_history(const tgl_peer_id_t& id, int offset, int limit,
+void tgl_do_get_history(const tgl_input_peer_t& id, int offset, int limit,
         const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>& list)>& callback) {
   assert(id.peer_type != tgl_peer_type::enc_chat);
   auto q = std::make_shared<query_get_history>(id, limit, offset, 0/*max_id*/, callback);
@@ -2039,7 +2056,7 @@ void tgl_do_forward_media (tgl_peer_id_t peer_id, tgl_message_id_t *_msg_id, uns
 
 /* {{{ Send location */
 
-void tgl_do_send_location (tgl_peer_id_t peer_id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
+void tgl_do_send_location (const tgl_input_peer_t& peer_id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
 {
   if (peer_id.peer_type == tgl_peer_type::enc_chat) {
     tgl_do_send_location_encr (peer_id, latitude, longitude, flags, callback);
@@ -2109,7 +2126,7 @@ void tgl_do_rename_chat (tgl_peer_id_t id, const char *name, int name_len, std::
 
  /* {{{ Rename channel */
 
-void tgl_do_rename_channel (tgl_peer_id_t id, const char *name, int name_len, std::function<void(bool success)> callback) {
+void tgl_do_rename_channel (const tgl_input_peer_t& id, const char *name, int name_len, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_channels_edit_title);
   assert (id.peer_type == tgl_peer_type::channel);
@@ -2123,7 +2140,7 @@ void tgl_do_rename_channel (tgl_peer_id_t id, const char *name, int name_len, st
 
  /* {{{ Join channel */
 
-void tgl_do_join_channel (tgl_peer_id_t id, std::function<void(bool success)> callback) {
+void tgl_do_join_channel (const tgl_input_peer_t& id, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_channels_join_channel);
   assert (id.peer_type == tgl_peer_type::channel);
@@ -2136,7 +2153,7 @@ void tgl_do_join_channel (tgl_peer_id_t id, std::function<void(bool success)> ca
 
 /* {{{ Leave channel */
 
-void tgl_do_leave_channel (tgl_peer_id_t id, std::function<void(bool success)> callback) {
+void tgl_do_leave_channel (const tgl_input_peer_t& id, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_channels_leave_channel);
   assert (id.peer_type == tgl_peer_type::channel);
@@ -2176,7 +2193,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_channel_set_about (tgl_peer_id_t id, const char *about, int about_len, std::function<void(bool success)> callback) {
+void tgl_do_channel_set_about (const tgl_input_peer_t& id, const char *about, int about_len, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_channels_set_about>(callback);
   q->out_i32 (CODE_channels_edit_about);
   assert (id.peer_type == tgl_peer_type::channel);
@@ -2189,7 +2206,7 @@ void tgl_do_channel_set_about (tgl_peer_id_t id, const char *about, int about_le
 /* }}} */
 
 /* {{{ Channel set username */
-void tgl_do_channel_set_username (tgl_peer_id_t id, const char *username, int username_len, std::function<void(bool success)> callback) {
+void tgl_do_channel_set_username (const tgl_input_peer_t& id, const char *username, int username_len, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_channels_set_about>(callback);
   q->out_i32 (CODE_channels_update_username);
   assert (id.peer_type == tgl_peer_type::channel);
@@ -2202,7 +2219,7 @@ void tgl_do_channel_set_username (tgl_peer_id_t id, const char *username, int us
 /* }}} */
 
 /* {{{ Channel set admin */
-void tgl_do_channel_set_admin (tgl_peer_id_t channel_id, tgl_peer_id_t user_id, int type, std::function<void(bool success)> callback) {
+void tgl_do_channel_set_admin (const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id, int type, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_channels_edit_admin);
   assert (channel_id.peer_type == tgl_peer_type::channel);
@@ -2231,7 +2248,7 @@ void tgl_do_channel_set_admin (tgl_peer_id_t channel_id, tgl_peer_id_t user_id, 
 
 /* {{{ Channel members */
 struct channel_get_members_state {
-  tgl_peer_id_t channel_id;
+  tgl_input_peer_t channel_id;
   std::vector<tgl_peer_id_t> peers;
   int type = 0;
   int offset = 0;
@@ -2311,7 +2328,7 @@ static void _tgl_do_channel_get_members(const std::shared_ptr<struct channel_get
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_channel_get_members(const tgl_peer_id_t& channel_id, int limit, int offset, int type, const std::function<void(bool success, const std::vector<tgl_peer_id_t>& peers)>& callback) {
+void tgl_do_channel_get_members(const tgl_input_peer_t& channel_id, int limit, int offset, int type, const std::function<void(bool success, const std::vector<tgl_peer_id_t>& peers)>& callback) {
   std::shared_ptr<channel_get_members_state> state = std::make_shared<channel_get_members_state>();
   state->type = type;
   state->channel_id = channel_id;
@@ -2389,7 +2406,7 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_channel>&)> m_callback;
 };
 
-void tgl_do_get_channel_info (tgl_peer_id_t id, int offline_mode, std::function<void(bool success, const std::shared_ptr<tgl_channel>& C)> callback) {
+void tgl_do_get_channel_info (const tgl_input_peer_t& id, int offline_mode, std::function<void(bool success, const std::shared_ptr<tgl_channel>& C)> callback) {
   if (offline_mode) {
 #if 0
     tgl_peer_t *C = tgl_peer_get (id);
@@ -2446,7 +2463,7 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_user>&)> m_callback;
 };
 
-void tgl_do_get_user_info(const tgl_peer_id_t& id, int offline_mode, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback) {
+void tgl_do_get_user_info(const tgl_input_peer_t& id, int offline_mode, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback) {
   if (id.peer_type != tgl_peer_type::user) {
     tgl_set_query_error (EINVAL, "id should be user id");
     if (callback) {
@@ -2678,7 +2695,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_delete_contact(const tgl_peer_id_t& id, const std::function<void(bool success)>& callback)
+void tgl_do_delete_contact(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback)
 {
     if (id.peer_type != tgl_peer_type::user) {
         TGL_ERROR("the peer id user be user id");
@@ -3134,7 +3151,7 @@ void tgl_do_get_channel_difference(int id, const std::function<void(bool success
   q->out_i32(CODE_updates_get_channel_difference);
   q->out_i32(CODE_input_channel);
   q->out_i32(channel->id.peer_id);
-  q->out_i64(channel->id.access_hash);
+  q->out_i64(channel->access_hash);
   q->out_i32(CODE_channel_messages_filter_empty);
   q->out_i32(channel->pts);
   q->out_i32(100);
@@ -3158,7 +3175,7 @@ void tgl_do_get_channel_difference(int id, const std::function<void(bool success
 
 /* {{{ Add user to chat */
 
-void tgl_do_add_user_to_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, int limit, std::function<void(bool success)> callback) {
+void tgl_do_add_user_to_chat (const tgl_peer_id_t& chat_id, const tgl_input_peer_t& id, int limit, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_messages_add_chat_user);
   q->out_i32 (chat_id.peer_id);
@@ -3172,7 +3189,7 @@ void tgl_do_add_user_to_chat (tgl_peer_id_t chat_id, tgl_peer_id_t id, int limit
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_del_user_from_chat(int chat_id, const tgl_peer_id_t& user_id, const std::function<void(bool success)>& callback) {
+void tgl_do_del_user_from_chat(int chat_id, const tgl_input_peer_t& user_id, const std::function<void(bool success)>& callback) {
     auto q = std::make_shared<query_send_msgs>(callback);
     q->out_i32 (CODE_messages_delete_chat_user);
     q->out_i32 (chat_id);
@@ -3193,7 +3210,7 @@ void tgl_do_del_user_from_chat(int chat_id, const tgl_peer_id_t& user_id, const 
 
 /* {{{ Add user to channel */
 
-void tgl_do_channel_invite_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, std::function<void(bool success)> callback) {
+void tgl_do_channel_invite_user (const tgl_input_peer_t& channel_id, const tgl_input_peer_t& id, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_channels_invite_to_channel);
   q->out_i32 (CODE_input_channel);
@@ -3209,7 +3226,7 @@ void tgl_do_channel_invite_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, std
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, std::function<void(bool success)> callback) {
+void tgl_do_channel_kick_user (const tgl_input_peer_t& channel_id, const tgl_input_peer_t& id, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_channels_kick_from_channel);
   q->out_i32 (CODE_input_channel);
@@ -3229,7 +3246,7 @@ void tgl_do_channel_kick_user (tgl_peer_id_t channel_id, tgl_peer_id_t id, std::
 
 /* {{{ Create secret chat */
 
-void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id,
+void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id,
         const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>& callback) {
     tgl_do_create_encr_chat_request(user_id, callback);
 }
@@ -3237,12 +3254,12 @@ void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id,
 
 /* {{{ Create group chat */
 
-void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::string &chat_topic, std::function<void(bool success)> callback) {
+void tgl_do_create_group_chat (std::vector<tgl_input_peer_t> user_ids, const std::string &chat_topic, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_messages_create_chat);
   q->out_i32 (CODE_vector);
   q->out_i32 (user_ids.size()); // Number of users, currently we support only 1 user.
-  for (tgl_peer_id_t id : user_ids) {
+  for (auto id : user_ids) {
     if (id.peer_type != tgl_peer_type::user) {
       tgl_set_query_error (EINVAL, "Can not create chat with unknown user");
       if (callback) {
@@ -3262,7 +3279,7 @@ void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::s
 
 /* {{{ Create channel */
 
-void tgl_do_create_channel (int users_num, tgl_peer_id_t ids[], const char *chat_topic, int chat_topic_len, const char *about, int about_len, unsigned long long flags, std::function<void(bool success)> callback) {
+void tgl_do_create_channel (int users_num, tgl_input_peer_t ids[], const char *chat_topic, int chat_topic_len, const char *about, int about_len, unsigned long long flags, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_channels_create_channel);
   q->out_i32 (flags); // looks like 2 is disable non-admin messages
@@ -3272,7 +3289,7 @@ void tgl_do_create_channel (int users_num, tgl_peer_id_t ids[], const char *chat
   //q->out_i32 (users_num);
   int i;
   for (i = 0; i < users_num; i++) {
-    tgl_peer_id_t id = ids[i];
+    auto id = ids[i];
     if (id.peer_type != tgl_peer_type::user) {
       tgl_set_query_error (EINVAL, "Can not create chat with unknown user");
       if (callback) {
@@ -3451,7 +3468,7 @@ void tgl_do_import_card (int size, int *card, std::function<void(bool success, c
 }
 /* }}} */
 
-void tgl_do_start_bot (tgl_peer_id_t bot, tgl_peer_id_t chat, const char *str, int str_len, std::function<void(bool success)> callback) {
+void tgl_do_start_bot (const tgl_input_peer_t& bot, tgl_peer_id_t chat, const char *str, int str_len, std::function<void(bool success)> callback) {
   auto q = std::make_shared<query_send_msgs>(callback);
   q->out_i32 (CODE_messages_start_bot);
   q->out_i32 (CODE_input_user);
@@ -3755,7 +3772,7 @@ void tgl_do_import_chat_link (const char *link, int len, std::function<void(bool
 
 /* {{{ Export/import channel link */
 
-void tgl_do_export_channel_link(const tgl_peer_id_t& id, const std::function<void(bool success, const std::string& link)>& callback) {
+void tgl_do_export_channel_link(const tgl_input_peer_t& id, const std::function<void(bool success, const std::string& link)>& callback) {
   if (id.peer_type != tgl_peer_type::channel) {
     tgl_set_query_error (EINVAL, "Can only export chat link for chat");
     if (callback) {
@@ -4110,7 +4127,7 @@ void tgl_do_check_password (std::function<void(bool success)> callback) {
 /* }}} */
 
 /* {{{ send broadcast */
-void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const std::string& text, int text_len, unsigned long long flags,
+void tgl_do_send_broadcast (int num, tgl_input_peer_t peer_id[], const std::string& text, int text_len, unsigned long long flags,
         std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& ML)> callback)
 {
   if (num > 1000) {
@@ -4204,7 +4221,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_block_user (tgl_peer_id_t id, std::function<void(bool success)> callback) {
+void tgl_do_block_user (const tgl_input_peer_t& id, std::function<void(bool success)> callback) {
   if (id.peer_type != tgl_peer_type::user) {
     tgl_set_query_error (EINVAL, "id should be user id");
     if (callback) {
@@ -4221,7 +4238,7 @@ void tgl_do_block_user (tgl_peer_id_t id, std::function<void(bool success)> call
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_unblock_user (tgl_peer_id_t id, std::function<void(bool success)> callback) {
+void tgl_do_unblock_user (const tgl_input_peer_t& id, std::function<void(bool success)> callback) {
   if (id.peer_type != tgl_peer_type::user) {
     tgl_set_query_error (EINVAL, "id should be user id");
     if (callback) {

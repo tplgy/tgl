@@ -26,7 +26,7 @@ struct tgl_user_status {
 };
 
 struct tgl_user {
-    tgl_peer_id_t id;
+    tgl_input_peer_t id;
     int32_t flags;
     int64_t access_hash;
     struct tgl_user_status status;

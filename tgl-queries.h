@@ -29,7 +29,7 @@ struct tl_ds_reply_markup;
 // send plain text message to peer id
 // flags is combination of TGL_SEND_MSG_FLAG_*
 // reply markup can be NULL
-void tgl_do_send_message (tgl_peer_id_t peer_id, const std::string& text, unsigned long long flags, int reply_id, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
+void tgl_do_send_message (const tgl_input_peer_t& peer_id, const std::string& text, unsigned long long flags, int reply_id, struct tl_ds_reply_markup *reply_markup, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
 
 // forward message *msg_id* to peer *id*
 // message can not be encrypted and peer can not be secret chat
@@ -37,7 +37,7 @@ void tgl_do_forward_message (int id, int msg_id, unsigned long long flags, std::
 
 // forward messages *ids* to peer *id*
 // messages can not be encrypted and peer can not be secret chat
-void tgl_do_forward_messages(const tgl_peer_id_t& id, const std::vector<tgl_message_id_t>& ids, unsigned long long flags, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)> callback);
+void tgl_do_forward_messages(const tgl_input_peer_t& id, const std::vector<tgl_message_id_t>& ids, unsigned long long flags, std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)> callback);
 
 // sends contact to another user.
 // This contact may be or may not be telegram user
@@ -55,7 +55,7 @@ void tgl_do_reply_contact (int reply_id, tgl_peer_id_t peer_id, const char *phon
 void tgl_do_forward_media (tgl_peer_id_t id, struct tgl_message_media *media, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
 
 // sends location to chat *id*
-void tgl_do_send_location (tgl_peer_id_t id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
+void tgl_do_send_location (const tgl_input_peer_t& id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
 
 // sends broadcast (i.e. message to several users at once)
 // flags are same as in tgl_do_send_message
@@ -91,11 +91,11 @@ void tgl_do_add_user_to_chat (int chat_id, int id, int limit, std::function<void
 
 // deleted user *id* from chat *chat_id*
 // you can do it if you are admin (=creator) of chat or if you invited this user or if it is yourself
-void tgl_do_del_user_from_chat(int chat_id, const tgl_peer_id_t& user_id, const std::function<void(bool success)>& callback);
+void tgl_do_del_user_from_chat(int chat_id, const tgl_input_peer_t& user_id, const std::function<void(bool success)>& callback);
 
 // creates group chat with users ids
 // there should be at least one user other then you in chat
-void tgl_do_create_group_chat (std::vector<tgl_peer_id_t> user_ids, const std::string &chat_topic, std::function<void(bool success)> callback);
+void tgl_do_create_group_chat (std::vector<tgl_input_peer_t> user_ids, const std::string &chat_topic, std::function<void(bool success)> callback);
 
 // receives invitation link to this chat
 // only chat admin can create one
@@ -118,8 +118,8 @@ void tgl_do_get_user_info(const tgl_peer_id_t& id, const std::function<void(bool
 // force should be set to 0
 void tgl_do_add_contact (const std::string& phone, const std::string& first_name, const std::string& last_name, bool replace, std::function<void(bool success, const std::vector<int>& user_ids)> callback);
 
-// deletes user *id* from contact listus
-void tgl_do_delete_contact(const tgl_peer_id_t& id, const std::function<void(bool success)>& callback);
+// deletes user *id* from contact list
+void tgl_do_delete_contact(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback);
 
 // imports card exported by another user
 void tgl_do_import_card (int size, int *card, std::function<void(bool success, const std::shared_ptr<tgl_user>& user)> callback);
@@ -151,7 +151,7 @@ void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_c
 //int tgl_do_visualize_key (int id, unsigned char buf[16]);
 
 // requests creation of secret chat with user id
-void tgl_do_create_secret_chat(const tgl_peer_id_t& user_id,
+void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id,
         const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>& callback);
 /* }}} */
 
@@ -185,7 +185,7 @@ void tgl_do_update_contact_list ();
 // if offline_mode=1 then no actual query is sent
 // only locally cached messages returned
 // also marks messages from this chat as read
-void tgl_do_get_history (const tgl_peer_id_t& id, int offset, int limit,
+void tgl_do_get_history (const tgl_input_peer_t& id, int offset, int limit,
         const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& list)>& callback);
 
 // sends typing event to chat

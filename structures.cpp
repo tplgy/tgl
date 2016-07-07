@@ -155,8 +155,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(struct tl_ds_user *DS_U, bool in
     return nullptr;
   } 
 
-  tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->id));
-  user_id.access_hash = DS_LVAL (DS_U->access_hash);
+  tgl_input_peer_t user_id(tgl_peer_type::user, DS_LVAL(DS_U->id), DS_LVAL(DS_U->access_hash));
 
   std::shared_ptr<tgl_user> user = std::make_shared<tgl_user>();
   user->id = user_id;
@@ -303,8 +302,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
     return nullptr;
   }
 
-  tgl_peer_id_t chat_id = tgl_peer_id_enc_chat (DS_LVAL (DS_EC->id));
-  chat_id.access_hash = DS_LVAL (DS_EC->access_hash);
+  tgl_input_peer_t chat_id(tgl_peer_type::enc_chat, DS_LVAL(DS_EC->id), DS_LVAL(DS_EC->access_hash));
   
   std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(chat_id);
 
@@ -408,8 +406,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C, bool i
   if (DS_C->magic == CODE_channel || DS_C->magic == CODE_channel_forbidden) {
     return tglf_fetch_alloc_channel(DS_C, invoke_callback);
   }
-  tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_C->id));
-  chat_id.access_hash = 0; // chats don't have access hash
+  tgl_input_peer_t chat_id(tgl_peer_type::chat, DS_LVAL(DS_C->id), DS_LVAL(DS_C->access_hash));
 
   std::shared_ptr<tgl_chat> C = std::make_shared<tgl_chat>();
   C->id = chat_id;
@@ -510,7 +507,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
     }
   }
 
-  tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_CF->id));
+  tgl_peer_id_t chat_id(tgl_peer_type::chat, DS_LVAL(DS_CF->id));
   std::shared_ptr<tgl_chat> C = std::make_shared<tgl_chat>();
   C->id = chat_id;
 
@@ -537,8 +534,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
 std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C, bool invoke_callback) {
   if (!DS_C) { return nullptr; }
   
-  tgl_peer_id_t chat_id = tgl_peer_id_channel (DS_LVAL (DS_C->id));
-  chat_id.access_hash = DS_LVAL (DS_C->access_hash); 
+  tgl_input_peer_t chat_id(tgl_peer_type::channel, DS_LVAL(DS_C->id), DS_LVAL(DS_C->access_hash));
 
   std::shared_ptr<tgl_channel> C = std::make_shared<tgl_channel>();
   C->id = chat_id;
@@ -647,7 +643,7 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full (struct tl_ds_message
   }
   struct tl_ds_chat_full *DS_CF = DS_MCF->full_chat;
 
-  tgl_peer_id_t chat_id = tgl_peer_id_channel (DS_LVAL (DS_CF->id));
+  tgl_input_peer_t chat_id(tgl_peer_type::channel, DS_LVAL(DS_CF->id), 0); // FIXME: what about access_hash?
 
   std::shared_ptr<tgl_channel> C = std::make_shared<tgl_channel>();
   C->id = chat_id;

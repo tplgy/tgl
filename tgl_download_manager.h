@@ -48,7 +48,7 @@ public:
     void download_by_file_location(const tgl_file_location& location, int32_t file_size, const tgl_download_callback& callback);
     void download_document(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
 
-    void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id,
+    void send_document(const tgl_input_peer_t& to_id, const tgl_message_id_t& message_id,
             const std::string& file_name, int32_t width, int32_t height, int32_t duration, const std::string& caption,
             const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
             const tgl_upload_callback& callback);
@@ -56,7 +56,7 @@ public:
     // sets self profile photo
     // server will cut central square from this photo
     void set_profile_photo(const std::string &file_name, const std::function<void(bool success)>& callback);
-    void set_chat_photo(tgl_peer_id_t chat_id, const std::string &file_name, const std::function<void(bool success)>& callback);
+    void set_chat_photo(const tgl_input_peer_t& chat_id, const std::string &file_name, const std::function<void(bool success)>& callback);
 
 private:
     friend class query_download;
@@ -75,7 +75,7 @@ private:
 
     void send_part(const std::shared_ptr<send_file>& f, const tgl_upload_callback& callback);
 
-    void send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name,
+    void send_document(const tgl_input_peer_t& to_id, const tgl_message_id_t& message_id, const std::string &file_name,
             int32_t avatar, int32_t width, int32_t height, int32_t duration,
             const std::string& caption, uint64_t flags,
             const std::string& thumb_path, int thumb_width, int thumb_height,

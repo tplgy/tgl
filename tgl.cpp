@@ -58,7 +58,7 @@ tgl_state::tgl_state()
     , m_date(0)
     , m_seq(0)
     , m_test_mode(0)
-    , m_our_id(tgl_peer_id_t())
+    , m_our_id(tgl_input_peer_t())
     , m_enable_pfs(false)
     , m_ipv6_enabled(false)
     , m_bn_ctx(TGLC_bn_ctx_new())
@@ -293,7 +293,7 @@ std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat()
     return secret_chat;
 }
 
-std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat(const tgl_peer_id_t& chat_id)
+std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat(const tgl_input_peer_t& chat_id)
 {
     if (m_secret_chats.find(chat_id.peer_id) != m_secret_chats.end()) {
         return nullptr;

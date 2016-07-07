@@ -178,7 +178,7 @@ struct tgl_state {
     int seq() const { return m_seq; }
     int date() const { return m_date; }
     bool test_mode() const { return m_test_mode; }
-    tgl_peer_id_t our_id() const { return m_our_id; }
+    tgl_input_peer_t our_id() const { return m_our_id; }
     bool ipv6_enabled() const { return m_ipv6_enabled; }
     bool pfs_enabled() const { return m_enable_pfs; }
 
@@ -187,7 +187,7 @@ struct tgl_state {
         return secret_chat_for_id(id.peer_id);
     }
     std::shared_ptr<tgl_secret_chat> create_secret_chat();
-    std::shared_ptr<tgl_secret_chat> create_secret_chat(const tgl_peer_id_t& chat_id);
+    std::shared_ptr<tgl_secret_chat> create_secret_chat(const tgl_input_peer_t& chat_id);
     std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int chat_id) const;
     void add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 
@@ -217,7 +217,7 @@ private:
     int m_date;
     int m_seq;
     bool m_test_mode; // Connects to the telegram test servers instead of the regular servers
-    tgl_peer_id_t m_our_id; // ID of logged in user
+    tgl_input_peer_t m_our_id; // ID of logged in user
     bool m_enable_pfs;
     std::string m_app_version;
     bool m_ipv6_enabled;

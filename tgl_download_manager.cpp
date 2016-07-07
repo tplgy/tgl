@@ -739,7 +739,7 @@ void tgl_download_manager::send_file_thumb(const std::shared_ptr<send_file>& f,
 }
 
 
-void tgl_download_manager::send_document(const tgl_peer_id_t& to_id,
+void tgl_download_manager::send_document(const tgl_input_peer_t& to_id,
         const tgl_message_id_t& message_id, const std::string &file_name,
         int32_t avatar, int32_t width, int32_t height, int32_t duration,
         const std::string& caption, uint64_t flags,
@@ -824,7 +824,7 @@ void tgl_download_manager::send_document(const tgl_peer_id_t& to_id,
     }
 }
 
-void tgl_download_manager::set_chat_photo(tgl_peer_id_t chat_id, const std::string& file_name,
+void tgl_download_manager::set_chat_photo(const tgl_input_peer_t& chat_id, const std::string& file_name,
         const std::function<void(bool success)>& callback)
 {
     assert(chat_id.peer_type == tgl_peer_type::chat);
@@ -849,7 +849,7 @@ void tgl_download_manager::set_profile_photo(const std::string& file_name,
             });
 }
 
-void tgl_download_manager::send_document(const tgl_peer_id_t& to_id, const tgl_message_id_t& message_id,
+void tgl_download_manager::send_document(const tgl_input_peer_t& to_id, const tgl_message_id_t& message_id,
         const std::string& file_name, int32_t width, int32_t height, int32_t duration, const std::string& caption,
         const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
         const tgl_upload_callback& callback)
