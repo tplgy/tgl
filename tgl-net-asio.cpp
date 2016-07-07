@@ -526,7 +526,7 @@ void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::ve
         return;
     }
 
-    TGL_DEBUG("wrote " << bytes_transferred << " bytes to DC " << m_dc.lock()->id);
+    //TGL_DEBUG("wrote " << bytes_transferred << " bytes to DC " << m_dc.lock()->id);
 
     if (m_write_buffer_queue.size() > 0) {
         m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));

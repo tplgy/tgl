@@ -43,6 +43,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+std::unique_ptr<tgl_state> tgl_state::s_instance;
+
 tgl_state::tgl_state()
     : locks(0)
     , ev_login(NULL)
@@ -66,8 +68,15 @@ tgl_state::tgl_state()
 
 tgl_state *tgl_state::instance()
 {
-    static tgl_state *tgl_instance = new tgl_state();
-    return tgl_instance;
+    if (!s_instance) {
+        s_instance.reset(new tgl_state);
+    }
+    return s_instance.get();
+}
+
+void tgl_state::reset()
+{
+    s_instance.reset();
 }
 
 void tgl_state::set_auth_key(int num, const char *buf)

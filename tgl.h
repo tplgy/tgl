@@ -109,6 +109,8 @@ struct tgl_secret_chat;
 struct tgl_state {
     static tgl_state *instance();
 
+    static void reset();
+
     long long locks;
     std::vector<std::shared_ptr<tgl_message>> unsent_messages;
     std::shared_ptr<tgl_timer> ev_login;
@@ -233,6 +235,8 @@ private:
     std::shared_ptr<tgl_dc> m_working_dc;
     std::shared_ptr<tgl_timer> m_state_lookup_timer;
     std::set<std::weak_ptr<tgl_online_status_observer>, std::owner_less<std::weak_ptr<tgl_online_status_observer>>> m_online_status_observers;
+
+    static std::unique_ptr<tgl_state> s_instance;
 };
 
 int tgl_secret_chat_for_user(tgl_peer_id_t user_id);
