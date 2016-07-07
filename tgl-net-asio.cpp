@@ -161,12 +161,7 @@ void tgl_connection_asio::schedule_restart()
 
     if (!tgl_state::instance()->is_online()) {
         TGL_NOTICE("not restarting because we are offline");
-
         m_restart_paused = true;
-
-        // FIXME: remove this when tgl_state::set_online() is called while networking status changes.
-        start_ping_timer();
-
         return;
     }
 
