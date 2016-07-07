@@ -1440,6 +1440,11 @@ static void send_all_acks_gateway (std::shared_ptr<tgl_session> session) {
 
 void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& s, int64_t id)
 {
+    if (!s->ev) {
+        // The session has been cleared.
+        return;
+    }
+
     if (s->ack_set.empty()) {
         s->ev->start(ACK_TIMEOUT);
     }
