@@ -61,9 +61,10 @@ public:
     virtual const std::weak_ptr<tgl_dc>& get_dc() const override { return m_dc; }
     virtual const std::weak_ptr<tgl_session>& get_session() const override { return m_session; }
 
-    virtual void on_online_status_changed(bool online) override;
+    virtual void on_online_status_changed(tgl_online_status status) override;
 
 private:
+    bool is_online() const { return m_online_status == tgl_online_status::wwan_online || m_online_status == tgl_online_status::non_wwan_online; }
     bool connect();
     void schedule_restart();
     void restart(const boost::system::error_code& error);
@@ -104,7 +105,7 @@ private:
     std::shared_ptr<mtproto_client> m_mtproto_client;
 
     bool m_write_pending;
-    bool m_restart_paused;
+    tgl_online_status m_online_status;
 };
 
 class tgl_connection_factory_asio : public tgl_connection_factory

@@ -752,7 +752,6 @@ static void init_enc_msg(encrypted_message& enc_msg, std::shared_ptr<tgl_session
 
   assert (DC->state == st_authorized);
   assert (DC->temp_auth_key_id);
-  TGL_DEBUG("DC " << DC->id << ": temp_auth_key_id = " << std::hex << DC->temp_auth_key_id << ", auth_key_id = " << DC->auth_key_id);
   enc_msg.auth_key_id = DC->temp_auth_key_id;
   enc_msg.server_salt = DC->server_salt;
   if (!S->session_id) {
@@ -1355,10 +1354,13 @@ static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
   switch (o) {
   case st_init:
     // start creating a new authorization key
+    TGL_DEBUG("DC " << DC->id << " is in init state");
     send_req_pq_packet (c);
     break;
   case st_authorized:
+    TGL_DEBUG("DC " << DC->id << " is in authorized state");
     if (!(DC->flags & TGLDCF_BOUND)) {
+      TGL_DEBUG("DC " << DC->id << " is not bond");
       assert (tgl_state::instance()->pfs_enabled());
       if (!DC->temp_auth_key_id) {
         assert (!DC->temp_auth_key_id);
@@ -1368,6 +1370,7 @@ static int tc_becomes_ready (const std::shared_ptr<tgl_connection>& c) {
         bind_temp_auth_key (c);
       }
     } else if (!(DC->flags & TGLDCF_CONFIGURED)) {
+      TGL_DEBUG("DC " << DC->id << " is not configured");
       tgl_do_help_get_config_dc (DC);
     }
     break;

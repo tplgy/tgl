@@ -49,7 +49,7 @@ tgl_state::tgl_state()
     : locks(0)
     , ev_login(NULL)
     , m_is_started(false)
-    , m_is_online(false)
+    , m_online_status(tgl_online_status::not_online)
     , m_app_id(0)
     , m_error_code(0)
     , m_temp_key_expire_time(0)
@@ -395,16 +395,16 @@ void tgl_state::logout()
     tgl_do_logout(nullptr);
 }
 
-void tgl_state::set_online(bool online)
+void tgl_state::set_online_status(tgl_online_status status)
 {
-    if (online == m_is_online) {
+    if (status == m_online_status) {
         return;
     }
 
-    m_is_online = online;
+    m_online_status = status;
     for (const auto& weak_observer: m_online_status_observers) {
         if (auto observer = weak_observer.lock()) {
-            observer->on_online_status_changed(online);
+            observer->on_online_status_changed(status);
         }
     }
 }

@@ -25,6 +25,7 @@
 #include "tgl-dc.h"
 #include "tgl-layout.h"
 #include "tgl-log.h"
+#include "types/tgl_online_status.h"
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -148,8 +149,8 @@ struct tgl_state {
     void set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory) { m_timer_factory = factory; }
     void set_enable_ipv6 (bool val);
 
-    bool is_online() const { return m_is_online; }
-    void set_online(bool online);
+    tgl_online_status online_status() const { return m_online_status; }
+    void set_online_status(tgl_online_status status);
     void add_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer)
     {
         m_online_status_observers.insert(observer);
@@ -201,7 +202,7 @@ private:
 
 private:
     bool m_is_started;
-    bool m_is_online;
+    tgl_online_status m_online_status;
 
     int m_app_id;
     std::string m_app_hash;

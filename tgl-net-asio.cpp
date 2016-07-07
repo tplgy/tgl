@@ -54,7 +54,7 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     , m_session(session)
     , m_mtproto_client(client)
     , m_write_pending(false)
-    , m_restart_paused(false)
+    , m_online_status(tgl_state::instance()->online_status())
 {
 }
 
@@ -120,18 +120,6 @@ ssize_t tgl_connection_asio::read_in_lookup(void* data_out, size_t len) {
     return read_bytes;
 }
 
-static int rotate_port(int port) {
-    switch (port) {
-        case 443:
-            return 80;
-        case 80:
-            return 25;
-        case 25:
-            return 443;
-    }
-    return -1;
-}
-
 void tgl_connection_asio::open()
 {
     tgl_state::instance()->add_online_status_observer(shared_from_this());
@@ -159,13 +147,10 @@ void tgl_connection_asio::schedule_restart()
         return;
     }
 
-    if (!tgl_state::instance()->is_online()) {
+    if (!is_online()) {
         TGL_NOTICE("not restarting because we are offline");
-        m_restart_paused = true;
         return;
     }
-
-    m_restart_paused = false;
 
     if (m_restart_timer) {
         return;
@@ -202,7 +187,6 @@ void tgl_connection_asio::restart(const boost::system::error_code& error)
         m_socket.close();
     }
 
-    m_port = rotate_port(m_port);
     TGL_NOTICE("restarting connection to " << m_ip << ":" << m_port);
     open();
 }
@@ -528,10 +512,19 @@ void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::ve
     }
 }
 
-void tgl_connection_asio::on_online_status_changed(bool online)
+void tgl_connection_asio::on_online_status_changed(tgl_online_status status)
 {
-    if (online && m_restart_paused) {
-        m_restart_duration = MIN_RESTART_DURATION;
-        schedule_restart();
+    if (m_online_status == status) {
+        return;
     }
+
+    m_online_status = status;
+
+    if (m_state == conn_closed || !is_online()) {
+        return;
+    }
+
+    m_state = conn_failed;
+    m_restart_duration = MIN_RESTART_DURATION;
+    schedule_restart();
 }
