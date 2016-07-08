@@ -453,7 +453,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat (struct tl_ds_chat *DS_C, bool i
 
   if (invoke_callback) {
     tgl_state::instance()->callback()->chat_update(C->id.peer_id, *DS_C->participants_count, title, *(DS_C->date), creator,
-        admin, admins_enabled, kicked, left, deactivated);
+        admin, admins_enabled, kicked, left, deactivated, DS_TRUE(DS_C->editor), DS_TRUE(DS_C->moderator), DS_TRUE(DS_C->megagroup), DS_TRUE(DS_C->verified), DS_TRUE(DS_C->restricted));
     tgl_state::instance()->callback()->avatar_update(C->id.peer_id, C->id.peer_type, C->photo_big, C->photo_small);
   }
   return C;
