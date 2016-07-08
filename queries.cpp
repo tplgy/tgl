@@ -3512,7 +3512,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_send_typing (const tgl_peer_id_t& id, enum tgl_typing_status status, std::function<void(bool success)> callback) {
+void tgl_do_send_typing (const tgl_input_peer_t& id, enum tgl_typing_status status, std::function<void(bool success)> callback) {
     if (id.peer_type != tgl_peer_type::enc_chat) {
         auto q = std::make_shared<query_send_typing>(callback);
         q->out_i32 (CODE_messages_set_typing);
