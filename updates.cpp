@@ -264,11 +264,20 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     {
       tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
       if (DS_U->participants->magic == CODE_chat_participants) {
-        for (int i=0; i<*DS_U->participants->participants->cnt; ++i) {
-          tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, *DS_U->participants->participants->data[i]->user_id,
-              DS_U->participants->participants->data[i]->inviter_id ? *DS_U->participants->participants->data[i]->inviter_id : 0,
-              DS_U->participants->participants->data[i]->date ? *DS_U->participants->participants->data[i]->date : 0);
-        }
+          for (int i=0; i<*DS_U->participants->participants->cnt; ++i) {
+              bool admin = false;
+              bool creator = false;
+              if (DS_U->participants->participants->data[i]->magic == CODE_chat_participant_admin) {
+                  admin = true;
+              } else if (DS_U->participants->participants->data[i]->magic == CODE_chat_participant_creator) {
+                  creator = true;
+                  admin = true;
+              }
+              tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, *DS_U->participants->participants->data[i]->user_id,
+                    DS_U->participants->participants->data[i]->inviter_id ? *DS_U->participants->participants->data[i]->inviter_id : 0,
+                    DS_U->participants->participants->data[i]->date ? *DS_U->participants->participants->data[i]->date : 0,
+                    admin, creator);
+          }
       }
       break;
     }
@@ -345,7 +354,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
       //int version = DS_LVAL (DS_U->version); 
 
       //bl_do_chat_add_user (C->id, version, user_id.peer_id, inviter_id.peer_id, time (0));
-      tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, user_id.peer_id, inviter_id.peer_id, time (0));
+      tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, user_id.peer_id, inviter_id.peer_id, time (0), false, false);
     }
     break;
   case CODE_update_chat_participant_delete:

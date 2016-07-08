@@ -521,9 +521,18 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
   //tgl_state::instance()->callback()->chat_update(tgl_get_peer_id (C->id), *DS_CF->participants->participants->cnt, DS_CF->);
   if (DS_CF->participants && DS_CF->participants->participants) {
         for (int i=0; i<*(DS_CF->participants->participants->cnt); ++i) {
+            bool admin = false;
+            bool creator = false;
+            if (DS_CF->participants->participants->data[i]->magic == CODE_chat_participant_admin) {
+                admin = true;
+            } else if (DS_CF->participants->participants->data[i]->magic == CODE_chat_participant_creator) {
+                creator = true;
+                admin = true;
+            }
             tgl_state::instance()->callback()->chat_add_user(C->id.peer_id, *DS_CF->participants->participants->data[i]->user_id,
                     DS_CF->participants->participants->data[i]->inviter_id ? *DS_CF->participants->participants->data[i]->inviter_id : 0,
-                    DS_CF->participants->participants->data[i]->date ? *DS_CF->participants->participants->data[i]->date : 0);
+                    DS_CF->participants->participants->data[i]->date ? *DS_CF->participants->participants->data[i]->date : 0,
+                    admin, creator);
         }
   }
   //TODO update users
