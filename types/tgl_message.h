@@ -20,7 +20,7 @@ typedef struct tgl_message_id {
     tgl_peer_type peer_type;
     unsigned peer_id;
     int64_t id;
-    int64_t access_hash;
+    int64_t access_hash; // the access hash for the peer
     tgl_message_id(): peer_type(tgl_peer_type::unknown), peer_id(0), id(0), access_hash(0) { }
     tgl_message_id(const tgl_peer_type& peer_type, unsigned peer_id, long long id, long long access_hash)
         : peer_type(peer_type), peer_id(peer_id), id(id), access_hash(access_hash) {}

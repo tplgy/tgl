@@ -27,7 +27,7 @@ struct send_file {
     size_t part_size;
     int64_t id;
     int64_t thumb_id;
-    tgl_peer_id_t to_id;
+    tgl_input_peer_t to_id;
     int32_t flags;
     std::string file_name;
     bool encr;
@@ -395,7 +395,7 @@ void tgl_download_manager::send_unencrypted_file_end(const std::shared_ptr<send_
 
     q->out_i32(CODE_messages_send_media);
     q->out_i32((f->reply ? 1 : 0));
-    q->out_peer_id(f->to_id);
+    q->out_input_peer(f->to_id);
     if (f->reply) {
         q->out_i32(f->reply);
     }

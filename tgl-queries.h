@@ -33,7 +33,7 @@ void tgl_do_send_message (const tgl_input_peer_t& peer_id, const std::string& te
 
 // forward message *msg_id* to peer *id*
 // message can not be encrypted and peer can not be secret chat
-void tgl_do_forward_message (int id, int msg_id, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
+void tgl_do_forward_message(const tgl_input_peer_t& id, int msg_id, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
 
 // forward messages *ids* to peer *id*
 // messages can not be encrypted and peer can not be secret chat
@@ -41,7 +41,7 @@ void tgl_do_forward_messages(const tgl_input_peer_t& id, const std::vector<tgl_m
 
 // sends contact to another user.
 // This contact may be or may not be telegram user
-void tgl_do_send_contact (tgl_peer_id_t id, const char *phone, const char *first_name, const char *last_name,
+void tgl_do_send_contact (const tgl_input_peer_t& id, const char *phone, const char *first_name, const char *last_name,
         unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
 
 // reply on message *reply_id* with contact
@@ -52,7 +52,7 @@ void tgl_do_reply_contact (int reply_id, tgl_peer_id_t peer_id, const char *phon
 // a bit different from forwarding message with media
 // secret message media can be forwarded to secret chats
 // and non-secret - to non-secret chats and users
-void tgl_do_forward_media (tgl_peer_id_t id, struct tgl_message_media *media, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
+void tgl_do_forward_media(const tgl_input_peer_t& id, struct tgl_message_media *media, std::function<void(bool success, const std::shared_ptr<tgl_message>& M)> callback);
 
 // sends location to chat *id*
 void tgl_do_send_location (const tgl_input_peer_t& id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
@@ -200,7 +200,7 @@ void tgl_do_send_typing (const tgl_input_peer_t& id, enum tgl_typing_status stat
 // id type of id is UNKNOWN uses global search (in all dialogs) instead
 // if *from* or *to* is means *from*=0 and *to*=+INF
 // return up to *limit* entries from offset=*offset*
-void tgl_do_msg_search(const tgl_peer_id_t& id, int from, int to, int limit, int offset, const std::string& query,
+void tgl_do_msg_search(const tgl_input_peer_t& id, int from, int to, int limit, int offset, const std::string& query,
         const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback);
 
 // deletes message *id*

@@ -116,8 +116,8 @@ public:
         m_serializer->out_random(length);
     }
 
-    void out_peer_id(const tgl_peer_id_t& id);
-    void out_peer_id(const tgl_input_peer_t& id);
+    void out_peer_id(const tgl_peer_id_t& id, int64_t access_hash);
+    void out_input_peer(const tgl_input_peer_t& id);
 
     void out_header();
 
