@@ -347,8 +347,8 @@ void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::fu
   secret_chat_encryptor encryptor(secret_chat, q->serializer());
   q->out_i32 (CODE_messages_send_encrypted_service);
   q->out_i32 (CODE_input_encrypted_chat);
-  q->out_i32 (M->permanent_id.peer_id);
-  q->out_i64 (M->permanent_id.access_hash);
+  q->out_i32 (secret_chat->id.peer_id);
+  q->out_i64 (secret_chat->id.access_hash);
   q->out_i64 (M->permanent_id.id);
   encryptor.start();
   q->out_i32 (CODE_decrypted_message_layer);
@@ -442,7 +442,7 @@ void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<
   secret_chat_encryptor encryptor(secret_chat, q->serializer());
   q->out_i32 (CODE_messages_send_encrypted);
   q->out_i32 (CODE_input_encrypted_chat);
-  q->out_i32 (M->to_id.peer_id);
+  q->out_i32 (secret_chat->id.peer_id);
   q->out_i64 (secret_chat->access_hash);
   q->out_i64 (M->permanent_id.id);
   encryptor.start();
