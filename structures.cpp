@@ -1427,6 +1427,12 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
   tgl_peer_id_t from_id;
   if (DS_M->from_id) {
     from_id = tgl_peer_id_user (DS_LVAL (DS_M->from_id));
+  } else if (DS_M->to_id->magic == CODE_peer_channel) {
+    if (DS_LVAL(DS_M->flags) & 2) {
+      from_id = tgl_state::instance()->our_id();
+    } else {
+      from_id = to_id;
+    }
   } else {
     from_id = tgl_peer_id_user (0);
   }
