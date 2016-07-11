@@ -285,23 +285,31 @@ bool tgl_connection_asio::connect() {
     start_ping_timer();
     m_state = conn_connecting;
 
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_ip), m_port);
+
     boost::system::error_code ec;
-    m_socket.open(tgl_state::instance()->ipv6_enabled() ? boost::asio::ip::tcp::v6() : boost::asio::ip::tcp::v4(), ec);
+    m_socket.open(endpoint.protocol(), ec);
     if (ec) {
         TGL_WARNING("error opening socket: " << ec.message());
         return false;
     }
 
-    m_socket.set_option(boost::asio::socket_base::reuse_address(true));
-    m_socket.set_option(boost::asio::socket_base::keep_alive(true));
-    m_socket.set_option(boost::asio::ip::tcp::no_delay(true));
+    m_socket.set_option(boost::asio::socket_base::keep_alive(true), ec);
+    if (ec) {
+        TGL_WARNING("error enabling keep-alives on socket: " << ec.message());
+    }
+
+    m_socket.set_option(boost::asio::ip::tcp::no_delay(true), ec);
+    if (ec) {
+        TGL_WARNING("error disabling Nagle algorithm on socket: " << ec.message());
+    }
+
     m_socket.non_blocking(true, ec);
     if (ec) {
         TGL_WARNING("error making socket non-blocking: " << ec.message());
         return false;
     }
 
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_ip), m_port);
     m_socket.async_connect(endpoint, std::bind(&tgl_connection_asio::handle_connect, shared_from_this(), std::placeholders::_1));
     m_write_pending = false;
     m_last_receive_time = std::chrono::steady_clock::now();
