@@ -28,7 +28,6 @@ int tgl_do_send_code_result_auth (const char *phone, int phone_len, const char *
         int first_name_len, const char *last_name, int last_name_len, std::function<void(bool success, const std::shared_ptr<tgl_user>&)> callback);
 
 /* }}} */
-void tgl_do_send_msg (const std::shared_ptr<tgl_message>& M, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback);
 
 void tgl_do_check_password (std::function<void(bool success)> callback);
 

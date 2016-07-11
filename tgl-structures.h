@@ -28,15 +28,16 @@
 
 void tgls_free_bot_info (struct tgl_bot_info *B);
 
-std::shared_ptr<tgl_message> tglm_message_create(const tgl_message_id_t& id, const tgl_peer_id_t& from_id,
-                                        const tgl_peer_id_t& to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
+std::shared_ptr<tgl_message> tglm_message_create(int64_t message_id, const tgl_peer_id_t& from_id,
+                                        const tgl_input_peer_t& to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const std::string& message,
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
                                         int reply_id, struct tl_ds_reply_markup *reply_markup, int flags);
 
-std::shared_ptr<tgl_message> tglm_create_encr_message(const tgl_message_id& id,
+std::shared_ptr<tgl_message> tglm_create_encr_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        int64_t message_id,
         const tgl_peer_id_t& from_id,
-        const tgl_peer_id_t& to_id,
+        const tgl_input_peer_t& to_id,
         const int* date,
         const std::string& message,
         const tl_ds_decrypted_message_media* media,
@@ -47,37 +48,6 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(const tgl_message_id& id,
 std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_encrypted_message*);
 void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& secret_message);
 
-std::shared_ptr<tgl_message> tglm_message_alloc(const tgl_message_id_t& id);
-
-void tglm_send_all_unsent ();
-
-static inline tgl_peer_id_t tgl_msg_id_to_peer_id (tgl_message_id_t msg_id) {
-  tgl_peer_id_t id;
-  id.peer_type = msg_id.peer_type;
-  id.peer_id = msg_id.peer_id;
-  return id;
-}
-
-static inline tgl_input_peer_t tgl_msg_id_to_input_peer(const tgl_message_id_t& msg_id) {
-  tgl_input_peer_t id;
-  id.peer_type = msg_id.peer_type;
-  id.peer_id = msg_id.peer_id;
-  id.access_hash = msg_id.access_hash;
-  return id;
-}
-
-static inline tgl_message_id_t tgl_peer_id_to_msg_id(const tgl_peer_id_t& peer_id, long long msg_id) {
-  tgl_message_id_t id;
-  id.peer_type = peer_id.peer_type;
-  id.peer_id = peer_id.peer_id;
-  id.id = msg_id;
-  return id;
-}
-
-static inline tgl_message_id_t tgl_peer_id_to_random_msg_id(const tgl_peer_id_t& peer_id) {
-  long long id;
-  tglt_secure_random((unsigned char*)&id, 8);
-  return tgl_peer_id_to_msg_id(peer_id, id);
-}
+std::shared_ptr<tgl_message> tglm_message_alloc(int64_t message_id);
 
 #endif

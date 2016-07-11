@@ -45,7 +45,7 @@ struct send_file {
     int32_t thumb_width;
     int32_t thumb_height;
 
-    tgl_message_id_t message_id;
+    int64_t message_id;
 
     std::vector<char> sending_buffer;
 
@@ -262,7 +262,7 @@ public:
             m_callback(true, m_message, 0);
         }
 
-        tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id.id, m_secret_chat->out_seq_no);
+        tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id, m_secret_chat->out_seq_no);
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
@@ -479,7 +479,7 @@ void tgl_download_manager::send_unencrypted_file_end(const std::shared_ptr<send_
         q->out_std_string(f->caption);
     }
 
-    q->out_i64(E->id.id);
+    q->out_i64(E->id);
 
     q->execute(tgl_state::instance()->working_dc());
 }
@@ -581,7 +581,8 @@ void tgl_download_manager::send_encrypted_file_end(const std::shared_ptr<send_fi
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 
     int date = time(NULL);
-    std::shared_ptr<tgl_message> message = tglm_create_encr_message(f->message_id,
+    std::shared_ptr<tgl_message> message = tglm_create_encr_message(secret_chat,
+        f->message_id,
         from_id,
         f->to_id,
         &date,
@@ -740,7 +741,7 @@ void tgl_download_manager::send_file_thumb(const std::shared_ptr<send_file>& f,
 
 
 void tgl_download_manager::send_document(const tgl_input_peer_t& to_id,
-        const tgl_message_id_t& message_id, const std::string &file_name,
+        int64_t message_id, const std::string &file_name,
         int32_t avatar, int32_t width, int32_t height, int32_t duration,
         const std::string& caption, uint64_t flags,
         const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height,
@@ -828,7 +829,7 @@ void tgl_download_manager::set_chat_photo(const tgl_input_peer_t& chat_id, const
         const std::function<void(bool success)>& callback)
 {
     assert(chat_id.peer_type == tgl_peer_type::chat);
-    send_document(chat_id, tgl_message_id_t(), file_name, chat_id.peer_id,
+    send_document(chat_id, 0, file_name, chat_id.peer_id,
             0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::string(), 0 , 0,
             [=](bool success, const std::shared_ptr<tgl_message>&, float) {
                 if (callback) {
@@ -840,7 +841,7 @@ void tgl_download_manager::set_chat_photo(const tgl_input_peer_t& chat_id, const
 void tgl_download_manager::set_profile_photo(const std::string& file_name,
         const std::function<void(bool success)>& callback)
 {
-    send_document(tgl_state::instance()->our_id(), tgl_message_id_t(), file_name, -1,
+    send_document(tgl_state::instance()->our_id(), 0, file_name, -1,
             0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::string(), 0, 0,
             [=](bool success, const std::shared_ptr<tgl_message>&, float) {
                 if (callback) {
@@ -849,7 +850,7 @@ void tgl_download_manager::set_profile_photo(const std::string& file_name,
             });
 }
 
-void tgl_download_manager::send_document(const tgl_input_peer_t& to_id, const tgl_message_id_t& message_id,
+void tgl_download_manager::send_document(const tgl_input_peer_t& to_id, int64_t message_id,
         const std::string& file_name, int32_t width, int32_t height, int32_t duration, const std::string& caption,
         const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
         const tgl_upload_callback& callback)

@@ -154,9 +154,9 @@ private:
 
 struct messages_send_extra {
   bool multi = false;
-  tgl_message_id_t id;
+  int64_t id;
   int count = 0;
-  std::vector<tgl_message_id_t> message_ids;
+  std::vector<int64_t> message_ids;
 };
 
 class query_send_msgs: public query

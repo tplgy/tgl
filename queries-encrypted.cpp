@@ -234,56 +234,6 @@ void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
 
 /* }}} */
 
-static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secret_chat, const tl_ds_decrypted_message_action& action) {
-  long long t;
-  tglt_secure_random ((unsigned char*)&t, 8);
-  int date = time (0);
-
-  struct tgl_message_id msg_id = tgl_peer_id_to_random_msg_id(secret_chat->id);
-  
-  tgl_peer_id_t from_id = tgl_state::instance()->our_id();
-  std::shared_ptr<tgl_message> M = tglm_create_encr_message(msg_id,
-      from_id,
-      secret_chat->id,
-      &date,
-      std::string(),
-      NULL,
-      &action,
-      NULL,
-      TGLMF_PENDING | TGLMF_OUT | TGLMF_UNREAD | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
-
-  assert (M);
-  tgl_state::instance()->callback()->new_messages({M});
-  tgl_do_send_msg (M, 0);
-}
-
-void tgl_do_send_encr_chat_layer(const std::shared_ptr<tgl_secret_chat>& secret_chat) {
-    static struct tl_ds_decrypted_message_action action;
-    action.magic = CODE_decrypted_message_action_notify_layer;
-    int layer = TGL_ENCRYPTED_LAYER;
-    action.layer = &layer;
-
-    tgl_do_send_encr_action(secret_chat, action);
-}
-
-void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>& secret_chat, int start_seq_no, int end_seq_no)
-{
-    static struct tl_ds_decrypted_message_action action;
-    action.magic = CODE_decrypted_message_action_resend;
-    action.start_seq_no = &start_seq_no;
-    action.end_seq_no = &end_seq_no;
-
-    tgl_do_send_encr_action(secret_chat, action);
-}
-
-void tgl_do_set_encr_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_chat, int ttl) {
-    static struct tl_ds_decrypted_message_action action;
-    action.magic = CODE_decrypted_message_action_set_message_t_t_l;
-    action.ttl_seconds = &ttl;
-
-    tgl_do_send_encr_action(secret_chat, action);
-}
-
 class query_msg_send_encr: public query {
 public:
     query_msg_send_encr(
@@ -299,7 +249,7 @@ public:
 
     virtual void on_answer(void*) override
     {
-        tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id.id, m_secret_chat->out_seq_no);
+        tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id, m_secret_chat->out_seq_no);
         if (m_callback) {
             m_callback(true, m_message, 0);
         }
@@ -318,7 +268,7 @@ public:
         if (m_message) {
             //bl_do_message_delete (&M->permanent_id);
             // FIXME: is this correct?
-            tgl_state::instance()->callback()->message_deleted(m_message->permanent_id.id);
+            tgl_state::instance()->callback()->message_deleted(m_message->permanent_id);
         }
         return 0;
     }
@@ -329,9 +279,10 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_message>&, float)> m_callback;
 };
 
-void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M, float progress)> callback)
+static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::shared_ptr<tgl_message>& M,
+        const std::function<void(bool, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
 {
-  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(tgl_peer_id_enc_chat(M->permanent_id.peer_id));
   if (!secret_chat || secret_chat->state != sc_ok) { 
     TGL_WARNING("Unknown encrypted chat");
     if (callback) {
@@ -349,7 +300,7 @@ void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::fu
   q->out_i32 (CODE_input_encrypted_chat);
   q->out_i32 (secret_chat->id.peer_id);
   q->out_i64 (secret_chat->id.access_hash);
-  q->out_i64 (M->permanent_id.id);
+  q->out_i64 (M->permanent_id);
   encryptor.start();
   q->out_i32 (CODE_decrypted_message_layer);
   q->out_random (15 + 4 * (tgl_random<int>() % 3));
@@ -357,7 +308,7 @@ void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::fu
   q->out_i32 (2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_state::instance()->our_id().peer_id));
   q->out_i32 (2 * secret_chat->out_seq_no + (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id) - 2);
   q->out_i32 (CODE_decrypted_message_service);
-  q->out_i64 (M->permanent_id.id);
+  q->out_i64 (M->permanent_id);
 
   switch (M->action->type()) {
   case tgl_message_action_type_notify_layer:
@@ -418,16 +369,18 @@ void tgl_do_send_encr_msg_action (const std::shared_ptr<tgl_message>& M, std::fu
   q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<void(bool, const std::shared_ptr<tgl_message>& M, float progress)> callback)
+void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::shared_ptr<tgl_message>& M,
+        const std::function<void(bool, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
 {
   if (M->flags & TGLMF_SERVICE) {
     if (!M->action) {
       return;
     }
-    tgl_do_send_encr_msg_action(M, callback);
+    tgl_do_send_encr_msg_action(secret_chat, M, callback);
     return;
   }
-  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(tgl_peer_id_enc_chat(M->permanent_id.peer_id));
+
   if (!secret_chat || secret_chat->state != sc_ok) { 
     TGL_WARNING("Unknown encrypted chat");
     if (callback) {
@@ -444,7 +397,7 @@ void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<
   q->out_i32 (CODE_input_encrypted_chat);
   q->out_i32 (secret_chat->id.peer_id);
   q->out_i64 (secret_chat->access_hash);
-  q->out_i64 (M->permanent_id.id);
+  q->out_i64 (M->permanent_id);
   encryptor.start();
   q->out_i32 (CODE_decrypted_message_layer);
   q->out_random (15 + 4 * (tgl_random<int>() % 3));
@@ -452,7 +405,7 @@ void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<
   q->out_i32 (2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_state::instance()->our_id().peer_id));
   q->out_i32 (2 * secret_chat->out_seq_no + (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id) - 2);
   q->out_i32 (CODE_decrypted_message);
-  q->out_i64 (M->permanent_id.id);
+  q->out_i64 (M->permanent_id);
   q->out_i32 (secret_chat->ttl);
   q->out_string (M->message.c_str(), M->message.size());
 
@@ -476,6 +429,58 @@ void tgl_do_send_encr_msg (const std::shared_ptr<tgl_message>& M, std::function<
   encryptor.end();
   
   q->execute(tgl_state::instance()->working_dc());
+}
+
+static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secret_chat, const tl_ds_decrypted_message_action& action) {
+  long long t;
+  tglt_secure_random ((unsigned char*)&t, 8);
+  int date = time (0);
+
+  int64_t message_id;
+  tglt_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
+
+  tgl_peer_id_t from_id = tgl_state::instance()->our_id();
+  std::shared_ptr<tgl_message> M = tglm_create_encr_message(secret_chat,
+      message_id,
+      from_id,
+      secret_chat->id,
+      &date,
+      std::string(),
+      NULL,
+      &action,
+      NULL,
+      TGLMF_PENDING | TGLMF_OUT | TGLMF_UNREAD | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
+
+  assert (M);
+  tgl_state::instance()->callback()->new_messages({M});
+  tgl_do_send_encr_msg(secret_chat, M, 0);
+}
+
+void tgl_do_send_encr_chat_layer(const std::shared_ptr<tgl_secret_chat>& secret_chat) {
+    static struct tl_ds_decrypted_message_action action;
+    action.magic = CODE_decrypted_message_action_notify_layer;
+    int layer = TGL_ENCRYPTED_LAYER;
+    action.layer = &layer;
+
+    tgl_do_send_encr_action(secret_chat, action);
+}
+
+void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>& secret_chat, int start_seq_no, int end_seq_no)
+{
+    static struct tl_ds_decrypted_message_action action;
+    action.magic = CODE_decrypted_message_action_resend;
+    action.start_seq_no = &start_seq_no;
+    action.end_seq_no = &end_seq_no;
+
+    tgl_do_send_encr_action(secret_chat, action);
+}
+
+void tgl_do_set_encr_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_chat, int ttl) {
+    static struct tl_ds_decrypted_message_action action;
+    action.magic = CODE_decrypted_message_action_set_message_t_t_l;
+    action.ttl_seconds = &ttl;
+
+    tgl_do_send_encr_action(secret_chat, action);
 }
 
 class query_mark_read_encr: public query
@@ -514,7 +519,9 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secret_chat, std::function<void(bool)> callback) {
+void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::function<void(bool)>& callback)
+{
     auto q = std::make_shared<query_mark_read_encr>(secret_chat, callback);
     q->out_i32(CODE_messages_read_encrypted_history);
     q->out_i32(CODE_input_encrypted_chat);
@@ -524,7 +531,8 @@ void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secr
     q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_send_location_encr(const tgl_input_peer_t& id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
+void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, double longitude, unsigned long long flags,
+        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
 {
   struct tl_ds_decrypted_message_media TDSM;
   TDSM.magic = CODE_decrypted_message_media_geo_point;
@@ -537,14 +545,15 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& id, double latitude, doub
 
   tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 
-  //tgl_peer_t *P = tgl_peer_get (id);
-  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(id);
+  std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(to_id);
   assert(secret_chat);
   
-  struct tgl_message_id msg_id = tgl_peer_id_to_random_msg_id (id);;
-  std::shared_ptr<tgl_message> M = tglm_create_encr_message(msg_id,
+  int64_t message_id;
+  tglt_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
+  std::shared_ptr<tgl_message> M = tglm_create_encr_message(secret_chat,
+      message_id,
       from_id,
-      id,
+      to_id,
       &date,
       std::string(),
       &TDSM,
@@ -556,7 +565,7 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& id, double latitude, doub
   free(TDSM.longitude);
 
   tgl_state::instance()->callback()->new_messages({M});
-  tgl_do_send_encr_msg(M, callback);
+  tgl_do_send_encr_msg(secret_chat, M, callback);
 }
 
 class query_send_encr_accept: public query
