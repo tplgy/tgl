@@ -1152,17 +1152,8 @@ static void create_connection(const std::shared_ptr<tgl_session>& S) {
 
     static auto client = std::make_shared<mtproto_client>();
 
-    if (tgl_state::instance()->ipv6_enabled()) {
-        S->c = tgl_state::instance()->connection_factory()->create_connection(
-                std::get<0>(DC->options[1].option_list[0]),
-                std::get<1>(DC->options[1].option_list[0]),
-                std::weak_ptr<tgl_session>(S), std::weak_ptr<tgl_dc>(DC), client);
-    } else {
-        S->c = tgl_state::instance()->connection_factory()->create_connection(
-                std::get<0>(DC->options[0].option_list[0]),
-                std::get<1>(DC->options[0].option_list[0]),
-                std::weak_ptr<tgl_session>(S), std::weak_ptr<tgl_dc>(DC), client);
-    }
+    S->c = tgl_state::instance()->connection_factory()->create_connection(
+            std::weak_ptr<tgl_session>(S), std::weak_ptr<tgl_dc>(DC), client);
     S->c->open();
 }
 

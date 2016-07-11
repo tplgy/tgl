@@ -34,14 +34,10 @@ constexpr std::chrono::milliseconds PING_DURATION(30000);
 constexpr std::chrono::milliseconds PING_FAIL_DURATION(60000);
 
 tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
-        const std::string& host,
-        int port,
         const std::weak_ptr<tgl_session>& session,
         const std::weak_ptr<tgl_dc>& dc,
         const std::shared_ptr<mtproto_client>& client)
-    : m_ip(host)
-    , m_port(port)
-    , m_state(conn_none)
+    : m_state(conn_none)
     , m_io_service(io_service)
     , m_socket(io_service)
     , m_ping_timer(io_service)
@@ -55,7 +51,22 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     , m_mtproto_client(client)
     , m_write_pending(false)
     , m_online_status(tgl_state::instance()->online_status())
+    , m_ipv6_enabled(tgl_state::instance()->ipv6_enabled())
 {
+    auto data_center = m_dc.lock();
+    if (!data_center) {
+        return;
+    }
+
+    if (m_ipv6_enabled) {
+        m_ip = std::get<0>(data_center->options[0].option_list[1]);
+        m_port = std::get<1>(data_center->options[0].option_list[1]);
+        TGL_WARNING("tgl connecting to ipv6: " << m_ip << ":" << m_port);
+    } else {
+        m_ip = std::get<0>(data_center->options[0].option_list[0]);
+        m_port = std::get<1>(data_center->options[0].option_list[0]);
+        TGL_WARNING("tgl connecting to ipv4: " << m_ip << ":" << m_port);
+    }
 }
 
 tgl_connection_asio::~tgl_connection_asio()
@@ -123,7 +134,6 @@ ssize_t tgl_connection_asio::read_in_lookup(void* data_out, size_t len) {
 void tgl_connection_asio::open()
 {
     tgl_state::instance()->add_online_status_observer(shared_from_this());
-
     if (!connect()) {
         TGL_ERROR("can not connect to " << m_ip << ":" << m_port);
         return;
@@ -322,6 +332,17 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
         if (ec != boost::asio::error::operation_aborted) {
             TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message());
             m_state = conn_failed;
+            if (m_ipv6_enabled) {
+                m_ipv6_enabled = false;
+                auto dc = m_dc.lock();
+                if (!dc) {
+                    return;
+                }
+
+                m_ip = std::get<0>(dc->options[0].option_list[0]);
+                m_port = std::get<1>(dc->options[0].option_list[0]);
+            }
+
             schedule_restart();
         }
         return;

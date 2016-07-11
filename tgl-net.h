@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -44,8 +44,6 @@ class mtproto_client;
 class tgl_connection_factory {
 public:
     virtual std::shared_ptr<tgl_connection> create_connection(
-            const std::string& host,
-            int port,
             const std::weak_ptr<tgl_session>& session,
             const std::weak_ptr<tgl_dc>& dc,
             const std::shared_ptr<mtproto_client>& client) = 0;

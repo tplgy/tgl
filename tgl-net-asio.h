@@ -46,8 +46,6 @@ class tgl_connection_asio : public std::enable_shared_from_this<tgl_connection_a
 {
 public:
     tgl_connection_asio(boost::asio::io_service& io_service,
-            const std::string& host,
-            int port,
             const std::weak_ptr<tgl_session>& session,
             const std::weak_ptr<tgl_dc>& dc,
             const std::shared_ptr<mtproto_client>& client);
@@ -106,6 +104,7 @@ private:
 
     bool m_write_pending;
     tgl_online_status m_online_status;
+    bool m_ipv6_enabled;
 };
 
 class tgl_connection_factory_asio : public tgl_connection_factory
@@ -116,14 +115,12 @@ public:
     { }
 
     virtual std::shared_ptr<tgl_connection> create_connection(
-            const std::string& host,
-            int port,
             const std::weak_ptr<tgl_session>& session,
             const std::weak_ptr<tgl_dc>& dc,
             const std::shared_ptr<mtproto_client>& client) override
     {
         return std::make_shared<tgl_connection_asio>(m_io_service,
-                host, port, session, dc, client);
+                session, dc, client);
     }
 
 private:
