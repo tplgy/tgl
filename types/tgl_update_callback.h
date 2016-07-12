@@ -1,7 +1,9 @@
 #ifndef __TGL_UPDATE_CALLBACK__
 #define __TGL_UPDATE_CALLBACK__
 
+#include "types/tgl_connection_status.h"
 #include "types/tgl_secret_chat.h"
+#include "types/tgl_typing_status.h"
 #include <map>
 #include <memory>
 
@@ -44,6 +46,7 @@ public:
     virtual void dc_update(const std::shared_ptr<tgl_dc>& dc) = 0;
     virtual void change_active_dc(int new_dc_id) = 0;
     virtual void on_failed_login() = 0;
+    virtual void connection_status_changed(tgl_connection_status status) = 0;
     virtual ~tgl_update_callback() { }
 };
 

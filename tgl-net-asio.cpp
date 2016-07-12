@@ -23,6 +23,8 @@
 
 #include "tgl-log.h"
 #include "mtproto-client.h"
+#include "types/tgl_connection_status.h"
+#include "types/tgl_update_callback.h"
 
 #include "tools.h"
 
@@ -82,7 +84,7 @@ void tgl_connection_asio::ping(const boost::system::error_code& error) {
     auto duration_since_last_receive = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_last_receive_time);
     if (duration_since_last_receive > PING_FAIL_DURATION) {
         TGL_WARNING("connection failed or ping timeout, scheduling restart");
-        m_state = conn_failed;
+        set_state(conn_failed);
         schedule_restart();
     } else if (duration_since_last_receive > PING_DURATION && m_state == conn_ready) {
         tgl_do_send_ping(shared_from_this());
@@ -192,7 +194,7 @@ void tgl_connection_asio::restart(const boost::system::error_code& error)
 
     stop_ping_timer();
     clear_buffers();
-    m_state = conn_failed;
+    set_state(conn_failed);
     if (m_socket.is_open()) {
         m_socket.close();
     }
@@ -255,7 +257,7 @@ void tgl_connection_asio::try_rpc_read() {
             break;
         case mtproto_client::execute_result::bad_connection:
             if (m_state != conn_closed) {
-                m_state = conn_failed;
+                set_state(conn_failed);
                 schedule_restart();
             }
             break;
@@ -274,7 +276,7 @@ void tgl_connection_asio::close()
 
     tgl_state::instance()->remove_online_status_observer(shared_from_this());
     m_mtproto_client->close(shared_from_this());
-    m_state = conn_closed;
+    set_state(conn_closed);
     m_ping_timer.cancel();
     m_socket.close();
     clear_buffers();
@@ -293,7 +295,7 @@ bool tgl_connection_asio::connect() {
     }
 
     start_ping_timer();
-    m_state = conn_connecting;
+    set_state(conn_connecting);
 
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_ip), m_port);
 
@@ -331,7 +333,7 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
             TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message());
-            m_state = conn_failed;
+            set_state(conn_failed);
             if (m_ipv6_enabled) {
                 m_ipv6_enabled = false;
                 auto dc = m_dc.lock();
@@ -351,7 +353,7 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
     m_restart_duration = MIN_RESTART_DURATION;
 
     if (m_state == conn_connecting) {
-        m_state = conn_ready;
+        set_state(conn_ready);
         m_mtproto_client->ready(shared_from_this());
     } else {
         return;
@@ -553,7 +555,36 @@ void tgl_connection_asio::on_online_status_changed(tgl_online_status status)
         return;
     }
 
-    m_state = conn_failed;
+    set_state(conn_failed);
     m_restart_duration = MIN_RESTART_DURATION;
     schedule_restart();
+}
+
+void tgl_connection_asio::set_state(conn_state state)
+{
+    if (state == m_state) {
+        return;
+    }
+
+    m_state = state;
+
+    auto dc = m_dc.lock();
+    if (!dc || dc != tgl_state::instance()->working_dc()) {
+        return;
+    }
+
+    tgl_connection_status status;
+    switch (m_state) {
+    case conn_connecting:
+        status = tgl_connection_status::connecting;
+        break;
+    case conn_ready:
+        status = tgl_connection_status::connected;
+        break;
+    default:
+        status = tgl_connection_status::disconnected;
+        break;
+    }
+
+    tgl_state::instance()->callback()->connection_status_changed(status);
 }

@@ -81,10 +81,11 @@ private:
 
     void handle_connect(const boost::system::error_code&);
     void clear_buffers();
+    void set_state(conn_state state);
 
     std::string m_ip;
     int m_port;
-    enum conn_state m_state;
+    conn_state m_state;
     boost::asio::io_service& m_io_service;
     boost::asio::ip::tcp::socket m_socket;
     boost::asio::deadline_timer m_ping_timer;
