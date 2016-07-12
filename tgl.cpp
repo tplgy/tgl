@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -126,7 +126,7 @@ void tgl_state::set_dc_option(bool is_v6, int id, std::string ip, int port)
           //dc->ev->start(0);
         }
     }
-    if (!is_v6) {
+    if (is_v6) {
         m_dcs[id]->ipv6_options.option_list.push_back(std::make_pair(ip, port));
     } else {
         m_dcs[id]->ipv4_options.option_list.push_back(std::make_pair(ip, port));

@@ -63,11 +63,9 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     if (m_ipv6_enabled) {
         m_ip = std::get<0>(data_center->ipv6_options.option_list[0]);
         m_port = std::get<1>(data_center->ipv6_options.option_list[0]);
-        TGL_WARNING("tgl connecting to ipv6: " << m_ip << ":" << m_port);
     } else {
         m_ip = std::get<0>(data_center->ipv4_options.option_list[0]);
         m_port = std::get<1>(data_center->ipv4_options.option_list[0]);
-        TGL_WARNING("tgl connecting to ipv4: " << m_ip << ":" << m_port);
     }
 }
 
@@ -336,6 +334,7 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
             set_state(conn_failed);
             if (m_ipv6_enabled) {
                 m_ipv6_enabled = false;
+                TGL_NOTICE("ipv6 connection failed, trying IPv4");
                 auto dc = m_dc.lock();
                 if (!dc) {
                     return;
