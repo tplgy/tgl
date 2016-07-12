@@ -171,7 +171,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
       channel_id = DS_LVAL (DS_U->message->to_id->channel_id);
     }    
 
-    tgl_peer_id_t E = tgl_peer_id_channel (channel_id);
+    tgl_peer_id_t E = tgl_peer_id_t(tgl_peer_type::channel, channel_id);
 
     if (!check_only && tgl_check_channel_pts_diff (E, DS_LVAL (DS_U->channel_pts), DS_LVAL (DS_U->channel_pts_count)) <= 0) {
       return;
@@ -209,7 +209,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_user_typing:
     {
-      //tgl_peer_id_t id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
+      //tgl_peer_id_t id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
       //tgl_peer_t *U = tgl_peer_get (id);
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
@@ -218,8 +218,8 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_chat_user_typing:
     {
-      tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
-      tgl_peer_id_t id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL (DS_U->chat_id));
+      tgl_peer_id_t id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
       enum tgl_typing_status status = tglf_fetch_typing (DS_U->action);
 
       tgl_state::instance()->callback()->typing_status_changed(id.peer_id, chat_id.peer_id, tgl_peer_type::chat, status);
@@ -233,7 +233,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_user_name:
     {
-      tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t user_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
       std::map<tgl_user_update_type, std::string> updates;
       updates.emplace(tgl_user_update_type::username, DS_STDSTR(DS_U->username));
       updates.emplace(tgl_user_update_type::firstname, DS_STDSTR(DS_U->first_name));
@@ -262,7 +262,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     }
     case CODE_update_chat_participants:
     {
-      tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
+      tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL (DS_U->chat_id));
       if (DS_U->participants->magic == CODE_chat_participants) {
           for (int i=0; i<*DS_U->participants->participants->cnt; ++i) {
               bool admin = false;
@@ -348,9 +348,9 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_chat_participant_add:
     {
-      tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
-      tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
-      tgl_peer_id_t inviter_id = tgl_peer_id_user (DS_LVAL (DS_U->inviter_id));
+      tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL (DS_U->chat_id));
+      tgl_peer_id_t user_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t inviter_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->inviter_id));
       //int version = DS_LVAL (DS_U->version); 
 
       //bl_do_chat_add_user (C->id, version, user_id.peer_id, inviter_id.peer_id, time (0));
@@ -359,8 +359,8 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_chat_participant_delete:
     {
-      tgl_peer_id_t chat_id = tgl_peer_id_chat (DS_LVAL (DS_U->chat_id));
-      tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL (DS_U->chat_id));
+      tgl_peer_id_t user_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
       //int version = DS_LVAL (DS_U->version); 
       
       //bl_do_chat_del_user (C->id, version, user_id.peer_id);
@@ -378,7 +378,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
   case CODE_update_user_blocked:
     {
       int blocked = DS_BVAL (DS_U->blocked);
-      tgl_peer_id_t peer_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t peer_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
 
       std::map<tgl_user_update_type, std::string> updates;
       updates.emplace(tgl_user_update_type::blocked, blocked ? "Yes" : "No");
@@ -400,7 +400,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
     break;
   case CODE_update_user_phone:
     {
-      tgl_peer_id_t user_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
+      tgl_peer_id_t user_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
       std::map<tgl_user_update_type, std::string> updates;
       updates.emplace(tgl_user_update_type::phone, DS_STDSTR(DS_U->phone));
       tgl_state::instance()->callback()->user_update(user_id.peer_id, updates);

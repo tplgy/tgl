@@ -841,7 +841,7 @@ void tgl_download_manager::set_chat_photo(const tgl_input_peer_t& chat_id, const
 void tgl_download_manager::set_profile_photo(const std::string& file_name,
         const std::function<void(bool success)>& callback)
 {
-    send_document(tgl_state::instance()->our_id(), 0, file_name, -1,
+    send_document(tgl_input_peer_t::from_peer_id(tgl_state::instance()->our_id()), 0, file_name, -1,
             0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::string(), 0, 0,
             [=](bool success, const std::shared_ptr<tgl_message>&, float) {
                 if (callback) {

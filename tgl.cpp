@@ -58,7 +58,7 @@ tgl_state::tgl_state()
     , m_date(0)
     , m_seq(0)
     , m_test_mode(0)
-    , m_our_id(tgl_input_peer_t())
+    , m_our_id()
     , m_enable_pfs(false)
     , m_ipv6_enabled(false)
     , m_bn_ctx(TGLC_bn_ctx_new())
@@ -282,12 +282,12 @@ void tgl_state::set_error(std::string error, int error_code)
 std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat()
 {
     int chat_id = tgl_random<int>();
-    while (tgl_state::instance()->secret_chat_for_id(tgl_peer_id_enc_chat(chat_id))) {
+    while (tgl_state::instance()->secret_chat_for_id(chat_id)) {
         chat_id = tgl_random<int>();
     }
 
     auto secret_chat = std::make_shared<tgl_secret_chat>();
-    secret_chat->id = tgl_peer_id_enc_chat(chat_id);
+    secret_chat->id = tgl_input_peer_t(tgl_peer_type::enc_chat, chat_id, 0);
     m_secret_chats[chat_id] = secret_chat;
 
     return secret_chat;

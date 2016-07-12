@@ -1164,7 +1164,7 @@ void tgl_do_send_message (const tgl_input_peer_t& peer_id, const std::string& te
 
     tgl_peer_id_t from_id;
     if (flags & TGLMF_POST_AS_CHANNEL) {
-      from_id = peer_id;
+      from_id = tgl_peer_id_t::from_input_peer(peer_id);
     } else {
       from_id = tgl_state::instance()->our_id();
     }
@@ -1221,7 +1221,7 @@ void tgl_do_send_message (const tgl_input_peer_t& peer_id, const std::string& te
 class query_mark_read: public query
 {
 public:
-    query_mark_read(const tgl_peer_id_t& id, int max_id,
+    query_mark_read(const tgl_input_peer_t& id, int max_id,
             const std::function<void(bool)>& callback)
         : query("mark read", TYPE_TO_PARAM(messages_affected_history))
         , m_id(id)
@@ -1261,7 +1261,7 @@ public:
     }
 
 private:
-    tgl_peer_id_t m_id;
+    tgl_input_peer_t m_id;
     std::function<void(bool)> m_callback;
 };
 
@@ -1311,7 +1311,7 @@ void tgl_do_mark_read (const tgl_input_peer_t& id, std::function<void(bool succe
 class query_get_history: public query
 {
 public:
-    query_get_history(const tgl_peer_id_t& id, int limit, int offset, int max_id,
+    query_get_history(const tgl_input_peer_t& id, int limit, int offset, int max_id,
             const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback)
         : query("get history", TYPE_TO_PARAM(messages_messages))
         , m_id(id)
@@ -1378,7 +1378,7 @@ public:
     }
 private:
     std::vector<std::shared_ptr<tgl_message>> m_messages;
-    tgl_peer_id_t m_id;
+    tgl_input_peer_t m_id;
 //    int m_limit;
 //    int m_offset;
 //    int m_max_id;
@@ -2220,7 +2220,7 @@ public:
         }
 
         for (int i = 0; i < count; i++) {
-            m_state->peers.push_back(tgl_peer_id_user(DS_LVAL(DS_CP->participants->data[i]->user_id)));
+            m_state->peers.push_back(tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_CP->participants->data[i]->user_id)));
         }
         m_state->offset += count;
 
@@ -3071,7 +3071,7 @@ private:
 void tgl_do_get_channel_difference(int id, const std::function<void(bool success)>& callback) {
   //tgl_peer_t *E = tgl_peer_get (tgl_peer_id_channel (id));
   std::shared_ptr<struct tgl_channel> channel = std::make_shared<struct tgl_channel>();
-  channel->id = tgl_peer_id_channel(id);
+  channel->id = tgl_input_peer_t(tgl_peer_type::channel, id, 0); // FIXME: get access_hash correct.
 
   if (!channel || !(channel->flags & TGLPF_CREATED) || !channel->pts) {
     if (callback) {

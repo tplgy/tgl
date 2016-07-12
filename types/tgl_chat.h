@@ -16,7 +16,7 @@ struct tgl_chat_user {
 };
 
 struct tgl_chat {
-    tgl_peer_id_t id;
+    tgl_input_peer_t id;
     int32_t flags;
     //std::string print_title;
     std::string username;

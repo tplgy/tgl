@@ -13,6 +13,8 @@ enum class tgl_peer_type {
     random_id = 101
 };
 
+struct tgl_peer_id_t;
+
 struct tgl_input_peer_t {
     tgl_peer_type peer_type;
     int32_t peer_id;
@@ -31,6 +33,8 @@ struct tgl_input_peer_t {
         // the hardcoded Telegram service user
         return tgl_input_peer_t(tgl_peer_type::user, 777000, 0);
     }
+
+    static tgl_input_peer_t from_peer_id(const tgl_peer_id_t& id);
 };
 
 inline bool operator==(const tgl_input_peer_t& lhs, const tgl_input_peer_t& rhs)
@@ -50,10 +54,10 @@ struct tgl_peer_id_t {
         : peer_type(peer_type), peer_id(peer_id)
     {}
 
-    tgl_peer_id_t(const tgl_input_peer_t& input_peer)
-        : peer_type(input_peer.peer_type), peer_id(input_peer.peer_id)
-    {}
-
+    static tgl_peer_id_t from_input_peer(const tgl_input_peer_t& input_peer)
+    {
+        return tgl_peer_id_t(input_peer.peer_type, input_peer.peer_id);
+    }
 };
 
 inline bool operator==(const tgl_peer_id_t& lhs, const tgl_peer_id_t& rhs)
@@ -61,19 +65,7 @@ inline bool operator==(const tgl_peer_id_t& lhs, const tgl_peer_id_t& rhs)
     return lhs.peer_id == rhs.peer_id && lhs.peer_type == rhs.peer_type;
 }
 
-
-struct tgl_peer_id_user : public tgl_peer_id_t {
-    tgl_peer_id_user(int32_t user_id) : tgl_peer_id_t(tgl_peer_type::user, user_id) {}
-};
-
-struct tgl_peer_id_chat : public tgl_peer_id_t {
-    tgl_peer_id_chat(int32_t chat_id) : tgl_peer_id_t(tgl_peer_type::chat, chat_id) {}
-};
-
-struct tgl_peer_id_channel : public tgl_peer_id_t {
-    tgl_peer_id_channel(int32_t channel_id) : tgl_peer_id_t(tgl_peer_type::channel, channel_id) {}
-};
-
-struct tgl_peer_id_enc_chat : public tgl_input_peer_t {
-    tgl_peer_id_enc_chat(int32_t enc_chat_id) : tgl_input_peer_t(tgl_peer_type::enc_chat, enc_chat_id, 0) {}
-};
+inline tgl_input_peer_t tgl_input_peer_t::from_peer_id(const tgl_peer_id_t& id)
+{
+    return tgl_input_peer_t(id.peer_type, id.peer_id, 0);
+}

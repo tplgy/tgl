@@ -89,11 +89,11 @@ enum tgl_typing_status tglf_fetch_typing (struct tl_ds_send_message_action *DS_S
 tgl_peer_id_t tglf_fetch_peer_id (struct tl_ds_peer *DS_P) {
   switch (DS_P->magic) {
   case CODE_peer_user:
-    return tgl_peer_id_user (DS_LVAL (DS_P->user_id));
+    return tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_P->user_id));
   case CODE_peer_chat:
-    return tgl_peer_id_chat (DS_LVAL (DS_P->chat_id));
+    return tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL (DS_P->chat_id));
   case CODE_peer_channel:
-    return tgl_peer_id_channel (DS_LVAL (DS_P->channel_id));
+    return tgl_peer_id_t(tgl_peer_type::channel, DS_LVAL (DS_P->channel_id));
   default: 
     assert (0);
     exit (2);
@@ -488,7 +488,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
 #if 0
       struct tl_ds_bot_info *DS_BI = DS_CF->bot_info->data[i];
 
-      tgl_peer_id_t peer_id = tgl_peer_id_user (DS_LVAL (DS_BI->user_id));
+      tgl_peer_id_t peer_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_BI->user_id));
       if (P && (P->flags & TGLCF_CREATED)) {
         bl_do_user (tgl_get_peer_id (P->id), 
             NULL,
@@ -507,7 +507,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full (struct tl_ds_messages_chat
     }
   }
 
-  tgl_peer_id_t chat_id(tgl_peer_type::chat, DS_LVAL(DS_CF->id));
+  tgl_input_peer_t chat_id(tgl_peer_type::chat, DS_LVAL(DS_CF->id), 0);
   std::shared_ptr<tgl_chat> C = std::make_shared<tgl_chat>();
   C->id = chat_id;
 
@@ -988,7 +988,7 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_messag
 }
 
 std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
-  tgl_peer_id_t peer_id = tgl_peer_id_user (DS_LVAL (DS_U->user_id));
+  tgl_peer_id_t peer_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
 
   int64_t message_id = DS_LVAL (DS_U->id);
   int flags = 0;
@@ -1018,7 +1018,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short (struct tl_ds_update
   if (DS_U->fwd_from_id) {
     fwd_from_id = tglf_fetch_peer_id (DS_U->fwd_from_id);
   } else {
-    fwd_from_id = tgl_peer_id_user (0);
+    fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
   }
 
   std::shared_ptr<tgl_message> msg = tglm_message_create(message_id,
@@ -1076,7 +1076,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat (struct tl_ds_u
   if (DS_U->fwd_from_id) {
     fwd_from_id = tglf_fetch_peer_id (DS_U->fwd_from_id);
   } else {
-    fwd_from_id = tgl_peer_id_user (0);
+    fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
   }
 
 
@@ -1432,7 +1432,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
     if (DS_LVAL(DS_M->flags) & 2) {
       from_id = tgl_state::instance()->our_id();
     } else {
-      from_id = to_id;
+      from_id = tgl_peer_id_t::from_input_peer(to_id);
     }
   } else {
     from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
@@ -1455,7 +1455,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
   if (DS_M->fwd_from_id) {
     fwd_from_id = tglf_fetch_peer_id (DS_M->fwd_from_id);
   } else {
-    fwd_from_id = tgl_peer_id_user (0);
+    fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
   }
 
   std::shared_ptr<tgl_message> M = tglm_message_create(message_id,
@@ -1543,7 +1543,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
         return nullptr;
     }
 
-    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(tgl_peer_id_enc_chat(DS_LVAL(DS_EM->chat_id)));
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(DS_LVAL(DS_EM->chat_id));
     if (!secret_chat || secret_chat->state != sc_ok) {
         TGL_WARNING("encrypted message to unknown chat, dropping");
         return nullptr;
@@ -1611,7 +1611,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
             return nullptr;
         }
 
-        tgl_peer_id_t from_id = tgl_peer_id_user(secret_chat->user_id);
+        tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, secret_chat->user_id);
 
         secret_message = std::make_shared<tgl_secret_message>(
                 tglm_create_encr_message(secret_chat,
@@ -1644,7 +1644,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
             layer = *(DS_DM->action->layer);
         }
 
-        tgl_peer_id_t from_id = tgl_peer_id_user(secret_chat->user_id);
+        tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, secret_chat->user_id);
 
         secret_message = std::make_shared<tgl_secret_message>(
                 tglm_create_encr_message(secret_chat,
