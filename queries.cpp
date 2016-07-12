@@ -811,14 +811,14 @@ private:
 };
 
 void tgl_do_phone_call (const char *phone, int phone_len, const char *hash, int hash_len, std::function<void(bool)> callback) {
-    TGL_DEBUG("calling user");
+    TGL_DEBUG("calling user at phone number: " << phone);
 
     auto q = std::make_shared<query_phone_call>(callback);
     q->out_header ();
     q->out_i32(CODE_auth_send_call);
     q->out_string(phone, phone_len);
     q->out_string(hash, hash_len);
-    q->execute(tgl_state::instance()->working_dc());
+    q->execute(tgl_state::instance()->working_dc(), query::execution_option::LOGIN);
 }
 /* }}} */
 
