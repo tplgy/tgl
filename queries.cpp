@@ -624,9 +624,12 @@ int utf8_len (const char *s, int len)
 
 /* {{{ Get config */
 
-static void fetch_dc_option(const tl_ds_dc_option *DS_DO)
+void fetch_dc_option(const tl_ds_dc_option *DS_DO)
 {
-    tgl_state::instance()->set_dc_option(DS_LVAL(DS_DO->flags),
+    if (DS_TRUE(DS_DO->media_only)) { // We do not support media only ip addresses yet
+        return;
+    }
+    tgl_state::instance()->set_dc_option(DS_TRUE(DS_DO->ipv6),
             DS_LVAL(DS_DO->id),
             DS_STDSTR(DS_DO->ip_address),
             DS_LVAL(DS_DO->port));

@@ -34,13 +34,6 @@
 
 #include <assert.h>
 
-static void fetch_dc_option (struct tl_ds_dc_option *DS_DO) {
-  TGL_DEBUG("id = " << DS_LVAL (DS_DO->id) << ", ip = " << std::string(DS_DO->ip_address->data, DS_DO->ip_address->len) << ", port = " << DS_LVAL (DS_DO->port));
-
-  //bl_do_dc_option (TLS, DS_LVAL (DS_DO->flags), DS_LVAL (DS_DO->id), NULL, 0, DS_STR (DS_DO->ip_address), DS_LVAL (DS_DO->port));
-  tgl_state::instance()->set_dc_option (0, DS_LVAL (DS_DO->id), std::string(DS_DO->ip_address->data, DS_DO->ip_address->len), DS_LVAL (DS_DO->port));
-}
-
 int tgl_check_pts_diff (int pts, int pts_count) {
     TGL_DEBUG("pts = " << pts << ", pts_count = " << pts_count);
     if (!tgl_state::instance()->pts()) {

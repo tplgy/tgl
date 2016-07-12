@@ -1451,19 +1451,6 @@ void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& s, int64_t id)
   //tglmp_regenerate_temp_auth_key(dc);
 //}
 
-std::shared_ptr<tgl_dc> tglmp_alloc_dc(int flags, int id, const std::string &ip, int port) {
-    std::shared_ptr<tgl_dc> dc = tgl_state::instance()->dc_at(id);
-    if (!dc) {
-        dc = tgl_state::instance()->allocate_dc(id);
-        if (tgl_state::instance()->pfs_enabled()) {
-          //dc->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
-          //dc->ev->start(0);
-        }
-    }
-    dc->options[flags & 3].option_list.push_back(std::make_pair(ip, port));
-    return dc;
-}
-
 void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC) {
   std::shared_ptr<tgl_session> S = std::make_shared<tgl_session>();
   auto result = TGLC_rand_pseudo_bytes ((unsigned char *) &S->session_id, 8);

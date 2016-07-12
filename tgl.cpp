@@ -109,7 +109,7 @@ void tgl_state::set_our_id(int id)
     m_callback->our_id(our_id().peer_id);
 }
 
-void tgl_state::set_dc_option(int flags, int id, std::string ip, int port)
+void tgl_state::set_dc_option(bool is_v6, int id, std::string ip, int port)
 {
     if (id < 0) {
         return;
@@ -118,18 +118,19 @@ void tgl_state::set_dc_option(int flags, int id, std::string ip, int port)
     if (static_cast<size_t>(id) >= m_dcs.size()) {
         m_dcs.resize(id+1, nullptr);
     }
-    std::shared_ptr<tgl_dc> DC = m_dcs[id];
 
-    if (DC) {
-        tgl_dc_option option = DC->options[flags & 3];
-        for (auto op : option.option_list) {
-            if(std::get<0>(op) == ip) {
-                return;
-            }
+    if (!m_dcs[id]) {
+        m_dcs[id] = tgl_state::instance()->allocate_dc(id);
+        if (tgl_state::instance()->pfs_enabled()) {
+          //dc->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
+          //dc->ev->start(0);
         }
     }
-
-    tglmp_alloc_dc (flags, id, ip, port);
+    if (!is_v6) {
+        m_dcs[id]->ipv6_options.option_list.push_back(std::make_pair(ip, port));
+    } else {
+        m_dcs[id]->ipv4_options.option_list.push_back(std::make_pair(ip, port));
+    }
 }
 
 void tgl_state::set_dc_signed(int num)

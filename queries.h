@@ -193,4 +193,6 @@ void tgl_do_help_get_config_dc(const std::shared_ptr<tgl_dc>& D);
 void tglq_regen_query(int64_t id);
 void tglq_query_delete(int64_t id);
 
+void fetch_dc_option(const tl_ds_dc_option *DS_DO);
+
 #endif

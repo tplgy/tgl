@@ -108,8 +108,10 @@ struct tgl_dc {
 
     bool auth_transfer_in_process;
 
-    // ipv4, ipv6, ipv4_media, ipv6_media
-    std::array<tgl_dc_option, 4> options;
+//    // ipv4, ipv6, ipv4_media, ipv6_media
+//    std::array<tgl_dc_option, 4> options;
+    tgl_dc_option ipv6_options;
+    tgl_dc_option ipv4_options;
 
     void increase_active_queries(size_t num = 1);
     void decrease_active_queries(size_t num = 1);

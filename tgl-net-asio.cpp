@@ -59,12 +59,12 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     }
 
     if (m_ipv6_enabled) {
-        m_ip = std::get<0>(data_center->options[0].option_list[1]);
-        m_port = std::get<1>(data_center->options[0].option_list[1]);
+        m_ip = std::get<0>(data_center->ipv6_options.option_list[0]);
+        m_port = std::get<1>(data_center->ipv6_options.option_list[0]);
         TGL_WARNING("tgl connecting to ipv6: " << m_ip << ":" << m_port);
     } else {
-        m_ip = std::get<0>(data_center->options[0].option_list[0]);
-        m_port = std::get<1>(data_center->options[0].option_list[0]);
+        m_ip = std::get<0>(data_center->ipv4_options.option_list[0]);
+        m_port = std::get<1>(data_center->ipv4_options.option_list[0]);
         TGL_WARNING("tgl connecting to ipv4: " << m_ip << ":" << m_port);
     }
 }
@@ -339,8 +339,8 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
                     return;
                 }
 
-                m_ip = std::get<0>(dc->options[0].option_list[0]);
-                m_port = std::get<1>(dc->options[0].option_list[0]);
+                m_ip = std::get<0>(dc->ipv4_options.option_list[0]);
+                m_port = std::get<1>(dc->ipv4_options.option_list[0]);
             }
 
             schedule_restart();

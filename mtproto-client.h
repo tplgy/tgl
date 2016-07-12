@@ -54,7 +54,6 @@ long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
 void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC);
 //int tglmp_check_g (unsigned char p[256], BIGNUM *g);
 //int tglmp_check_DH_params (BIGNUM *p, int g);
-std::shared_ptr<tgl_dc> tglmp_alloc_dc(int flags, int id, const std::string &ip, int port);
 void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& D);
 
 void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& s, int64_t id);
