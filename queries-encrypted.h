@@ -44,10 +44,10 @@ void tgl_do_create_encr_chat_request(const tgl_input_peer_t& user_id,
 void tgl_do_send_encr_chat_layer(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 void tgl_do_request_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 void tgl_do_confirm_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat, int sen_nop);
-void tgl_do_accept_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat, long long exchange_id, const std::vector<unsigned char>& g_a);
+void tgl_do_accept_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat, int64_t exchange_id, const std::vector<unsigned char>& g_a);
 void tgl_do_commit_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat, const std::vector<unsigned char>& g_a);
 void tgl_do_abort_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat);
-void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>& secret_chat, int start_seq_no, int end_seq_no);
+void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>& secret_chat, int32_t start_seq_no, int32_t end_seq_no);
 
 void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const int64_t* access_hash,

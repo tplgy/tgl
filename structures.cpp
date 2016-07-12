@@ -27,7 +27,6 @@
 #include "tgl-structures.h"
 #include "queries.h"
 #include "queries-encrypted.h"
-#include "tgl-methods-in.h"
 #include "updates.h"
 #include "mtproto-client.h"
 #include "types/tgl_bot.h"
@@ -1874,7 +1873,7 @@ std::shared_ptr<tgl_message> tglm_message_create(int64_t message_id, const tgl_p
                                         const tgl_input_peer_t& to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const std::string& message,
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
-                                        int reply_id, struct tl_ds_reply_markup *reply_markup, int flags)
+                                        int reply_id, const tl_ds_reply_markup* reply_markup, int flags)
 {
     std::shared_ptr<tgl_message> M = tglm_message_alloc(message_id);
 

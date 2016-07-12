@@ -65,7 +65,6 @@
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "tools.h"
-#include "tgl-methods-in.h"
 #include "types/tgl_rsa_key.h"
 #include "tgl-log.h"
 

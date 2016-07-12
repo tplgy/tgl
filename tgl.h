@@ -241,7 +241,6 @@ private:
 };
 
 int tgl_secret_chat_for_user(tgl_peer_id_t user_id);
-int tgl_do_send_bot_auth(const char *code, int code_len, std::function<void(bool success, const std::shared_ptr<tgl_user>&)> callback);
 
 int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& dc);
 int tgl_signed_dc(const std::shared_ptr<tgl_dc>& dc);

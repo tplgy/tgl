@@ -35,8 +35,6 @@
 #include <string>
 #include <vector>
 
-static const float DEFAULT_QUERY_TIMEOUT = 6.0;
-
 class tgl_timer;
 
 class query: public std::enable_shared_from_this<query>
@@ -44,7 +42,7 @@ class query: public std::enable_shared_from_this<query>
 public:
     enum class execution_option { UNKNOWN, NORMAL, LOGIN, FORCE };
 
-    query(const std::string& name, const paramed_type& type, long long msg_id_override = 0)
+    query(const std::string& name, const paramed_type& type, int64_t msg_id_override = 0)
         : m_msg_id(0)
         , m_msg_id_override(msg_id_override)
         , m_session_id(0)
@@ -122,8 +120,8 @@ public:
     void out_header();
 
     const std::string& name() const { return m_name; }
-    long long session_id() const { return m_session_id; }
-    long long msg_id() const { return m_msg_id; }
+    int64_t session_id() const { return m_session_id; }
+    int64_t msg_id() const { return m_msg_id; }
     const std::shared_ptr<tgl_session>& session() const { return m_session; }
     const std::shared_ptr<tgl_dc>& dc() const { return m_dc; }
 
@@ -138,10 +136,10 @@ private:
     bool is_login() const { return m_exec_option == execution_option::LOGIN; }
 
 private:
-    long long m_msg_id;
-    long long m_msg_id_override;
-    long long m_session_id;
-    int m_seq_no;
+    int64_t m_msg_id;
+    int64_t m_msg_id_override;
+    int64_t m_session_id;
+    int32_t m_seq_no;
     execution_option m_exec_option;
     bool m_ack_received;
     const std::string m_name;
@@ -153,17 +151,17 @@ private:
 };
 
 struct messages_send_extra {
-  bool multi = false;
-  int64_t id;
-  int count = 0;
-  std::vector<int64_t> message_ids;
+    bool multi = false;
+    int64_t id;
+    int count = 0;
+    std::vector<int64_t> message_ids;
 };
 
 class query_send_msgs: public query
 {
 public:
     query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)> single_callback);
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& single_callback);
     query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
             const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& multi_callback);
     explicit query_send_msgs(const std::function<void(bool)>& bool_callback);
@@ -179,20 +177,20 @@ private:
     std::shared_ptr<tgl_message> m_message;
 };
 
-void tglq_query_ack (long long id);
-int tglq_query_error (tgl_in_buffer* in, long long id);
-int tglq_query_result (tgl_in_buffer* in, long long id);
-void tglq_query_restart (long long id);
+void tglq_query_ack(int64_t id);
+int tglq_query_error(tgl_in_buffer* in, int64_t id);
+int tglq_query_result(tgl_in_buffer* in, int64_t id);
+void tglq_query_restart(int64_t id);
 
-//double next_timer_in (void);
-//void work_timers (void);
+double get_double_time(void);
 
-double get_double_time (void);
+void tgl_do_send_bind_temp_key(const std::shared_ptr<tgl_dc>& D, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id);
+void tgl_do_get_difference(bool sync_from_start, const std::function<void(bool success)>& callback);
+void tgl_do_get_channel_difference(int id, const std::function<void(bool success)>& callback);
+void tgl_do_lookup_state();
+void tgl_do_help_get_config_dc(const std::shared_ptr<tgl_dc>& D);
 
-void tgl_do_send_bind_temp_key (std::shared_ptr<tgl_dc> D, long long nonce, int expires_at, void *data, int len, long long msg_id);
-
-void tglq_regen_query (long long id);
-void tglq_query_delete (long long id);
-void tglq_regen_queries_from_old_session (struct tgl_dc *DC, struct tgl_session *S);
+void tglq_regen_query(int64_t id);
+void tglq_query_delete(int64_t id);
 
 #endif
