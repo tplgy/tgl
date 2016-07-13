@@ -330,7 +330,7 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
 {
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
-            TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.message());
+            TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.value() << " - "<< ec.message());
             set_state(conn_failed);
             if (m_ipv6_enabled) {
                 m_ipv6_enabled = false;
