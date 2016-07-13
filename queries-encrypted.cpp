@@ -111,12 +111,14 @@ void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& secret_ch
     memcpy(buf + 16, encryption_key + 24, 32);
     TGLC_sha1(buf, 48, sha1d_buffer);
 
-    static unsigned char key[32];
+    unsigned char key[32];
+    memset(key, 0, sizeof(key));
     memcpy(key, sha1a_buffer + 0, 8);
     memcpy(key + 8, sha1b_buffer + 8, 12);
     memcpy(key + 20, sha1c_buffer + 4, 12);
 
-    static unsigned char iv[32];
+    unsigned char iv[32];
+    memset(iv, 0, sizeof(iv));
     memcpy(iv, sha1a_buffer + 8, 12);
     memcpy(iv + 12, sha1b_buffer + 0, 8);
     memcpy(iv + 20, sha1c_buffer + 16, 4);
@@ -457,7 +459,8 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
 
 void tgl_do_send_encr_chat_layer(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 {
-    static struct tl_ds_decrypted_message_action action;
+    struct tl_ds_decrypted_message_action action;
+    memset(&action, 0, sizeof(action));
     action.magic = CODE_decrypted_message_action_notify_layer;
     int layer = TGL_ENCRYPTED_LAYER;
     action.layer = &layer;
@@ -537,6 +540,7 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, d
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
 {
     struct tl_ds_decrypted_message_media TDSM;
+    memset(&TDSM, 0, sizeof(TDSM));
     TDSM.magic = CODE_decrypted_message_media_geo_point;
     TDSM.latitude = static_cast<double*>(talloc(sizeof(double)));
     *TDSM.latitude = latitude;
