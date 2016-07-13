@@ -943,11 +943,9 @@ public:
         id.id = old_msg_id->old_msg_id;
         struct tgl_message *M = tgl_message_get (&id);
         if (M && M->permanent_id.id == id.id) {
-            tglu_work_any_updates (1, DS_U, M);
             tglu_work_any_updates (0, DS_U, M);
         } else {
 #endif
-        tglu_work_any_updates (1, DS_U, NULL);
         tglu_work_any_updates (0, DS_U, NULL);
         if (m_callback) {
             m_callback(true, m_message, 0);
@@ -1671,7 +1669,6 @@ void query_send_msgs::on_answer(void *D)
 {
     tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
 
-    tglu_work_any_updates(1, DS_U, NULL);
     tglu_work_any_updates(0, DS_U, m_message);
 
     if (!m_extra) {
@@ -2876,12 +2873,6 @@ public:
                 tglf_encrypted_message_received(secret_message);
             }
 
-#if 0
-            for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
-                tglu_work_update(1, DS_UD->other_updates->data[i]);
-            }
-#endif
-
             for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
                 tglu_work_update(-1, DS_UD->other_updates->data[i], nullptr);
             }
@@ -3005,10 +2996,6 @@ public:
                 messages.push_back(tglf_fetch_alloc_message(DS_UD->new_messages->data[i]));
             }
             tgl_state::instance()->callback()->new_messages(messages);
-
-            for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
-                tglu_work_update(1, DS_UD->other_updates->data[i], nullptr);
-            }
 
             for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
                 tglu_work_update(-1, DS_UD->other_updates->data[i], nullptr);
