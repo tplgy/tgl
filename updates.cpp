@@ -34,27 +34,27 @@
 
 #include <assert.h>
 
-int tgl_check_pts_diff (int pts, int pts_count) {
+bool tgl_check_pts_diff(int32_t pts, int32_t pts_count) {
     TGL_DEBUG("pts = " << pts << ", pts_count = " << pts_count);
     if (!tgl_state::instance()->pts()) {
-        return 1;
+        return true;
     }
-    //assert (TLS->pts);
+
     if (pts < tgl_state::instance()->pts() + pts_count) {
         TGL_NOTICE("Duplicate message with pts=" << pts);
-        return -1;
+        return false;
     }
     if (pts > tgl_state::instance()->pts() + pts_count) {
         TGL_NOTICE("Hole in pts: pts = "<< pts <<", count = "<< pts_count <<", cur_pts = "<< tgl_state::instance()->pts());
         tgl_do_get_difference(false, nullptr);
-        return -1;
+        return false;
     }
     if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
         TGL_DEBUG("Update during get_difference. pts = " << pts);
-        return -1;
+        return false;
     }
     TGL_DEBUG("Ok update. pts = " << pts);
-    return 1;
+    return true;
 }
 
 int tgl_check_qts_diff (int qts, int qts_count) {
@@ -138,7 +138,7 @@ void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_pt
   if (DS_U->pts) {
     assert (DS_U->pts_count);
 
-    if (!check_only && tgl_check_pts_diff(DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
+    if (!check_only && !tgl_check_pts_diff(DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count))) {
       return;
     }
   }
@@ -556,7 +556,7 @@ void tglu_work_update_short_message (int check_only, struct tl_ds_updates *DS_U)
     return;
   }
 
-  if (!check_only && tgl_check_pts_diff (DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
+  if (!check_only && !tgl_check_pts_diff (DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count))) {
     return;
   }
   
@@ -581,7 +581,7 @@ void tglu_work_update_short_chat_message (int check_only, struct tl_ds_updates *
     return;
   }
 
-  if (!check_only && tgl_check_pts_diff (DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
+  if (!check_only && !tgl_check_pts_diff (DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count))) {
     return;
   }
   
@@ -631,7 +631,7 @@ void tglu_work_update_short_sent_message (int check_only, struct tl_ds_updates *
   if (DS_U->pts) {
     assert (DS_U->pts_count);
 
-    if (!check_only && tgl_check_pts_diff (DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count)) <= 0) {
+    if (!check_only && !tgl_check_pts_diff (DS_LVAL (DS_U->pts), DS_LVAL (DS_U->pts_count))) {
       return;
     }
   }

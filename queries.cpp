@@ -1154,9 +1154,7 @@ public:
     {
         tl_ds_messages_affected_messages* DS_MAM = static_cast<tl_ds_messages_affected_messages*>(D);
 
-        int r = tgl_check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count));
-
-        if (r > 0) {
+        if (tgl_check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count))) {
             tgl_state::instance()->set_pts(DS_LVAL(DS_MAM->pts));
         }
 
@@ -2913,7 +2911,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_lookup_state ()
+void tgl_do_lookup_state()
 {
     if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
         return;
@@ -3249,9 +3247,7 @@ public:
 #endif
         tgl_state::instance()->callback()->message_deleted(m_chat.peer_id);
 
-        int r = tgl_check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count));
-
-        if (r > 0) {
+        if (tgl_check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count))) {
             tgl_state::instance()->set_pts(DS_LVAL(DS_MAM->pts));
         }
 
