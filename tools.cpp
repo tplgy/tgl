@@ -124,12 +124,6 @@ void tgl_my_clock_gettime (int clock_id, struct timespec *T) {
 #endif
 }
 
-double tglt_get_double_time() {
-  struct timespec tv;
-  tgl_my_clock_gettime (CLOCK_REALTIME, &tv);
-  return tv.tv_sec + 1e-9 * tv.tv_nsec;
-}
-
 void tglt_secure_random (unsigned char *s, int l) {
   if (TGLC_rand_bytes (s, l) <= 0) {
     /*if (allow_weak_random) {

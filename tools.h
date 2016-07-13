@@ -42,8 +42,6 @@
 #define tstrndup tgl_strndup
 #define tsnprintf tgl_snprintf
 
-double tglt_get_double_time ();
-
 int tgl_inflate (void *input, int ilen, void *output, int olen);
 
 static inline void ensure (int r) {
