@@ -596,32 +596,6 @@ void query::out_header ()
     m_serializer->out_string("en");
 }
 
-void tgl_set_query_error(int error_code, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
-void tgl_set_query_error(int error_code, const char *format, ...)
-{
-    static char s[1001];
-
-    va_list ap;
-    va_start (ap, format);
-    vsnprintf (s, 1000, format, ap);
-    va_end (ap);
-}
-/* }}} */
-
-#if 0
-int utf8_len (const char *s, int len)
-{
-  int i;
-  int r = 0;
-  for (i = 0; i < len; i++) {
-    if ((s[i] & 0xc0) != 0x80) {
-      r ++;
-    }
-  }
-  return r;
-}
-#endif
-
 /* {{{ Get config */
 
 void fetch_dc_option(const tl_ds_dc_option *DS_DO)
@@ -1111,14 +1085,14 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
     if (peer_id.peer_type == tgl_peer_type::enc_chat) {
         secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
         if (!secret_chat) {
-            tgl_set_query_error(EINVAL, "unknown secret chat");
+            TGL_ERROR("unknown secret chat");
             if (callback) {
                 callback(false, nullptr, 0);
             }
             return;
         }
         if (secret_chat->state != sc_ok) {
-            tgl_set_query_error (EINVAL, "secret chat not in ok state");
+            TGL_ERROR("secret chat not in ok state");
             if (callback) {
                 callback(false, nullptr, 0);
             }
@@ -1251,7 +1225,7 @@ void tgl_do_mark_read(const tgl_input_peer_t& id, const std::function<void(bool 
     assert(id.peer_type == tgl_peer_type::enc_chat);
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(id);
     if (!secret_chat) {
-        tgl_set_query_error (EINVAL, "unknown secret chat");
+        TGL_ERROR("unknown secret chat");
         if (callback) {
             callback(false);
         }
@@ -1802,14 +1776,14 @@ void tgl_do_forward_message(const tgl_input_peer_t& from_id, const tgl_input_pee
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
 {
     if (from_id.peer_type == tgl_peer_type::temp_id) {
-        tgl_set_query_error (EINVAL, "unknown message");
+        TGL_ERROR("unknown message");
         if (callback) {
             callback(false, nullptr, 0);
         }
         return;
     }
     if (from_id.peer_type == tgl_peer_type::enc_chat) {
-        tgl_set_query_error (EINVAL, "can not forward messages from secret chat");
+        TGL_ERROR("can not forward messages from secret chat");
         if (callback) {
             callback(false, nullptr, 0);
         }
@@ -1875,14 +1849,14 @@ void tgl_do_send_contact(const tgl_input_peer_t& id, const char *phone, int phon
 //{
 //  tgl_message_id_t reply_id = *_reply_id;
 //  if (reply_id.peer_type == tgl_peer_type::temp_id) {
-//    tgl_set_query_error (EINVAL, "unknown message");
+//    TGL_ERROR("unknown message");
 //    if (callback) {
 //      callback(0, 0, 0);
 //    }
 //    return;
 //  }
 //  if (reply_id.peer_type == tgl_peer_type::enc_chat) {
-//    tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
+//    TGL_ERROR("can not reply on message from secret chat");
 //    if (callback) {
 //      callback(0, 0, 0);
 //    }
@@ -1897,7 +1871,7 @@ void tgl_do_forward_media(const tgl_input_peer_t& to_id, int64_t message_id, uns
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
 {
     if (to_id.peer_type == tgl_peer_type::enc_chat) {
-        tgl_set_query_error (EINVAL, "can not forward messages to secret chats");
+        TGL_ERROR("can not forward messages to secret chats");
         if (callback) {
             callback(false, nullptr, 0);
         }
@@ -1907,9 +1881,9 @@ void tgl_do_forward_media(const tgl_input_peer_t& to_id, int64_t message_id, uns
     struct tgl_message *M = tgl_message_get(&msg_id);
     if (!M || !(M->flags & TGLMF_CREATED) || (M->flags & TGLMF_ENCRYPTED)) {
         if (!M || !(M->flags & TGLMF_CREATED)) {
-            tgl_set_query_error(EINVAL, "unknown message");
+            TGL_ERROR("unknown message");
         } else {
-            tgl_set_query_error(EINVAL, "can not forward message from secret chat");
+            TGL_ERROR("can not forward message from secret chat");
         }
         if (callback) {
             callback(false, nullptr, 0);
@@ -1917,7 +1891,7 @@ void tgl_do_forward_media(const tgl_input_peer_t& to_id, int64_t message_id, uns
         return;
     }
     if (M->media.type != tgl_message_media_photo && M->media.type != tgl_message_media_document && M->media.type != tgl_message_media_audio && M->media.type != tgl_message_media_video) {
-        tgl_set_query_error(EINVAL, "can only forward photo/document");
+        TGL_ERROR("can only forward photo/document");
         if (callback) {
             callback(false, nullptr, 0);
         }
@@ -2007,14 +1981,14 @@ void tgl_do_reply_location (tgl_message_id_t *_reply_id, double latitude, double
     reply_id = tgl_convert_temp_msg_id (reply_id);
   }
   if (reply_id.peer_type == tgl_peer_type::temp_id) {
-    tgl_set_query_error (EINVAL, "unknown message");
+    TGL_ERROR("unknown message");
     if (callback) {
       callback(0, 0);
     }
     return;
   }
   if (reply_id.peer_type == tgl_peer_type::enc_chat) {
-    tgl_set_query_error (EINVAL, "can not reply on message from secret chat");
+    TGL_ERROR("can not reply on message from secret chat");
     if (callback) {
       callback(0, 0);
     }
@@ -2343,7 +2317,7 @@ void tgl_do_get_channel_info(const tgl_input_peer_t& id, int offline_mode,
 #if 0
         tgl_peer_t *C = tgl_peer_get (id);
         if (!C) {
-            tgl_set_query_error(EINVAL, "unknown chat id");
+            TGL_ERROR("unknown chat id");
             if (callback) {
                 callback(false, nullptr);
             }
@@ -2400,7 +2374,7 @@ void tgl_do_get_user_info(const tgl_input_peer_t& id, int offline_mode,
         const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback)
 {
     if (id.peer_type != tgl_peer_type::user) {
-        tgl_set_query_error(EINVAL, "id should be user id");
+        TGL_ERROR("id should be user id");
         if (callback) {
             callback(false, nullptr);
         }
@@ -2410,7 +2384,7 @@ void tgl_do_get_user_info(const tgl_input_peer_t& id, int offline_mode,
 #if 0
         tgl_peer_t *C = tgl_peer_get (id);
         if (!C) {
-            tgl_set_query_error(EINVAL, "unknown user id");
+            TGL_ERROR("unknown user id");
             if (callback) {
                 callback(false, nullptr);
             }
@@ -3217,7 +3191,7 @@ void tgl_do_create_group_chat(const std::vector<tgl_input_peer_t>& user_ids, con
     q->out_i32(user_ids.size()); // Number of users, currently we support only 1 user.
     for (auto id : user_ids) {
         if (id.peer_type != tgl_peer_type::user) {
-            tgl_set_query_error(EINVAL, "Can not create chat with unknown user");
+            TGL_ERROR("can not create chat with unknown user");
             if (callback) {
                 callback(false);
             }
@@ -3251,7 +3225,7 @@ void tgl_do_create_channel(int users_num, tgl_input_peer_t ids[],
     for (int i = 0; i < users_num; i++) {
         auto id = ids[i];
         if (id.peer_type != tgl_peer_type::user) {
-            tgl_set_query_error(EINVAL, "Can not create chat with unknown user");
+            TGL_ERROR("can not create chat with unknown user");
             if (callback) {
                 callback(false);
             }
@@ -3317,7 +3291,7 @@ void tgl_do_delete_msg(const tgl_input_peer_t& chat, int64_t message_id,
         const std::function<void(bool success)>& callback)
 {
     if (chat.peer_type == tgl_peer_type::temp_id) {
-        tgl_set_query_error(EINVAL, "unknown message");
+        TGL_ERROR("unknown message");
         if (callback) {
             callback(false);
         }
@@ -3621,7 +3595,7 @@ public:
             if (messages.size() > 0) {
                 m_single_callback(true, messages[0]);
             } else {
-                tgl_set_query_error (ENOENT, "no such message");
+                TGL_ERROR("no such message");
                 m_single_callback(false, nullptr);
             }
         }
@@ -3742,7 +3716,7 @@ void tgl_do_import_chat_link(const char* link, int len,
 void tgl_do_export_channel_link(const tgl_input_peer_t& id, const std::function<void(bool success, const std::string& link)>& callback)
 {
     if (id.peer_type != tgl_peer_type::channel) {
-        tgl_set_query_error(EINVAL, "Can only export chat link for chat");
+        TGL_ERROR("can only export chat link for chat");
         if (callback) {
             callback(false, std::string());
         }
@@ -4192,7 +4166,7 @@ private:
 void tgl_do_block_user(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback)
 {
     if (id.peer_type != tgl_peer_type::user) {
-        tgl_set_query_error(EINVAL, "id should be user id");
+        TGL_ERROR("id should be user id");
         if (callback) {
             callback(false);
         }
@@ -4210,7 +4184,7 @@ void tgl_do_block_user(const tgl_input_peer_t& id, const std::function<void(bool
 void tgl_do_unblock_user(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback)
 {
     if (id.peer_type != tgl_peer_type::user) {
-        tgl_set_query_error(EINVAL, "id should be user id");
+        TGL_ERROR("id should be user id");
         if (callback) {
             callback(false);
         }
