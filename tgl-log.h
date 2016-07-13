@@ -30,9 +30,9 @@
 #define E_DEBUG2 3
 #define E_DEBUG 6
 
-typedef void (*log_function) (std::string log, int severity);
+typedef void (*log_function)(const std::string& log, int severity);
 void init_tgl_log(log_function, int severity);
-void tgl_log(std::string str, int severity);
+void tgl_log(const std::string& str, int severity);
 
 
 #define TGL_CRASH() do { *reinterpret_cast<int*>(0xbadbeef) = 0; abort(); } while (false)

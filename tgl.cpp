@@ -105,11 +105,11 @@ void tgl_state::set_our_id(int id)
     }
     m_our_id.peer_id = id;
     m_our_id.peer_type = tgl_peer_type::user;
-    assert (our_id().peer_id > 0);
+    assert(our_id().peer_id > 0);
     m_callback->our_id(our_id().peer_id);
 }
 
-void tgl_state::set_dc_option(bool is_v6, int id, std::string ip, int port)
+void tgl_state::set_dc_option(bool is_v6, int id, const std::string& ip, int port)
 {
     if (id < 0) {
         return;

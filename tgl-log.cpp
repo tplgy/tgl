@@ -10,7 +10,7 @@ void init_tgl_log(log_function log_f, int s)
     g_severity = s;
 }
 
-void tgl_log(std::string str, int severity)
+void tgl_log(const std::string& str, int severity)
 {
     if (severity <= g_severity) {
         if (registered_logfunction) {

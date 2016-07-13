@@ -133,7 +133,7 @@ struct tgl_state {
 
     void set_auth_key(int num, const char *buf);
     void set_our_id(int id);
-    void set_dc_option (bool is_v6, int id, std::string ip, int port);
+    void set_dc_option(bool is_v6, int id, const std::string& ip, int port);
     void set_dc_signed(int num);
     void set_working_dc(int num);
     void set_qts(int qts, bool force = false);
