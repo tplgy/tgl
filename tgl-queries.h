@@ -70,7 +70,7 @@ void tgl_do_send_location(const tgl_input_peer_t& id, double latitude, double lo
 
 // sends broadcast (i.e. message to several users at once)
 // flags are same as in tgl_do_send_message
-void tgl_do_send_broadcast (int num, tgl_peer_id_t peer_id[], const std::string& text, unsigned long long flags,
+void tgl_do_send_broadcast(int num, tgl_peer_id_t peer_id[], const std::string& text, unsigned long long flags,
         const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& ML)>& callback);
 /* }}} */
 
@@ -150,7 +150,7 @@ void tgl_do_unblock_user(int32_t user_id, int64_t access_hash, const std::functi
 /* {{{ WORKING WITH SECRET CHATS */
 
 // requests creation of secret chat with user *user_id*
-//void tgl_do_create_encr_chat_request (int user_id, std::function<void(bool success, struct tgl_secret_chat *E)> callback);
+//void tgl_do_create_encr_chat_request(int user_id, std::function<void(bool success, struct tgl_secret_chat *E)> callback);
 
 // accepts secret chat request
 // method can fail if another device will be first to accept it
@@ -164,7 +164,7 @@ void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_c
         const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback);
 
 // returns secret chat fingerprint
-//int tgl_do_visualize_key (int id, unsigned char buf[16]);
+//int tgl_do_visualize_key(int id, unsigned char buf[16]);
 
 // requests creation of secret chat with user id
 void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id,
@@ -173,7 +173,7 @@ void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id,
 
 /* {{{ WORKING WITH DIALOG LIST */
 
-// receives all dialogs (except secret chats) from offset=*offset* with limit=*limit*
+// receives all dialogs(except secret chats) from offset=*offset* with limit=*limit*
 // dialogs are sorted by last message received
 // if limit is > 100 there is a (small) chance of one dialog received twice
 void tgl_do_get_dialog_list(int limit, int offset,
@@ -232,9 +232,9 @@ void tgl_do_get_message(int64_t message_id, const std::function<void(bool succes
 // use only for debug or when you known what are you doing
 // since answer is not interpretated by library in any way
 //void tgl_do_send_extf (const char *data, int data_len, std::function<void(bool success, const char *data)> callback);
-//int tglf_extf_autocomplete (const char *text, int text_len, int index, char **R, char *data, int data_len);
-//struct paramed_type *tglf_extf_store (const char *data, int data_len);
-//char *tglf_extf_fetch (struct paramed_type *T);
+//int tglf_extf_autocomplete(const char *text, int text_len, int index, char **R, char *data, int data_len);
+//struct paramed_type *tglf_extf_store(const char *data, int data_len);
+//char *tglf_extf_fetch(struct paramed_type *T);
 /* }}} */
 
 /* {{{ BOT */

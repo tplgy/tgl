@@ -84,18 +84,18 @@ static bool tgl_check_channel_pts_diff(const tgl_peer_id_t& channel_id, int32_t 
 {
     // TODO: remember channel pts
 #if 0
-    TGL_DEBUG("channel " << tgl_get_peer_id (channel_id) << ": pts = " << pts << ", pts_count = " << pts_count << ", current_pts = " << E->pts);
+    TGL_DEBUG("channel " << tgl_get_peer_id(channel_id) << ": pts = " << pts << ", pts_count = " << pts_count << ", current_pts = " << E->pts);
     if (!E->pts) {
       return true;
     }
-    //assert (tgl_state::instance()->pts);
+    //assert(tgl_state::instance()->pts);
     if (pts < E->pts + pts_count) {
       TGL_NOTICE("Duplicate message with pts=" << pts);
       return false;
     }
     if (pts > E->pts + pts_count) {
       TGL_NOTICE("Hole in pts (pts = " << pts << ", count = " << pts_count << ", cur_pts = " << E->pts);
-      tgl_do_get_channel_difference (tgl_get_peer_id (channel_id), 0, 0);
+      tgl_do_get_channel_difference(tgl_get_peer_id(channel_id), 0, 0);
       return false;
     }
     if (E->flags & TGLCHF_DIFF) {
@@ -186,8 +186,8 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_user_typing:
         {
-            //tgl_peer_id_t id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
-            //tgl_peer_t *U = tgl_peer_get (id);
+            //tgl_peer_id_t id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
+            //tgl_peer_t *U = tgl_peer_get(id);
             enum tgl_typing_status status = tglf_fetch_typing(DS_U->action);
             tgl_state::instance()->callback()->typing_status_changed(DS_LVAL(DS_U->user_id), DS_LVAL(DS_U->user_id), tgl_peer_type::user, status);
         }
@@ -208,7 +208,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_user_name:
         {
-            tgl_peer_id_t user_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
+            tgl_peer_id_t user_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
             std::map<tgl_user_update_type, std::string> updates;
             updates.emplace(tgl_user_update_type::username, DS_STDSTR(DS_U->username));
             updates.emplace(tgl_user_update_type::firstname, DS_STDSTR(DS_U->first_name));
@@ -220,7 +220,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         if (DS_U->photo) {
             tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
             tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
-            tgl_state::instance()->callback()->avatar_update(DS_LVAL (DS_U->user_id), tgl_peer_type::user, photo_small, photo_big);
+            tgl_state::instance()->callback()->avatar_update(DS_LVAL(DS_U->user_id), tgl_peer_type::user, photo_small, photo_big);
         }
         break;
     case CODE_update_delete_messages:
@@ -233,7 +233,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_chat_participants:
         if (DS_U->participants->magic == CODE_chat_participants) {
-            tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL (DS_U->chat_id));
+            tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL(DS_U->chat_id));
             int count = DS_LVAL(DS_U->participants->participants->cnt);
             for (int i = 0; i < count; ++i) {
                 bool admin = false;
@@ -284,14 +284,14 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
     case CODE_update_encrypted_messages_read:
 #if 0
         {
-          tgl_peer_id_t id = tgl_peer_id_enc_chat (DS_LVAL (DS_U->chat_id));
-          tgl_peer_t *P = tgl_peer_get (id);
+          tgl_peer_id_t id = tgl_peer_id_enc_chat(DS_LVAL(DS_U->chat_id));
+          tgl_peer_t *P = tgl_peer_get(id);
 
           if (P && P->last) {
             struct tgl_message *M = P->last;
             while (M && (!(M->flags & TGLMF_OUT) || (M->flags & TGLMF_UNREAD))) {
               if (M->flags & TGLMF_OUT) {
-                bl_do_edit_message_encr (tgl_state::instance(), &M->permanent_id, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, M->flags & ~TGLMF_UNREAD);
+                bl_do_edit_message_encr(tgl_state::instance(), &M->permanent_id, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, M->flags & ~TGLMF_UNREAD);
               }
               M = M->next;
             }
@@ -306,7 +306,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             tgl_peer_id_t inviter_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->inviter_id));
             //int version = DS_LVAL(DS_U->version);
 
-            //bl_do_chat_add_user(C->id, version, user_id.peer_id, inviter_id.peer_id, time (0));
+            //bl_do_chat_add_user(C->id, version, user_id.peer_id, inviter_id.peer_id, time(0));
             tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, user_id.peer_id, inviter_id.peer_id, time(0), false, false);
         }
         break;
@@ -372,9 +372,9 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
     /*
     case CODE_update_msg_update:
         {
-          struct tgl_message *M = tgl_message_get (DS_LVAL (DS_U->id));
+          struct tgl_message *M = tgl_message_get(DS_LVAL(DS_U->id));
           if (M) {
-            //bl_do_msg_update (TLS, M->id);
+            //bl_do_msg_update(TLS, M->id);
             tgl_state::instance()->callback.new_msg(M);
           }
         }
@@ -415,7 +415,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
     case CODE_update_bot_inline_query:
         break;
     default:
-        assert (0);
+        assert(false);
     }
 
     if (mode != tgl_update_mode::check_and_update_consistency) {
@@ -433,15 +433,15 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
 #if 0 // FIXME
         int channel_id;
         if (DS_U->channel_id) {
-          channel_id = DS_LVAL (DS_U->channel_id);
+          channel_id = DS_LVAL(DS_U->channel_id);
         } else {
-          assert (DS_U->message);
-          assert (DS_U->message->to_id);
-          assert (DS_U->message->to_id->magic == CODE_peer_channel);
-          channel_id = DS_LVAL (DS_U->message->to_id->channel_id);
+          assert(DS_U->message);
+          assert(DS_U->message->to_id);
+          assert(DS_U->message->to_id->magic == CODE_peer_channel);
+          channel_id = DS_LVAL(DS_U->message->to_id->channel_id);
         }
 
-        bl_do_set_channel_pts (channel_id, DS_LVAL (DS_U->channel_pts));
+        bl_do_set_channel_pts(channel_id, DS_LVAL(DS_U->channel_pts));
 #endif
     }
 }
@@ -470,7 +470,7 @@ void tglu_work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& e
     }
 
     if (DS_U->updates) {
-        for (int i = 0; i < DS_LVAL (DS_U->updates->cnt); ++i) {
+        for (int i = 0; i < DS_LVAL(DS_U->updates->cnt); ++i) {
             tglu_work_update(DS_U->updates->data[i], extra, mode);
         }
     }
@@ -561,9 +561,9 @@ void tglu_work_update_short_chat_message(const tl_ds_updates* DS_U, tgl_update_m
     }
 
 #if 0
-    assert (M);
+    assert(M);
     if (1) {
-        //bl_do_msg_update (&M->permanent_id);
+        //bl_do_msg_update(&M->permanent_id);
         tgl_state::instance()->callback()->new_message(M);
     }
 #endif
@@ -610,7 +610,7 @@ static void tglu_work_update_short_sent_message(const tl_ds_updates* DS_U,
     }
 
     if (std::shared_ptr<tgl_message> message = std::static_pointer_cast<tgl_message>(extra)) {
-        int32_t f = DS_LVAL (DS_U->flags);
+        int32_t f = DS_LVAL(DS_U->flags);
         unsigned flags = message->flags;
         if (f & 1) {
             flags |= TGLMF_UNREAD;
