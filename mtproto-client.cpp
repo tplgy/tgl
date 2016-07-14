@@ -1067,7 +1067,7 @@ static int rpc_execute_answer (const std::shared_ptr<tgl_connection>& c, tgl_in_
   case CODE_update_short_message:
   case CODE_update_short_chat_message:
   case CODE_updates_too_long:
-    tglu_work_any_updates_buf (in);
+    tglu_work_any_updates(in);
     return 0;
   case CODE_gzip_packed:
     if (in_gzip) {

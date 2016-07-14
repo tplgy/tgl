@@ -26,10 +26,23 @@
 struct tl_ds_updates;
 struct tl_ds_update;
 struct tgl_in_buffer;
+
+enum class tgl_update_mode {
+   check_and_update_consistency,
+   dont_check_and_update_consistency
+};
   
 bool tgl_check_pts_diff(int32_t pts, int32_t pts_count);
-void tglu_work_update (int check_only, struct tl_ds_update *DS_U, std::shared_ptr<void> extra);
-void tglu_work_updates (int check_only, struct tl_ds_updates *DS_U, std::shared_ptr<void> extra);
-void tglu_work_any_updates_buf (tgl_in_buffer* in);
-void tglu_work_any_updates (int check_only, struct tl_ds_updates *DS_U, std::shared_ptr<void> extra);
+
+void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& extra,
+        tgl_update_mode mode = tgl_update_mode::check_and_update_consistency);
+
+void tglu_work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra,
+        tgl_update_mode mode = tgl_update_mode::check_and_update_consistency);
+
+void tglu_work_any_updates(tgl_in_buffer* in);
+
+void tglu_work_any_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra,
+        tgl_update_mode mode = tgl_update_mode::check_and_update_consistency);
+
 #endif

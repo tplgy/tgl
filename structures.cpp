@@ -986,7 +986,7 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_messag
   }
 }
 
-std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U) {
+std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short(const tl_ds_updates* DS_U) {
   tgl_peer_id_t peer_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL (DS_U->user_id));
 
   int64_t message_id = DS_LVAL (DS_U->id);
@@ -1037,7 +1037,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short (struct tl_ds_update
   return msg;
 }
 
-std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U) {
+std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat(const tl_ds_updates* DS_U) {
   tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->from_id));
   tgl_input_peer_t to_id = tgl_input_peer_t(tgl_peer_type::chat, DS_LVAL(DS_U->chat_id), 0);
   

@@ -60,9 +60,9 @@ tgl_file_location tglf_fetch_file_location (struct tl_ds_file_location *DS_FL);
 void tglf_fetch_message_short (const std::shared_ptr<tgl_message>& M, struct tl_ds_updates *DS_U);
 void tglf_fetch_message_short_chat (const std::shared_ptr<tgl_message>& M, struct tl_ds_updates *DS_U);
 
-std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short (struct tl_ds_updates *DS_U);
-std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat (struct tl_ds_updates *DS_U);
-std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo *DS_P);
+std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short(const tl_ds_updates* DS_U);
+std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat(const tl_ds_updates* DS_U);
+std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P);
 std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info (struct tl_ds_bot_info *DS_BI);
 std::shared_ptr<tgl_message_reply_markup> tglf_fetch_alloc_reply_markup(const tl_ds_reply_markup *DS_RM);
 void tglf_fetch_message_entities (const std::shared_ptr<tgl_message>& M, struct tl_ds_vector *DS);
