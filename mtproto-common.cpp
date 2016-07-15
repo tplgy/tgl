@@ -110,17 +110,17 @@ static int get_random_bytes (unsigned char *buf, int n) {
 /* RDTSC */
 #if defined(__i386__)
 #define HAVE_RDTSC
-static __inline__ unsigned long long rdtsc (void) {
-  unsigned long long int x;
+static __inline__ uint64_t rdtsc (void) {
+  uint64_t x;
   __asm__ volatile ("rdtsc" : "=A" (x));
   return x;
 }
 #elif defined(__x86_64__)
 #define HAVE_RDTSC
-static __inline__ unsigned long long rdtsc (void) {
-  unsigned hi, lo;
+static __inline__ uint64_t rdtsc (void) {
+  uint32_t hi, lo;
   __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
-  return ((unsigned long long) lo) | (((unsigned long long) hi) << 32);
+  return ((uint64_t) lo) | (((uint64_t) hi) << 32);
 }
 #endif
 
@@ -129,7 +129,7 @@ void tgl_prng_seed (const char *password_filename, int password_length) {
   tgl_my_clock_gettime (CLOCK_REALTIME, &T);
   TGLC_rand_add (&T, sizeof (T), 4.0);
 #ifdef HAVE_RDTSC
-  unsigned long long r = rdtsc ();
+  uint64_t r = rdtsc ();
   TGLC_rand_add (&r, 8, 4.0);
 #endif
   unsigned short p = getpid ();
@@ -194,7 +194,8 @@ int tgl_serialize_bignum (const TGLC_bn *b, char *buffer, int maxlen) {
 
 
 // get last 8 bytes of SHA1 of RSA key's n and e
-long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key) {
+int64_t tgl_do_compute_rsa_key_fingerprint(TGLC_rsa *key)
+{
   unsigned char sha[20];
   memset(sha, 0, sizeof(sha));
 
@@ -207,7 +208,7 @@ long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key) {
   int l2 = tgl_serialize_bignum (TGLC_rsa_e (key), temp_buffer.get() + l1, 4096 - l1);
   assert (l2 > 0 && l1 + l2 <= 4096);
   TGLC_sha1 ((unsigned char *)temp_buffer.get(), l1 + l2, sha);
-  long long fingerprint;
+  int64_t fingerprint;
   memcpy(&fingerprint, sha + 12, 8);
   return fingerprint;
 }

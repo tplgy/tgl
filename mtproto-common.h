@@ -108,7 +108,7 @@
 
 void tgl_prng_seed (const char *password_filename, int password_length);
 int tgl_serialize_bignum (const TGLC_bn *b, char *buffer, int maxlen);
-long long tgl_do_compute_rsa_key_fingerprint (TGLC_rsa *key);
+int64_t tgl_do_compute_rsa_key_fingerprint(TGLC_rsa *key);
 
 class mtprotocol_serializer
 {

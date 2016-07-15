@@ -48,9 +48,9 @@ public:
     execute_result execute(const std::shared_ptr<tgl_connection>& c, int op, int len);
 };
 
-long long tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
-        const int *msg, int msg_ints,
-        long long msg_id_override = 0, bool force_send = false, bool useful = false);
+int64_t tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
+        const int32_t* msg, int msg_ints,
+        int64_t msg_id_override = 0, bool force_send = false, bool useful = false);
 void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC);
 //int tglmp_check_g (unsigned char p[256], BIGNUM *g);
 //int tglmp_check_DH_params (BIGNUM *p, int g);
