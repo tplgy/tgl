@@ -333,7 +333,7 @@ void tgl_state::add_query(const std::shared_ptr<query>& q)
     }
 }
 
-std::shared_ptr<query> tgl_state::get_query(long long id) const
+std::shared_ptr<query> tgl_state::get_query(int64_t id) const
 {
     assert(id);
     auto it = m_active_queries.find(id);

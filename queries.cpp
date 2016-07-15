@@ -959,7 +959,7 @@ public:
 #if 0
         tgl_message_id_t id;
         id.peer_type = TGL_PEER_RANDOM_ID;
-        id.id = *(long long *)q->extra;
+        id.id = *(int64_t*)q->extra;
         tfree(q->extra, 8);
         struct tgl_message *M = tgl_message_get(&id);
         if (q->callback) {
@@ -1012,7 +1012,7 @@ static void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M,
     q->out_i64(M->permanent_id);
 
     //TODO
-    //long long *x = (long long *)malloc(12);
+    //int64_t *x = (int64_t*)malloc(12);
     //*x = M->id;
     //*(int*)(x+1) = M->to_id.id;
 

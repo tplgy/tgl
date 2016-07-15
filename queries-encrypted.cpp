@@ -756,8 +756,8 @@ static bool create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 
     if (secret_chat->key_fingerprint() != secret_chat->temp_key_fingerprint) {
         TGL_WARNING("key fingerprint mismatch (my 0x" << std::hex
-                << (unsigned long long)secret_chat->key_fingerprint()
-                << "x 0x" << (unsigned long long)secret_chat->temp_key_fingerprint << "x)");
+                << (uint64_t)secret_chat->key_fingerprint()
+                << "x 0x" << (uint64_t)secret_chat->temp_key_fingerprint << "x)");
         return false;
     }
     secret_chat->temp_key_fingerprint = 0;

@@ -495,7 +495,7 @@ void tgl_download_manager::send_encrypted_file_end(const std::shared_ptr<send_fi
     q->out_i32(CODE_input_encrypted_chat);
     q->out_i32(f->to_id.peer_id);
     q->out_i64(secret_chat->access_hash);
-    long long r;
+    int64_t r;
     tglt_secure_random (reinterpret_cast<unsigned char*>(&r), 8);
     q->out_i64(r);
     encryptor.start();
@@ -730,7 +730,7 @@ void tgl_download_manager::send_file_thumb(const std::shared_ptr<send_file>& f,
     }
 
     auto q = std::make_shared<query_send_file_part>(this, f, callback);
-    f->thumb_id = tgl_random<long long>();
+    f->thumb_id = tgl_random<int64_t>();
     q->out_i32(CODE_upload_save_file_part);
     q->out_i64(f->thumb_id);
     q->out_i32(0);

@@ -37,13 +37,11 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel (struct tl_ds_chat *DS_C, 
 std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full (struct tl_ds_messages_chat_full *DS_MCF);
 std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_encrypted_chat *DS_EC);
 std::shared_ptr<tgl_message> tglf_fetch_alloc_message (struct tl_ds_message *DS_M);
-std::shared_ptr<tgl_message> tglf_fetch_alloc_encrypted_message (struct tl_ds_encrypted_message *DS_EM);
-tgl_peer_id_t tglf_fetch_peer_id (struct tl_ds_peer *DS_P);
-long long tglf_fetch_user_photo (struct tgl_user *U, struct tl_ds_user_profile_photo *DS_UPP);
+std::shared_ptr<tgl_message> tglf_fetch_alloc_encrypted_message(struct tl_ds_encrypted_message *DS_EM);
+tgl_peer_id_t tglf_fetch_peer_id(struct tl_ds_peer *DS_P);
 
 std::shared_ptr<tgl_message_media> tglf_fetch_message_media(const tl_ds_message_media *DS_MM);
 std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_message_action *DS_MA);
-//void tglf_fetch_chat_full (struct tgl_chat *C);
 
 void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>& M, const tl_ds_encrypted_file *DS_EF);
 std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_ds_decrypted_message_media *DS_DMM);

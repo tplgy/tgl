@@ -56,10 +56,10 @@ class query;
 
 struct tgl_session {
     std::weak_ptr<tgl_dc> dc;
-    long long session_id;
-    long long last_msg_id;
-    int seq_no;
-    int received_messages;
+    int64_t session_id;
+    int64_t last_msg_id;
+    int32_t seq_no;
+    int32_t received_messages;
     std::shared_ptr<tgl_connection> c;
     std::set<int64_t> ack_set;
     std::shared_ptr<tgl_timer> ev;
@@ -96,11 +96,11 @@ struct tgl_dc {
     unsigned char nonce[256];
     unsigned char new_nonce[256];
     unsigned char server_nonce[256];
-    long long auth_key_id;
-    long long temp_auth_key_id;
-    long long temp_auth_key_bind_query_id;
+    int64_t auth_key_id;
+    int64_t temp_auth_key_id;
+    int64_t temp_auth_key_bind_query_id;
 
-    long long server_salt;
+    int64_t server_salt;
     std::shared_ptr<tgl_timer> ev;
 
     int server_time_delta;

@@ -1572,13 +1572,13 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
     int* decr_ptr = reinterpret_cast<int*>(DS_EM->bytes->data);
     int* decr_end = decr_ptr + (DS_EM->bytes->len / 4);
 
-    if (secret_chat->exchange_state == tgl_sce_committed && secret_chat->key_fingerprint() == *(long long *)decr_ptr) {
+    if (secret_chat->exchange_state == tgl_sce_committed && secret_chat->key_fingerprint() == *(int64_t*)decr_ptr) {
         tgl_do_confirm_exchange(secret_chat, 0);
         assert (secret_chat->exchange_state == tgl_sce_none);
     }
 
-    long long key_fingerprint = secret_chat->exchange_state != tgl_sce_committed ? secret_chat->key_fingerprint() : secret_chat->exchange_key_fingerprint;
-    if (*(long long *)decr_ptr != key_fingerprint) {
+    int64_t key_fingerprint = secret_chat->exchange_state != tgl_sce_committed ? secret_chat->key_fingerprint() : secret_chat->exchange_key_fingerprint;
+    if (*(int64_t*)decr_ptr != key_fingerprint) {
         TGL_WARNING("encrypted message with bad fingerprint to chat " << secret_chat->id.peer_id);
         return nullptr;
     }

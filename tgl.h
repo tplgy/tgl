@@ -112,7 +112,7 @@ struct tgl_state {
 
     static void reset();
 
-    long long locks;
+    int64_t locks;
     std::vector<std::shared_ptr<tgl_message>> unsent_messages;
     std::shared_ptr<tgl_timer> ev_login;
 
@@ -192,7 +192,7 @@ struct tgl_state {
     void add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 
     void add_query(const std::shared_ptr<query>& q);
-    std::shared_ptr<query> get_query(long long id) const;
+    std::shared_ptr<query> get_query(int64_t id) const;
     void remove_query(const std::shared_ptr<query>& q);
     void remove_all_queries();
 
@@ -222,8 +222,8 @@ private:
     std::string m_app_version;
     bool m_ipv6_enabled;
     std::vector<std::unique_ptr<tgl_rsa_key>> m_rsa_key_list;
-    std::map<int/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
-    std::map<long long/*msg_id*/, std::shared_ptr<query>> m_active_queries;
+    std::map<int32_t/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
+    std::map<int64_t/*msg_id*/, std::shared_ptr<query>> m_active_queries;
 
     std::shared_ptr<tgl_download_manager> m_download_manager;
     std::shared_ptr<tgl_timer_factory> m_timer_factory;
