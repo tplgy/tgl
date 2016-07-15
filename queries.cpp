@@ -1120,7 +1120,7 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
             from_id = tgl_state::instance()->our_id();
         }
 
-        M = tglm_message_create(message_id, from_id, peer_id, NULL, NULL, &date, text, &TDSM, NULL, reply_id, reply_markup,
+        M = tglm_create_message(message_id, from_id, peer_id, NULL, NULL, &date, text, &TDSM, NULL, reply_id, reply_markup,
                 TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_TEMP_MSG_ID);
         tgl_state::instance()->callback()->new_messages({M});
 
@@ -4087,7 +4087,7 @@ void tgl_do_send_broadcast(int num, tgl_input_peer_t peer_id[], const std::strin
         struct tl_ds_message_media TDSM;
         TDSM.magic = CODE_message_media_empty;
 
-        auto msg = tglm_message_create(message_id, from_id, peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, 0, NULL,
+        auto msg = tglm_create_message(message_id, from_id, peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, 0, NULL,
                 TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
         tgl_state::instance()->callback()->new_messages({msg});
     }

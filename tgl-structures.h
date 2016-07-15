@@ -28,7 +28,7 @@
 
 void tgls_free_bot_info (struct tgl_bot_info *B);
 
-std::shared_ptr<tgl_message> tglm_message_create(int64_t message_id, const tgl_peer_id_t& from_id,
+std::shared_ptr<tgl_message> tglm_create_message(int64_t message_id, const tgl_peer_id_t& from_id,
                                         const tgl_input_peer_t& to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const std::string& message,
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
@@ -47,7 +47,5 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(const std::shared_ptr<tgl_
 
 std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_encrypted_message*);
 void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& secret_message);
-
-std::shared_ptr<tgl_message> tglm_message_alloc(int64_t message_id);
 
 #endif

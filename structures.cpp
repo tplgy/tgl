@@ -44,8 +44,6 @@
 #include "crypto/sha.h"
 #include "mtproto-common.h"
 
-//static void increase_peer_size ();
-
 enum tgl_typing_status tglf_fetch_typing (struct tl_ds_send_message_action *DS_SMA) {
   if (!DS_SMA) { return tgl_typing_none; }
   switch (DS_SMA->magic) {
@@ -335,7 +333,8 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat (struct tl_ds_e
     return secret_chat;
   }
 
-  static unsigned char g_key[256];
+  unsigned char g_key[256];
+  memset(g_key, 0, sizeof(g_key));
   if (is_new) {
     if (DS_EC->magic != CODE_encrypted_chat_requested) {
       return secret_chat;
@@ -1020,7 +1019,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short(const tl_ds_updates*
     fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
   }
 
-  std::shared_ptr<tgl_message> msg = tglm_message_create(message_id,
+  std::shared_ptr<tgl_message> msg = tglm_create_message(message_id,
           (f & 2) ? our_id : peer_id,
           (f & 2) ? tgl_input_peer_t(peer_id.peer_type, peer_id.peer_id, 0) : tgl_input_peer_t(our_id.peer_type, our_id.peer_id, 0),
           DS_U->fwd_from_id ? &fwd_from_id : NULL,
@@ -1079,7 +1078,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat(const tl_ds_upd
   }
 
 
-  return tglm_message_create (message_id,
+  return tglm_create_message (message_id,
       from_id,
       to_id,
       DS_U->fwd_from_id ? &fwd_from_id : NULL,
@@ -1457,7 +1456,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
     fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
   }
 
-  std::shared_ptr<tgl_message> M = tglm_message_create(message_id,
+  std::shared_ptr<tgl_message> M = tglm_create_message(message_id,
       from_id,
       to_id,
       DS_M->fwd_from_id ? &fwd_from_id : NULL,
@@ -1473,19 +1472,22 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(struct tl_ds_message *DS_M
   return M;
 }
 
-static int *decr_ptr;
-static int *decr_end;
-
-static int decrypt_encrypted_message (struct tgl_secret_chat* secret_chat) {
+static int decrypt_encrypted_message(struct tgl_secret_chat* secret_chat, int*& decr_ptr, int* decr_end) {
   int *msg_key = decr_ptr;
   decr_ptr += 4;
   assert (decr_ptr < decr_end);
-  static unsigned char sha1a_buffer[20];
-  static unsigned char sha1b_buffer[20];
-  static unsigned char sha1c_buffer[20];
-  static unsigned char sha1d_buffer[20];
+  unsigned char sha1a_buffer[20];
+  unsigned char sha1b_buffer[20];
+  unsigned char sha1c_buffer[20];
+  unsigned char sha1d_buffer[20];
  
-  static unsigned char buf[64];
+  unsigned char buf[64];
+
+  memset(sha1a_buffer, 0, sizeof(sha1a_buffer));
+  memset(sha1b_buffer, 0, sizeof(sha1b_buffer));
+  memset(sha1c_buffer, 0, sizeof(sha1c_buffer));
+  memset(sha1d_buffer, 0, sizeof(sha1d_buffer));
+  memset(buf, 0, sizeof(buf));
 
   const int *e_key = secret_chat->exchange_state != tgl_sce_committed
       ? reinterpret_cast<const int*>(secret_chat->key()) : secret_chat->exchange_key;
@@ -1507,12 +1509,14 @@ static int decrypt_encrypted_message (struct tgl_secret_chat* secret_chat) {
   memcpy (buf + 16, e_key + 24, 32);
   TGLC_sha1 (buf, 48, sha1d_buffer);
 
-  static unsigned char key[32];
+  unsigned char key[32];
+  memset(key, 0, sizeof(key));
   memcpy (key, sha1a_buffer + 0, 8);
   memcpy (key + 8, sha1b_buffer + 8, 12);
   memcpy (key + 20, sha1c_buffer + 4, 12);
 
-  static unsigned char iv[32];
+  unsigned char iv[32];
+  memset(iv, 0, sizeof(iv));
   memcpy (iv, sha1a_buffer + 8, 12);
   memcpy (iv + 12, sha1b_buffer + 0, 8);
   memcpy (iv + 20, sha1c_buffer + 16, 4);
@@ -1565,8 +1569,8 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
     }
 #endif
 
-    decr_ptr = reinterpret_cast<int*>(DS_EM->bytes->data);
-    decr_end = decr_ptr + (DS_EM->bytes->len / 4);
+    int* decr_ptr = reinterpret_cast<int*>(DS_EM->bytes->data);
+    int* decr_end = decr_ptr + (DS_EM->bytes->len / 4);
 
     if (secret_chat->exchange_state == tgl_sce_committed && secret_chat->key_fingerprint() == *(long long *)decr_ptr) {
         tgl_do_confirm_exchange(secret_chat, 0);
@@ -1581,7 +1585,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
 
     decr_ptr += 2;
 
-    if (decrypt_encrypted_message(secret_chat.get()) < 0) {
+    if (decrypt_encrypted_message(secret_chat.get(), decr_ptr, decr_end) < 0) {
         TGL_WARNING("can not decrypt message");
         return nullptr;
     }
@@ -1863,19 +1867,20 @@ std::shared_ptr<tgl_message_reply_markup> tglf_fetch_alloc_reply_markup(const tl
 
 /* Messages {{{ */
 
-std::shared_ptr<tgl_message> tglm_message_alloc(int64_t message_id) {
+static std::shared_ptr<tgl_message> tglm_alloc_message(int64_t message_id)
+{
     auto message = std::make_shared<tgl_message>();
     message->permanent_id = message_id;
     return message;
 }
 
-std::shared_ptr<tgl_message> tglm_message_create(int64_t message_id, const tgl_peer_id_t& from_id,
+std::shared_ptr<tgl_message> tglm_create_message(int64_t message_id, const tgl_peer_id_t& from_id,
                                         const tgl_input_peer_t& to_id, tgl_peer_id_t *fwd_from_id, int *fwd_date,
                                         int *date, const std::string& message,
                                         const tl_ds_message_media *media, const tl_ds_message_action *action,
                                         int reply_id, const tl_ds_reply_markup* reply_markup, int flags)
 {
-    std::shared_ptr<tgl_message> M = tglm_message_alloc(message_id);
+    std::shared_ptr<tgl_message> M = tglm_alloc_message(message_id);
 
     M->flags = flags;
 
@@ -1930,7 +1935,7 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(
 {
     assert (!(flags & 0xfffe0000));
 
-    std::shared_ptr<tgl_message> M = tglm_message_alloc(message_id);
+    std::shared_ptr<tgl_message> M = tglm_alloc_message(message_id);
 
     assert (flags & TGLMF_CREATED);
     assert (flags & TGLMF_ENCRYPTED);
