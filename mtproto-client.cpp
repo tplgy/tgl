@@ -47,7 +47,7 @@
 #endif
 
 #include "queries.h"
-#include "tgl-structures.h"
+#include "structures.h"
 #include "tgl.h"
 #include "tgl-timer.h"
 #include "tgl-net.h"

@@ -15,13 +15,16 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-    Copyright Vitaly Valtman 2014-2015
+    Copyright Vitaly Valtman 2013-2015
 */
-#ifndef __TGL_FETCH_H__
-#define __TGL_FETCH_H__
+#ifndef __STRUCTURES_H__
+#define __STRUCTURES_H__
 
-#include "tgl.h"
+#include <assert.h>
 #include "auto/auto-types.h"
+#include "tgl-layout.h"
+#include "tgl.h"
+#include "tools.h"
 #include "types/tgl_bot.h"
 #include "types/tgl_chat.h"
 #include "types/tgl_channel.h"
@@ -29,6 +32,26 @@
 #include "types/tgl_message.h"
 #include "types/tgl_message_media.h"
 
+std::shared_ptr<tgl_message> tglm_create_message(int64_t message_id, const tgl_peer_id_t& from_id,
+        const tgl_input_peer_t& to_id, const tgl_peer_id_t* fwd_from_id, const int* fwd_date,
+        const int* date, const std::string& message,
+        const tl_ds_message_media* media, const tl_ds_message_action* action,
+        int32_t reply_id, const tl_ds_reply_markup* reply_markup, int flags);
+
+std::shared_ptr<tgl_message> tglm_create_encr_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        int64_t message_id,
+        const tgl_peer_id_t& from_id,
+        const tgl_input_peer_t& to_id,
+        const int* date,
+        const std::string& message,
+        const tl_ds_decrypted_message_media* media,
+        const tl_ds_decrypted_message_action* action,
+        const tl_ds_encrypted_file* file,
+        int flags);
+
+void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& secret_message);
+
+std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_encrypted_message*);
 std::shared_ptr<tgl_user> tglf_fetch_alloc_user(const tl_ds_user* DS_U, bool invoke_callbacks = true);
 std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(const tl_ds_user_full* DS_U);
 std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(const tl_ds_chat* DS_C, bool invoke_callbacks = true);

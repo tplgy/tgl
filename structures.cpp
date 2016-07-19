@@ -18,22 +18,8 @@
     Copyright Vitaly Valtman 2013-2015
 */
 
-#include <algorithm>
-#include <assert.h>
-#include <ctype.h>
-#include <string.h>
-#include <strings.h>
-#include "tgl-queries.h"
-#include "tgl-structures.h"
-#include "queries.h"
-#include "queries-encrypted.h"
-#include "updates.h"
-#include "mtproto-client.h"
-#include "types/tgl_bot.h"
-#include "types/tgl_update_callback.h"
-#include "types/tgl_user.h"
+#include "structures.h"
 
-#include "tgl.h"
 #include "auto/auto.h"
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
@@ -42,7 +28,22 @@
 #include "crypto/aes.h"
 #include "crypto/bn.h"
 #include "crypto/sha.h"
+#include "mtproto-client.h"
 #include "mtproto-common.h"
+#include "queries.h"
+#include "queries-encrypted.h"
+#include "tgl.h"
+#include "tgl-queries.h"
+#include "types/tgl_bot.h"
+#include "types/tgl_update_callback.h"
+#include "types/tgl_user.h"
+#include "updates.h"
+
+#include <algorithm>
+#include <assert.h>
+#include <ctype.h>
+#include <string.h>
+#include <strings.h>
 
 enum tgl_typing_status tglf_fetch_typing(const tl_ds_send_message_action* DS_SMA)
 {

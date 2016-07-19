@@ -21,7 +21,7 @@
 //#include "net.h"
 #ifndef __QUERIES_H__
 #define __QUERIES_H__
-#include "tgl-structures.h"
+#include "structures.h"
 #include "auto/auto.h"
 #include "tgl-layout.h"
 #include "types/tgl_message.h"
