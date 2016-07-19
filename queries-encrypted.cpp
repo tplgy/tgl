@@ -962,10 +962,12 @@ void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& sec
     q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_create_encr_chat_request(const tgl_input_peer_t& user_id,
-        const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
+/* {{{ Create secret chat */
+
+void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id, int32_t new_secret_chat_id,
+        const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>& callback)
 {
-    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->create_secret_chat();
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->create_secret_chat(new_secret_chat_id);
     secret_chat->user_id = user_id.peer_id;
     secret_chat->access_hash = user_id.access_hash;
     secret_chat->id.access_hash = user_id.access_hash;

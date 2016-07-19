@@ -151,9 +151,6 @@ void tgl_do_unblock_user(int32_t user_id, int64_t access_hash, const std::functi
 
 /* {{{ WORKING WITH SECRET CHATS */
 
-// requests creation of secret chat with user *user_id*
-//void tgl_do_create_encr_chat_request(int user_id, std::function<void(bool success, struct tgl_secret_chat *E)> callback);
-
 // accepts secret chat request
 // method can fail if another device will be first to accept it
 void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& secret_chat,
@@ -169,7 +166,7 @@ void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_c
 //int tgl_do_visualize_key(int id, unsigned char buf[16]);
 
 // requests creation of secret chat with user id
-void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id,
+void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id, int32_t new_secret_chat_id,
         const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>& callback);
 /* }}} */
 

@@ -280,11 +280,22 @@ void tgl_state::set_error(std::string error, int error_code)
     m_error_code = error_code;
 }
 
-std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat()
+int32_t tgl_state::create_secret_chat_id()
 {
     int chat_id = tgl_random<int>();
     while (tgl_state::instance()->secret_chat_for_id(chat_id)) {
         chat_id = tgl_random<int>();
+    }
+    return chat_id;
+}
+
+std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat(int32_t id)
+{
+    int chat_id;
+    if (id) {
+        chat_id = id;
+    } else {
+        chat_id = create_secret_chat_id();
     }
 
     auto secret_chat = std::make_shared<tgl_secret_chat>();

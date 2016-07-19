@@ -3155,14 +3155,6 @@ void tgl_do_channel_kick_user(const tgl_input_peer_t& channel_id, const tgl_inpu
 
 /* }}} */
 
-/* {{{ Create secret chat */
-
-void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id,
-        const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>& callback)
-{
-    tgl_do_create_encr_chat_request(user_id, callback);
-}
-/* }}} */
 
 /* {{{ Create group chat */
 
