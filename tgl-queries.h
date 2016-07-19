@@ -50,11 +50,13 @@ void tgl_do_forward_messages(const tgl_input_peer_t& from_id, const tgl_input_pe
 
 // sends contact to another user.
 // This contact may be or may not be telegram user
-void tgl_do_send_contact(const tgl_input_peer_t& id, const char* phone, const char* first_name, const char* last_name, unsigned long long flags,
+void tgl_do_send_contact(const tgl_input_peer_t& id,
+        const std::string& phone, const std::string& first_name, const std::string& last_name, unsigned long long flags,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
 
 // reply on message *reply_id* with contact
-void tgl_do_reply_contact(int32_t reply_id, const tgl_peer_id_t& peer_id, const char* phone, const char* first_name, const char* last_name, unsigned long long flags,
+void tgl_do_reply_contact(int32_t reply_id, const tgl_peer_id_t& peer_id,
+        const std::string& phone, const std::string& first_name, const std::string& last_name, unsigned long long flags,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
 
 // sends media from message *msg_id* to another dialog
@@ -93,7 +95,7 @@ void tgl_do_export_card(const std::function<void(bool success, const std::vector
 /* {{{ WORKING WITH GROUP CHATS */
 
 // sets chat title
-void tgl_do_rename_chat(int32_t id, const char* new_title, int new_title_len,
+void tgl_do_rename_chat(int32_t id, const std::string& new_title,
         const std::function<void(bool success)>& callback);
 
 // requests full info about chat *id*.
@@ -118,7 +120,7 @@ void tgl_do_create_group_chat(const std::vector<tgl_input_peer_t>& user_ids, con
 void tgl_do_export_chat_link(const tgl_peer_id_t& id, const std::function<void(bool success, const std::string& link)>& callback);
 
 // joins to secret chat by link (or hash of this link)
-void tgl_do_import_chat_link(const char* link, int link_len, const std::function<void(bool success)>& callback);
+void tgl_do_import_chat_link(const std::string& link, const std::function<void(bool success)>& callback);
 
 /* }}} */
 

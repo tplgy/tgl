@@ -1804,9 +1804,8 @@ void tgl_do_forward_message(const tgl_input_peer_t& from_id, const tgl_input_pee
     q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_send_contact(const tgl_input_peer_t& id, const char *phone, int phone_len,
-      const char *first_name, int first_name_len, const char *last_name, int last_name_len,
-      unsigned long long flags,
+void tgl_do_send_contact(const tgl_input_peer_t& id,
+      const std::string& phone, const std::string& first_name, const std::string& last_name, unsigned long long flags,
       const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
 {
     if (id.peer_type == tgl_peer_type::enc_chat) {
@@ -1830,17 +1829,17 @@ void tgl_do_send_contact(const tgl_input_peer_t& id, const char *phone, int phon
     }
     q->out_input_peer(id);
     q->out_i32(CODE_input_media_contact);
-    q->out_string(phone, phone_len);
-    q->out_string(first_name, first_name_len);
-    q->out_string(last_name, last_name_len);
+    q->out_std_string(phone);
+    q->out_std_string(first_name);
+    q->out_std_string(last_name);
 
     q->out_i64(E->id);
 
     q->execute(tgl_state::instance()->working_dc());
 }
 
-//void tgl_do_reply_contact(tgl_message_id_t *_reply_id, const char *phone, int phone_len, const char *first_name, int first_name_len, const char *last_name,
-//        int last_name_len, unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
+//void tgl_do_reply_contact(tgl_message_id_t *_reply_id, const std::string& phone, const std::string& first_name, const std::string& last_name,
+//        unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
 //{
 //  tgl_message_id_t reply_id = *_reply_id;
 //  if (reply_id.peer_type == tgl_peer_type::temp_id) {
@@ -1858,7 +1857,7 @@ void tgl_do_send_contact(const tgl_input_peer_t& id, const char *phone, int phon
 
 //    tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id(reply_id);
 
-//    tgl_do_send_contact(peer_id, phone, phone_len, first_name, first_name_len, last_name, last_name_len, flags | TGL_SEND_MSG_FLAG_REPLY(reply_id.id), callback);
+//    tgl_do_send_contact(peer_id, phone, first_name, last_name, flags | TGL_SEND_MSG_FLAG_REPLY(reply_id.id), callback);
 //  }
 //}
 
@@ -1997,14 +1996,14 @@ void tgl_do_reply_location(tgl_message_id_t *_reply_id, double latitude, double 
 
 /* {{{ Rename chat */
 
-void tgl_do_rename_chat(const tgl_peer_id_t& id, const char* name, int name_len,
+void tgl_do_rename_chat(const tgl_peer_id_t& id, const std::string& name,
         const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_send_msgs>(callback);
     q->out_i32(CODE_messages_edit_chat_title);
     assert(id.peer_type == tgl_peer_type::chat);
     q->out_i32(id.peer_id);
-    q->out_string(name, name_len);
+    q->out_std_string(name);
     q->execute(tgl_state::instance()->working_dc());
 }
 /* }}} */
@@ -3676,18 +3675,19 @@ void tgl_do_export_chat_link(const tgl_peer_id_t& id, const std::function<void(b
     q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_import_chat_link(const char* link, int len,
+void tgl_do_import_chat_link(const std::string& link,
         const std::function<void(bool success)> callback)
 {
-    const char *l = link + len - 1;
-    while (l >= link && *l != '/') {
-        l --;
+    const char* link_str = link.c_str();
+    const char* l = link_str + link.size() - 1;
+    while (l >= link_str && *l != '/') {
+        l--;
     }
-    l ++;
+    l++;
 
     auto q = std::make_shared<query_send_msgs>(callback);
     q->out_i32(CODE_messages_import_chat_invite);
-    q->out_string(l, len - (l - link));
+    q->out_string(l, link.size() - (l - link_str));
 
     q->execute(tgl_state::instance()->working_dc());
 }
