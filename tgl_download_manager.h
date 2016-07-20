@@ -47,6 +47,8 @@ class query_send_file_part;
 
 using tgl_download_callback = std::function<void(bool success, const std::string& file_name, float progress)>;
 using tgl_upload_callback = std::function<void(bool success, const std::shared_ptr<tgl_message>& message, float progress)>;
+using tgl_read_callback = std::function<std::shared_ptr<std::vector<uint8_t>>(uint32_t chunk_size)>;
+using tgl_send_part_done_callback = std::function<void()>;
 
 class tgl_download_manager
 {
@@ -70,14 +72,20 @@ public:
     void download_document(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
 
     void send_document(const tgl_input_peer_t& to_id, int64_t message_id,
-            const std::string& file_name, int32_t width, int32_t height, int32_t duration, const std::string& caption,
-            const std::string& thumb_path, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
-            const tgl_upload_callback& callback);
+            const std::string& file_name, int32_t file_size, int32_t width, int32_t height, int32_t duration, const std::string& caption,
+            const std::vector<uint8_t>& thumb_data, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
+            const tgl_upload_callback& callback, const tgl_read_callback& read_callback, const tgl_send_part_done_callback& done_callback);
 
     // sets self profile photo
     // server will cut central square from this photo
-    void set_profile_photo(const std::string &file_name, const std::function<void(bool success)>& callback);
-    void set_chat_photo(const tgl_input_peer_t& chat_id, const std::string &file_name, const std::function<void(bool success)>& callback);
+    void set_profile_photo(const std::string &file_name, int32_t file_size,
+                           const std::function<void(bool success)>& callback,
+                           const tgl_read_callback& read_callback,
+                           const tgl_send_part_done_callback& done_callback);
+    void set_chat_photo(const tgl_input_peer_t& chat_id, const std::string &file_name, int32_t file_size,
+                        const std::function<void(bool success)>& callback,
+                        const tgl_read_callback& read_callback,
+                        const tgl_send_part_done_callback& done_callback);
 
 private:
     friend class query_download;
@@ -92,15 +100,15 @@ private:
     void send_file_end(const std::shared_ptr<send_file>& f, const tgl_upload_callback& callback);
     void send_unencrypted_file_end(const std::shared_ptr<send_file>& f, const tgl_upload_callback& callback);
     void send_encrypted_file_end(const std::shared_ptr<send_file>& f, const tgl_upload_callback& callback);
-    void send_file_thumb(const std::shared_ptr<send_file>& f, const tgl_upload_callback& callback);
+    void send_file_thumb(const std::shared_ptr<send_file>& f, const tgl_upload_callback& callback, const tgl_read_callback& read_callback, const tgl_send_part_done_callback& done_callback);
 
-    void send_part(const std::shared_ptr<send_file>& f, const tgl_upload_callback& callback);
+    void send_part(const std::shared_ptr<send_file>& f, const tgl_upload_callback& callback, const tgl_read_callback& read_callback, const tgl_send_part_done_callback& done_callback);
 
-    void send_document(const tgl_input_peer_t& to_id, int64_t message_id, const std::string &file_name,
+    void send_document(const tgl_input_peer_t& to_id, int64_t message_id, const std::string &file_name, int32_t file_size,
             int32_t avatar, int32_t width, int32_t height, int32_t duration,
             const std::string& caption, uint64_t flags,
-            const std::string& thumb_path, int thumb_width, int thumb_height,
-            const tgl_upload_callback& callback);
+            const std::vector<uint8_t>& thumb_data, int thumb_width, int thumb_height,
+            const tgl_upload_callback& callback, const tgl_read_callback& read_callback, const tgl_send_part_done_callback& done_callback);
 
     void download_document(const std::shared_ptr<tgl_document>& document, const std::shared_ptr<download>& d,
              const tgl_download_callback& callback);
