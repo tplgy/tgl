@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -44,7 +44,7 @@
 #include "tools.h"
 #include "tgl-log.h"
 
-#include "constants.h"
+#include "auto/constants.h"
 
 //#include "tgl-inner.h"
 /* DH key exchange protocol data structures */
@@ -60,7 +60,7 @@
 #define CODE_client_DH_inner_data	0x6643b654
 #define CODE_dh_gen_ok			0x3bcbf734
 #define CODE_dh_gen_retry		0x46dc1fb9
-#define CODE_dh_gen_fail		0xa69dae02 
+#define CODE_dh_gen_fail		0xa69dae02
 
 #define CODE_bind_auth_key_inner 0x75a3f765
 
@@ -278,7 +278,7 @@ static inline char* fetch_str(struct tgl_in_buffer* in, size_t len)
         in->ptr += (len + 7) >> 2;
         return str;
     }
-} 
+}
 
 static inline void fetch_skip(struct tgl_in_buffer* in, size_t n)
 {
@@ -364,7 +364,7 @@ static inline void fetch_i32s(struct tgl_in_buffer* in, int32_t* data, size_t co
     memcpy(data, in->ptr, 4 * count);
     in->ptr += count;
 }
-    
+
 static inline ssize_t in_remaining(struct tgl_in_buffer* in)
 {
     return 4 * (in->end - in->ptr);

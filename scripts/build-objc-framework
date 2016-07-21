@@ -25,7 +25,8 @@ def build_framework(strip_debug_symbols = False):
     framework_name = "TplgyTGL"
     framework_lib = "libtplgy_tgl.dylib"
 
-    framework_dir = os.path.join(frameworks_dir, "%s.framework" % framework_name)
+    framework_dir_name = "%s.framework" % framework_name
+    framework_dir = os.path.join(frameworks_dir, framework_dir_name)
 
     if os.path.isdir(framework_dir):
         shutil.rmtree(framework_dir)
@@ -47,11 +48,7 @@ def build_framework(strip_debug_symbols = False):
         wlist = " ".join(libs)
         out = os.path.join(temp_dir, a)
         os.mkdir(out)
-        # r = build_lib.run_command("libtool -static -o " + os.path.join(out, framework_lib) + " " + wlist)
         shutil.copy2(wlist, os.path.join(out, framework_lib))
-        shutil.copy2(wlist, framework_lib)
-        #if r != 0:
-        #    return r
 
         if strip_debug_symbols:
             r = build_lib.run_command("strip -S -X " + os.path.join(out, framework_lib))
@@ -62,7 +59,11 @@ def build_framework(strip_debug_symbols = False):
     libraries = " ".join([os.path.join(a, framework_lib) for a in temp_arches])
     r = build_lib.run_command("lipo -create " + libraries + " -o " + framework_name)
     if r != 0:
-        return r 
+        return r
+
+    r = build_lib.run_command("install_name_tool -id \"@rpath/" + os.path.join(framework_dir_name, framework_name) + "\" " + framework_name)
+    if r != 0:
+        return r
 
     shutil.rmtree(temp_dir)
 
@@ -95,5 +96,7 @@ def build_framework(strip_debug_symbols = False):
 
     os.mkdir("Modules")
     shutil.copy2(os.path.join(main_dir, "objc", "module.modulemap"), "Modules")
+
+    shutil.copy2(os.path.join(main_dir, "scripts", "strip-frameworks.sh"), ".")
 
 build_framework(args.strip)
