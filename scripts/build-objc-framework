@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+
+import argparse
+import glob
+import os
+import shutil
+import sys
+import build_lib
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("-r", "--release", help="Build release framework", action="store_true")
+parser.add_argument("-s", "--strip", help="Strip debug symbols during copy", action="store_true")
+
+args = parser.parse_args()
+
+def build_framework(strip_debug_symbols = False):
+    install_dir = os.path.join(build_lib.get_dev_dir(), "staging-ios")
+    build_install_dir = os.path.join(install_dir, "release" if args.release else "debug")
+    main_dir = build_lib.get_main_dir()
+    build_dir = os.path.join(main_dir, "build-ios", "release" if args.release else "debug")
+    frameworks_dir = os.path.join(install_dir, "Frameworks")
+    temp_dir = os.path.join(install_dir, "tmp")
+
+    framework_name = "TplgyTGL"
+    framework_lib = "libtplgy_tgl.dylib"
+
+    framework_dir = os.path.join(frameworks_dir, "%s.framework" % framework_name)
+
+    if os.path.isdir(framework_dir):
+        shutil.rmtree(framework_dir)
+
+    if os.path.isdir(temp_dir):
+        shutil.rmtree(temp_dir)
+
+    # find the list of arches
+    arches = glob.glob(os.path.join(build_install_dir, "*"))
+
+    os.makedirs(framework_dir)
+    os.chdir(framework_dir)
+    os.mkdir(temp_dir)
+
+    for a in arches:
+        a = os.path.basename(a)
+        # find the list of libraries
+        libs = [os.path.join(build_install_dir, a, "lib", framework_lib)]
+        wlist = " ".join(libs)
+        out = os.path.join(temp_dir, a)
+        os.mkdir(out)
+        # r = build_lib.run_command("libtool -static -o " + os.path.join(out, framework_lib) + " " + wlist)
+        shutil.copy2(wlist, os.path.join(out, framework_lib))
+        shutil.copy2(wlist, framework_lib)
+        #if r != 0:
+        #    return r
+
+        if strip_debug_symbols:
+            r = build_lib.run_command("strip -S -X " + os.path.join(out, framework_lib))
+            if r != 0:
+                return r
+
+    temp_arches = glob.glob(os.path.join(temp_dir, "*"))
+    libraries = " ".join([os.path.join(a, framework_lib) for a in temp_arches])
+    r = build_lib.run_command("lipo -create " + libraries + " -o " + framework_name)
+    if r != 0:
+        return r 
+
+    shutil.rmtree(temp_dir)
+
+    # copy Info.plist
+    shutil.copy2(os.path.join(build_dir, os.path.basename(arches[0]), "Info.plist"), os.getcwd() + "/Info.plist")
+
+    # copy public headers
+    public_headers_dir = "Headers"
+    if os.path.isdir(public_headers_dir):
+        shutil.rmtree(public_headers_dir)
+    os.mkdir(public_headers_dir)
+    public_headers = sorted([h for h in glob.glob(os.path.join(arches[0], "objc", framework_name, "*.h")) if not "+Private" in h])
+    for h in public_headers:
+        shutil.copy2(h, public_headers_dir)
+
+    # copy private headers
+    private_headers_dir = "PrivateHeaders"
+    if os.path.isdir(private_headers_dir):
+        shutil.rmtree(private_headers_dir)
+    os.mkdir(private_headers_dir)
+    private_headers = sorted(glob.glob(os.path.join(arches[0], "objc", framework_name, "*+Private.h")))
+    for h in private_headers:
+        shutil.copy2(h, private_headers_dir)
+
+    # generate umbrella header
+    with open(os.path.join(public_headers_dir, framework_name + ".h"), 'w') as f:
+        f.write("#import <Foundation/Foundation.h>\n\n")
+        for h in public_headers:
+            f.write("#import <" + framework_name + "/" + os.path.basename(h) + ">\n")
+
+    os.mkdir("Modules")
+    shutil.copy2(os.path.join(main_dir, "objc", "module.modulemap"), "Modules")
+
+build_framework(args.strip)

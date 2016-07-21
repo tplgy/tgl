@@ -1,0 +1,19 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import build_lib
+
+MAIN_DIR = build_lib.get_main_dir()
+os.chdir(MAIN_DIR)
+
+r = build_lib.run_command("git pull --rebase", False)
+if r != 0:
+        exit(1)
+
+f = open(os.devnull, "w")
+r = build_lib.run_command_stdout_to_file("git submodule sync --recursive", f)
+if r != 0:
+        exit(1)
+
+exit(build_lib.run_command("git submodule update --init --recursive", False))

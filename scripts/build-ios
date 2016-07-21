@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+
+import argparse
+import glob
+import os
+import re
+import sys
+import shutil
+import subprocess
+import build_lib
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-c", "--clean", help="force clean build", action="store_true")
+parser.add_argument("-v", "--verbose", help="produces additional output for dianostics", action="store_true")
+parser.add_argument("-r", "--release", help="release build, default to debug", action="store_true")
+parser.add_argument("-j", "--jobs", help="Specify how many commands can run in parallel", type=int, default=build_lib.get_num_cores())
+parser.add_argument("-a", "--architecture", help="specify architecture",  choices=["armv7", "arm64", "i386", "x86_64"], default="arm64")
+parser.add_argument("--asan", help="build with ASAN", action="store_true")
+args = parser.parse_args()
+
+print "Messaging SDK Build - iOS"
+print "Architecture: {}".format(args.architecture)
+
+if args.release:
+    print "Build type: RELEASE"
+else:
+    print "Build type: DEBUG"
+
+if args.clean:
+    print "Performing clean build"
+
+if args.verbose:
+    print "Verbose output"
+
+print "Number of jobs: {}".format(args.jobs)
+
+DEV_DIR = build_lib.get_dev_dir()
+MAIN_DIR = build_lib.get_main_dir()
+BUILD_DIR = os.path.join(MAIN_DIR, "build-ios", "release" if args.release else "debug", args.architecture)
+INSTALL_PREFIX = os.path.join(DEV_DIR, "staging-ios", "release" if args.release else "debug", args.architecture)
+DJINNI_MODULE_PATH = os.path.join(DEV_DIR, "djinni_modules")
+if not os.path.exists(DJINNI_MODULE_PATH):
+    os.makedirs(DJINNI_MODULE_PATH)
+
+if args.clean and os.path.exists(BUILD_DIR):
+    shutil.rmtree(BUILD_DIR)
+
+IOS_SDK_VERSION = "9.0"
+if args.architecture == "x86_64" or args.architecture == "i386":
+    IS_SIMULATOR = True
+else:
+    IS_SIMULATOR = False
+
+if IS_SIMULATOR:
+    BASEDIR = os.path.join(subprocess.check_output("xcrun --sdk iphonesimulator --show-sdk-platform-path", shell=True).rstrip(), "Developer")
+    SDK = subprocess.check_output("xcrun --sdk iphonesimulator --show-sdk-path", shell=True).rstrip()
+    if args.architecture == "i386":
+        COMPILER_ARCH = "i386"
+        CFLAGS = "-arch i386"
+        LDFLAGS="-arch i386"
+    else:
+        COMPILER_ARCH = "x86_64"
+        CFLAGS = "-arch x86_64"
+        LDFLAGS = "-arch x86_64"
+    if args.release:
+        CFLAGS += " -O2"
+    else:
+        CFLAGS += " -O0"
+    CFLAGS += " -isysroot " + SDK + " -mios-simulator-version-min=" + IOS_SDK_VERSION
+    LDFLAGS += " -isysroot " + SDK + " -mios-simulator-version-min=" + IOS_SDK_VERSION
+else:
+    BASEDIR = os.path.join(subprocess.check_output("xcrun --sdk iphoneos --show-sdk-platform-path", shell=True).rstrip(), "Developer")
+    SDK = subprocess.check_output("xcrun --sdk iphoneos --show-sdk-path", shell=True).rstrip()
+    if args.architecture == "armv7":
+        COMPILER_ARCH = "armv7"
+        CFLAGS = "-mthumb -arch armv7"
+        LDFLAGS = "-mthumb -arch armv7"
+    else:
+        COMPILER_ARCH = "arm64"
+        CFLAGS = "-arch arm64"
+        LDFLAGS = "-arch arm64"
+    if args.release:
+        CFLAGS += " -Oz"
+    else:
+        CFLAGS += " -O0"
+    CFLAGS += " -isysroot " + SDK + " -mios-version-min=" + IOS_SDK_VERSION
+    LDFLAGS += " -isysroot " + SDK + " -mios-version-min=" + IOS_SDK_VERSION
+
+ENV_VARS = "PATH=" + os.path.join(BASEDIR, "/usr/bin") + ":" + os.path.join(BASEDIR, "/usr/sbin") + ":" + os.environ["PATH"] + \
+        " CFLAGS=\"" + CFLAGS + "\" CXXFLAGS=\"" + CFLAGS + "\" LDFLAGS=\"" + LDFLAGS + "\""
+
+os.environ["CMAKE_PREFIX_PATH"] = INSTALL_PREFIX + os.pathsep + os.getenv("CMAKE_PREFIX_PATH", "")
+
+CMAKE_COMMAND = ENV_VARS
+CMAKE_COMMAND += " PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR=" + os.path.join(INSTALL_PREFIX, "lib", "pkgconfig")
+CMAKE_COMMAND += " cmake -G Ninja"
+CMAKE_COMMAND += " -D CMAKE_C_COMPILER_WORKS=ON"
+CMAKE_COMMAND += " -D CMAKE_CXX_COMPILER_WORKS=ON"
+CMAKE_COMMAND += " -D CMAKE_OSX_SYSROOT=" + SDK
+CMAKE_COMMAND += " -D CMAKE_LIBRARY_PATH=" + os.path.join(SDK, "usr", "lib")
+CMAKE_COMMAND += " -D CMAKE_OSX_ARCHITECTURES=" + COMPILER_ARCH
+CMAKE_COMMAND += " -D CMAKE_INSTALL_PREFIX=" + INSTALL_PREFIX
+CMAKE_COMMAND += " -D ENABLE_ASAN=" + ("1" if args.asan else "0")
+CMAKE_COMMAND += " -D CMAKE_BUILD_TYPE=" + ("RelWithDebInfo" if args.release else "Debug")
+
+def exit_if_failed(return_code = 1, msg = "Forget to build dependencies?"):
+    if return_code != 0:
+        print msg
+        exit(return_code)
+
+# build cmake repo
+def build_cmake_repo(repo_name, repo_extra_path, definitions):
+    repo_src_path = os.path.join(MAIN_DIR, repo_name)
+    repo_build_dir = os.path.join(BUILD_DIR, repo_name)
+
+    if not os.path.exists(repo_build_dir):
+        os.makedirs(repo_build_dir)
+
+    os.chdir(repo_build_dir)
+    if not os.path.exists("build.ninja"):
+        command = CMAKE_COMMAND + " " + definitions
+        if (args.verbose):
+            command += " -v "
+        command += " ../../../" + repo_extra_path + repo_name
+        r = build_lib.run_command(command, args.verbose)
+        if r != 0:
+            return r
+
+    command = "ninja -j " + str(args.jobs)
+    if args.verbose:
+        command += " -v"
+    r = build_lib.run_command(command, args.verbose)
+    if r != 0:
+        return r
+    command += " install"
+    return build_lib.run_command(command, args.verbose)
+
+exit_if_failed(build_cmake_repo("", "", ""))
