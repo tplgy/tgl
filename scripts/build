@@ -15,7 +15,7 @@ parser.add_argument("-j", "--jobs", help="Specify how many commands can run in p
 
 args = parser.parse_args()
 
-print "Messaging SDK Build"
+print "Messaging TGL Build"
 
 if args.release:
     print "Build type: RELEASE"
