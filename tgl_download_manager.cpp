@@ -23,6 +23,7 @@ static constexpr size_t MAX_PART_SIZE = 512 * 1024;
 struct send_file {
     int fd;
     uintmax_t size;
+    uintmax_t offset;
     size_t part_num;
     size_t part_size;
     int64_t id;
@@ -52,6 +53,7 @@ struct send_file {
     send_file()
         : fd(-1)
         , size(0)
+        , offset(0)
         , part_num(0)
         , part_size(0)
         , id(0)
@@ -123,6 +125,13 @@ public:
 
     virtual void on_answer(void* answer) override
     {
+        TGL_DEBUG("offset=" << m_file->offset << " size=" << m_file->size);
+
+        if (m_callback) {
+            float progress = static_cast<float>(m_file->offset)/m_file->size;
+            m_callback(false, nullptr, progress);
+        }
+
         m_download_manager->send_file_part_on_answer(shared_from_this(), answer);
     }
 
@@ -639,7 +648,7 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
         const tgl_upload_callback& callback)
 {
     if (f->fd >= 0) {
-        size_t offset = f->part_num * f->part_size;
+        f->offset = f->part_num * f->part_size;
         auto q = std::make_shared<query_send_file_part>(this, f, callback);
         if (f->size < BIG_FILE_THRESHOLD) {
             q->out_i32(CODE_upload_save_file_part);
@@ -682,11 +691,11 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
         }
 
         assert(read_size > 0);
-        offset += read_size;
+        f->offset += read_size;
 
         if (f->encr) {
             if (read_size & 15) {
-                assert(offset == f->size);
+                assert(f->offset == f->size);
                 tglt_secure_random(reinterpret_cast<unsigned char*>(f->sending_buffer.data()) + read_size, (-read_size) & 15);
                 read_size = (read_size + 15) & ~15;
             }
@@ -698,14 +707,8 @@ void tgl_download_manager::send_part(const std::shared_ptr<send_file>& f,
             memset(&aes_key, 0, sizeof(aes_key));
         }
         q->out_string(f->sending_buffer.data(), read_size);
-        TGL_DEBUG("offset=" << offset << " size=" << f->size);
 
-        if (callback) {
-            float progress = static_cast<float>(offset)/f->size;
-            callback(false, nullptr, progress);
-        }
-
-        if (offset == f->size) {
+        if (f->offset == f->size) {
             f->sending_buffer.clear();
             close(f->fd);
             f->fd = -1;
