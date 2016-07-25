@@ -18,8 +18,6 @@
     Copyright Ben Wiederhake 2015
 */
 
-#include "config.h"
-
 #ifdef TGL_AVOID_OPENSSL
 
 /* Marginally speed up compilation */

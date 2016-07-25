@@ -19,10 +19,6 @@
     Copyright Topology LP 2016
 */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "tgl.h"
 
 #include "crypto/rsa_pem.h"

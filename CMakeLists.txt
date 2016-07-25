@@ -63,7 +63,6 @@ set(GENERATED_TGL_HEADERS
     ${CMAKE_BINARY_DIR}/auto/auto-free-ds.h
     ${CMAKE_BINARY_DIR}/auto/auto-skip.h
     ${CMAKE_BINARY_DIR}/auto/auto-types.h
-    ${CMAKE_BINARY_DIR}/auto/config.h
     ${CMAKE_BINARY_DIR}/auto/constants.h
 )
 

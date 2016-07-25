@@ -1,4 +1,3 @@
-#include "config.h"
 #include "tl-parser/portable_endian.h"
 #include <string.h>
 #include "tgl.h"

@@ -18,10 +18,6 @@ cat $SRC_DIR/auto/scheme.tl $SRC_DIR/auto/encrypted_scheme.tl $SRC_DIR/auto/mtpr
 ./tl-parser -E auto/scheme.tl 2> auto/scheme2.tl || exit 1
 ./tl-parser -e auto/scheme.tlo auto/scheme.tl || exit 1
 
-if [ ! -f auto/config.h ]; then
-    cp $SRC_DIR/auto/config.h auto/config.h
-fi
-
 if [ ! -f auto/constants.h ]; then
     awk -f $SRC_DIR/generate/gen_constants_h.awk < auto/scheme2.tl > auto/constants.h || exit 1
 else

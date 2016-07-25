@@ -3481,55 +3481,6 @@ void tgl_do_send_typing(const tgl_input_peer_t& id, enum tgl_typing_status statu
 }
 /* }}} */
 
-/* {{{ Extd query */
-#ifndef DISABLE_EXTF
-#if 0
-char *tglf_extf_print_ds(void *DS, struct paramed_type *T);
-static int ext_query_on_answer(std::shared_ptr<query> q, void *D) {
-  if (q->callback) {
-    char *buf = tglf_extf_print_ds(D, &q->type);
-    ((void(*)(std::shared_ptr<void>, bool, char *))q->callback) (q->callback_extra, 1, buf);
-  }
-  tgl_paramed_type_free(q->type);
-  return 0;
-}
-
-static struct query_methods ext_query_methods = {
-  .on_answer = ext_query_on_answer,
-  .on_error = q_list_on_error,
-  .on_timeout = NULL,
-  .type = NULL,
-  .name = "ext query",
-  .timeout = 0,
-};
-#endif
-
-void tgl_do_send_extf(const char* data, int data_len,
-        const std::function<void(bool success, const char *buf)>& callback)
-{
-#if 0
-  clear_packet();
-
-  ext_query_methods.type = tglf_extf_store(data, data_len);
-
-  if (ext_query_methods.type) {
-    tglq_send_query(tgl_state::instance()->working_dc(), packet_ptr - packet_buffer, packet_buffer, &ext_query_methods, 0, callback ? std::make_shared<std::function<void(bool, const char*)>>(callback));
-  }
-#else
-    if (callback) {
-        callback(false, nullptr);
-    }
-#endif
-}
-#else
-void tgl_do_send_extf(const char* data, int data_len,
-        const std::function<void(bool success, const char *buf)>& callback)
-{
-    assert(0);
-}
-#endif
-/* }}} */
-
 /* {{{ get messages */
 class query_get_messages: public query
 {

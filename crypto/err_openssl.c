@@ -18,8 +18,6 @@
     Copyright Ben Wiederhake 2015
 */
 
-#include "config.h"
-
 #ifndef TGL_AVOID_OPENSSL
 
 #include <openssl/err.h>

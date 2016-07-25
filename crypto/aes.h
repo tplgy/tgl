@@ -23,8 +23,6 @@
 
 #include <stddef.h> /* size_t */
 
-#include "config.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
