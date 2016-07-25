@@ -18,8 +18,6 @@ include_directories(
 option(ENABLE_ASAN "ASAN build" OFF)
 option(ENABLE_UBSAN "UBSAN build" OFF)
 
-add_definitions(-DRAPIDJSON_HAS_STDSTRING)
-
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "-Wno-error=shorten-64-to-32 ${CMAKE_CXX_FLAGS}")
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
@@ -173,15 +171,13 @@ add_custom_command(
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/generate/generate.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}
 )
 
-if (NOT INSTALL_DISABLED)
-    install(FILES ${HEADERS} DESTINATION include/tgl)
-    install(FILES ${AUTO_HEADERS} DESTINATION include/tgl/auto)
-    install(FILES ${CRYPTO_HEADERS} DESTINATION include/tgl/crypto)
-    install(FILES ${TYPES_HEADERS} DESTINATION include/tgl/types)
-    install(TARGETS tplgy_tgl DESTINATION lib)
-endif()
+install(FILES ${HEADERS} DESTINATION include/tgl)
+install(FILES ${AUTO_HEADERS} DESTINATION include/tgl/auto)
+install(FILES ${CRYPTO_HEADERS} DESTINATION include/tgl/crypto)
+install(FILES ${TYPES_HEADERS} DESTINATION include/tgl/types)
+install(TARGETS tplgy_tgl DESTINATION lib)
 
-if (APPLE AND NOT INSTALL_DISABLED)
+if (APPLE)
     # Generate Info.plist for the framework
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/objc/Info.plist.in"
             "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
