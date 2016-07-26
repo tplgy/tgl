@@ -69,38 +69,11 @@ def build_framework(strip_debug_symbols = False):
 
     # copy Info.plist
     plist_path = os.path.join(os.getcwd(), "Info.plist")
-    shutil.copy2(os.path.join(build_dir, os.path.basename(arches[0]), "Info.plist"), plist_path)
+    shutil.copy2(os.path.join(main_dir, "scripts", "ios", "Info.plist"), plist_path)
     r = build_lib.run_command("plutil -convert binary1 " + plist_path)
     if r != 0:
         return r
 
-    # copy public headers
-    public_headers_dir = "Headers"
-    if os.path.isdir(public_headers_dir):
-        shutil.rmtree(public_headers_dir)
-    os.mkdir(public_headers_dir)
-    public_headers = sorted([h for h in glob.glob(os.path.join(arches[0], "objc", framework_name, "*.h")) if not "+Private" in h])
-    for h in public_headers:
-        shutil.copy2(h, public_headers_dir)
-
-    # copy private headers
-    private_headers_dir = "PrivateHeaders"
-    if os.path.isdir(private_headers_dir):
-        shutil.rmtree(private_headers_dir)
-    os.mkdir(private_headers_dir)
-    private_headers = sorted(glob.glob(os.path.join(arches[0], "objc", framework_name, "*+Private.h")))
-    for h in private_headers:
-        shutil.copy2(h, private_headers_dir)
-
-    # generate umbrella header
-    with open(os.path.join(public_headers_dir, framework_name + ".h"), 'w') as f:
-        f.write("#import <Foundation/Foundation.h>\n\n")
-        for h in public_headers:
-            f.write("#import <" + framework_name + "/" + os.path.basename(h) + ">\n")
-
-    os.mkdir("Modules")
-    shutil.copy2(os.path.join(main_dir, "objc", "module.modulemap"), "Modules")
-
-    shutil.copy2(os.path.join(main_dir, "objc", "strip-frameworks.sh"), ".")
+    shutil.copy2(os.path.join(main_dir, "scripts", "ios", "strip-frameworks.sh"), ".")
 
 build_framework(args.strip)

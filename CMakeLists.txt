@@ -24,6 +24,7 @@ set(TPLGY_TGL_LIBVERSION 0.1.0)
 
 find_package(Boost REQUIRED COMPONENTS filesystem system)
 find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -179,7 +180,7 @@ add_library(${PROJECT_NAME} SHARED ${SOURCES} ${AUTO_HEADERS} ${CRYPTO_HEADERS} 
 target_link_libraries(${PROJECT_NAME}
     ${Boost_LIBRARIES}
     ${OPENSSL_LIBRARIES}
-    z
+    ${ZLIB_LIBRARIES}
 )
 
 add_custom_command(
@@ -193,9 +194,3 @@ install(FILES ${AUTO_HEADERS} DESTINATION include/tgl/auto)
 install(FILES ${CRYPTO_HEADERS} DESTINATION include/tgl/crypto)
 install(FILES ${TYPES_HEADERS} DESTINATION include/tgl/types)
 install(TARGETS tplgy_tgl DESTINATION lib)
-
-if (APPLE)
-    # Generate Info.plist for the framework
-    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/objc/Info.plist.in"
-            "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
-endif()
