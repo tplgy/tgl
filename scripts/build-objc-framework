@@ -68,7 +68,11 @@ def build_framework(strip_debug_symbols = False):
     shutil.rmtree(temp_dir)
 
     # copy Info.plist
-    shutil.copy2(os.path.join(build_dir, os.path.basename(arches[0]), "Info.plist"), os.getcwd() + "/Info.plist")
+    plist_path = os.path.join(os.getcwd(), "Info.plist")
+    shutil.copy2(os.path.join(build_dir, os.path.basename(arches[0]), "Info.plist"), plist_path)
+    r = build_lib.run_command("plutil -convert binary1 " + plist_path)
+    if r != 0:
+        return r
 
     # copy public headers
     public_headers_dir = "Headers"
