@@ -403,7 +403,7 @@ static mtproto_client::execute_result process_respq_answer (const std::shared_pt
   }
 
   auto result = fetch_i32(&in);
-  TGL_ASSERT_UNUSED(result, result == static_cast<int32_t>(CODE_res_p_q));
+  TGL_ASSERT_UNUSED(result, result == static_cast<int32_t>(CODE_res_pq));
 
   int tmp[4];
   fetch_i32s (&in, tmp, 4);
@@ -472,7 +472,7 @@ static mtproto_client::execute_result process_dh_answer (const std::shared_ptr<t
   }
 
   uint32_t op = fetch_i32 (&in);
-  assert (op == CODE_server__d_h_params_ok || op == CODE_server__d_h_params_fail);
+  assert (op == CODE_server__dh_params_ok || op == CODE_server__dh_params_fail);
 
   int tmp[4];
   fetch_i32s (&in, tmp, 4);
@@ -486,7 +486,7 @@ static mtproto_client::execute_result process_dh_answer (const std::shared_ptr<t
     return mtproto_client::execute_result::bad_connection;
   }
 
-  if (op == CODE_server__d_h_params_fail) {
+  if (op == CODE_server__dh_params_fail) {
     TGL_ERROR("DH params fail");
     return mtproto_client::execute_result::bad_connection;
   }

@@ -1257,7 +1257,7 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action_encrypted(const tl
     }
 
     switch (DS_DMA->magic) {
-    case CODE_decrypted_message_action_set_message_t_t_l:
+    case CODE_decrypted_message_action_set_message_ttl:
         return std::make_shared<tgl_message_action_set_message_ttl>(DS_LVAL(DS_DMA->ttl_seconds));
     case CODE_decrypted_message_action_read_messages:
         return std::make_shared<tgl_message_action_read_messages>(DS_LVAL(DS_DMA->random_ids->cnt));

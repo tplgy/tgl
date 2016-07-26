@@ -317,7 +317,7 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
         q->out_i32(std::static_pointer_cast<tgl_message_action_notify_layer>(M->action)->layer);
         break;
     case tgl_message_action_type_set_message_ttl:
-        q->out_i32(CODE_decrypted_message_action_set_message_t_t_l);
+        q->out_i32(CODE_decrypted_message_action_set_message_ttl);
         q->out_i32(std::static_pointer_cast<tgl_message_action_set_message_ttl>(M->action)->ttl);
         break;
     case tgl_message_action_type_request_key:
@@ -482,7 +482,7 @@ void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>
 void tgl_do_set_encr_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_chat, int ttl)
 {
     struct tl_ds_decrypted_message_action action;
-    action.magic = CODE_decrypted_message_action_set_message_t_t_l;
+    action.magic = CODE_decrypted_message_action_set_message_ttl;
     action.ttl_seconds = &ttl;
 
     tgl_do_send_encr_action(secret_chat, action);

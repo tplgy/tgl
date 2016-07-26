@@ -179,7 +179,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             tgl_state::instance()->callback()->new_messages({message});
         }
         break;
-    case CODE_update_message_i_d:
+    case CODE_update_message_id:
         if (auto message = std::static_pointer_cast<tgl_message>(extra)) {
             tgl_state::instance()->callback()->message_sent(message, DS_LVAL(DS_U->id), -1);
         }

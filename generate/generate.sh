@@ -19,9 +19,9 @@ cat $SRC_DIR/auto/scheme.tl $SRC_DIR/auto/encrypted_scheme.tl $SRC_DIR/auto/mtpr
 ./tl-parser -e auto/scheme.tlo auto/scheme.tl || exit 1
 
 if [ ! -f auto/constants.h ]; then
-    awk -f $SRC_DIR/generate/gen_constants_h.awk < auto/scheme2.tl > auto/constants.h || exit 1
+    $SRC_DIR/generate/gen_constants_h.py auto/scheme2.tl > auto/constants.h || exit 1
 else
-    awk -f $SRC_DIR/generate/gen_constants_h.awk < auto/scheme2.tl > auto/.constants.h || exit 1
+    $SRC_DIR/generate/gen_constants_h.py < auto/scheme2.tl > auto/.constants.h || exit 1
     diff auto/constants.h auto/.constants.h &>/dev/null && rm -f auto/.constants.h &>/dev/null || mv auto/.constants.h auto/constants.h
 fi
 
