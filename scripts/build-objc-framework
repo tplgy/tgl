@@ -101,6 +101,6 @@ def build_framework(strip_debug_symbols = False):
     os.mkdir("Modules")
     shutil.copy2(os.path.join(main_dir, "objc", "module.modulemap"), "Modules")
 
-    shutil.copy2(os.path.join(main_dir, "scripts", "strip-frameworks.sh"), ".")
+    shutil.copy2(os.path.join(main_dir, "objc", "strip-frameworks.sh"), ".")
 
 build_framework(args.strip)
