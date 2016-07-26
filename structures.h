@@ -16,6 +16,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
+    Copyright Topology LP 2016
 */
 #ifndef __STRUCTURES_H__
 #define __STRUCTURES_H__

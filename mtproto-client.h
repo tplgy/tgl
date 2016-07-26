@@ -17,6 +17,7 @@
 
     Copyright Nikolay Durov, Andrey Lopatin 2012-2013
               Vitaly Valtman 2013-2015
+    Copyright Topology LP 2016
 */
 #ifndef __MTPROTO_CLIENT_H__
 #define __MTPROTO_CLIENT_H__
