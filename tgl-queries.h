@@ -103,7 +103,8 @@ void tgl_do_get_chat_info(int32_t id, const std::function<void(bool success, con
 
 // adds user *id* to chat *chat_id*
 // sends *limit* last messages from this chat to user
-void tgl_do_add_user_to_chat(int32_t chat_id, int32_t id, int limit, const std::function<void(bool success)>& callback);
+void tgl_do_add_user_to_chat(const tgl_peer_id_t& chat_id, const tgl_input_peer_t& id, int limit,
+                             const std::function<void(bool success)>& callback);
 
 // deleted user *id* from chat *chat_id*
 // you can do it if you are admin (=creator) of chat or if you invited this user or if it is yourself
