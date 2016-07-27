@@ -183,10 +183,30 @@ target_link_libraries(${PROJECT_NAME}
     ${ZLIB_LIBRARIES}
 )
 
+set(GENERATE_DEPENDS
+    generate/generate.c
+    generate/generate.h
+    generate/tree.h
+    scripts/generate.py
+    scripts/build_lib.py
+    auto/append.tl
+    auto/encrypted_scheme.tl
+    auto/mtproto.tl
+    auto/scheme.tl
+)
+
+if (ANDROID)
+    set(GENERATE_DEPENDS
+        scripts/android_build_lib.py
+        ${GENERATE_DEPENDS}
+    )
+endif()
+
 add_custom_command(
     OUTPUT ${GENERATED_TGL_HEADERS} ${GENERATED_TGL_SOURCES}
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/generate/generate.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}
+    DEPENDS ${GENERATE_DEPENDS}
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate.py ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}
 )
 
 install(FILES ${HEADERS} DESTINATION include/tgl)
