@@ -107,9 +107,9 @@
 #define CODE_msg_detailed_info 0x276d3ec6
 #define MAX_PROTO_MESSAGE_INTS	1048576
 
-void tgl_prng_seed (const char *password_filename, int password_length);
-int tgl_serialize_bignum (const TGLC_bn *b, char *buffer, int maxlen);
-int64_t tgl_do_compute_rsa_key_fingerprint(TGLC_rsa *key);
+void tgl_prng_seed(const char* password_filename, int password_length);
+int tgl_serialize_bignum(const TGLC_bn* b, char* buffer, int maxlen);
+int64_t tgl_do_compute_rsa_key_fingerprint(const TGLC_rsa* key);
 
 class mtprotocol_serializer
 {
@@ -190,12 +190,12 @@ public:
         out_string(str, strlen(str));
     }
 
-    void out_std_string (const std::string& str)
+    void out_std_string(const std::string& str)
     {
         out_string(str.c_str(), str.size());
     }
 
-    void out_bignum(TGLC_bn* n)
+    void out_bignum(const TGLC_bn* n)
     {
         int required_size = -tgl_serialize_bignum(n, nullptr, -1);
         if (required_size <= 0) {
@@ -284,7 +284,7 @@ static inline char* fetch_str(struct tgl_in_buffer* in, size_t len)
 static inline void fetch_skip(struct tgl_in_buffer* in, size_t n)
 {
     in->ptr += n;
-    assert (in->ptr <= in->end);
+    assert(in->ptr <= in->end);
 }
 
 static inline void fetch_skip_str(struct tgl_in_buffer* in)
@@ -296,21 +296,21 @@ static inline void fetch_skip_str(struct tgl_in_buffer* in)
     fetch_str(in, l);
 }
 
-static inline bool have_prefetch_i32s (struct tgl_in_buffer* in)
+static inline bool have_prefetch_i32s(struct tgl_in_buffer* in)
 {
     return in->end > in->ptr;
 }
 
-ssize_t tgl_fetch_bignum(struct tgl_in_buffer* in, TGLC_bn *x);
+ssize_t tgl_fetch_bignum(struct tgl_in_buffer* in, TGLC_bn* x);
 
-static inline ssize_t fetch_bignum(struct tgl_in_buffer* in, TGLC_bn *x)
+static inline ssize_t fetch_bignum(struct tgl_in_buffer* in, TGLC_bn* x)
 {
     return tgl_fetch_bignum(in, x);
 }
 
 static inline int32_t fetch_i32(struct tgl_in_buffer* in)
 {
-    assert (in->ptr + 1 <= in->end);
+    assert(in->ptr + 1 <= in->end);
     return *(in->ptr ++);
 }
 
@@ -371,8 +371,8 @@ static inline ssize_t in_remaining(struct tgl_in_buffer* in)
     return 4 * (in->end - in->ptr);
 }
 
-int tgl_pad_rsa_encrypt (const char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *E);
-int tgl_pad_rsa_decrypt (const char *from, int from_len, char *to, int size, TGLC_bn *N, TGLC_bn *D);
+int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC_bn* N, TGLC_bn* E);
+int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC_bn* N, TGLC_bn* D);
 
 static inline int tgl_pad_rsa_encrypt_dest_buffer_size(int src_buffer_size)
 {
