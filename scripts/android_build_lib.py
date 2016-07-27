@@ -64,7 +64,7 @@ def get_link_flags(arch):
         return ""
 
 def get_cmake_toolchain():
-    return os.path.join(build_lib.get_main_dir(), "cmake", "android.toolchain.cmake")
+    return os.path.join(build_lib.get_main_dir(), "scripts", "android", "android.toolchain.cmake")
 
 def get_platform(arch):
     return "android-21"

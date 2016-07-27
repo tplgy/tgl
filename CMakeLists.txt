@@ -71,12 +71,6 @@ if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -Werror -Wno-deprecated-declarations -Wno-error=unused-variable ${CMAKE_CXX_FLAGS}")
 endif()
 
-if (APPLE)
-    set(CMAKE_CXX_FLAGS "-fobjc-arc -fobjc-abi-version=2 ${CMAKE_CXX_FLAGS}")
-elseif (ANDROID)
-    set(CMAKE_CXX_FLAGS "-DTPLGY_USE_STRING_UTILS -Wno-sign-compare ${CMAKE_CXX_FLAGS}")
-endif()
-
 set(GENERATED_TGL_HEADERS
     ${CMAKE_BINARY_DIR}/auto/auto-fetch-ds.h
     ${CMAKE_BINARY_DIR}/auto/auto-free-ds.h
