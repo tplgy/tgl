@@ -72,6 +72,7 @@ struct send_file {
 
     send_file()
         : size(0)
+        , offset(0)
         , part_num(0)
         , part_size(0)
         , id(0)
