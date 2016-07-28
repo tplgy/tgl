@@ -18,7 +18,7 @@ parser.add_argument("-a", "--architecture", help="specify architecture",  choice
 parser.add_argument("--asan", help="build with ASAN", action="store_true")
 args = parser.parse_args()
 
-print "Messaging SDK Build - iOS"
+print "TGL Build - iOS"
 print "Architecture: {}".format(args.architecture)
 
 if args.release:
