@@ -32,45 +32,20 @@
 #include "crypto/err.h"
 #include "crypto/rand.h"
 
-#define talloc0(X) calloc(1,X)
-#define talloc(x) malloc(x)
-#define tfree(x, size) free(x)
-#define tfree_str(x) free(x)
-#define tfree_secure(x, size) free(x)
-#define trealloc(x, old_size, size) realloc(x, size)
-#define tstrdup tgl_strdup
-#define tmemdup tgl_memdup
-#define tstrndup tgl_strndup
-#define tsnprintf tgl_snprintf
+int tgl_inflate(void* input, int ilen, void* output, int olen);
 
-int tgl_inflate (void *input, int ilen, void *output, int olen);
-
-static inline void ensure (int r) {
-  if (!r) {
-    fprintf (stderr, "Crypto error\n");
-    TGLC_err_print_errors_fp (stderr);
-    assert (0);
-  }
+static inline void ensure(int r)
+{
+    if (!r) {
+        fprintf (stderr, "Crypto error\n");
+        TGLC_err_print_errors_fp (stderr);
+        assert (0);
+    }
 }
 
-static inline void ensure_ptr (void *p) {
-  if (p == NULL) {
-      fprintf(stderr, "Out of memory");
-      exit (1);
-  }
-}
+void tglt_secure_random(unsigned char* s, int l);
 
-char *tgl_strdup (const char *s);
-char *tgl_strndup (const char *s, size_t n);
-
-void *tgl_memdup (const void *s, size_t n);
-
-int tgl_snprintf (char *buf, int len, const char *format, ...) __attribute__ ((format (__printf__, 3, 4)));
-int tgl_asprintf (char **res, const char *format, ...) __attribute__ ((format (__printf__, 2, 3)));
-
-void tglt_secure_random (unsigned char *s, int l);
-
-void tgl_my_clock_gettime (int clock_id, struct timespec *T);
+void tgl_my_clock_gettime(int clock_id, struct timespec* T);
 
 template<typename IntegerType>
 static inline IntegerType tgl_random()
@@ -83,19 +58,10 @@ static inline IntegerType tgl_random()
     return distribution(generator);
 }
 
-static inline void hexdump (void *ptr, void *end_ptr) {
-  int total = 0;
-  unsigned char *bptr = (unsigned char *)ptr;
-  while (bptr < (unsigned char *)end_ptr) {
-    fprintf (stderr, "%02x", (int)*bptr);
-    bptr ++;
-    total ++;
-    if (total == 16) {
-      fprintf (stderr, "\n");
-      total = 0;
-    }
-  }
-  if (total) { fprintf (stderr, "\n"); }
+static inline void tgl_secure_free(void* ptr, size_t size)
+{
+    memset(ptr, 0, size);
+    free(ptr);
 }
 
 #endif

@@ -333,10 +333,8 @@ static void send_dh_params (const std::shared_ptr<tgl_connection>& c, TGLC_bn *d
   unsigned char s_power[256];
   tglt_secure_random (s_power, 256);
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_power(TGLC_bn_bin2bn ((unsigned char *)s_power, 256, 0));
-  ensure_ptr (dh_power.get());
 
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> y(TGLC_bn_new());
-  ensure_ptr (y.get());
   ensure (TGLC_bn_mod_exp (y.get(), dh_g.get(), dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx()));
   s.out_bignum (y.get());
 
@@ -1390,7 +1388,7 @@ int tglmp_on_start () {
 
   if (!ok) {
     TGL_ERROR("No public keys found");
-    tgl_state::instance()->set_error(tstrdup ("No public keys found"), ENOTCONN);
+    tgl_state::instance()->set_error("No public keys found", ENOTCONN);
     return -1;
   }
   return 0;

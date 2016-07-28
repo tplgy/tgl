@@ -874,7 +874,7 @@ int gen_field_fetch_ds (struct arg *arg, int *vars, int num, int empty) {
       } else {
         printf ("%sresult->f%d = (decltype(result->f%d))", offset, num - 1, num - 1);
       }
-      printf ("talloc0 (multiplicity%d * sizeof (void *));\n", num);
+      printf ("calloc (1, multiplicity%d * sizeof (void *));\n", num);
       printf ("%s{\n", offset);
       printf ("%s  int i = 0;\n", offset);
       printf ("%s  while (i < multiplicity%d) {\n", offset, num);
@@ -1389,7 +1389,7 @@ void gen_constructor_fetch_ds (struct tl_combinator *c) {
 
   printf ("  ");
   print_c_type_name (c->result, "  ", 0);
-  printf ("  result = (decltype(result))talloc0 (sizeof (*result));\n");
+  printf ("  result = (decltype(result))calloc (1, sizeof (*result));\n");
 
   struct tl_type *T = ((struct tl_tree_type *)c->result)->type;
   if (T->constructors_num > 1) {
@@ -1459,7 +1459,7 @@ void gen_constructor_free_ds (struct tl_combinator *c) {
 
   //printf ("  ");
   //print_c_type_name (c->result, "  ", 0);
-  //printf ("  result = talloc0 (sizeof (*result));\n");
+  //printf ("  result = calloc (1, sizeof (*result));\n");
 
   //struct tl_type *T = ((struct tl_tree_type *)c->result)->type;
 
@@ -1514,7 +1514,7 @@ void gen_constructor_store_ds (struct tl_combinator *c) {
 
   //printf ("  ");
   //print_c_type_name (c->result, "  ", 0);
-  //printf ("  result = talloc0 (sizeof (*result));\n");
+  //printf ("  result = calloc (1, sizeof (*result));\n");
 
   //struct tl_type *T = ((struct tl_tree_type *)c->result)->type;
 

@@ -217,7 +217,7 @@ void tgl_state::add_rsa_key(const std::string& key)
     m_rsa_key_list.push_back(std::unique_ptr<tgl_rsa_key>(new tgl_rsa_key(key)));
 }
 
-int tgl_state::init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version)
+int tgl_state::init(const std::string& download_dir, int app_id, const std::string& app_hash, const std::string& app_version)
 {
     m_download_manager = std::make_shared<tgl_download_manager>(download_dir);
     m_app_id = app_id;
@@ -235,7 +235,7 @@ int tgl_state::init(const std::string &&download_dir, int app_id, const std::str
 
     if (!m_app_id) {
         m_app_id = TG_APP_ID;
-        m_app_hash = tstrdup (TG_APP_HASH);
+        m_app_hash = TG_APP_HASH;
     }
 
     m_state_lookup_timer = m_timer_factory->create_timer(std::bind(&tgl_state::state_lookup_timeout, this));
@@ -270,7 +270,7 @@ void tgl_state::set_enable_ipv6(bool val)
     m_ipv6_enabled = val;
 }
 
-void tgl_state::set_error(std::string error, int error_code)
+void tgl_state::set_error(const std::string& error, int error_code)
 {
     m_error = error;
     m_error_code = error_code;

@@ -1024,7 +1024,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat(const tl_ds_upd
     tgl_input_peer_t to_id = tgl_input_peer_t(tgl_peer_type::chat, DS_LVAL(DS_U->chat_id), 0);
 
     int64_t message_id = DS_LVAL(DS_U->id);
-    //struct tgl_message *M = (struct tgl_message *)talloc0(sizeof (*M));
+    //struct tgl_message *M = (struct tgl_message *)calloc(1, sizeof (*M));
     //M->permanent_id = msg_id;
 
     //int flags = M->flags & 0xffff;

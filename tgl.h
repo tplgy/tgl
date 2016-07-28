@@ -125,7 +125,7 @@ struct tgl_state {
     std::shared_ptr<tgl_dc> dc_at(int id);
     int temp_key_expire_time() const { return m_temp_key_expire_time; }
 
-    int init(const std::string &&download_dir, int app_id, const std::string &app_hash, const std::string &app_version);
+    int init(const std::string& download_dir, int app_id, const std::string& app_hash, const std::string& app_version);
     void login();
     void logout();
 
@@ -171,7 +171,7 @@ struct tgl_state {
     const std::shared_ptr<tgl_timer_factory>& timer_factory() const { return m_timer_factory; }
     const std::shared_ptr<tgl_update_callback>& callback() const { return m_callback; }
 
-    void set_error(std::string error, int error_code);
+    void set_error(const std::string& error, int error_code);
 
     int32_t pts() const { return m_pts; }
     int32_t qts() const { return m_qts; }

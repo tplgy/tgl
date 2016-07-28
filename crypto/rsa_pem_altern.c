@@ -24,7 +24,6 @@
 
 #include "meta.h"
 #include "rsa_pem.h"
-#include "../tools.h" /* talloc */
 
 struct TGLC_rsa {
   TGLC_bn *n;
@@ -33,7 +32,7 @@ struct TGLC_rsa {
 
 TGLC_rsa *TGLC_rsa_new (unsigned long e, int n_bytes, const unsigned char *n) {
   assert (n_bytes > 0 && n_bytes < 5000);
-  TGLC_rsa *ret = talloc (sizeof (TGLC_rsa));
+  TGLC_rsa *ret = malloc (sizeof (TGLC_rsa));
   ret->e = TGLC_bn_new ();
   TGLC_bn_set_word (ret->e, e);
   ret->n = TGLC_bn_bin2bn (n, n_bytes, NULL);
@@ -56,7 +55,7 @@ void TGLC_rsa_free (TGLC_rsa *key) {
   if (key->n) {
     TGLC_bn_free (key->n);
   }
-  tfree (key, sizeof (TGLC_rsa));
+  free (key, sizeof (TGLC_rsa));
 }
 
 TGLC_rsa *TGLC_pem_read_RSAPublicKey (FILE *fp) {

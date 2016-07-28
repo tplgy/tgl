@@ -542,9 +542,9 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, d
     struct tl_ds_decrypted_message_media TDSM;
     memset(&TDSM, 0, sizeof(TDSM));
     TDSM.magic = CODE_decrypted_message_media_geo_point;
-    TDSM.latitude = static_cast<double*>(talloc(sizeof(double)));
+    TDSM.latitude = static_cast<double*>(malloc(sizeof(double)));
     *TDSM.latitude = latitude;
-    TDSM.longitude = static_cast<double*>(talloc(sizeof(double)));
+    TDSM.longitude = static_cast<double*>(malloc(sizeof(double)));
     *TDSM.longitude = longitude;
 
     int date = time(0);
@@ -680,9 +680,7 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
         random[i] ^= random_here[i];
     }
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> b(TGLC_bn_bin2bn(random.data(), 256, 0));
-    ensure_ptr(b.get());
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_a(TGLC_bn_bin2bn(secret_chat->g_key.data(), 256, 0));
-    ensure_ptr(g_a.get());
     if (tglmp_check_g_a(secret_chat->encr_prime_bn(), g_a.get()) < 0) {
         if (callback) {
             callback(false, secret_chat);
@@ -693,7 +691,6 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
 
     TGLC_bn* p = secret_chat->encr_prime_bn();
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
-    ensure_ptr(r.get());
     ensure(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()));
     unsigned char buffer[256];
     memset(buffer, 0, sizeof(buffer));
@@ -736,17 +733,13 @@ static bool create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat)
     }
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_b(TGLC_bn_bin2bn(secret_chat->g_key.data(), 256, 0));
-    ensure_ptr(g_b.get());
     if (tglmp_check_g_a(secret_chat->encr_prime_bn(), g_b.get()) < 0) {
         return false;
     }
 
     TGLC_bn* p = secret_chat->encr_prime_bn();
-    ensure_ptr(p);
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
-    ensure_ptr(r.get());
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(secret_chat->key(), tgl_secret_chat::key_size(), 0));
-    ensure_ptr(a.get());
     ensure(TGLC_bn_mod_exp(r.get(), g_b.get(), a.get(), p, tgl_state::instance()->bn_ctx()));
 
     std::vector<unsigned char> key(tgl_secret_chat::key_size(), 0);
@@ -775,16 +768,12 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     }
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(random.data(), 256, 0));
-    ensure_ptr(a.get());
     TGLC_bn* p = secret_chat->encr_prime_bn();
-    ensure_ptr(p);
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g(TGLC_bn_new());
-    ensure_ptr(g.get());
     ensure(TGLC_bn_set_word(g.get(), secret_chat->encr_root));
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
-    ensure_ptr(r.get());
 
     ensure(TGLC_bn_mod_exp(r.get(), g.get(), a.get(), p, tgl_state::instance()->bn_ctx()));
 

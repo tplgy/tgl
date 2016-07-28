@@ -673,24 +673,18 @@ void tgl_do_help_get_config_dc(const std::shared_ptr<tgl_dc>& dc)
 class query_send_code: public query
 {
 public:
-    explicit query_send_code(const std::function<void(bool, int, const char*)>& callback)
+    explicit query_send_code(const std::function<void(bool, bool, const std::string&)>& callback)
         : query("send code", TYPE_TO_PARAM(auth_sent_code))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
-        tl_ds_auth_sent_code* DS_ASC = static_cast<tl_ds_auth_sent_code*>(D);
-
-        std::string phone_code_hash;
-        if (DS_ASC->phone_code_hash && DS_ASC->phone_code_hash->data) {
-            phone_code_hash = std::string(DS_ASC->phone_code_hash->data, DS_ASC->phone_code_hash->len);
-        }
-
-        int registered = DS_BVAL(DS_ASC->phone_registered);;
-
         if (m_callback) {
-            m_callback(true, registered, phone_code_hash.c_str());
+            tl_ds_auth_sent_code* DS_ASC = static_cast<tl_ds_auth_sent_code*>(D);
+            std::string phone_code_hash = DS_STDSTR(DS_ASC->phone_code_hash);
+            bool registered = DS_BVAL(DS_ASC->phone_registered);;
+            m_callback(true, registered, phone_code_hash);
         }
     }
 
@@ -698,21 +692,21 @@ public:
     {
         TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
         if (m_callback) {
-            m_callback(false, 0, nullptr);
+            m_callback(false, false, std::string());
         }
         return 0;
     }
 
 private:
-    std::function<void(bool, int, const char*)> m_callback;
+    std::function<void(bool, bool, const std::string)> m_callback;
 };
 
-static void tgl_do_send_code(const char *phone, int phone_len, const std::function<void(bool, int, const char *)>& callback)
+static void tgl_do_send_code(const std::string& phone, const std::function<void(bool, bool, const std::string&)>& callback)
 {
     TGL_NOTICE("requesting confirmation code from dc " << tgl_state::instance()->working_dc()->id);
     auto q = std::make_shared<query_send_code>(callback);
     q->out_i32(CODE_auth_send_code);
-    q->out_string(phone, phone_len);
+    q->out_std_string(phone);
     q->out_i32(0);
     q->out_i32(tgl_state::instance()->app_id());
     q->out_string(tgl_state::instance()->app_hash().c_str());
@@ -748,7 +742,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-static void tgl_do_phone_call(const char* phone, int phone_len, const char* hash, int hash_len,
+static void tgl_do_phone_call(const std::string& phone, const std::string& hash,
         const std::function<void(bool)>& callback)
 {
     TGL_DEBUG("calling user at phone number: " << phone);
@@ -756,8 +750,8 @@ static void tgl_do_phone_call(const char* phone, int phone_len, const char* hash
     auto q = std::make_shared<query_phone_call>(callback);
     q->out_header();
     q->out_i32(CODE_auth_send_call);
-    q->out_string(phone, phone_len);
-    q->out_string(hash, hash_len);
+    q->out_std_string(phone);
+    q->out_std_string(hash);
     q->execute(tgl_state::instance()->working_dc(), query::execution_option::LOGIN);
 }
 /* }}} */
@@ -795,34 +789,34 @@ private:
     std::function<void(bool, const std::shared_ptr<struct tgl_user>&)> m_callback;
 };
 
-static int tgl_do_send_code_result(const char* phone, int phone_len,
-        const char* hash, int hash_len,
-        const char* code, int code_len,
+static int tgl_do_send_code_result(const std::string& phone,
+        const std::string& hash,
+        const std::string& code,
         const std::function<void(bool success, const std::shared_ptr<tgl_user>& U)>& callback)
 {
     auto q = std::make_shared<query_sign_in>(callback);
     q->out_i32(CODE_auth_sign_in);
-    q->out_string(phone, phone_len);
-    q->out_string(hash, hash_len);
-    q->out_string(code, code_len);
+    q->out_std_string(phone);
+    q->out_std_string(hash);
+    q->out_std_string(code);
     q->execute(tgl_state::instance()->working_dc(), query::execution_option::LOGIN);
     return 0;
 }
 
-static int tgl_do_send_code_result_auth(const char* phone, int phone_len,
-        const char* hash, int hash_len,
-        const char* code, int code_len,
-        const char* first_name, int first_name_len,
-        const char* last_name, int last_name_len,
+static int tgl_do_send_code_result_auth(const std::string& phone,
+        const std::string& hash,
+        const std::string& code,
+        const std::string& first_name,
+        const std::string& last_name,
         const std::function<void(bool, const std::shared_ptr<tgl_user>&)>& callback)
 {
     auto q = std::make_shared<query_sign_in>(callback);
     q->out_i32(CODE_auth_sign_up);
-    q->out_string(phone, phone_len);
-    q->out_string(hash, hash_len);
-    q->out_string(code, code_len);
-    q->out_string(first_name, first_name_len);
-    q->out_string(last_name, last_name_len);
+    q->out_std_string(phone);
+    q->out_std_string(hash);
+    q->out_std_string(code);
+    q->out_std_string(first_name);
+    q->out_std_string(last_name);
     q->execute(tgl_state::instance()->working_dc(), query::execution_option::LOGIN);
     return 0;
 }
@@ -960,7 +954,7 @@ public:
         tgl_message_id_t id;
         id.peer_type = TGL_PEER_RANDOM_ID;
         id.id = *(int64_t*)q->extra;
-        tfree(q->extra, 8);
+        free(q->extra, 8);
         struct tgl_message *M = tgl_message_get(&id);
         if (q->callback) {
             ((void(*)(struct tgl_state *,void *, int, struct tgl_message *))q->callback) (q->callback_extra, 0, M);
@@ -4408,21 +4402,10 @@ void tgl_signed_in()
 }
 
 struct sign_up_extra {
-    char *phone = NULL;
-    char *hash = NULL;
-    char *first_name = NULL;
-    char *last_name = NULL;
-    int phone_len = 0;
-    int hash_len = 0;
-    int first_name_len = 0;
-    int last_name_len = 0;
-
-    ~sign_up_extra() {
-        free(phone);
-        free(hash);
-        free(first_name);
-        free(last_name);
-    }
+    std::string phone;
+    std::string hash;
+    std::string first_name;
+    std::string last_name;
 };
 
 void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void *code);
@@ -4440,12 +4423,12 @@ void tgl_sign_in_result(const std::shared_ptr<sign_up_extra>& E, bool success, c
 void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void *code)
 {
     if (!strcmp((const char *)code, "call")) {
-        tgl_do_phone_call(E->phone, E->phone_len, E->hash, E->hash_len, 0);
+        tgl_do_phone_call(E->phone, E->hash, nullptr);
         tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
         return;
     }
 
-    tgl_do_send_code_result(E->phone, E->phone_len, E->hash, E->hash_len, (const char *)code, strlen((const char *)code),
+    tgl_do_send_code_result(E->phone, E->hash, std::string(static_cast<const char*>(code)),
             std::bind(tgl_sign_in_result, E, std::placeholders::_1, std::placeholders::_2));
 }
 
@@ -4464,42 +4447,24 @@ void tgl_sign_up_result(const std::shared_ptr<sign_up_extra>& E, bool success, c
 void tgl_sign_up_code(const std::shared_ptr<sign_up_extra>& E, const void *code)
 {
     if (!strcmp((const char*)code, "call")) {
-        tgl_do_phone_call(E->phone, E->phone_len, E->hash, E->hash_len, 0);
+        tgl_do_phone_call(E->phone, E->hash, nullptr);
         tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
         return;
     }
 
-    tgl_do_send_code_result_auth(E->phone, E->phone_len, E->hash, E->hash_len, (const char*)code, strlen ((const char*)code), E->first_name, E->first_name_len,
-            E->last_name, E->last_name_len, std::bind(tgl_sign_up_result, E, std::placeholders::_1, std::placeholders::_2));
-}
-
-
-void tgl_set_last_name(const char* last_name, const std::shared_ptr<sign_up_extra>& E)
-{
-    E->last_name_len = strlen(last_name);
-    E->last_name = (char*)tmemdup(last_name, E->last_name_len);
-}
-
-int tgl_set_first_name(const char* first_name, const std::shared_ptr<sign_up_extra>& E)
-{
-    if (strlen(first_name) < 1) {
-        return -1;
-    }
-
-    E->first_name_len = strlen(first_name);
-    E->first_name = (char*)tmemdup(first_name, E->first_name_len);
-    return 0;
+    tgl_do_send_code_result_auth(E->phone, E->hash, std::string(static_cast<const char*>(code)), E->first_name, E->last_name,
+            std::bind(tgl_sign_up_result, E, std::placeholders::_1, std::placeholders::_2));
 }
 
 void tgl_register_cb(const std::shared_ptr<sign_up_extra>& E, const void *rinfo)
 {
     const char **yn = (const char**)rinfo;
     if (yn[0]) {
-        if (!tgl_set_first_name(yn[1], E)) {
-            tgl_set_last_name(yn[2], E);
+        E->first_name = static_cast<const char*>(yn[1]);
+        if (E->first_name.size() >= 1) {
+            E->last_name = static_cast<const char*>(yn[2]);
             tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
-        }
-        else {
+        } else {
             tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, std::bind(tgl_register_cb, E, std::placeholders::_1));
         }
     } else {
@@ -4509,27 +4474,23 @@ void tgl_register_cb(const std::shared_ptr<sign_up_extra>& E, const void *rinfo)
 }
 
 void tgl_sign_in_phone(const void* phone);
-void tgl_sign_in_phone_cb(const std::shared_ptr<sign_up_extra>& E, bool success, int registered, const char* mhash)
+void tgl_sign_in_phone_cb(const std::shared_ptr<sign_up_extra>& E, bool success, bool registered, const std::string& mhash)
 {
     tgl_state::instance()->locks ^= TGL_LOCK_PHONE;
     if (!success) {
-        TGL_ERROR("Incorrect phone number");
-
-        free(E->phone);
-        E->phone = nullptr;
-        E->phone_len = 0;
+        TGL_ERROR("incorrect phone number");
+        E->phone = std::string();
         tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone);
         return;
     }
 
-    E->hash_len = strlen(mhash);
-    E->hash = (char*)tmemdup(mhash, E->hash_len);
+    E->hash = mhash;
 
     if (registered) {
-        TGL_NOTICE("Already registered. Need code");
+        TGL_NOTICE("already registered, need code");
         tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
     } else {
-        TGL_NOTICE("Not registered");
+        TGL_NOTICE("not registered");
         tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, std::bind(tgl_register_cb, E, std::placeholders::_1));
     }
 }
@@ -4537,12 +4498,11 @@ void tgl_sign_in_phone_cb(const std::shared_ptr<sign_up_extra>& E, bool success,
 void tgl_sign_in_phone(const void* phone)
 {
     std::shared_ptr<sign_up_extra> E = std::make_shared<sign_up_extra>();
-    E->phone_len = strlen((const char *)phone);
-    E->phone = (char*)tmemdup(phone, E->phone_len);
+    E->phone = static_cast<const char*>(phone);
 
     tgl_state::instance()->locks |= TGL_LOCK_PHONE;
 
-    tgl_do_send_code(E->phone, E->phone_len, std::bind(tgl_sign_in_phone_cb, E, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    tgl_do_send_code(E->phone, std::bind(tgl_sign_in_phone_cb, E, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 void tgl_bot_hash_cb(const void* code);

@@ -153,7 +153,7 @@ void tgl_prng_seed(const char* password_filename, int password_length)
         if (fd < 0) {
             TGL_WARNING("Warning: fail to open password file - \"" << password_filename << "\", " << strerror(errno) << ".");
         } else {
-            unsigned char* a = (unsigned char *)talloc0(password_length);
+            unsigned char* a = static_cast<unsigned char*>(calloc(1, password_length));
             int l = read(fd, a, password_length);
             if (l < 0) {
                 TGL_WARNING("Warning: fail to read password file - \"" << password_filename << "\", " << strerror(errno) << ".");
@@ -162,7 +162,7 @@ void tgl_prng_seed(const char* password_filename, int password_length)
                 TGLC_rand_add(a, l, l);
             }
             close(fd);
-            tfree_secure(a, password_length);
+            tgl_secure_free(a, password_length);
         }
     }
 }
