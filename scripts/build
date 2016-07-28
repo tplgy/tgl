@@ -12,6 +12,9 @@ parser.add_argument("-c", "--clean", help="force clean build", action="store_tru
 parser.add_argument("-v", "--verbose", help="produces additional output for dianostics", action="store_true")
 parser.add_argument("-r", "--release", help="release build, default to debug", action="store_true")
 parser.add_argument("-j", "--jobs", help="Specify how many commands can run in parallel", type=int, default=build_lib.get_num_cores())
+parser.add_argument("--asan", help="build with ASAN", action="store_true")
+parser.add_argument("--tsan", help="build with TSAN", action="store_true")
+parser.add_argument("--ubsan", help="build with UBSAN", action="store_true")
 
 args = parser.parse_args()
 
@@ -51,7 +54,10 @@ CMAKE_COMMAND = "PKG_CONFIG_PATH=" + \
     " PKG_CONFIG_LIBDIR=" + os.path.join(INSTALL_PREFIX, "lib", "pkgconfig") + \
     " cmake -G Ninja" +  \
     " -D CMAKE_INSTALL_PREFIX=" + INSTALL_PREFIX + \
-    " -D CMAKE_BUILD_TYPE=" + ("Release" if args.release else "Debug")
+    " -D CMAKE_BUILD_TYPE=" + ("Release" if args.release else "Debug") + \
+    " -D ENABLE_ASAN=" + ("1" if args.asan else "0") + \
+    " -D ENABLE_TSAN=" + ("1" if args.tsan else "0") + \
+    " -D ENABLE_UBSAN=" + ("1" if args.ubsan else "0")
 
 def exit_if_failed(return_code = 1, msg = "Forget to build dependencies?"):
     if return_code != 0:
