@@ -29,9 +29,9 @@ find_package(ZLIB REQUIRED)
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_BINARY_DIR}
-    ${CMAKE_BINARY_DIR}/auto
     ${Boost_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
+    ${ZLIB_INCLUDE_DIRS}
 )
 
 option(ENABLE_ASAN "ASAN build" OFF)
