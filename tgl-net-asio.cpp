@@ -106,7 +106,7 @@ ssize_t tgl_connection_asio::read_in_lookup(void* data_out, size_t len) {
     if (!len || !m_in_bytes) {
         return 0;
     }
-    assert (len > 0);
+    assert(len > 0);
     if (len > m_in_bytes) {
         len = m_in_bytes;
     }
@@ -370,7 +370,7 @@ ssize_t tgl_connection_asio::read(void* data_out, size_t len) {
         return 0;
     }
 
-    assert (len > 0);
+    assert(len > 0);
     if (len > m_in_bytes) {
         len = m_in_bytes;
     }

@@ -67,7 +67,7 @@ int tgl_inflate(void *input, int ilen, void *output, int olen)
     strm.next_in = (Bytef*)input;
     strm.avail_out = olen ;
     strm.next_out = (Bytef*)output;
-    int err = inflate (&strm, Z_FINISH);
+    int err = inflate(&strm, Z_FINISH);
     int total_out = strm.total_out;
 
     if (err != Z_OK && err != Z_STREAM_END) {
@@ -95,13 +95,13 @@ void tgl_my_clock_gettime(int clock_id, struct timespec *T)
 #endif
 }
 
-void tglt_secure_random (unsigned char *s, int l)
+void tglt_secure_random(unsigned char *s, int l)
 {
     if (TGLC_rand_bytes(s, l) <= 0) {
         /*if (allow_weak_random) {
-          TGLC_rand_pseudo_bytes (s, l);
+          TGLC_rand_pseudo_bytes(s, l);
         } else {*/
-            assert (0 && "End of random. If you want, you can start with -w");
+            assert(0 && "End of random. If you want, you can start with -w");
         //}
     } else {
 #ifdef VALGRIND_FIXES

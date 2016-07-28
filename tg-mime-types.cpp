@@ -9,7 +9,7 @@ static int mime_type_number;
 static char *mime_type_names[MAX_MIME_TYPES_NUM];
 static char *mime_type_extensions[MAX_MIME_TYPES_NUM];
 
-static void mime_init (void) {
+static void mime_init(void) {
   char *start = (char *)mime_types;
   char *end = start + mime_types_len;
   mime_initialized = 1;
@@ -26,12 +26,12 @@ static void mime_init (void) {
       while (*c <= ' ' && *c != '\n' && c < end) {
         c ++;
       }
-      assert (*c > ' ' && *c != '\n' && c < end);
+      assert(*c > ' ' && *c != '\n' && c < end);
       char *name = c;
       while (*c > ' ' && *c != '\n' && c < end) {
         c ++;
       }
-      assert (*c <= ' ' && *c != '\n' && c < end);
+      assert(*c <= ' ' && *c != '\n' && c < end);
       *c = 0;
       c ++;
       while (1) {
@@ -46,11 +46,11 @@ static void mime_init (void) {
         while (*c > ' ' && *c != '\n' && c < end) {
           c ++;
         }
-        assert (c != end);
+        assert(c != end);
         int br = (*c == '\n');
         *c = 0;
         c ++;
-        assert (mime_type_number < MAX_MIME_TYPES_NUM);
+        assert(mime_type_number < MAX_MIME_TYPES_NUM);
         mime_type_names[mime_type_number] = name;
         mime_type_extensions[mime_type_number] = ext;
         mime_type_number ++;
@@ -60,21 +60,21 @@ static void mime_init (void) {
   }
 }
 
-char *tg_extension_by_mime (const char *mime_type) {
+char *tg_extension_by_mime(const char *mime_type) {
     if (!mime_initialized) {
-        mime_init ();
+        mime_init();
     }
     int i;
     for (i = 0; i < mime_type_number; i++) {
-        if (!strcmp (mime_type_names[i], mime_type)) {
+        if (!strcmp(mime_type_names[i], mime_type)) {
             return mime_type_extensions[i];
         }
     }
     return NULL;
 }
 
-const char *tg_mime_by_filename (const char *filename) {
-  int l = strlen (filename);
+const char *tg_mime_by_filename(const char *filename) {
+  int l = strlen(filename);
   const char *p = filename - 1 + l;
   while (p >= filename && *p != '.') {
     p --;
@@ -82,15 +82,15 @@ const char *tg_mime_by_filename (const char *filename) {
   p ++;
 
   if (!mime_initialized) {
-    mime_init ();
+    mime_init();
   }
 
   static char const *def = "application/octet-stream";
-  if (strlen (p) > 10) {
+  if (strlen(p) > 10) {
     return def;
   }
   static char s[11];
-  strcpy (s, p);
+  strcpy(s, p);
   char *q = s;
   while (*q) {
     if (*q >= 'A' && *p <= 'Z') {
@@ -100,7 +100,7 @@ const char *tg_mime_by_filename (const char *filename) {
   }
   int i;
   for (i = 0; i < mime_type_number; i++) {
-    if (!strcmp (mime_type_extensions[i], s)) {
+    if (!strcmp(mime_type_extensions[i], s)) {
       return mime_type_names[i];
     }
   }

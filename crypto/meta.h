@@ -46,14 +46,14 @@
  * most compilers: https://stackoverflow.com/a/8702750/3070326
  */
 #define TGLC_WRAPPER_ASSOC(NAME,CORE)                                          \
-  static TGLC_ ## NAME *wrap_ ## NAME (const CORE *p)                          \
+  static TGLC_ ## NAME *wrap_ ## NAME(const CORE *p)                          \
                               __attribute__ ((unused));                        \
-  static CORE *unwrap_ ## NAME (const TGLC_ ## NAME *p)                        \
+  static CORE *unwrap_ ## NAME(const TGLC_ ## NAME *p)                        \
                               __attribute__ ((unused));                        \
-  static CORE *unwrap_ ## NAME (const TGLC_ ## NAME *p) {                      \
+  static CORE *unwrap_ ## NAME(const TGLC_ ## NAME *p) {                      \
     return (CORE *)p;                                                          \
   }                                                                            \
-  static TGLC_ ## NAME *wrap_ ## NAME (const CORE *p) {                        \
+  static TGLC_ ## NAME *wrap_ ## NAME(const CORE *p) {                        \
     return (TGLC_ ## NAME *)p;                                                 \
   }
 

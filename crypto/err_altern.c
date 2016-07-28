@@ -24,7 +24,7 @@
 
 #include "err.h"
 
-void TGLC_err_print_errors_fp (FILE *fp) {
+void TGLC_err_print_errors_fp(FILE *fp) {
   // Can't print anything meaningful, so don't.
   (void) fp;
 }

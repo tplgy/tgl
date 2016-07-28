@@ -7,13 +7,13 @@
 
 #include <memory>
 
-static unsigned long long gcd (unsigned long long a, unsigned long long b) {
-  return b ? gcd (b, a % b) : a;
+static unsigned long long gcd(unsigned long long a, unsigned long long b) {
+  return b ? gcd(b, a % b) : a;
 }
 
-static int check_prime (TGLC_bn *p) {
-  int r = TGLC_bn_is_prime (p, /* "use default" */ 0, 0, tgl_state::instance()->bn_ctx(), 0);
-  ensure (r >= 0);
+static int check_prime(TGLC_bn *p) {
+  int r = TGLC_bn_is_prime(p, /* "use default" */ 0, 0, tgl_state::instance()->bn_ctx(), 0);
+  ensure(r >= 0);
   return r;
 }
 
@@ -21,18 +21,18 @@ static int check_prime (TGLC_bn *p) {
 // Complete set of checks see at https://core.telegram.org/mtproto/security_guidelines
 
 
-// Checks that (p,g) is acceptable pair for DH
-int tglmp_check_DH_params (TGLC_bn *p, int g) {
+// Checks that(p,g) is acceptable pair for DH
+int tglmp_check_DH_params(TGLC_bn *p, int g) {
   if (g < 2 || g > 7) { return -1; }
-  if (TGLC_bn_num_bits (p) != 2048) { return -1; }
+  if (TGLC_bn_num_bits(p) != 2048) { return -1; }
 
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> t(TGLC_bn_new());
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_g(TGLC_bn_new());
 
-  ensure (TGLC_bn_set_word (dh_g.get(), 4 * g));
-  ensure (TGLC_bn_mod (t.get(), p, dh_g.get(), tgl_state::instance()->bn_ctx()));
-  int x = TGLC_bn_get_word (t.get());
-  assert (x >= 0 && x < 4 * g);
+  ensure(TGLC_bn_set_word(dh_g.get(), 4 * g));
+  ensure(TGLC_bn_mod(t.get(), p, dh_g.get(), tgl_state::instance()->bn_ctx()));
+  int x = TGLC_bn_get_word(t.get());
+  assert(x >= 0 && x < 4 * g);
 
   int res = 0;
   switch (g) {
@@ -55,70 +55,70 @@ int tglmp_check_DH_params (TGLC_bn *p, int g) {
     break;
   }
 
-  if (res < 0 || !check_prime (p)) {
+  if (res < 0 || !check_prime(p)) {
     return -1;
   }
 
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> b(TGLC_bn_new());
-  ensure (TGLC_bn_set_word (b.get(), 2));
-  ensure (TGLC_bn_div (t.get(), 0, p, b.get(), tgl_state::instance()->bn_ctx()));
-  if (!check_prime (t.get())) {
+  ensure(TGLC_bn_set_word(b.get(), 2));
+  ensure(TGLC_bn_div(t.get(), 0, p, b.get(), tgl_state::instance()->bn_ctx()));
+  if (!check_prime(t.get())) {
     res = -1;
   }
   return res;
 }
 
 // checks that g_a is acceptable for DH
-int tglmp_check_g_a (TGLC_bn *p, TGLC_bn *g_a) {
-  if (TGLC_bn_num_bytes (g_a) > 256) {
+int tglmp_check_g_a(TGLC_bn *p, TGLC_bn *g_a) {
+  if (TGLC_bn_num_bytes(g_a) > 256) {
     return -1;
   }
-  if (TGLC_bn_num_bits (g_a) < 2048 - 64) {
+  if (TGLC_bn_num_bits(g_a) < 2048 - 64) {
     return -1;
   }
-  if (TGLC_bn_cmp (p, g_a) <= 0) {
+  if (TGLC_bn_cmp(p, g_a) <= 0) {
     return -1;
   }
 
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dif(TGLC_bn_new());
-  TGLC_bn_sub (dif.get(), p, g_a);
-  if (TGLC_bn_num_bits (dif.get()) < 2048 - 64) {
+  TGLC_bn_sub(dif.get(), p, g_a);
+  if (TGLC_bn_num_bits(dif.get()) < 2048 - 64) {
     return -1;
   }
   return 0;
 }
 
-static unsigned long long BN2ull (TGLC_bn *b) {
-  if (sizeof (unsigned long) == 8) {
-    return TGLC_bn_get_word (b);
-  } else if (sizeof (unsigned long long) == 8) {
-    //assert (0); // As long as nobody ever uses this code, assume it is broken.
+static unsigned long long BN2ull(TGLC_bn *b) {
+  if (sizeof(unsigned long) == 8) {
+    return TGLC_bn_get_word(b);
+  } else if (sizeof(unsigned long long) == 8) {
+    //assert(0); // As long as nobody ever uses this code, assume it is broken.
     unsigned long long tmp;
     /* Here be dragons, but it should be okay due to be64toh */
-    TGLC_bn_bn2bin (b, (unsigned char *) &tmp);
-    return be64toh (tmp);
+    TGLC_bn_bn2bin(b, (unsigned char *) &tmp);
+    return be64toh(tmp);
   } else {
-    assert (0);
+    assert(0);
   }
 }
 
-static void ull2BN (TGLC_bn *b, unsigned long long val) {
-  if (sizeof (unsigned long) == 8 || val < (1ll << 32)) {
-    TGLC_bn_set_word (b, val);
-  } else if (sizeof (unsigned long long) == 8) {
-    //assert (0); // As long as nobody ever uses this code, assume it is broken.
+static void ull2BN(TGLC_bn *b, unsigned long long val) {
+  if (sizeof(unsigned long) == 8 || val < (1ll << 32)) {
+    TGLC_bn_set_word(b, val);
+  } else if (sizeof(unsigned long long) == 8) {
+    //assert(0); // As long as nobody ever uses this code, assume it is broken.
     (void)htobe64(val);
     /* Here be dragons, but it should be okay due to htobe64 */
-    TGLC_bn_bin2bn ((unsigned char *) &val, 8, b);
+    TGLC_bn_bin2bn((unsigned char *) &val, 8, b);
   } else {
-    assert (0);
+    assert(0);
   }
 }
 
-int bn_factorize (TGLC_bn *pq, TGLC_bn *p, TGLC_bn *q) {
+int bn_factorize(TGLC_bn *pq, TGLC_bn *p, TGLC_bn *q) {
   // Should work in any case
   // Rewrite this code
-  unsigned long long what = BN2ull (pq);
+  unsigned long long what = BN2ull(pq);
 
   int it = 0;
 
@@ -147,7 +147,7 @@ int bn_factorize (TGLC_bn *pq, TGLC_bn *p, TGLC_bn *q) {
       }
       x = c;
       unsigned long long z = x < y ? what + x - y : x - y;
-      g = gcd (z, what);
+      g = gcd(z, what);
       if (g != 1) {
         break;
       }
@@ -158,13 +158,13 @@ int bn_factorize (TGLC_bn *pq, TGLC_bn *p, TGLC_bn *q) {
     if (g > 1 && g < what) break;
   }
 
-  assert (g > 1 && g < what);
+  assert(g > 1 && g < what);
   unsigned long long p1 = g;
   unsigned long long p2 = what / g;
   if (p1 > p2) {
     unsigned long long t = p1; p1 = p2; p2 = t;
   }
-  ull2BN (p, p1);
-  ull2BN (q, p2);
+  ull2BN(p, p1);
+  ull2BN(q, p2);
   return 0;
 }

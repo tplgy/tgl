@@ -548,11 +548,11 @@ void tgl_download_manager::send_encrypted_file_end(const std::shared_ptr<send_fi
     q->out_i32(f->to_id.peer_id);
     q->out_i64(secret_chat->access_hash);
     int64_t r;
-    tglt_secure_random (reinterpret_cast<unsigned char*>(&r), 8);
+    tglt_secure_random(reinterpret_cast<unsigned char*>(&r), 8);
     q->out_i64(r);
     encryptor.start();
     q->out_i32(CODE_decrypted_message_layer);
-    q->out_random (15 + 4 * (tgl_random<int>() % 3));
+    q->out_random(15 + 4 * (tgl_random<int>() % 3));
     q->out_i32(TGL_ENCRYPTED_LAYER);
     q->out_i32(2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_state::instance()->our_id().peer_id));
     q->out_i32(2 * secret_chat->out_seq_no + (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id));
@@ -620,7 +620,7 @@ void tgl_download_manager::send_encrypted_file_end(const std::shared_ptr<send_fi
     q->out_i64(f->id);
     q->out_i32(f->part_num);
     if (f->size < BIG_FILE_THRESHOLD) {
-        q->out_string ("");
+        q->out_string("");
     }
 
     unsigned char md5[16];
@@ -643,7 +643,7 @@ void tgl_download_manager::send_encrypted_file_end(const std::shared_ptr<send_fi
         NULL,
         NULL,
         TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED | TGLMF_CREATE | TGLMF_CREATED);
-    free_ds_type_decrypted_message_media (DS_DMM, &decrypted_message_media);
+    free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
 
     if (message->media->type() == tgl_message_media_type_document_encr) {
         if (auto encr_document = std::static_pointer_cast<tgl_message_media_document_encr>(message->media)->encr_document) {
@@ -669,7 +669,7 @@ void tgl_download_manager::send_file_end(const std::shared_ptr<send_file>& f,
     TGL_NOTICE("send_file_end");
 
     if (f->avatar) {
-        send_avatar_end (f,
+        send_avatar_end(f,
                 [=](bool success) {
                     if(callback) {
                         callback(success, nullptr, 0);
@@ -803,7 +803,7 @@ void tgl_download_manager::send_document(const tgl_input_peer_t& to_id,
 
     if (f->to_id.peer_type == tgl_peer_type::enc_chat) {
         f->encr = true;
-        tglt_secure_random (f->iv.data(), f->iv.size());
+        tglt_secure_random(f->iv.data(), f->iv.size());
         memcpy(f->init_iv.data(), f->iv.data(), f->iv.size());
         tglt_secure_random(f->key.data(), f->key.size());
     }
@@ -858,7 +858,7 @@ void tgl_download_manager::send_document(const tgl_input_peer_t& to_id, int64_t 
 {
     TGL_DEBUG("send_document - file_name: " + file_name);
     if (flags & TGL_SEND_MSG_FLAG_DOCUMENT_AUTO) {
-        const char *mime_type = tg_mime_by_filename (file_name.c_str());
+        const char *mime_type = tg_mime_by_filename(file_name.c_str());
         TGL_DEBUG("send_document - detected mime_type: " + std::string(mime_type));
         if (strcmp(mime_type, "image/gif") == 0) {
             flags |= TGL_SEND_MSG_FLAG_DOCUMENT_ANIMATED;
@@ -886,7 +886,7 @@ void tgl_download_manager::end_download(const std::shared_ptr<download>& d,
     }
 
     if (d->fd >= 0) {
-        close (d->fd);
+        close(d->fd);
     }
 
     if (callback) {
@@ -900,7 +900,7 @@ int tgl_download_manager::download_on_answer(const std::shared_ptr<query_downloa
 
     const std::shared_ptr<download>& d = q->get_download();
     if (d->fd == -1) {
-        d->fd = open (d->name.c_str(), O_CREAT | O_WRONLY, 0640);
+        d->fd = open(d->name.c_str(), O_CREAT | O_WRONLY, 0640);
         if (d->fd < 0) {
             TGL_ERROR("Can not open file for writing: %m");
             if (q->callback()) {
@@ -914,7 +914,7 @@ int tgl_download_manager::download_on_answer(const std::shared_ptr<query_downloa
     int len = DS_UF->bytes->len;
 
     if (!d->iv.empty()) {
-        assert (!(len & 15));
+        assert(!(len & 15));
         void *ptr = DS_UF->bytes->data;
 
         TGLC_aes_key aes_key;
@@ -988,7 +988,7 @@ void tgl_download_manager::download_next_part(const std::shared_ptr<download>& d
 
     }
     auto q = std::make_shared<query_download>(this, d, callback);
-    q->out_i32 (CODE_upload_get_file);
+    q->out_i32(CODE_upload_get_file);
     if (d->location.local_id()) {
         q->out_i32(CODE_input_file_location);
         q->out_i64(d->location.volume());

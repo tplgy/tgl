@@ -29,11 +29,11 @@
 
 #include "sha.h"
 
-void TGLC_sha1 (const unsigned char *d, size_t n, unsigned char *md) {
-  gcry_md_hash_buffer (GCRY_MD_SHA1, md, d, n);
+void TGLC_sha1(const unsigned char *d, size_t n, unsigned char *md) {
+  gcry_md_hash_buffer(GCRY_MD_SHA1, md, d, n);
 }
-void TGLC_sha256 (const unsigned char *d, size_t n, unsigned char *md) {
-  gcry_md_hash_buffer (GCRY_MD_SHA256, md, d, n);
+void TGLC_sha256(const unsigned char *d, size_t n, unsigned char *md) {
+  gcry_md_hash_buffer(GCRY_MD_SHA256, md, d, n);
 }
 
 #endif

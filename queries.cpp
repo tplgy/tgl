@@ -565,12 +565,12 @@ int query::handle_result(tgl_in_buffer* in)
     assert(skip_in.ptr == skip_in.end);
 
     void *DS = fetch_ds_type_any(in, &m_type);
-    assert (DS);
+    assert(DS);
 
     on_answer(DS);
     free_ds_type_any(DS, &m_type);
 
-    assert (in->ptr == in->end);
+    assert(in->ptr == in->end);
 
     clear_timer();
     tgl_state::instance()->remove_query(shared_from_this());
@@ -2960,7 +2960,7 @@ public:
         m_channel->flags ^= TGLCHF_DIFF;
 
         if (DS_UD->magic == CODE_updates_channel_difference_empty) {
-            //bl_do_set_channel_pts(tgl_get_peer_id (channel->id), DS_LVAL(DS_UD->channel_pts));
+            //bl_do_set_channel_pts(tgl_get_peer_id(channel->id), DS_LVAL(DS_UD->channel_pts));
             TGL_DEBUG("Empty difference. Seq = " << tgl_state::instance()->seq());
             if (m_callback) {
                 m_callback(true);
@@ -3218,7 +3218,7 @@ public:
     {
         tl_ds_messages_affected_messages* DS_MAM = static_cast<tl_ds_messages_affected_messages*>(D);
 #if 0 // FIXME
-        struct tgl_message *M = tgl_message_get (id.get());
+        struct tgl_message *M = tgl_message_get(id.get());
         if (M) {
             bl_do_message_delete(&M->permanent_id);
         }
@@ -4381,7 +4381,7 @@ static void tgl_transfer_auth_callback(const std::shared_ptr<tgl_dc>& DC, bool s
     DC->send_pending_queries();
 }
 
-void tgl_export_all_auth ()
+void tgl_export_all_auth()
 {
     for (const auto& dc: tgl_state::instance()->dcs()) {
         if (dc && !tgl_signed_dc(dc)) {

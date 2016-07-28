@@ -147,7 +147,7 @@ struct tgl_state {
     void set_test_mode(bool);
     void set_connection_factory(const std::shared_ptr<tgl_connection_factory>& factory) { m_connection_factory = factory; }
     void set_timer_factory(const std::shared_ptr<tgl_timer_factory>& factory) { m_timer_factory = factory; }
-    void set_enable_ipv6 (bool val);
+    void set_enable_ipv6(bool val);
 
     tgl_online_status online_status() const { return m_online_status; }
     void set_online_status(tgl_online_status status);
@@ -246,7 +246,7 @@ int tgl_secret_chat_for_user(tgl_peer_id_t user_id);
 int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& dc);
 int tgl_signed_dc(const std::shared_ptr<tgl_dc>& dc);
 
-void tgl_dc_authorize (const std::shared_ptr<tgl_dc>& dc);
+void tgl_dc_authorize(const std::shared_ptr<tgl_dc>& dc);
 
 #define TGL_SEND_MSG_FLAG_DISABLE_PREVIEW 1
 #define TGL_SEND_MSG_FLAG_ENABLE_PREVIEW 2
@@ -264,6 +264,6 @@ typedef int tgl_chat_id_t;
 typedef int tgl_secret_chat_id_t;
 typedef int tgl_user_or_chat_id_t;
 
-void tgl_do_lookup_state ();
+void tgl_do_lookup_state();
 
 #endif

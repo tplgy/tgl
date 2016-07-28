@@ -37,9 +37,9 @@ int tgl_inflate(void* input, int ilen, void* output, int olen);
 static inline void ensure(int r)
 {
     if (!r) {
-        fprintf (stderr, "Crypto error\n");
-        TGLC_err_print_errors_fp (stderr);
-        assert (0);
+        fprintf(stderr, "Crypto error\n");
+        TGLC_err_print_errors_fp(stderr);
+        assert(0);
     }
 }
 

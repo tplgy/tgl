@@ -31,14 +31,14 @@ extern "C" {
 
 typedef struct TGLC_rsa TGLC_rsa;
 
-TGLC_rsa *TGLC_rsa_new (unsigned long e, int n_bytes, const unsigned char *n);
+TGLC_rsa *TGLC_rsa_new(unsigned long e, int n_bytes, const unsigned char *n);
 
-TGLC_bn *TGLC_rsa_n (const TGLC_rsa *);
-TGLC_bn *TGLC_rsa_e (const TGLC_rsa *);
+TGLC_bn *TGLC_rsa_n(const TGLC_rsa *);
+TGLC_bn *TGLC_rsa_e(const TGLC_rsa *);
 
-void TGLC_rsa_free (TGLC_rsa *);
+void TGLC_rsa_free(TGLC_rsa *);
 
-TGLC_rsa *TGLC_pem_read_RSAPublicKey (const char *pem);
+TGLC_rsa *TGLC_pem_read_RSAPublicKey(const char *pem);
 
 #ifdef __cplusplus
 }

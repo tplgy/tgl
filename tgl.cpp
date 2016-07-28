@@ -77,15 +77,15 @@ void tgl_state::reset()
 
 void tgl_state::set_auth_key(int num, const char *buf)
 {
-    assert (num > 0 && num <= MAX_DC_ID);
-    assert (m_dcs[num]);
+    assert(num > 0 && num <= MAX_DC_ID);
+    assert(m_dcs[num]);
 
     if (buf) {
         memcpy(m_dcs[num]->auth_key, buf, 256);
     }
 
     static unsigned char sha1_buffer[20];
-    TGLC_sha1 ((unsigned char *)m_dcs[num]->auth_key, 256, sha1_buffer);
+    TGLC_sha1((unsigned char *)m_dcs[num]->auth_key, 256, sha1_buffer);
     memcpy(&m_dcs[num]->auth_key_id, sha1_buffer + 12, 8);
 
     m_dcs[num]->flags |= TGLDCF_AUTHORIZED;
@@ -132,8 +132,8 @@ void tgl_state::set_dc_option(bool is_v6, int id, const std::string& ip, int por
 void tgl_state::set_dc_signed(int num)
 {
     TGL_DEBUG2("set signed " << num);
-    assert (num > 0 && num <= MAX_DC_ID);
-    assert (m_dcs[num]);
+    assert(num > 0 && num <= MAX_DC_ID);
+    assert(m_dcs[num]);
     m_dcs[num]->flags |= TGLDCF_LOGGED_IN;
     m_callback->dc_update(m_dcs[num]);
 }
@@ -144,7 +144,7 @@ void tgl_state::set_working_dc(int num)
         return;
     }
     TGL_DEBUG2("change working DC to " << num);
-    assert (num > 0 && num <= MAX_DC_ID);
+    assert(num > 0 && num <= MAX_DC_ID);
     m_working_dc = m_dcs[num];
     m_callback->change_active_dc(num);
 }
@@ -229,7 +229,7 @@ int tgl_state::init(const std::string& download_dir, int app_id, const std::stri
         m_temp_key_expire_time = 100000;
     }
 
-    if (tglmp_on_start () < 0) {
+    if (tglmp_on_start() < 0) {
         return -1;
     }
 
@@ -245,13 +245,13 @@ int tgl_state::init(const std::string& download_dir, int app_id, const std::stri
 
 int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& dc)
 {
-    assert (dc);
+    assert(dc);
     return dc->flags & TGLDCF_AUTHORIZED;
 }
 
 int tgl_signed_dc(const std::shared_ptr<tgl_dc>& dc)
 {
-    assert (dc);
+    assert(dc);
     return (dc->flags & TGLDCF_LOGGED_IN) != 0;
 }
 

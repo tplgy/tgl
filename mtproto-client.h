@@ -53,8 +53,8 @@ int64_t tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
         const int32_t* msg, int msg_ints,
         int64_t msg_id_override = 0, bool force_send = false, bool useful = false);
 void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC);
-//int tglmp_check_g (unsigned char p[256], BIGNUM *g);
-//int tglmp_check_DH_params (BIGNUM *p, int g);
+//int tglmp_check_g(unsigned char p[256], BIGNUM *g);
+//int tglmp_check_DH_params(BIGNUM *p, int g);
 void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& D);
 
 void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& s, int64_t id);

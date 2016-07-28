@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-void TGLC_err_print_errors_fp (FILE *fp);
+void TGLC_err_print_errors_fp(FILE *fp);
 
 #ifdef __cplusplus
 }

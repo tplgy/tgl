@@ -35,27 +35,27 @@ TGLC_WRAPPER_ASSOC(rsa,RSA)
 // TODO: Refactor crucial struct-identity into its own header.
 TGLC_WRAPPER_ASSOC(bn,BIGNUM)
 
-TGLC_rsa *TGLC_rsa_new (unsigned long e, int n_bytes, const unsigned char *n) {
-  RSA *ret = RSA_new ();
-  ret->e = unwrap_bn (TGLC_bn_new ());
-  TGLC_bn_set_word (wrap_bn (ret->e), e);
-  ret->n = unwrap_bn (TGLC_bn_bin2bn (n, n_bytes, NULL));
-  return wrap_rsa (ret);
+TGLC_rsa *TGLC_rsa_new(unsigned long e, int n_bytes, const unsigned char *n) {
+  RSA *ret = RSA_new();
+  ret->e = unwrap_bn(TGLC_bn_new());
+  TGLC_bn_set_word(wrap_bn(ret->e), e);
+  ret->n = unwrap_bn(TGLC_bn_bin2bn(n, n_bytes, NULL));
+  return wrap_rsa(ret);
 }
 
 #define RSA_GETTER(M)                                                          \
-  TGLC_bn *TGLC_rsa_ ## M (const TGLC_rsa *key) {                              \
-    return wrap_bn (unwrap_rsa (key)->M);                                      \
+  TGLC_bn *TGLC_rsa_ ## M(const TGLC_rsa *key) {                              \
+    return wrap_bn(unwrap_rsa(key)->M);                                      \
   }                                                                            \
 
 RSA_GETTER(n);
 RSA_GETTER(e);
 
-void TGLC_rsa_free (TGLC_rsa *p) {
-  RSA_free (unwrap_rsa (p));
+void TGLC_rsa_free(TGLC_rsa *p) {
+  RSA_free(unwrap_rsa(p));
 }
 
-TGLC_rsa *TGLC_pem_read_RSAPublicKey (const char *pem) {
+TGLC_rsa *TGLC_pem_read_RSAPublicKey(const char *pem) {
   BIO *bufio = BIO_new_mem_buf((void*)pem, strlen(pem));
   RSA *res = PEM_read_bio_RSAPublicKey(bufio, NULL, 0, NULL);
   BIO_free(bufio);

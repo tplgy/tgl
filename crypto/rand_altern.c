@@ -30,19 +30,19 @@
 
 #include "rand.h"
 
-void TGLC_rand_add (const void *buf, int num, double entropy) {
+void TGLC_rand_add(const void *buf, int num, double entropy) {
   (void) entropy;
   // TODO: Translate half-broken "entropy" into gcry's "quality".
-  gcry_random_add_bytes (buf, num, 50);
+  gcry_random_add_bytes(buf, num, 50);
 }
 
-int TGLC_rand_bytes (unsigned char *buf, int num) {
-  gcry_randomize (buf, num, GCRY_STRONG_RANDOM);
+int TGLC_rand_bytes(unsigned char *buf, int num) {
+  gcry_randomize(buf, num, GCRY_STRONG_RANDOM);
   return 1; // Don't ask why.
 }
 
-int TGLC_rand_pseudo_bytes (unsigned char *buf, int num) {
-  gcry_create_nonce (buf, num);
+int TGLC_rand_pseudo_bytes(unsigned char *buf, int num) {
+  gcry_create_nonce(buf, num);
   return 0; // Don't ask why.
 }
 
