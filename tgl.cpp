@@ -177,7 +177,7 @@ void tgl_state::set_pts(int32_t pts, bool force)
     m_callback->pts_changed(pts);
 }
 
-void tgl_state::set_date(int32_t date, bool force)
+void tgl_state::set_date(int64_t date, bool force)
 {
     if (locks & TGL_LOCK_DIFF && !force) {
         return;

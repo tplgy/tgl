@@ -632,7 +632,7 @@ void tgl_download_manager::send_encrypted_file_end(const std::shared_ptr<send_fi
 
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 
-    int date = time(NULL);
+    int64_t date = tgl_get_system_time();
     std::shared_ptr<tgl_message> message = tglm_create_encr_message(secret_chat,
         f->message_id,
         from_id,

@@ -138,7 +138,7 @@ struct tgl_state {
     void set_working_dc(int num);
     void set_qts(int32_t qts, bool force = false);
     void set_pts(int32_t pts, bool force = false);
-    void set_date(int32_t date, bool force = false);
+    void set_date(int64_t date, bool force = false);
     void set_seq(int32_t seq);
     void reset_server_state();
     void set_callback(const std::shared_ptr<tgl_update_callback>& cb) { m_callback = cb; }
@@ -176,7 +176,7 @@ struct tgl_state {
     int32_t pts() const { return m_pts; }
     int32_t qts() const { return m_qts; }
     int32_t seq() const { return m_seq; }
-    int32_t date() const { return m_date; }
+    int64_t date() const { return m_date; }
     bool test_mode() const { return m_test_mode; }
     const tgl_peer_id_t& our_id() const { return m_our_id; }
     bool ipv6_enabled() const { return m_ipv6_enabled; }
@@ -215,7 +215,7 @@ private:
 
     int32_t m_pts;
     int32_t m_qts;
-    int32_t m_date;
+    int64_t m_date;
     int32_t m_seq;
     bool m_test_mode; // Connects to the telegram test servers instead of the regular servers
     tgl_peer_id_t m_our_id; // ID of logged in user

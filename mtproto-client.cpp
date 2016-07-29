@@ -692,7 +692,7 @@ static void bind_temp_auth_key(const std::shared_ptr<tgl_connection>& c) {
         tglt_secure_random((unsigned char*)&S->session_id, 8);
     }
     s.out_i64(S->session_id);
-    int expires = time(0) + DC->server_time_delta + tgl_state::instance()->temp_key_expire_time();
+    int expires = tgl_get_system_time() + DC->server_time_delta + tgl_state::instance()->temp_key_expire_time();
     s.out_i32(expires);
 
     int data[1000];
@@ -704,7 +704,7 @@ static void bind_temp_auth_key(const std::shared_ptr<tgl_connection>& c) {
 
 /*
  *
- *                AUTHORIZED(MAIN) PROTOCOL PART
+ *                AUTHORIZED (MAIN) PROTOCOL PART
  *
  */
 

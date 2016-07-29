@@ -86,7 +86,7 @@ struct tgl_dc {
 
     void reset();
 
-    int id;
+    int32_t id;
     int flags;
     int rsa_key_idx;
     enum tgl_dc_state state;

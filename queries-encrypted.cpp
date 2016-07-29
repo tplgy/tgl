@@ -435,7 +435,7 @@ void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
 static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const tl_ds_decrypted_message_action& action)
 {
-    int date = time(0);
+    int64_t date = tgl_get_system_time();
 
     int64_t message_id;
     tglt_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
@@ -547,7 +547,7 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, d
     TDSM.longitude = static_cast<double*>(malloc(sizeof(double)));
     *TDSM.longitude = longitude;
 
-    int date = time(0);
+    int64_t date = tgl_get_system_time();
 
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 

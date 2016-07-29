@@ -307,8 +307,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             tgl_peer_id_t inviter_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->inviter_id));
             //int version = DS_LVAL(DS_U->version);
 
-            //bl_do_chat_add_user(C->id, version, user_id.peer_id, inviter_id.peer_id, time(0));
-            tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, user_id.peer_id, inviter_id.peer_id, time(0), false, false);
+            tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, user_id.peer_id, inviter_id.peer_id, tgl_get_system_time(), false, false);
         }
         break;
     case CODE_update_chat_participant_delete:

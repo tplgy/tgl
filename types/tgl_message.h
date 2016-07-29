@@ -41,9 +41,9 @@ struct tgl_message {
     int64_t server_id;
     int64_t random_id;
     int32_t flags;
-    int32_t fwd_date;
     int32_t reply_id;
-    int32_t date;
+    int64_t fwd_date;
+    int64_t date;
     int64_t permanent_id;
     tgl_peer_id_t fwd_from_id;
     tgl_peer_id_t from_id;
@@ -57,8 +57,8 @@ struct tgl_message {
         : server_id(0)
         , random_id(0)
         , flags(0)
-        , fwd_date(0)
         , reply_id(0)
+        , fwd_date(0)
         , date(0)
         , permanent_id(0)
         , fwd_from_id()

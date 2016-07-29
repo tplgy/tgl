@@ -1001,12 +1001,14 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short(const tl_ds_updates*
         fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
     }
 
+    int64_t fwd_date = DS_LVAL(DS_U->fwd_date);
+    int64_t date = DS_LVAL(DS_U->date);
     std::shared_ptr<tgl_message> msg = tglm_create_message(message_id,
             (f & 2) ? our_id : peer_id,
             (f & 2) ? tgl_input_peer_t(peer_id.peer_type, peer_id.peer_id, 0) : tgl_input_peer_t(our_id.peer_type, our_id.peer_id, 0),
             DS_U->fwd_from_id ? &fwd_from_id : NULL,
-            DS_U->fwd_date,
-            DS_U->date,
+            &fwd_date,
+            &date,
             DS_STDSTR(DS_U->message),
             &A,
             NULL,
@@ -1060,12 +1062,14 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat(const tl_ds_upd
         fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
     }
 
+    int64_t fwd_date = DS_LVAL(DS_U->fwd_date);
+    int64_t date = DS_LVAL(DS_U->date);
     return tglm_create_message(message_id,
         from_id,
         to_id,
         DS_U->fwd_from_id ? &fwd_from_id : nullptr,
-        DS_U->fwd_date,
-        DS_U->date,
+        &fwd_date,
+        &date,
         DS_STDSTR(DS_U->message),
         &media,
         nullptr,
@@ -1415,12 +1419,14 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(const tl_ds_message* DS_M)
         fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
     }
 
+    int64_t fwd_date = DS_LVAL(DS_M->fwd_date);
+    int64_t date = DS_LVAL(DS_M->date);
     std::shared_ptr<tgl_message> M = tglm_create_message(message_id,
         from_id,
         to_id,
         DS_M->fwd_from_id ? &fwd_from_id : nullptr,
-        DS_M->fwd_date,
-        DS_M->date,
+        &fwd_date,
+        &date,
         DS_STDSTR(DS_M->message),
         DS_M->media,
         DS_M->action,
@@ -1578,12 +1584,13 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
 
         tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, secret_chat->user_id);
 
+        int64_t date = DS_LVAL(DS_EM->date);
         secret_message = std::make_shared<tgl_secret_message>(
                 tglm_create_encr_message(secret_chat,
                         message_id,
                         from_id,
                         secret_chat->id,
-                        DS_EM->date,
+                        &date,
                         DS_STDSTR(DS_DM->message),
                         DS_DM->media,
                         DS_DM->action,
@@ -1611,12 +1618,13 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
 
         tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, secret_chat->user_id);
 
+        int64_t date = DS_LVAL(DS_EM->date);
         secret_message = std::make_shared<tgl_secret_message>(
                 tglm_create_encr_message(secret_chat,
                         message_id,
                         from_id,
                         secret_chat->id,
-                        DS_EM->date,
+                        &date,
                         DS_STDSTR(DS_DM->message),
                         DS_DM->media,
                         DS_DM->action,
@@ -1810,8 +1818,8 @@ static std::shared_ptr<tgl_message> tglm_alloc_message(int64_t message_id)
 }
 
 std::shared_ptr<tgl_message> tglm_create_message(int64_t message_id, const tgl_peer_id_t& from_id,
-        const tgl_input_peer_t& to_id, const tgl_peer_id_t* fwd_from_id, const int* fwd_date,
-        const int* date, const std::string& message,
+        const tgl_input_peer_t& to_id, const tgl_peer_id_t* fwd_from_id, const int64_t* fwd_date,
+        const int64_t* date, const std::string& message,
         const tl_ds_message_media* media, const tl_ds_message_action* action,
         int32_t reply_id, const tl_ds_reply_markup* reply_markup, int flags)
 {
@@ -1861,7 +1869,7 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(
         int64_t message_id,
         const tgl_peer_id_t& from_id,
         const tgl_input_peer_t& to_id,
-        const int* date,
+        const int64_t* date,
         const std::string& message,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,

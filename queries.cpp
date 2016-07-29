@@ -62,6 +62,7 @@
 #include "tgl.h"
 #include "tg-mime-types.h"
 #include "tgl-queries.h"
+#include "tools.h"
 
 #ifndef EPROTO
 // BSD doesn't define EPROTO, even though it is POSIX:
@@ -1092,7 +1093,7 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
         }
     }
 
-    int date = time(0);
+    int64_t date = tgl_get_system_time();
 
     int64_t message_id;
     tglt_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
@@ -4013,7 +4014,7 @@ void tgl_do_send_broadcast(int num, tgl_input_peer_t peer_id[], const std::strin
 
         tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 
-        int date = time(0);
+        int64_t date = tgl_get_system_time();
         struct tl_ds_message_media TDSM;
         TDSM.magic = CODE_message_media_empty;
 

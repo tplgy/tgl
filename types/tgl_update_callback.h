@@ -34,7 +34,7 @@ class tgl_update_callback {
 public:
     virtual void qts_changed(int32_t new_value) = 0;
     virtual void pts_changed(int32_t new_value) = 0;
-    virtual void date_changed(int32_t new_value) = 0;
+    virtual void date_changed(int64_t new_value) = 0;
     virtual void new_messages(const std::vector<std::shared_ptr<tgl_message>>& msgs) = 0;
     virtual void message_sent(const std::shared_ptr<tgl_message>& M, int64_t new_msg_id, int32_t seq_no) = 0;
     virtual void message_deleted(int64_t msg_id) = 0;
@@ -55,12 +55,12 @@ public:
     virtual void user_update(int32_t user_id, const std::map<tgl_user_update_type, std::string>& updates) = 0;
     virtual void user_deleted(int32_t id) = 0;
     virtual void avatar_update(int32_t peer_id, tgl_peer_type peer_type, const tgl_file_location &photo_small, const tgl_file_location &photo_big) = 0;
-    virtual void chat_update(int32_t chat_id, int peers_num, const std::string &title, int date, bool creator, bool admin, bool admin_enabled, bool kicked, bool left, bool deactivated,
+    virtual void chat_update(int32_t chat_id, int peers_num, const std::string &title, int64_t date, bool creator, bool admin, bool admin_enabled, bool kicked, bool left, bool deactivated,
             bool editor, bool moderator, bool megagroup, bool verified, bool restricted) = 0;
-    virtual void chat_add_user(int32_t chat_id, int32_t user, int32_t inviter, int date, bool admin, bool creator) = 0;
+    virtual void chat_add_user(int32_t chat_id, int32_t user, int32_t inviter, int64_t date, bool admin, bool creator) = 0;
     virtual void chat_delete_user(int32_t chat_id, int user) = 0;
     virtual void secret_chat_update(const std::shared_ptr<tgl_secret_chat>& secret_chat, tgl_secret_chat_state old_state) = 0;
-    virtual void channel_update(int32_t channel_id, int64_t access_hash, int date, const std::string &title, const std::string &username) = 0;
+    virtual void channel_update(int32_t channel_id, int64_t access_hash, int64_t date, const std::string &title, const std::string &username) = 0;
     virtual void our_id(int32_t id) = 0;
     virtual void notification(const std::string& type, const std::string& message) = 0;
     virtual void user_status_update(struct tgl_user *U) = 0;
