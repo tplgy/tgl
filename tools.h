@@ -22,12 +22,11 @@
 #ifndef __TOOLS_H__
 #define __TOOLS_H__
 #include <assert.h>
+#include <chrono>
 #include <limits>
 #include <random>
-#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include "crypto/err.h"
 #include "crypto/rand.h"
@@ -45,8 +44,6 @@ static inline void ensure(int r)
 
 void tglt_secure_random(unsigned char* s, int l);
 
-void tgl_my_clock_gettime(int clock_id, struct timespec* T);
-
 template<typename IntegerType>
 static inline IntegerType tgl_random()
 {
@@ -62,6 +59,16 @@ static inline void tgl_secure_free(void* ptr, size_t size)
 {
     memset(ptr, 0, size);
     free(ptr);
+}
+
+static inline double tgl_get_system_time()
+{
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count() * 1e-9;
+}
+
+static inline double tgl_get_monotonic_time()
+{
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() * 1e-9;
 }
 
 #endif

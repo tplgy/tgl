@@ -22,6 +22,8 @@
 #include "config.h"
 #endif
 
+#include "tools.h"
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -35,21 +37,8 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "tools.h"
 #include "mtproto-common.h"
 #include "tgl-log.h"
-
-#ifdef __MACH__
-#include <mach/clock.h>
-#include <mach/mach.h>
-
-#ifndef CLOCK_REALTIME
-#define CLOCK_REALTIME 0
-#endif
-#ifndef CLOCK_MONOTONIC
-#define CLOCK_MONOTONIC 1
-#endif
-#endif
 
 #ifdef VALGRIND_FIXES
 #include "valgrind/memcheck.h"
@@ -76,23 +65,6 @@ int tgl_inflate(void *input, int ilen, void *output, int olen)
     }
     inflateEnd(&strm);
     return total_out;
-}
-
-void tgl_my_clock_gettime(int clock_id, struct timespec *T)
-{
-#ifdef __MACH__
-    // We are ignoring MONOTONIC and hope time doesn't go back too often
-    clock_serv_t cclock;
-    mach_timespec_t mts;
-    host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
-    clock_get_time(cclock, &mts);
-    mach_port_deallocate(mach_task_self(), cclock);
-    T->tv_sec = mts.tv_sec;
-    T->tv_nsec = mts.tv_nsec;
-#else
-    auto result = clock_gettime(clock_id, T);
-    TGL_ASSERT_UNUSED(result, result >= 0);
-#endif
 }
 
 void tglt_secure_random(unsigned char *s, int l)

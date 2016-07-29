@@ -404,8 +404,4 @@ static inline int tgl_pad_aes_decrypt_dest_buffer_size(int src_buffer_size)
     return src_buffer_size;
 }
 
-#ifndef CLOCK_REALTIME
-#define CLOCK_REALTIME 0
-#define CLOCK_MONOTONIC 1
-#endif
 #endif

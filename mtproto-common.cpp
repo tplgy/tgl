@@ -129,9 +129,8 @@ static __inline__ uint64_t rdtsc(void)
 
 void tgl_prng_seed(const char* password_filename, int password_length)
 {
-    struct timespec T;
-    tgl_my_clock_gettime(CLOCK_REALTIME, &T);
-    TGLC_rand_add(&T, sizeof(T), 4.0);
+    double t = tgl_get_system_time();
+    TGLC_rand_add(&t, sizeof(t), 4.0);
 #ifdef HAVE_RDTSC
     uint64_t r = rdtsc();
     TGLC_rand_add(&r, 8, 4.0);

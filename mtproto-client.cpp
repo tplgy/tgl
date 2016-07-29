@@ -47,7 +47,6 @@
 #include "tgl.h"
 #include "tgl-timer.h"
 #include "tgl-net.h"
-#include "tools.h"
 #include "mtproto-client.h"
 #include "updates.h"
 #include "auto/auto.h"
@@ -60,14 +59,11 @@
 #include "crypto/sha.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
-#include "tools.h"
 #include "types/tgl_rsa_key.h"
 #include "tgl-log.h"
+#include "tools.h"
 
 #include <memory>
-
-#define MAX_NET_RES        (1L << 16)
-//extern int log_level;
 
 constexpr int MAX_MESSAGE_INTS = 1048576;
 
@@ -109,12 +105,6 @@ int mtproto_client::close(const std::shared_ptr<tgl_connection>& c)
 mtproto_client::execute_result mtproto_client::execute(const std::shared_ptr<tgl_connection>& c, int op, int len)
 {
     return rpc_execute(c, op, len);
-}
-
-static double get_utime(int clock_id) {
-    struct timespec T;
-    tgl_my_clock_gettime(clock_id, &T);
-    return T.tv_sec + (double) T.tv_nsec * 1e-9;
 }
 
 #define MAX_RESPONSE_SIZE        (1L << 24)
@@ -564,8 +554,8 @@ static mtproto_client::execute_result process_dh_answer(const std::shared_ptr<tg
     return mtproto_client::execute_result::bad_connection;
   }
 
-  DC->server_time_delta = server_time - get_utime(CLOCK_REALTIME);
-  DC->server_time_udelta = server_time - get_utime(CLOCK_MONOTONIC);
+  DC->server_time_delta = server_time - tgl_get_system_time();
+  DC->server_time_udelta = server_time - tgl_get_monotonic_time();
 
   send_dh_params(c, dh_prime.get(), g_a.get(), g, temp_key);
 
@@ -720,9 +710,9 @@ static void bind_temp_auth_key(const std::shared_ptr<tgl_connection>& c) {
 
 static double get_server_time(const std::shared_ptr<tgl_dc>& DC) {
     //if (!DC->server_time_udelta) {
-    //  DC->server_time_udelta = get_utime(CLOCK_REALTIME) - get_utime(CLOCK_MONOTONIC);
+    //  DC->server_time_udelta = tgl_get_system_time() - tgl_get_monotonic_time();
     //}
-    return get_utime(CLOCK_MONOTONIC) + DC->server_time_udelta;
+    return tgl_get_monotonic_time() + DC->server_time_udelta;
 }
 
 static int64_t generate_next_msg_id(const std::shared_ptr<tgl_dc>& DC, const std::shared_ptr<tgl_session>& S)
@@ -1219,18 +1209,18 @@ static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<
 
   int this_server_time = enc->msg_id >> 32LL;
   if (!S->received_messages) {
-    DC->server_time_delta = this_server_time - get_utime(CLOCK_REALTIME);
+    DC->server_time_delta = this_server_time - tgl_get_system_time();
     if (DC->server_time_udelta) {
       TGL_WARNING("adjusting CLOCK_MONOTONIC delta to " <<
-          DC->server_time_udelta - this_server_time - get_utime(CLOCK_MONOTONIC));
+          DC->server_time_udelta - this_server_time + tgl_get_monotonic_time());
     }
-    DC->server_time_udelta = this_server_time - get_utime(CLOCK_MONOTONIC);
+    DC->server_time_udelta = this_server_time - tgl_get_monotonic_time();
   }
 
   double st = get_server_time(DC);
   if (this_server_time < st - 300 || this_server_time > st + 30) {
     TGL_WARNING("bad msg time: salt = " << enc->server_salt << ", session_id = " << enc->session_id << ", msg_id = " << enc->msg_id
-        << ", seq_no = " << enc->seq_no << ", st = " << st << ", now = " << get_utime(CLOCK_REALTIME));
+        << ", seq_no = " << enc->seq_no << ", st = " << st << ", now = " << tgl_get_system_time());
     restart_session(DC);
     return mtproto_client::execute_result::bad_session;
   }
@@ -1464,20 +1454,6 @@ void tgl_do_send_ping(const std::shared_ptr<tgl_connection>& c)
 }
 
 #if 0
-void tgl_dc_iterator (void(*iterator)(struct tgl_dc *DC)) {
-  int i;
-  for (i = 0; i <= tgl_state::instance()->max_dc_num; i++) {
-    iterator (tgl_state::instance()->DC_list[i]);
-  }
-}
-
-void tgl_dc_iterator_ex(void(*iterator)(struct tgl_dc *DC, void *extra), void *extra) {
-  int i;
-  for (i = 0; i <= tgl_state::instance()->max_dc_num; i++) {
-    iterator (tgl_state::instance()->DC_list[i], extra);
-  }
-}
-
 void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& DC) {
   DC->flags &= ~(TGLDCF_BOUND);
   DC->temp_auth_key_id = 0;
