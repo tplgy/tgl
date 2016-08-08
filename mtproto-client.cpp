@@ -318,18 +318,18 @@ static void send_dh_params(const std::shared_ptr<tgl_connection>& c, TGLC_bn *dh
   s.out_i64(0);
 
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_g(TGLC_bn_new());
-  ensure(TGLC_bn_set_word(dh_g.get(), g));
+  check_crypto_result(TGLC_bn_set_word(dh_g.get(), g));
 
   unsigned char s_power[256];
   tglt_secure_random(s_power, 256);
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_power(TGLC_bn_bin2bn((unsigned char *)s_power, 256, 0));
 
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> y(TGLC_bn_new());
-  ensure(TGLC_bn_mod_exp(y.get(), dh_g.get(), dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx()));
+  check_crypto_result(TGLC_bn_mod_exp(y.get(), dh_g.get(), dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx()));
   s.out_bignum(y.get());
 
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> auth_key_num(TGLC_bn_new());
-  ensure(TGLC_bn_mod_exp(auth_key_num.get(), g_a, dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx()));
+  check_crypto_result(TGLC_bn_mod_exp(auth_key_num.get(), g_a, dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx()));
   int l = TGLC_bn_num_bytes(auth_key_num.get());
   assert(l >= 250 && l <= 256);
   auto result = TGLC_bn_bn2bin(auth_key_num.get(), (unsigned char *)(temp_key ? DC->temp_auth_key : DC->auth_key));

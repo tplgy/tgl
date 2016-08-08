@@ -691,7 +691,7 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
 
     TGLC_bn* p = secret_chat->encr_prime_bn();
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
-    ensure(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()));
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()));
     unsigned char buffer[256];
     memset(buffer, 0, sizeof(buffer));
     TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
@@ -711,8 +711,8 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
             TGL_FLAGS_UNCHANGED);
 
     memset(buffer, 0, sizeof(buffer));
-    ensure(TGLC_bn_set_word(g_a.get(), secret_chat->encr_root));
-    ensure(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()));
+    check_crypto_result(TGLC_bn_set_word(g_a.get(), secret_chat->encr_root));
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()));
     TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
 
     auto q = std::make_shared<query_send_encr_accept>(secret_chat, callback);
@@ -740,7 +740,7 @@ static bool create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat)
     TGLC_bn* p = secret_chat->encr_prime_bn();
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(secret_chat->key(), tgl_secret_chat::key_size(), 0));
-    ensure(TGLC_bn_mod_exp(r.get(), g_b.get(), a.get(), p, tgl_state::instance()->bn_ctx()));
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_b.get(), a.get(), p, tgl_state::instance()->bn_ctx()));
 
     std::vector<unsigned char> key(tgl_secret_chat::key_size(), 0);
 
@@ -771,11 +771,11 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     TGLC_bn* p = secret_chat->encr_prime_bn();
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g(TGLC_bn_new());
-    ensure(TGLC_bn_set_word(g.get(), secret_chat->encr_root));
+    check_crypto_result(TGLC_bn_set_word(g.get(), secret_chat->encr_root));
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
 
-    ensure(TGLC_bn_mod_exp(r.get(), g.get(), a.get(), p, tgl_state::instance()->bn_ctx()));
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g.get(), a.get(), p, tgl_state::instance()->bn_ctx()));
 
     char g_a[256];
     memset(g_a, 0, sizeof(g_a));

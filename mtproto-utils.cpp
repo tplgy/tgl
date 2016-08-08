@@ -13,7 +13,7 @@ static unsigned long long gcd(unsigned long long a, unsigned long long b) {
 
 static int check_prime(TGLC_bn *p) {
   int r = TGLC_bn_is_prime(p, /* "use default" */ 0, 0, tgl_state::instance()->bn_ctx(), 0);
-  ensure(r >= 0);
+  check_crypto_result(r >= 0);
   return r;
 }
 
@@ -29,8 +29,8 @@ int tglmp_check_DH_params(TGLC_bn *p, int g) {
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> t(TGLC_bn_new());
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_g(TGLC_bn_new());
 
-  ensure(TGLC_bn_set_word(dh_g.get(), 4 * g));
-  ensure(TGLC_bn_mod(t.get(), p, dh_g.get(), tgl_state::instance()->bn_ctx()));
+  check_crypto_result(TGLC_bn_set_word(dh_g.get(), 4 * g));
+  check_crypto_result(TGLC_bn_mod(t.get(), p, dh_g.get(), tgl_state::instance()->bn_ctx()));
   int x = TGLC_bn_get_word(t.get());
   assert(x >= 0 && x < 4 * g);
 
@@ -60,8 +60,8 @@ int tglmp_check_DH_params(TGLC_bn *p, int g) {
   }
 
   std::unique_ptr<TGLC_bn, TGLC_bn_deleter> b(TGLC_bn_new());
-  ensure(TGLC_bn_set_word(b.get(), 2));
-  ensure(TGLC_bn_div(t.get(), 0, p, b.get(), tgl_state::instance()->bn_ctx()));
+  check_crypto_result(TGLC_bn_set_word(b.get(), 2));
+  check_crypto_result(TGLC_bn_div(t.get(), 0, p, b.get(), tgl_state::instance()->bn_ctx()));
   if (!check_prime(t.get())) {
     res = -1;
   }
