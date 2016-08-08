@@ -90,7 +90,6 @@ void tgl_state::set_auth_key(int num, const char *buf)
 
     m_dcs[num]->flags |= TGLDCF_AUTHORIZED;
 
-    TGL_DEBUG("set auth key for DC " << num << " to " << std::hex << m_dcs[num]->auth_key_id);
     m_callback->dc_update(m_dcs[num]);
 }
 
