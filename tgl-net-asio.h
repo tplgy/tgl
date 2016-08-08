@@ -82,9 +82,9 @@ private:
     void handle_connect(const boost::system::error_code&);
     void clear_buffers();
     void set_state(conn_state state);
+    void update_endpoint(bool due_to_failed_connection = false);
 
-    std::string m_ip;
-    int m_port;
+    boost::asio::ip::tcp::endpoint m_endpoint;
     conn_state m_state;
     boost::asio::io_service& m_io_service;
     boost::asio::ip::tcp::socket m_socket;
@@ -105,7 +105,6 @@ private:
 
     bool m_write_pending;
     tgl_online_status m_online_status;
-    bool m_ipv6_enabled;
 };
 
 class tgl_connection_factory_asio : public tgl_connection_factory

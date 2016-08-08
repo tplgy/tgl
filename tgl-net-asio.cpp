@@ -53,20 +53,8 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     , m_mtproto_client(client)
     , m_write_pending(false)
     , m_online_status(tgl_state::instance()->online_status())
-    , m_ipv6_enabled(tgl_state::instance()->ipv6_enabled())
 {
-    auto data_center = m_dc.lock();
-    if (!data_center) {
-        return;
-    }
-
-    if (m_ipv6_enabled) {
-        m_ip = std::get<0>(data_center->ipv6_options.option_list[0]);
-        m_port = std::get<1>(data_center->ipv6_options.option_list[0]);
-    } else {
-        m_ip = std::get<0>(data_center->ipv4_options.option_list[0]);
-        m_port = std::get<1>(data_center->ipv4_options.option_list[0]);
-    }
+    update_endpoint();
 }
 
 tgl_connection_asio::~tgl_connection_asio()
@@ -135,7 +123,7 @@ void tgl_connection_asio::open()
 {
     tgl_state::instance()->add_online_status_observer(shared_from_this());
     if (!connect()) {
-        TGL_ERROR("can not connect to " << m_ip << ":" << m_port);
+        TGL_ERROR("can not connect to " << m_endpoint);
         return;
     }
 
@@ -197,7 +185,7 @@ void tgl_connection_asio::restart(const boost::system::error_code& error)
         m_socket.close();
     }
 
-    TGL_NOTICE("restarting connection to " << m_ip << ":" << m_port);
+    TGL_NOTICE("restarting connection to " << m_endpoint);
     open();
 }
 
@@ -295,10 +283,8 @@ bool tgl_connection_asio::connect() {
     start_ping_timer();
     set_state(conn_connecting);
 
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(m_ip), m_port);
-
     boost::system::error_code ec;
-    m_socket.open(endpoint.protocol(), ec);
+    m_socket.open(m_endpoint.protocol(), ec);
     if (ec) {
         TGL_WARNING("error opening socket: " << ec.message());
         return false;
@@ -320,7 +306,7 @@ bool tgl_connection_asio::connect() {
         return false;
     }
 
-    m_socket.async_connect(endpoint, std::bind(&tgl_connection_asio::handle_connect, shared_from_this(), std::placeholders::_1));
+    m_socket.async_connect(m_endpoint, std::bind(&tgl_connection_asio::handle_connect, shared_from_this(), std::placeholders::_1));
     m_write_pending = false;
     m_last_receive_time = std::chrono::steady_clock::now();
     return true;
@@ -330,20 +316,9 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
 {
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
-            TGL_WARNING("error connecting to " << m_ip << ":" << m_port << ": " << ec.value() << " - "<< ec.message());
+            TGL_WARNING("error connecting to " << m_endpoint << ": " << ec.value() << " - "<< ec.message());
             set_state(conn_failed);
-            if (m_ipv6_enabled) {
-                m_ipv6_enabled = false;
-                TGL_NOTICE("ipv6 connection failed, trying IPv4");
-                auto dc = m_dc.lock();
-                if (!dc) {
-                    return;
-                }
-
-                m_ip = std::get<0>(dc->ipv4_options.option_list[0]);
-                m_port = std::get<1>(dc->ipv4_options.option_list[0]);
-            }
-
+            update_endpoint(true);
             schedule_restart();
         }
         return;
@@ -358,7 +333,7 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
         return;
     }
 
-    TGL_NOTICE("connected to " << m_ip << ":" << m_port);
+    TGL_NOTICE("connected to " << m_endpoint);
 
     m_last_receive_time = std::chrono::steady_clock::now();
     m_io_service.post(std::bind(&tgl_connection_asio::start_read, shared_from_this()));
@@ -586,4 +561,24 @@ void tgl_connection_asio::set_state(conn_state state)
     }
 
     tgl_state::instance()->callback()->connection_status_changed(status);
+}
+
+void tgl_connection_asio::update_endpoint(bool due_to_failed_connection)
+{
+    auto data_center = m_dc.lock();
+    if (!data_center) {
+        TGL_WARNING("the dc object has gone");
+        return;
+    }
+
+    if (tgl_state::instance()->ipv6_enabled()
+            && !(due_to_failed_connection && m_endpoint.protocol() == boost::asio::ip::tcp::v6())) {
+        m_endpoint = boost::asio::ip::tcp::endpoint(
+                boost::asio::ip::address::from_string(std::get<0>(data_center->ipv6_options.option_list[0])),
+                std::get<1>(data_center->ipv6_options.option_list[0]));
+    } else {
+        m_endpoint = boost::asio::ip::tcp::endpoint(
+                boost::asio::ip::address::from_string(std::get<0>(data_center->ipv4_options.option_list[0])),
+                std::get<1>(data_center->ipv4_options.option_list[0]));
+    }
 }
