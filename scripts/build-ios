@@ -16,6 +16,7 @@ parser.add_argument("-r", "--release", help="release build, default to debug", a
 parser.add_argument("-j", "--jobs", help="Specify how many commands can run in parallel", type=int, default=build_lib.get_num_cores())
 parser.add_argument("-a", "--architecture", help="specify architecture",  choices=["armv7", "arm64", "i386", "x86_64"], default="arm64")
 parser.add_argument("--asan", help="build with ASAN", action="store_true")
+parser.add_argument("--tsan", help="build with TSAN", action="store_true")
 args = parser.parse_args()
 
 print "TGL Build - iOS"
@@ -101,6 +102,7 @@ CMAKE_COMMAND += " -D CMAKE_LIBRARY_PATH=" + os.path.join(SDK, "usr", "lib")
 CMAKE_COMMAND += " -D CMAKE_OSX_ARCHITECTURES=" + COMPILER_ARCH
 CMAKE_COMMAND += " -D CMAKE_INSTALL_PREFIX=" + INSTALL_PREFIX
 CMAKE_COMMAND += " -D ENABLE_ASAN=" + ("1" if args.asan else "0")
+CMAKE_COMMAND += " -D ENABLE_TSAN=" + ("1" if args.tsan else "0")
 CMAKE_COMMAND += " -D CMAKE_BUILD_TYPE=" + ("RelWithDebInfo" if args.release else "Debug")
 
 def exit_if_failed(return_code = 1, msg = "Forget to build dependencies?"):
