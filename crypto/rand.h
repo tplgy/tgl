@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -25,9 +25,9 @@
 extern "C" {
 #endif
 
-void TGLC_rand_add(const void *buf, int num, double entropy);
-int TGLC_rand_bytes(unsigned char *buf, int num);
-int TGLC_rand_pseudo_bytes(unsigned char *buf, int num);
+void TGLC_rand_add(const void* buf, int num, double entropy);
+int TGLC_rand_bytes(unsigned char* buf, int num);
+int TGLC_rand_pseudo_bytes(unsigned char* buf, int num);
 
 #ifdef __cplusplus
 }

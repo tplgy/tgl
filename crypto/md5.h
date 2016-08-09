@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-void TGLC_md5(const unsigned char *d, size_t n, unsigned char *md);
+void TGLC_md5(const unsigned char* d, size_t n, unsigned char* md);
 
 #ifdef __cplusplus
 }

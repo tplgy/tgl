@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -21,18 +21,12 @@
 */
 #ifndef __MTPROTO_CLIENT_H__
 #define __MTPROTO_CLIENT_H__
-#include "crypto/bn.h"
 
-#include "tgl.h"
-
-#define TG_APP_HASH "844584f2b1fd2daecee726166dcc1ef8"
-#define TG_APP_ID 10534
-
-#define ACK_TIMEOUT 1
-#define MAX_DC_ID 10
+#include <memory>
 
 class tgl_connection;
 struct tgl_dc;
+struct tgl_session;
 
 class mtproto_client
 {
@@ -53,8 +47,6 @@ int64_t tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
         const int32_t* msg, int msg_ints,
         int64_t msg_id_override = 0, bool force_send = false, bool useful = false);
 void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC);
-//int tglmp_check_g(unsigned char p[256], BIGNUM *g);
-//int tglmp_check_DH_params(BIGNUM *p, int g);
 void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& D);
 
 void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& s, int64_t id);
@@ -62,4 +54,5 @@ int tglmp_on_start();
 void tgl_dc_authorize(const std::shared_ptr<tgl_dc>& DC);
 void tgls_free_pubkey();
 void tgl_do_send_ping(const std::shared_ptr<tgl_connection>& c);
+
 #endif

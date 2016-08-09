@@ -188,7 +188,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
     case CODE_update_user_typing:
         {
             //tgl_peer_id_t id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
-            //tgl_peer_t *U = tgl_peer_get(id);
+            //tgl_peer_t* U = tgl_peer_get(id);
             enum tgl_typing_status status = tglf_fetch_typing(DS_U->action);
             tgl_state::instance()->callback()->typing_status_changed(DS_LVAL(DS_U->user_id), DS_LVAL(DS_U->user_id), tgl_peer_type::user, status);
         }
@@ -286,10 +286,10 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
 #if 0
         {
           tgl_peer_id_t id = tgl_peer_id_enc_chat(DS_LVAL(DS_U->chat_id));
-          tgl_peer_t *P = tgl_peer_get(id);
+          tgl_peer_t* P = tgl_peer_get(id);
 
           if (P && P->last) {
-            struct tgl_message *M = P->last;
+            struct tgl_message* M = P->last;
             while (M && (!(M->flags & TGLMF_OUT) || (M->flags & TGLMF_UNREAD))) {
               if (M->flags & TGLMF_OUT) {
                 bl_do_edit_message_encr(tgl_state::instance(), &M->permanent_id, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, M->flags & ~TGLMF_UNREAD);
@@ -372,7 +372,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
     /*
     case CODE_update_msg_update:
         {
-          struct tgl_message *M = tgl_message_get(DS_LVAL(DS_U->id));
+          struct tgl_message* M = tgl_message_get(DS_LVAL(DS_U->id));
           if (M) {
             //bl_do_msg_update(TLS, M->id);
             tgl_state::instance()->callback.new_msg(M);

@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -24,16 +24,19 @@
 
 #include "rand.h"
 
-void TGLC_rand_add(const void *buf, int num, double entropy) {
-  RAND_add(buf, num, entropy);
+void TGLC_rand_add(const void* buf, int num, double entropy)
+{
+    RAND_add(buf, num, entropy);
 }
 
-int TGLC_rand_bytes(unsigned char *buf, int num) {
-  return RAND_bytes(buf, num);
+int TGLC_rand_bytes(unsigned char* buf, int num)
+{
+    return RAND_bytes(buf, num);
 }
 
-int TGLC_rand_pseudo_bytes(unsigned char *buf, int num) {
-  return RAND_pseudo_bytes(buf, num);
+int TGLC_rand_pseudo_bytes(unsigned char* buf, int num)
+{
+    return RAND_pseudo_bytes(buf, num);
 }
 
 #endif

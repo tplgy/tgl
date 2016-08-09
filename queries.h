@@ -21,18 +21,19 @@
 //#include "net.h"
 #ifndef __QUERIES_H__
 #define __QUERIES_H__
-#include "structures.h"
+
 #include "auto/auto.h"
+#include "mtproto-common.h"
+#include "structures.h"
 #include "tgl-layout.h"
 #include "types/tgl_message.h"
 #include "tgl-dc.h"
-#include "mtproto-common.h"
 
-#include <string.h>
 #include <cstdint>
 #include <exception>
 #include <memory>
 #include <string>
+#include <string.h>
 #include <vector>
 
 class tgl_timer;
@@ -165,7 +166,7 @@ public:
     query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
             const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& multi_callback);
     explicit query_send_msgs(const std::function<void(bool)>& bool_callback);
-    virtual void on_answer(void *D) override;
+    virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     void set_message(const std::shared_ptr<tgl_message>& message);
 
@@ -193,6 +194,6 @@ void tgl_do_help_get_config_dc(const std::shared_ptr<tgl_dc>& D);
 void tglq_regen_query(int64_t id);
 void tglq_query_delete(int64_t id);
 
-void fetch_dc_option(const tl_ds_dc_option *DS_DO);
+void fetch_dc_option(const tl_ds_dc_option* DS_DO);
 
 #endif

@@ -19,50 +19,50 @@
     Copyright Topology LP 2016
 */
 
+#include "queries.h"
+
 #define _FILE_OFFSET_BITS 64
+
 #include <algorithm>
 #include <errno.h>
-#include <string.h>
+#include <fcntl.h>
 #include <memory.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
+#include <string.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
 #ifndef WIN32
 #include <sys/utsname.h>
 #endif
 #include <boost/lexical_cast.hpp>
 
-#include "mtproto-client.h"
-#include "queries.h"
-#include "queries-encrypted.h"
-#include "structures.h"
-#include "tgl-log.h"
-#include "tgl_download_manager.h"
-#include "tgl-timer.h"
-#include "types/tgl_chat.h"
-#include "types/tgl_update_callback.h"
-#include "types/tgl_peer_id.h"
-
-#include "updates.h"
 #include "auto/auto.h"
-#include "auto/auto-types.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"
-#include "crypto/bn.h"
-#include "crypto/rand.h"
+#include "auto/auto-types.h"
 #include "crypto/aes.h"
-#include "crypto/sha.h"
+#include "crypto/bn.h"
 #include "crypto/md5.h"
+#include "crypto/rand.h"
+#include "crypto/sha.h"
+#include "mtproto-client.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
-
+#include "queries-encrypted.h"
+#include "structures.h"
 #include "tgl.h"
-#include "tg-mime-types.h"
+#include "tgl_download_manager.h"
+#include "tgl-log.h"
+#include "tgl-timer.h"
 #include "tgl-queries.h"
+#include "tg-mime-types.h"
 #include "tools.h"
+#include "types/tgl_chat.h"
+#include "types/tgl_update_callback.h"
+#include "types/tgl_peer_id.h"
+#include "updates.h"
 
 #ifndef EPROTO
 // BSD doesn't define EPROTO, even though it is POSIX:
@@ -429,7 +429,7 @@ int query::handle_error(int error_code, const std::string& error_string)
                 tgl_state::instance()->login();
                 m_ack_received = false;
                 //m_session_id = 0;
-                //struct tgl_dc *DC = q->DC;
+                //struct tgl_dc* DC = q->DC;
                 //if (!(DC->flags & 4) && !(q->flags & QUERY_FORCE_SEND)) {
                 m_session_id = 0;
                 //}
@@ -539,7 +539,7 @@ int query::handle_result(tgl_in_buffer* in)
     if (op == CODE_gzip_packed) {
         fetch_i32(in);
         int l = prefetch_strlen(in);
-        char *s = fetch_str(in, l);
+        char* s = fetch_str(in, l);
 
         constexpr size_t MAX_PACKED_SIZE = 1 << 24;
         packed_buffer.reset(new int32_t[MAX_PACKED_SIZE / 4]);
@@ -565,7 +565,7 @@ int query::handle_result(tgl_in_buffer* in)
 
     assert(skip_in.ptr == skip_in.end);
 
-    void *DS = fetch_ds_type_any(in, &m_type);
+    void* DS = fetch_ds_type_any(in, &m_type);
     assert(DS);
 
     on_answer(DS);
@@ -599,7 +599,7 @@ void query::out_header()
 
 /* {{{ Get config */
 
-void fetch_dc_option(const tl_ds_dc_option *DS_DO)
+void fetch_dc_option(const tl_ds_dc_option* DS_DO)
 {
     if (DS_TRUE(DS_DO->media_only)) { // We do not support media only ip addresses yet
         return;
@@ -936,7 +936,7 @@ public:
         tgl_message_id_t id;
         id.peer_type = TGL_PEER_RANDOM_ID;
         id.id = old_msg_id->old_msg_id;
-        struct tgl_message *M = tgl_message_get(&id);
+        struct tgl_message* M = tgl_message_get(&id);
         if (M && M->permanent_id.id == id.id) {
             tglu_work_any_updates(DS_U, M);
         } else {
@@ -956,7 +956,7 @@ public:
         id.peer_type = TGL_PEER_RANDOM_ID;
         id.id = *(int64_t*)q->extra;
         free(q->extra, 8);
-        struct tgl_message *M = tgl_message_get(&id);
+        struct tgl_message* M = tgl_message_get(&id);
         if (q->callback) {
             ((void(*)(struct tgl_state *,void *, int, struct tgl_message *))q->callback) (q->callback_extra, 0, M);
         }
@@ -1007,7 +1007,7 @@ static void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M,
     q->out_i64(M->permanent_id);
 
     //TODO
-    //int64_t *x = (int64_t*)malloc(12);
+    //int64_t* x = (int64_t*)malloc(12);
     //*x = M->id;
     //*(int*)(x+1) = M->to_id.id;
 
@@ -1347,7 +1347,7 @@ public:
         , m_callback(callback)
     { }
 
-    virtual void on_answer(void *D) override
+    virtual void on_answer(void* D) override
     {
         tl_ds_messages_dialogs* DS_MD = static_cast<tl_ds_messages_dialogs*>(D);
         int dl_size = DS_LVAL(DS_MD->dialogs->cnt);
@@ -1361,7 +1361,7 @@ public:
         }
 
         for (int i = 0; i < dl_size; i++) {
-            struct tl_ds_dialog *DS_D = DS_MD->dialogs->data[i];
+            struct tl_ds_dialog* DS_D = DS_MD->dialogs->data[i];
             tgl_peer_id_t peer_id = tglf_fetch_peer_id(DS_D->peer);
             m_state->peers.push_back(peer_id);
             m_state->last_message_ids.push_back(DS_LVAL(DS_D->top_message));
@@ -1385,7 +1385,7 @@ public:
 #if 0
                 int p = static_cast<int>(m_state->size()) - 1;
                 while (p >= 0) {
-                    struct tgl_message *M = tgl_message_get(m_state->last_message_ids[p]);
+                    struct tgl_message* M = tgl_message_get(m_state->last_message_ids[p]);
                     if (M) {
                         m_state->offset_date = M->date;
                         break;
@@ -1528,7 +1528,7 @@ public:
         , m_callback(callback)
     { }
 
-    virtual void on_answer(void *D) override
+    virtual void on_answer(void* D) override
     {
         tl_ds_contacts_found* DS_CRU = static_cast<tl_ds_contacts_found*>(D);
         std::vector<std::shared_ptr<tgl_user>> users;
@@ -1577,7 +1577,7 @@ public:
         , m_callback(callback)
     { }
 
-    virtual void on_answer(void *D) override
+    virtual void on_answer(void* D) override
     {
         tl_ds_contacts_resolved_peer* DS_CRU = static_cast<tl_ds_contacts_resolved_peer*>(D);
         //tgl_peer_id_t peer_id = tglf_fetch_peer_id(DS_CRU->peer);
@@ -1587,7 +1587,7 @@ public:
         for (int i = 0; i < DS_LVAL(DS_CRU->chats->cnt); i++) {
             tglf_fetch_alloc_chat(DS_CRU->chats->data[i]);
         }
-        //tgl_peer_t *P = tgl_peer_get(peer_id);
+        //tgl_peer_t* P = tgl_peer_get(peer_id);
         if (m_callback) {
             m_callback(true);
         }
@@ -1651,7 +1651,7 @@ query_send_msgs::query_send_msgs(const std::function<void(bool)>& bool_callback)
     , m_message(nullptr)
 { }
 
-void query_send_msgs::on_answer(void *D)
+void query_send_msgs::on_answer(void* D)
 {
     tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
 
@@ -1677,7 +1677,7 @@ void query_send_msgs::on_answer(void *D)
     } else {
 #if 0 // FIXME
         int y = tgls_get_local_by_random(E->id);
-        struct tgl_message *M = tgl_message_get(y);
+        struct tgl_message* M = tgl_message_get(y);
 #endif
         std::shared_ptr<tgl_message> M;
         if (m_single_callback) {
@@ -1860,7 +1860,7 @@ void tgl_do_forward_media(const tgl_input_peer_t& to_id, int64_t message_id, uns
         return;
     }
 #if 0
-    struct tgl_message *M = tgl_message_get(&msg_id);
+    struct tgl_message* M = tgl_message_get(&msg_id);
     if (!M || !(M->flags & TGLMF_CREATED) || (M->flags & TGLMF_ENCRYPTED)) {
         if (!M || !(M->flags & TGLMF_CREATED)) {
             TGL_ERROR("unknown message");
@@ -1957,7 +1957,7 @@ void tgl_do_send_location(const tgl_input_peer_t& peer_id, double latitude, doub
 }
 
 #if 0
-void tgl_do_reply_location(tgl_message_id_t *_reply_id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, struct tgl_message *M)> callback) {
+void tgl_do_reply_location(tgl_message_id_t *_reply_id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, struct tgl_message* M)> callback) {
   tgl_message_id_t reply_id = *_reply_id;
   if (reply_id.peer_type == tgl_peer_type::temp_id) {
     reply_id = tgl_convert_temp_msg_id(reply_id);
@@ -2297,7 +2297,7 @@ void tgl_do_get_channel_info(const tgl_input_peer_t& id, int offline_mode,
 {
     if (offline_mode) {
 #if 0
-        tgl_peer_t *C = tgl_peer_get(id);
+        tgl_peer_t* C = tgl_peer_get(id);
         if (!C) {
             TGL_ERROR("unknown chat id");
             if (callback) {
@@ -2364,7 +2364,7 @@ void tgl_do_get_user_info(const tgl_input_peer_t& id, int offline_mode,
     }
     if (offline_mode) {
 #if 0
-        tgl_peer_t *C = tgl_peer_get(id);
+        tgl_peer_t* C = tgl_peer_get(id);
         if (!C) {
             TGL_ERROR("unknown user id");
             if (callback) {
@@ -3219,7 +3219,7 @@ public:
     {
         tl_ds_messages_affected_messages* DS_MAM = static_cast<tl_ds_messages_affected_messages*>(D);
 #if 0 // FIXME
-        struct tgl_message *M = tgl_message_get(id.get());
+        struct tgl_message* M = tgl_message_get(id.get());
         if (M) {
             bl_do_message_delete(&M->permanent_id);
         }
@@ -3535,7 +3535,7 @@ private:
 void tgl_do_get_message(int64_t message_id, const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
 #if 0
-    struct tgl_message *M = tgl_message_get(&msg_id);
+    struct tgl_message* M = tgl_message_get(&msg_id);
     if (M) {
         if (callback) {
             callback(true, M);
@@ -4136,8 +4136,8 @@ public:
 
         int l = DS_T->text->len;
         std::vector<char> buffer(l + 1);
-        char *s = buffer.data();
-        char *str = DS_T->text->data;
+        char* s = buffer.data();
+        char* str = DS_T->text->data;
         int p = 0;
         int pp = 0;
         while (p < l) {
@@ -4409,7 +4409,7 @@ struct sign_up_extra {
     std::string last_name;
 };
 
-void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void *code);
+void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void* code);
 void tgl_sign_in_result(const std::shared_ptr<sign_up_extra>& E, bool success, const std::shared_ptr<tgl_user>& U)
 {
     TGL_ERROR(".....tgl_sign_in_result");
@@ -4421,7 +4421,7 @@ void tgl_sign_in_result(const std::shared_ptr<sign_up_extra>& E, bool success, c
     tgl_signed_in();
 }
 
-void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void *code)
+void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void* code)
 {
     if (!strcmp((const char *)code, "call")) {
         tgl_do_phone_call(E->phone, E->hash, nullptr);
@@ -4433,7 +4433,7 @@ void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void *code)
             std::bind(tgl_sign_in_result, E, std::placeholders::_1, std::placeholders::_2));
 }
 
-void tgl_sign_up_code(const std::shared_ptr<sign_up_extra>& E, const void *code);
+void tgl_sign_up_code(const std::shared_ptr<sign_up_extra>& E, const void* code);
 void tgl_sign_up_result(const std::shared_ptr<sign_up_extra>& E, bool success, const std::shared_ptr<tgl_user>& U)
 {
     TGL_UNUSED(U);
@@ -4445,7 +4445,7 @@ void tgl_sign_up_result(const std::shared_ptr<sign_up_extra>& E, bool success, c
     tgl_signed_in();
 }
 
-void tgl_sign_up_code(const std::shared_ptr<sign_up_extra>& E, const void *code)
+void tgl_sign_up_code(const std::shared_ptr<sign_up_extra>& E, const void* code)
 {
     if (!strcmp((const char*)code, "call")) {
         tgl_do_phone_call(E->phone, E->hash, nullptr);
@@ -4457,9 +4457,9 @@ void tgl_sign_up_code(const std::shared_ptr<sign_up_extra>& E, const void *code)
             std::bind(tgl_sign_up_result, E, std::placeholders::_1, std::placeholders::_2));
 }
 
-void tgl_register_cb(const std::shared_ptr<sign_up_extra>& E, const void *rinfo)
+void tgl_register_cb(const std::shared_ptr<sign_up_extra>& E, const void* rinfo)
 {
-    const char **yn = (const char**)rinfo;
+    const char** yn = (const char**)rinfo;
     if (yn[0]) {
         E->first_name = static_cast<const char*>(yn[1]);
         if (E->first_name.size() >= 1) {
@@ -4647,7 +4647,7 @@ static void tgl_set_number_result(const std::shared_ptr<change_phone_state>& sta
 
 static void tgl_set_number_code(const std::shared_ptr<change_phone_state>& state, const void* code)
 {
-    const char **code_strings = (const char **)code;
+    const char** code_strings = (const char**)code;
 
     auto q = std::make_shared<query_set_phone>(std::bind(tgl_set_number_result, state, std::placeholders::_1, std::placeholders::_2));
     q->out_i32(CODE_account_change_phone);

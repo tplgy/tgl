@@ -858,7 +858,7 @@ void tgl_download_manager::send_document(const tgl_input_peer_t& to_id, int64_t 
 {
     TGL_DEBUG("send_document - file_name: " + file_name);
     if (flags & TGL_SEND_MSG_FLAG_DOCUMENT_AUTO) {
-        const char *mime_type = tg_mime_by_filename(file_name.c_str());
+        const char* mime_type = tg_mime_by_filename(file_name.c_str());
         TGL_DEBUG("send_document - detected mime_type: " + std::string(mime_type));
         if (strcmp(mime_type, "image/gif") == 0) {
             flags |= TGL_SEND_MSG_FLAG_DOCUMENT_ANIMATED;
@@ -894,7 +894,7 @@ void tgl_download_manager::end_download(const std::shared_ptr<download>& d,
     }
 }
 
-int tgl_download_manager::download_on_answer(const std::shared_ptr<query_download>& q, void *DD)
+int tgl_download_manager::download_on_answer(const std::shared_ptr<query_download>& q, void* DD)
 {
     tl_ds_upload_file* DS_UF = static_cast<tl_ds_upload_file*>(DD);
 
@@ -915,7 +915,7 @@ int tgl_download_manager::download_on_answer(const std::shared_ptr<query_downloa
 
     if (!d->iv.empty()) {
         assert(!(len & 15));
-        void *ptr = DS_UF->bytes->data;
+        void* ptr = DS_UF->bytes->data;
 
         TGLC_aes_key aes_key;
         TGLC_aes_set_decrypt_key(d->key.data(), 256, &aes_key);

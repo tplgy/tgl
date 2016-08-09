@@ -39,6 +39,10 @@
 #include <assert.h>
 #include <stdlib.h>
 
+constexpr int MAX_DC_ID = 10;
+constexpr int32_t TG_APP_ID = 10534;
+constexpr const char* TG_APP_HASH = "844584f2b1fd2daecee726166dcc1ef8";
+
 std::unique_ptr<tgl_state> tgl_state::s_instance;
 
 tgl_state::tgl_state()
@@ -62,7 +66,7 @@ tgl_state::tgl_state()
 {
 }
 
-tgl_state *tgl_state::instance()
+tgl_state* tgl_state::instance()
 {
     if (!s_instance) {
         s_instance.reset(new tgl_state);
@@ -75,7 +79,7 @@ void tgl_state::reset()
     s_instance.reset();
 }
 
-void tgl_state::set_auth_key(int num, const char *buf)
+void tgl_state::set_auth_key(int num, const char* buf)
 {
     assert(num > 0 && num <= MAX_DC_ID);
     assert(m_dcs[num]);

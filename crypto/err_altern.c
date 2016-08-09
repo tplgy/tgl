@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -24,9 +24,10 @@
 
 #include "err.h"
 
-void TGLC_err_print_errors_fp(FILE *fp) {
-  // Can't print anything meaningful, so don't.
-  (void) fp;
+void TGLC_err_print_errors_fp(FILE* fp)
+{
+    // Can't print anything meaningful, so don't.
+    (void) fp;
 }
 
 #endif

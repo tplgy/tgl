@@ -108,7 +108,7 @@ struct tgl_message;
 struct tgl_secret_chat;
 
 struct tgl_state {
-    static tgl_state *instance();
+    static tgl_state* instance();
 
     static void reset();
 
@@ -131,7 +131,7 @@ struct tgl_state {
 
     TGLC_bn_ctx* bn_ctx() { return m_bn_ctx.get(); }
 
-    void set_auth_key(int num, const char *buf);
+    void set_auth_key(int num, const char* buf);
     void set_our_id(int id);
     void set_dc_option(bool is_v6, int id, const std::string& ip, int port);
     void set_dc_signed(int num);
@@ -163,7 +163,7 @@ struct tgl_state {
 
     const std::string& app_version() const { return m_app_version; }
     const std::string& app_hash() const { return m_app_hash; }
-    int app_id() const { return m_app_id; }
+    int32_t app_id() const { return m_app_id; }
     const std::vector<std::unique_ptr<tgl_rsa_key>>& rsa_key_list() const { return m_rsa_key_list; }
 
     const std::shared_ptr<tgl_download_manager>& download_manager() const { return m_download_manager; }
@@ -205,7 +205,7 @@ private:
     bool m_is_started;
     tgl_online_status m_online_status;
 
-    int m_app_id;
+    int32_t m_app_id;
     std::string m_app_hash;
 
     std::string m_error;

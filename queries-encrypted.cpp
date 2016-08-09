@@ -1,5 +1,4 @@
 #include "queries-encrypted.h"
-#include "tgl-layout.h"
 
 #define _FILE_OFFSET_BITS 64
 #include <errno.h>
@@ -30,6 +29,7 @@
 #include "mtproto-utils.h"
 #include "queries.h"
 #include "tgl.h"
+#include "tgl-layout.h"
 #include "tgl-log.h"
 #include "tg-mime-types.h"
 #include "tools.h"
@@ -90,7 +90,7 @@ void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& secret_ch
     memset(sha1d_buffer, 0, sizeof(sha1d_buffer));
 
     const unsigned char* msg_key = msg_sha + 4;
- 
+
     unsigned char buf[64];
     memset(buf, 0, sizeof(buf));
     const int* encryption_key = reinterpret_cast<const int*>(secret_chat->key());
@@ -291,7 +291,7 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
         }
         return;
     }
- 
+
     assert(M->flags & TGLMF_ENCRYPTED);
     assert(M->action);
 

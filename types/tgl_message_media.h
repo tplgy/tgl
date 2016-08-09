@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -52,7 +52,7 @@ struct tgl_photo_size {
     int32_t w;
     int32_t h;
     int32_t size;
-    //char *data;
+    //char* data;
     //std::vector<char> data;
     tgl_photo_size()
         : w(0)

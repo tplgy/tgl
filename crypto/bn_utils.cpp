@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -22,9 +22,10 @@
 #include <cassert>
 #include <openssl/bn.h>
 
-std::ostream& operator<<(std::ostream& s, const TGLC_bn& bn) {
-  char *hex = BN_bn2hex((BIGNUM*)&bn);
-  s << hex;
-  free(hex);
-  return s;
+std::ostream& operator<<(std::ostream& s, const TGLC_bn& bn)
+{
+    char* hex = BN_bn2hex((BIGNUM*)&bn);
+    s << hex;
+    free(hex);
+    return s;
 }

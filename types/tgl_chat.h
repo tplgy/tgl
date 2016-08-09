@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -46,7 +46,7 @@ struct tgl_chat {
     tgl_file_location photo_small;
     //int last_read_in;
     //int last_read_out;
-    //struct tgl_photo *photo;
+    //struct tgl_photo* photo;
     std::string title;
     //int users_num;
     //int user_list_version;

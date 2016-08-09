@@ -42,7 +42,7 @@ void tgl_log(const std::string& str, int severity)
 #if defined(__SIZEOF_INT128__)
 std::ostream& operator<<(std::ostream& s, __int128 i)
 {
-    int32_t *i32s = (int32_t*)&i;
+    int32_t* i32s = (int32_t*)&i;
     s << *i32s << *(i32s + 1) << *(i32s + 2) << *(i32s + 3);
     return s;
 }

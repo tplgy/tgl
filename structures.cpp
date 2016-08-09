@@ -81,7 +81,7 @@ enum tgl_typing_status tglf_fetch_typing(const tl_ds_send_message_action* DS_SMA
 /*enum tgl_typing_status tglf_fetch_typing(void)
 {
     struct paramed_type type = TYPE_TO_PARAM(send_message_action);
-    struct tl_ds_send_message_action *DS_SMA = fetch_ds_type_send_message_action(&type);
+    struct tl_ds_send_message_action* DS_SMA = fetch_ds_type_send_message_action(&type);
     enum tgl_typing_status res = tglf_fetch_typing_new(DS_SMA);
     free_ds_type_send_message_action(DS_SMA, &type);
     return res;
@@ -152,7 +152,7 @@ tgl_user_status tglf_fetch_user_status(const tl_ds_user_status* DS_US)
     return new_status;
 }
 
-std::shared_ptr<tgl_user> tglf_fetch_alloc_user(const tl_ds_user *DS_U, bool invoke_callback)
+std::shared_ptr<tgl_user> tglf_fetch_alloc_user(const tl_ds_user* DS_U, bool invoke_callback)
 {
     if (!DS_U) {
         return nullptr;
@@ -496,7 +496,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full(const tl_ds_messages_chat_f
     if (DS_CF->bot_info) {
       int n = DS_LVAL(DS_CF->bot_info->cnt);
       for (int i = 0; i < n; i++) {
-      struct tl_ds_bot_info *DS_BI = DS_CF->bot_info->data[i];
+      struct tl_ds_bot_info* DS_BI = DS_CF->bot_info->data[i];
 
       tgl_peer_id_t peer_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_BI->user_id));
         if (P && (P->flags & TGLCF_CREATED)) {
@@ -744,7 +744,7 @@ std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P)
     return photo;
 }
 
-std::shared_ptr<tgl_document> tglf_fetch_alloc_video(const tl_ds_video *DS_V)
+std::shared_ptr<tgl_document> tglf_fetch_alloc_video(const tl_ds_video* DS_V)
 {
     if (!DS_V) {
         return nullptr;
@@ -1026,7 +1026,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat(const tl_ds_upd
     tgl_input_peer_t to_id = tgl_input_peer_t(tgl_peer_type::chat, DS_LVAL(DS_U->chat_id), 0);
 
     int64_t message_id = DS_LVAL(DS_U->id);
-    //struct tgl_message *M = (struct tgl_message *)calloc(1, sizeof(*M));
+    //struct tgl_message* M = (struct tgl_message *)calloc(1, sizeof(*M));
     //M->permanent_id = msg_id;
 
     //int flags = M->flags & 0xffff;
@@ -1271,7 +1271,7 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action_encrypted(const tl
           tgl_message_id_t id;
           id.peer_type = TGL_PEER_RANDOM_ID;
           id.id = DS_LVAL(DS_DMA->random_ids->data[i]);
-          struct tgl_message *N = tgl_message_get(&id);
+          struct tgl_message* N = tgl_message_get(&id);
           if (N) {
             N->flags &= ~TGLMF_UNREAD;
           }
@@ -1522,7 +1522,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
 
     int64_t message_id = DS_LVAL(DS_EM->random_id);
 #if 0
-    struct tgl_message *M = tgl_message_get(&msg_id);
+    struct tgl_message* M = tgl_message_get(&msg_id);
     if (!M) {
       M = static_cast<tgl_message*>(calloc(1, sizeof(*M)));
       M->permanent_id = msg_id;
@@ -1572,10 +1572,10 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
             return nullptr;
         }
 
-        struct tl_ds_decrypted_message_layer *DS_DML = fetch_ds_type_decrypted_message_layer(&in, &decrypted_message_layer);
+        struct tl_ds_decrypted_message_layer* DS_DML = fetch_ds_type_decrypted_message_layer(&in, &decrypted_message_layer);
         assert(DS_DML);
 
-        struct tl_ds_decrypted_message *DS_DM = DS_DML->message;
+        struct tl_ds_decrypted_message* DS_DM = DS_DML->message;
         if (message_id != DS_LVAL(DS_DM->random_id)) {
             TGL_ERROR("incorrect message: id = " << message_id << ", new_id = " << DS_LVAL(DS_DM->random_id));
             free_ds_type_decrypted_message_layer(DS_DML, &decrypted_message_layer);
@@ -1608,7 +1608,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
             return NULL;
         }
 
-        struct tl_ds_decrypted_message *DS_DM = fetch_ds_type_decrypted_message(&in, &decrypted_message);
+        struct tl_ds_decrypted_message* DS_DM = fetch_ds_type_decrypted_message(&in, &decrypted_message);
         assert(DS_DM);
 
         int layer = 8; // default secret chat layer is 8

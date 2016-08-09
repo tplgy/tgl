@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -98,7 +98,7 @@ struct tgl_secret_chat {
     }
 
     const unsigned char* key() const { return m_key; }
-    int64_t key_fingerprint() const { return *reinterpret_cast<const int64_t*>(m_key_sha + 12); }
+    int64_t key_fingerprint() const { return* reinterpret_cast<const int64_t*>(m_key_sha + 12); }
     const unsigned char* key_sha() const { return m_key_sha; }
 
     static size_t key_size() { return 256; }

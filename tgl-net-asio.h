@@ -76,7 +76,7 @@ private:
     void stop_ping_timer();
     void ping(const boost::system::error_code&);
 
-    ssize_t read_in_lookup(void *data, size_t len);
+    ssize_t read_in_lookup(void* data, size_t len);
     void try_rpc_read();
 
     void handle_connect(const boost::system::error_code&);

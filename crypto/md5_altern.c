@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -29,8 +29,9 @@
 
 #include "md5.h"
 
-void TGLC_md5(const unsigned char *d, size_t n, unsigned char *md) {
-  gcry_md_hash_buffer(GCRY_MD_MD5, md, d, n);
+void TGLC_md5(const unsigned char* d, size_t n, unsigned char* md)
+{
+    gcry_md_hash_buffer(GCRY_MD_MD5, md, d, n);
 }
 
 #endif

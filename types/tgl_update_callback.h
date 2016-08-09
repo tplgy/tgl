@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -22,9 +22,12 @@
 #ifndef __TGL_UPDATE_CALLBACK__
 #define __TGL_UPDATE_CALLBACK__
 
+#include "tgl.h"
 #include "types/tgl_connection_status.h"
+#include "types/tgl_message.h"
 #include "types/tgl_secret_chat.h"
 #include "types/tgl_typing_status.h"
+
 #include <map>
 #include <memory>
 
@@ -40,8 +43,8 @@ public:
     virtual void message_deleted(int64_t msg_id) = 0;
     virtual void messages_mark_read_in(tgl_peer_id_t peer, int msg_id) = 0;
     virtual void messages_mark_read_out(tgl_peer_id_t peer, int msg_id) = 0;
-    virtual void get_values(enum tgl_value_type type, const char *prompt, int num_values,
-            std::function<void(const void *answer)>) = 0;
+    virtual void get_values(enum tgl_value_type type, const char* prompt, int num_values,
+            std::function<void(const void* answer)>) = 0;
     virtual void logged_in() = 0;
     virtual void logged_out(bool success) = 0;
     virtual void started() = 0;
@@ -63,7 +66,7 @@ public:
     virtual void channel_update(int32_t channel_id, int64_t access_hash, int64_t date, const std::string &title, const std::string &username) = 0;
     virtual void our_id(int32_t id) = 0;
     virtual void notification(const std::string& type, const std::string& message) = 0;
-    virtual void user_status_update(struct tgl_user *U) = 0;
+    virtual void user_status_update(struct tgl_user* U) = 0;
     virtual void dc_update(const std::shared_ptr<tgl_dc>& dc) = 0;
     virtual void change_active_dc(int new_dc_id) = 0;
     virtual void on_failed_login() = 0;

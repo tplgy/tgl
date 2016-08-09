@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -32,7 +32,7 @@ enum class tgl_update_mode {
    check_and_update_consistency,
    dont_check_and_update_consistency
 };
-  
+
 bool tgl_check_pts_diff(int32_t pts, int32_t pts_count);
 
 void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& extra,

@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -24,11 +24,14 @@
 
 #include "sha.h"
 
-void TGLC_sha1(const unsigned char *d, size_t n, unsigned char *md) {
-  SHA1(d, n, md);
+void TGLC_sha1(const unsigned char* d, size_t n, unsigned char* md)
+{
+    SHA1(d, n, md);
 }
-void TGLC_sha256(const unsigned char *d, size_t n, unsigned char *md) {
-  SHA256(d, n, md);
+
+void TGLC_sha256(const unsigned char* d, size_t n, unsigned char* md)
+{
+    SHA256(d, n, md);
 }
 
 #endif

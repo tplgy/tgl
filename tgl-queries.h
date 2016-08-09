@@ -231,9 +231,9 @@ void tgl_do_get_message(int64_t message_id, const std::function<void(bool succes
 // sends query with extended text syntax
 // use only for debug or when you known what are you doing
 // since answer is not interpretated by library in any way
-//int tglf_extf_autocomplete(const char *text, int text_len, int index, char **R, char *data, int data_len);
-//struct paramed_type *tglf_extf_store(const char *data, int data_len);
-//char *tglf_extf_fetch(struct paramed_type *T);
+//int tglf_extf_autocomplete(const char* text, int text_len, int index, char** R, char* data, int data_len);
+//struct paramed_type* tglf_extf_store(const char* data, int data_len);
+//char* tglf_extf_fetch(struct paramed_type* T);
 /* }}} */
 
 /* {{{ BOT */

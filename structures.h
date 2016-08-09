@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -22,6 +22,7 @@
 #define __STRUCTURES_H__
 
 #include <assert.h>
+
 #include "auto/auto-types.h"
 #include "tgl-layout.h"
 #include "tgl.h"
@@ -64,14 +65,14 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(const tl_ds_message* DS_M)
 std::shared_ptr<tgl_message> tglf_fetch_alloc_encrypted_message(const tl_ds_encrypted_message* DS_EM);
 tgl_peer_id_t tglf_fetch_peer_id(const tl_ds_peer* DS_P);
 
-std::shared_ptr<tgl_message_media> tglf_fetch_message_media(const tl_ds_message_media *DS_MM);
-std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_message_action *DS_MA);
+std::shared_ptr<tgl_message_media> tglf_fetch_message_media(const tl_ds_message_media* DS_MM);
+std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_message_action* DS_MA);
 
 void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>& M, const tl_ds_encrypted_file* DS_EF);
 std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_ds_decrypted_message_media* DS_DMM);
 std::shared_ptr<tgl_message_action> tglf_fetch_message_action_encrypted(const tl_ds_decrypted_message_action* DS_DMA);
 
-tgl_user_status tglf_fetch_user_status(const tl_ds_user_status *DS_US);
+tgl_user_status tglf_fetch_user_status(const tl_ds_user_status* DS_US);
 enum tgl_typing_status tglf_fetch_typing(const tl_ds_send_message_action* DS_SMA);
 void tglf_fetch_chat_participants(const std::shared_ptr<tgl_chat>& C, const tl_ds_chat_participants* DS_CP);
 

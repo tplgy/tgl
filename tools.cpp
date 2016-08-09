@@ -44,7 +44,7 @@
 #include "valgrind/memcheck.h"
 #endif
 
-int tgl_inflate(void *input, int ilen, void *output, int olen)
+int tgl_inflate(void* input, int ilen, void* output, int olen)
 {
     z_stream strm;
     memset(&strm, 0, sizeof(strm));
@@ -67,7 +67,7 @@ int tgl_inflate(void *input, int ilen, void *output, int olen)
     return total_out;
 }
 
-void tglt_secure_random(unsigned char *s, int l)
+void tglt_secure_random(unsigned char* s, int l)
 {
     if (TGLC_rand_bytes(s, l) <= 0) {
         /*if (allow_weak_random) {

@@ -1,4 +1,4 @@
-/* 
+/*
     This file is part of tgl-library
 
     This library is free software; you can redistribute it and/or
@@ -45,16 +45,18 @@
  * that casting ptr-to-some-struct to ptr-to-other-struct is *probably* okay for
  * most compilers: https://stackoverflow.com/a/8702750/3070326
  */
-#define TGLC_WRAPPER_ASSOC(NAME,CORE)                                          \
-  static TGLC_ ## NAME *wrap_ ## NAME(const CORE *p)                          \
-                              __attribute__ ((unused));                        \
-  static CORE *unwrap_ ## NAME(const TGLC_ ## NAME *p)                        \
-                              __attribute__ ((unused));                        \
-  static CORE *unwrap_ ## NAME(const TGLC_ ## NAME *p) {                      \
-    return (CORE *)p;                                                          \
-  }                                                                            \
-  static TGLC_ ## NAME *wrap_ ## NAME(const CORE *p) {                        \
-    return (TGLC_ ## NAME *)p;                                                 \
-  }
+#define TGLC_WRAPPER_ASSOC(NAME,CORE)                         \
+static TGLC_ ## NAME* wrap_ ## NAME(const CORE* p)            \
+                            __attribute__ ((unused));         \
+static CORE* unwrap_ ## NAME(const TGLC_ ## NAME* p)          \
+                            __attribute__ ((unused));         \
+inline static CORE* unwrap_ ## NAME(const TGLC_ ## NAME* p)   \
+{                                                             \
+    return (CORE *)p;                                         \
+}                                                             \
+inline static TGLC_ ## NAME* wrap_ ## NAME(const CORE* p)     \
+{                                                             \
+    return (TGLC_ ## NAME *)p;                                \
+}
 
 #endif /* CRYPTO_META_H_ */
