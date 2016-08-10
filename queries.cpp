@@ -21,8 +21,6 @@
 
 #include "queries.h"
 
-#define _FILE_OFFSET_BITS 64
-
 #include <algorithm>
 #include <errno.h>
 #include <fcntl.h>

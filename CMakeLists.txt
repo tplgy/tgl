@@ -78,6 +78,8 @@ if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -Werror -Wno-deprecated-declarations -Wno-error=unused-variable ${CMAKE_CXX_FLAGS}")
 endif()
 
+add_definitions(-D_FILE_OFFSET_BITS=64)
+
 set(GENERATED_TGL_HEADERS
     ${CMAKE_BINARY_DIR}/auto/auto-fetch-ds.h
     ${CMAKE_BINARY_DIR}/auto/auto-free-ds.h

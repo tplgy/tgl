@@ -19,7 +19,6 @@
               Vitaly Valtman 2013-2015
     Copyright Topology LP 2016
 */
-#define	_FILE_OFFSET_BITS	64
 
 #include <assert.h>
 #include <memory>
