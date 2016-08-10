@@ -530,6 +530,7 @@ void tgl_connection_asio::on_online_status_changed(tgl_online_status status)
     }
 
     set_state(conn_failed);
+    m_restart_timer.reset();
     m_restart_duration = MIN_RESTART_DURATION;
     schedule_restart();
 }
