@@ -21,7 +21,7 @@
 #ifndef CRYPTO_META_H_
 #define CRYPTO_META_H_
 
-#include <assert.h>
+#include <cassert>
 
 /* All this wrapping/unwrapping solves a fundamental problem:
  * - The libtgl implementation wants access to the TGLC_* types.

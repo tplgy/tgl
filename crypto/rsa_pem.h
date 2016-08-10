@@ -21,13 +21,9 @@
 #ifndef __TGL_CRYPTO_RSA_H__
 #define __TGL_CRYPTO_RSA_H__
 
-#include <stdio.h> /* FILE */
-
 #include "bn.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdio> /* FILE */
 
 typedef struct TGLC_rsa TGLC_rsa;
 
@@ -39,9 +35,5 @@ TGLC_bn* TGLC_rsa_e(const TGLC_rsa*);
 void TGLC_rsa_free(TGLC_rsa*);
 
 TGLC_rsa* TGLC_pem_read_RSAPublicKey(const char* pem);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

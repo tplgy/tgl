@@ -21,16 +21,8 @@
 #ifndef __TGL_CRYPTO_RAND_H__
 #define __TGL_CRYPTO_RAND_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void TGLC_rand_add(const void* buf, int num, double entropy);
 int TGLC_rand_bytes(unsigned char* buf, int num);
 int TGLC_rand_pseudo_bytes(unsigned char* buf, int num);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

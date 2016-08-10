@@ -155,13 +155,13 @@ set(GENERATED_TGL_SOURCES
 
 set(SOURCES
     ${GENERATED_TGL_SOURCES}
-    crypto/aes_openssl.c
-    crypto/bn_openssl.c
-    crypto/err_openssl.c
-    crypto/md5_openssl.c
-    crypto/rand_openssl.c
-    crypto/rsa_pem_openssl.c
-    crypto/sha_openssl.c
+    crypto/aes_openssl.cpp
+    crypto/bn_openssl.cpp
+    crypto/err_openssl.cpp
+    crypto/md5_openssl.cpp
+    crypto/rand_openssl.cpp
+    crypto/rsa_pem_openssl.cpp
+    crypto/sha_openssl.cpp
     mtproto-client.cpp
     mtproto-common.cpp
     mtproto-utils.cpp

@@ -21,16 +21,8 @@
 #ifndef __TGL_CRYPTO_ERR_H__
 #define __TGL_CRYPTO_ERR_H__
 
-#include <stdio.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdio>
 
 void TGLC_err_print_errors_fp(FILE* fp);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
