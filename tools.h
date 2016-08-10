@@ -21,15 +21,16 @@
 
 #ifndef __TOOLS_H__
 #define __TOOLS_H__
-#include <assert.h>
+
+#include "crypto/err.h"
+
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <chrono>
 #include <limits>
 #include <random>
-#include <stdlib.h>
-#include <string.h>
-
-#include "crypto/err.h"
-#include "crypto/rand.h"
 
 int tgl_inflate(void* input, int ilen, void* output, int olen);
 

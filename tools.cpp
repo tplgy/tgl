@@ -24,25 +24,14 @@
 
 #include "tools.h"
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "crypto/rand.h"
-#include <zlib.h>
-#include <time.h>
-#include <sys/time.h>
-
-#include "mtproto-common.h"
 #include "tgl-log.h"
 
 #ifdef VALGRIND_FIXES
 #include "valgrind/memcheck.h"
 #endif
+
+#include <zlib.h>
 
 int tgl_inflate(void* input, int ilen, void* output, int olen)
 {

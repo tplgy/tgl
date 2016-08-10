@@ -22,8 +22,6 @@
               2012-2013 Vitaliy Valtman
 */
 
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <signal.h>
 #ifdef HAVE_EXECINFO_H
