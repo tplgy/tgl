@@ -246,14 +246,14 @@ int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC
     assert(x);
     assert(y);
     for (int i = 0; i < chunks; i++) {
-      TGLC_bn_bin2bn(reinterpret_cast<unsigned char*>(const_cast<char*>(from)), 255, x.get());
-      result = TGLC_bn_mod_exp(y.get(), x.get(), E, N, tgl_state::instance()->bn_ctx());
-      TGL_ASSERT_UNUSED(result, result == 1);
-      unsigned l = 256 - TGLC_bn_num_bytes(y.get());
-      assert(l <= 256);
-      memset(to, 0, l);
-      TGLC_bn_bn2bin(y.get(), reinterpret_cast<unsigned char*>(to) + l);
-      to += 256;
+        TGLC_bn_bin2bn(reinterpret_cast<unsigned char*>(const_cast<char*>(from + i * chunks)), 255, x.get());
+        result = TGLC_bn_mod_exp(y.get(), x.get(), E, N, tgl_state::instance()->bn_ctx());
+        TGL_ASSERT_UNUSED(result, result == 1);
+        unsigned l = 256 - TGLC_bn_num_bytes(y.get());
+        assert(l <= 256);
+        memset(to, 0, l);
+        TGLC_bn_bn2bin(y.get(), reinterpret_cast<unsigned char*>(to) + l);
+        to += 256;
     }
     return chunks * 256;
 }
