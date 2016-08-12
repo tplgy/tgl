@@ -1366,16 +1366,6 @@ int tglmp_on_start()
     return 0;
 }
 
-void tgl_dc_authorize(const std::shared_ptr<tgl_dc>& DC)
-{
-    //c_state = 0;
-    if (!DC->session) {
-        tglmp_dc_create_session(DC);
-    }
-    TGL_DEBUG("starting authorization for DC #" << DC->id);
-    //net_loop(0, auth_ok);
-}
-
 static int send_all_acks(const std::shared_ptr<tgl_session>& session)
 {
     mtprotocol_serializer s;
@@ -1418,7 +1408,13 @@ void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC)
     create_connection(S);
     S->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&send_all_acks_gateway, S));
     assert(!DC->session);
-    DC->session = S;
+
+    if (S->c) {
+        DC->session = S;
+    } else {
+        S->clear();
+        S = nullptr;
+    }
 }
 
 void tgl_do_send_ping(const std::shared_ptr<tgl_connection>& c)

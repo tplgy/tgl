@@ -4521,42 +4521,38 @@ void tgl_bot_hash_cb(const void* code)
     tgl_do_send_bot_auth((const char*)code, strlen((const char*)code), tgl_sign_in_bot_cb);
 }
 
-void tgl_sign_in()
+static void tgl_sign_in()
 {
-    if (!tgl_signed_dc(tgl_state::instance()->working_dc())) {
-        if (!(tgl_state::instance()->locks & TGL_LOCK_PHONE)) {
-            tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone);
-        }
-    } else {
-        tgl_signed_in();
-    }
-}
+    assert(!tgl_signed_dc(tgl_state::instance()->working_dc()));
 
-static void check_authorized()
-{
-    std::shared_ptr<tgl_dc> DC = tgl_state::instance()->working_dc();
-    if (!DC) {
-        TGL_ERROR("no working DC, can't check authorization");
-        return;
-    }
-
-    if (DC && (tgl_signed_dc(DC) || tgl_authorized_dc(DC))) {
-        tgl_state::instance()->ev_login = nullptr;
-        tgl_sign_in();
-    } else {
-        tgl_dc_authorize(DC);
-        tgl_state::instance()->ev_login->start(0.1);
+    if (!(tgl_state::instance()->locks & TGL_LOCK_PHONE)) {
+        TGL_DEBUG("asking for phone number");
+        tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone);
     }
 }
 
 void tgl_state::login()
 {
-    if (working_dc() && tgl_signed_dc(working_dc()) && tgl_authorized_dc(working_dc())) {
-        tgl_sign_in();
-    } else {
-        tgl_state::instance()->ev_login = tgl_state::instance()->timer_factory()->create_timer(std::bind(&check_authorized));
-        tgl_state::instance()->ev_login->start(0.1);
+    std::shared_ptr<tgl_dc> dc = tgl_state::instance()->working_dc();
+    if (!dc) {
+        TGL_ERROR("no working dc set, can't log in");
+        return;
     }
+
+    if (!tgl_authorized_dc(dc)) {
+        if (dc->session) {
+            dc->session->clear();
+            dc->session = nullptr;
+        }
+        tglmp_dc_create_session(dc);
+    }
+
+    if (tgl_signed_dc(dc)) {
+        tgl_signed_in();
+        return;
+    }
+
+    tgl_sign_in();
 }
 
 class query_set_phone: public query
