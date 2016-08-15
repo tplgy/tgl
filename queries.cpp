@@ -529,7 +529,7 @@ int tglq_query_result(tgl_in_buffer* in, int64_t id)
 {
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (!q) {
-        TGL_DEBUG("result for unknown query #" << id << " (type '" << q->name() << "')");
+        TGL_DEBUG("result for unknown query #" << id);
         in->ptr = in->end;
         return 0;
     }
