@@ -95,11 +95,20 @@ void query::alarm()
 {
     TGL_DEBUG("alarm query #" << m_msg_id << " (type '" << m_name << "')");
 
+    bool pending = false;
+    if (!(m_dc->flags & TGLDCF_CONFIGURED) && !is_force()) {
+        pending = true;
+    }
+
+    if (!tgl_signed_dc(m_dc) && !is_login() && !is_force()) {
+        pending = true;
+    }
+
     assert(m_timer);
     double timeout = timeout_interval();
     m_timer->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
 
-    if (m_session && m_session_id && m_dc && m_dc->session == m_session && m_session->session_id == m_session_id) {
+    if (!pending && m_session && m_session_id && m_dc && m_dc->session == m_session && m_session->session_id == m_session_id) {
         mtprotocol_serializer s;
         s.out_i32(CODE_msg_container);
         s.out_i32(1);
@@ -111,7 +120,7 @@ void query::alarm()
             handle_error(400, "client failed to send message");
             return;
         }
-    } else if (m_dc->session) {
+    } else if (!pending && m_dc->session) {
         m_ack_received = false;
         if (m_msg_id) {
             tgl_state::instance()->remove_query(shared_from_this());
@@ -135,6 +144,7 @@ void query::alarm()
         // we don't have a valid session with the DC, so defer query until we do
         m_timer->cancel();
         m_dc->add_pending_query(shared_from_this());
+        TGL_DEBUG("added query #" << msg_id() << "(type '" << name() << "') to pending list");
     }
 }
 
