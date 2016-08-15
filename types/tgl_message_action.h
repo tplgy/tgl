@@ -197,7 +197,9 @@ struct tgl_message_action_set_message_ttl: public tgl_message_action {
 };
 
 struct tgl_message_action_delete_messages: public tgl_message_action {
+    tgl_message_action_delete_messages(std::vector<int64_t> msg_ids): msg_ids(msg_ids) { }
     virtual tgl_message_action_type type() override { return tgl_message_action_type_delete_messages; }
+    std::vector<int64_t> msg_ids;
 };
 
 struct tgl_message_action_flush_history: public tgl_message_action {

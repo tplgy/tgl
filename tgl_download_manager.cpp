@@ -437,7 +437,8 @@ void tgl_download_manager::send_unencrypted_file_end(const std::shared_ptr<send_
 {
     std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
     E->id = f->message_id;
-    auto q = std::make_shared<query_send_msgs>(E, callback);
+    auto cback = std::bind(callback, std::placeholders::_1, std::placeholders::_2, 1);
+    auto q = std::make_shared<query_send_msgs>(E, cback);
 
     auto message = std::make_shared<tgl_message>();
     message->permanent_id = f->message_id;

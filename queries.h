@@ -162,7 +162,7 @@ class query_send_msgs: public query
 {
 public:
     query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& single_callback);
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback);
     query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
             const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& multi_callback);
     explicit query_send_msgs(const std::function<void(bool)>& bool_callback);
@@ -172,7 +172,7 @@ public:
 
 private:
     std::shared_ptr<messages_send_extra> m_extra;
-    std::function<void(bool, const std::shared_ptr<tgl_message>&, float)> m_single_callback;
+    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_single_callback;
     std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>& messages)> m_multi_callback;
     std::function<void(bool)> m_bool_callback;
     std::shared_ptr<tgl_message> m_message;

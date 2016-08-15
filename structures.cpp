@@ -1278,7 +1278,15 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action_encrypted(const tl
         }
 #endif
     case CODE_decrypted_message_action_delete_messages:
-        return std::make_shared<tgl_message_action_delete_messages>();
+    {
+        std::vector<int64_t> messages_deleted;
+        if (DS_DMA->random_ids) {
+            for (int32_t i=0; i<*(DS_DMA->random_ids->cnt); ++i) {
+                messages_deleted.push_back((*(DS_DMA->random_ids->data))[i]);
+            }
+        }
+        return std::make_shared<tgl_message_action_delete_messages>(messages_deleted);
+    }
     case CODE_decrypted_message_action_screenshot_messages:
         return std::make_shared<tgl_message_action_screenshot_messages>(DS_LVAL(DS_DMA->random_ids->cnt));
     case CODE_decrypted_message_action_notify_layer:
@@ -1750,10 +1758,17 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
     } else if (action_type == tgl_message_action_type_set_message_ttl) {
         auto action = std::static_pointer_cast<tgl_message_action_set_message_ttl>(message->action);
         ttl_ptr = &(action->ttl);
+    } else if (action_type == tgl_message_action_type_delete_messages) {
+        auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(message->action);
+        for (int64_t id : action->msg_ids) {
+            tgl_state::instance()->callback()->message_deleted(id);
+        }
     }
 
     tgl_update_secret_chat(secret_chat, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, ttl_ptr, &layer, our_in_seq_no_ptr, TGL_FLAGS_UNCHANGED);
-    tgl_state::instance()->callback()->new_messages({message});
+    if (action_type == tgl_message_action_type_none) {
+        tgl_state::instance()->callback()->new_messages({message});
+    }
 }
 
 std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info(const tl_ds_bot_info* DS_BI)

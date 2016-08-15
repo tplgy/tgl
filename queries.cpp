@@ -931,7 +931,7 @@ class query_msg_send: public query
 {
 public:
     query_msg_send(const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& callback)
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
         : query("send message", TYPE_TO_PARAM(updates))
         , m_message(message)
         , m_callback(callback)
@@ -951,7 +951,7 @@ public:
 #endif
         tglu_work_any_updates(DS_U, nullptr);
         if (m_callback) {
-            m_callback(true, m_message, 0);
+            m_callback(true, m_message);
         }
         tgl_state::instance()->callback()->message_sent(m_message, DS_LVAL(DS_U->id), -1);
     }
@@ -976,7 +976,7 @@ public:
         m_message->flags |= TGLMF_SEND_FAILED;
 
         if (m_callback) {
-            m_callback(false, m_message, 0);
+            m_callback(false, m_message);
         }
 
         // FIXME: is this correct? Maybe when we implement message deletion disabled above.
@@ -988,11 +988,11 @@ public:
     }
 private:
     std::shared_ptr<tgl_message> m_message;
-    std::function<void(bool, const std::shared_ptr<tgl_message>&, float progress)> m_callback;
+    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
 };
 
 static void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
+        const std::function<void(bool, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     assert(M->to_id.peer_type != tgl_peer_type::enc_chat);
     if (M->to_id.peer_type == tgl_peer_type::enc_chat) {
@@ -1080,7 +1080,7 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
         unsigned long long flags,
         int32_t reply_id,
         const tl_ds_reply_markup* reply_markup,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
+        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     std::shared_ptr<tgl_secret_chat> secret_chat;
     if (peer_id.peer_type == tgl_peer_type::enc_chat) {
@@ -1088,14 +1088,14 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
         if (!secret_chat) {
             TGL_ERROR("unknown secret chat");
             if (callback) {
-                callback(false, nullptr, 0);
+                callback(false, nullptr);
             }
             return;
         }
         if (secret_chat->state != sc_ok) {
             TGL_ERROR("secret chat not in ok state");
             if (callback) {
-                callback(false, nullptr, 0);
+                callback(false, nullptr);
             }
             return;
         }
@@ -1230,7 +1230,7 @@ void tgl_do_mark_read(const tgl_input_peer_t& id, const std::function<void(bool 
         }
         return;
     }
-    tgl_do_messages_mark_read_encr(secret_chat, callback);
+    tgl_do_messages_mark_read_encr(secret_chat, nullptr);
 }
 /* }}} */
 
@@ -1626,7 +1626,7 @@ void tgl_do_contact_resolve_username(const std::string& name, const std::functio
 
 /* {{{ Forward */
 query_send_msgs::query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>&, float)>& single_callback)
+        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback)
     : query("send messages (single)", TYPE_TO_PARAM(updates))
     , m_extra(extra)
     , m_single_callback(single_callback)
@@ -1690,7 +1690,7 @@ void query_send_msgs::on_answer(void* D)
 #endif
         std::shared_ptr<tgl_message> M;
         if (m_single_callback) {
-            m_single_callback(true, M, 0);
+            m_single_callback(true, M);
         }
     }
 }
@@ -1709,7 +1709,7 @@ int query_send_msgs::on_error(int error_code, const std::string& error_string)
         }
     } else {
         if (m_single_callback) {
-            m_single_callback(false, nullptr, 0);
+            m_single_callback(false, nullptr);
         }
     }
     return 0;
@@ -1765,26 +1765,26 @@ void tgl_do_forward_messages(const tgl_input_peer_t& from_id, const tgl_input_pe
 
 void tgl_do_forward_message(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id,
         int64_t message_id, unsigned long long flags,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
+        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     if (from_id.peer_type == tgl_peer_type::temp_id) {
         TGL_ERROR("unknown message");
         if (callback) {
-            callback(false, nullptr, 0);
+            callback(false, nullptr);
         }
         return;
     }
     if (from_id.peer_type == tgl_peer_type::enc_chat) {
         TGL_ERROR("can not forward messages from secret chat");
         if (callback) {
-            callback(false, nullptr, 0);
+            callback(false, nullptr);
         }
         return;
     }
     if (to_id.peer_type == tgl_peer_type::enc_chat) {
         TGL_ERROR("can not forward messages to secret chats");
         if (callback) {
-            callback(false, nullptr, 0);
+            callback(false, nullptr);
         }
         return;
     }
@@ -1803,12 +1803,12 @@ void tgl_do_forward_message(const tgl_input_peer_t& from_id, const tgl_input_pee
 
 void tgl_do_send_contact(const tgl_input_peer_t& id,
       const std::string& phone, const std::string& first_name, const std::string& last_name, unsigned long long flags,
-      const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
+      const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     if (id.peer_type == tgl_peer_type::enc_chat) {
         TGL_ERROR("can not send contact to secret chat");
         if (callback) {
-            callback(false, nullptr, 0);
+            callback(false, nullptr);
         }
         return;
     }
@@ -1859,12 +1859,12 @@ void tgl_do_send_contact(const tgl_input_peer_t& id,
 //}
 
 void tgl_do_forward_media(const tgl_input_peer_t& to_id, int64_t message_id, unsigned long long flags,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
+        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     if (to_id.peer_type == tgl_peer_type::enc_chat) {
         TGL_ERROR("can not forward messages to secret chats");
         if (callback) {
-            callback(false, nullptr, 0);
+            callback(false, nullptr);
         }
         return;
     }
@@ -1877,14 +1877,14 @@ void tgl_do_forward_media(const tgl_input_peer_t& to_id, int64_t message_id, uns
             TGL_ERROR("can not forward message from secret chat");
         }
         if (callback) {
-            callback(false, nullptr, 0);
+            callback(false, nullptr);
         }
         return;
     }
     if (M->media.type != tgl_message_media_photo && M->media.type != tgl_message_media_document && M->media.type != tgl_message_media_audio && M->media.type != tgl_message_media_video) {
         TGL_ERROR("can only forward photo/document");
         if (callback) {
-            callback(false, nullptr, 0);
+            callback(false, nullptr);
         }
         return;
     }
@@ -1933,7 +1933,7 @@ void tgl_do_forward_media(const tgl_input_peer_t& to_id, int64_t message_id, uns
 /* {{{ Send location */
 
 void tgl_do_send_location(const tgl_input_peer_t& peer_id, double latitude, double longitude, unsigned long long flags,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback)
+        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     if (peer_id.peer_type == tgl_peer_type::enc_chat) {
         tgl_do_send_location_encr(peer_id, latitude, longitude, flags, callback);
@@ -3261,6 +3261,19 @@ private:
 void tgl_do_delete_msg(const tgl_input_peer_t& chat, int64_t message_id,
         const std::function<void(bool success)>& callback)
 {
+    if (chat.peer_type == tgl_peer_type::enc_chat) {
+        std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(chat.peer_id);
+        if (!secret_chat) {
+            TGL_ERROR("could not find secret chat");
+            return;
+        }
+        tgl_do_messages_delete_encr(secret_chat, message_id, nullptr);
+        if (callback) {
+            callback(false);
+        }
+        return;
+    }
+
     if (chat.peer_type == tgl_peer_type::temp_id) {
         TGL_ERROR("unknown message");
         if (callback) {

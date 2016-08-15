@@ -36,12 +36,12 @@ struct tl_ds_reply_markup;
 // reply markup can be NULL
 void tgl_do_send_message(const tgl_input_peer_t& peer_id, const std::string& text,
         unsigned long long flags, int32_t reply_id, const tl_ds_reply_markup* reply_markup,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback);
+        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
 
 // forward message *msg_id* to peer *id*
 // message can not be encrypted and peer can not be secret chat
 void tgl_do_forward_message(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id, int64_t message_id, unsigned long long flags,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback);
+        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
 
 // forward messages *ids* to peer *id*
 // messages can not be encrypted and peer can not be secret chat
@@ -68,7 +68,7 @@ void tgl_do_forward_media(const tgl_input_peer_t& to_id, int64_t message_id,
 
 // sends location to chat *id*
 void tgl_do_send_location(const tgl_input_peer_t& id, double latitude, double longitude, unsigned long long flags,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)>& callback);
+        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
 
 // sends broadcast (i.e. message to several users at once)
 // flags are same as in tgl_do_send_message
