@@ -93,7 +93,7 @@ void query::clear_timer()
 
 void query::alarm()
 {
-    TGL_DEBUG("Alarm query " << m_msg_id << " (type '" << m_name << "')");
+    TGL_DEBUG("alarm query #" << m_msg_id << " (type '" << m_name << "')");
 
     assert(m_timer);
     double timeout = timeout_interval();
@@ -519,7 +519,7 @@ int tglq_query_result(tgl_in_buffer* in, int64_t id)
 {
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (!q) {
-        TGL_WARNING("result for unknown query #" << id);
+        TGL_DEBUG("result for unknown query #" << id << " (type '" << q->name() << "')");
         in->ptr = in->end;
         return 0;
     }
@@ -1240,6 +1240,7 @@ public:
 
     virtual void on_answer(void* D) override
     {
+        TGL_DEBUG("get history on answer for query #" << msg_id());
         tl_ds_messages_messages* DS_MM = static_cast<tl_ds_messages_messages*>(D);
         for (int i = 0; i < DS_LVAL(DS_MM->chats->cnt); i++) {
             tglf_fetch_alloc_chat(DS_MM->chats->data[i]);
