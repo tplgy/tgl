@@ -4434,7 +4434,7 @@ struct sign_up_extra {
 void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void* code);
 void tgl_sign_in_result(const std::shared_ptr<sign_up_extra>& E, bool success, const std::shared_ptr<tgl_user>& U)
 {
-    TGL_ERROR(".....tgl_sign_in_result");
+    TGL_DEBUG(".....tgl_sign_in_result");
     if (!success) {
         TGL_ERROR("incorrect code");
         tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
