@@ -48,6 +48,7 @@ struct tgl_message {
     tgl_peer_id_t fwd_from_id;
     tgl_peer_id_t from_id;
     tgl_input_peer_t to_id;
+    int32_t seq_no;
     std::vector<std::shared_ptr<tgl_message_entity>> entities;
     std::shared_ptr<tgl_message_reply_markup> reply_markup;
     std::shared_ptr<tgl_message_action> action;
@@ -64,6 +65,7 @@ struct tgl_message {
         , fwd_from_id()
         , from_id()
         , to_id()
+        , seq_no(0)
         , action(std::make_shared<tgl_message_action_none>())
         , media(std::make_shared<tgl_message_media_none>())
     { }

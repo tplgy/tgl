@@ -1721,6 +1721,10 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
 
         out_seq_no = out_seq_no / 2 + 1;
         our_in_seq_no_ptr = &out_seq_no;
+
+        if (message->from_id.peer_id != tgl_state::instance()->our_id().peer_id) {
+            message->seq_no = out_seq_no;
+        }
     }
 
     auto action_type = message->action ? message->action->type() : tgl_message_action_type_none;
@@ -1839,6 +1843,7 @@ std::shared_ptr<tgl_message> tglm_create_message(int64_t message_id, const tgl_p
         int32_t reply_id, const tl_ds_reply_markup* reply_markup, int flags)
 {
     std::shared_ptr<tgl_message> M = tglm_alloc_message(message_id);
+    M->seq_no = message_id;
 
     M->flags = flags;
 

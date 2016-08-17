@@ -953,7 +953,7 @@ public:
         if (m_callback) {
             m_callback(true, m_message);
         }
-        tgl_state::instance()->callback()->message_sent(m_message, DS_LVAL(DS_U->id), -1);
+        tgl_state::instance()->callback()->message_sent(m_message, DS_LVAL(DS_U->id), DS_LVAL(DS_U->id));
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
