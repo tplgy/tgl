@@ -29,8 +29,6 @@
 #include <vector>
 #include "types/tgl_peer_id.h"
 
-#pragma pack(push,4)
-
 enum tgl_dc_state {
   st_init,
   st_reqpq_sent,
@@ -81,21 +79,16 @@ struct tgl_dc_option {
     std::vector<std::pair<std::string, int>> option_list;
 };
 
-struct tgl_dc {
-    tgl_dc();
-
-    void reset();
-
+struct tgl_dc: public std::enable_shared_from_this<tgl_dc> {
     int32_t id;
-    int flags;
     int rsa_key_idx;
     enum tgl_dc_state state;
     std::shared_ptr<tgl_session> session;
     unsigned char auth_key[256];
     unsigned char temp_auth_key[256];
-    unsigned char nonce[256];
-    unsigned char new_nonce[256];
-    unsigned char server_nonce[256];
+    unsigned char nonce[16];
+    unsigned char server_nonce[16];
+    unsigned char new_nonce[32];
     int64_t auth_key_id;
     int64_t temp_auth_key_id;
     int64_t temp_auth_key_bind_query_id;
@@ -108,10 +101,13 @@ struct tgl_dc {
 
     bool auth_transfer_in_process;
 
-//    // ipv4, ipv6, ipv4_media, ipv6_media
-//    std::array<tgl_dc_option, 4> options;
     tgl_dc_option ipv6_options;
     tgl_dc_option ipv4_options;
+
+    tgl_dc();
+    void reset_authorization();
+    void restart_authorization();
+    void restart_temp_authorization();
 
     void increase_active_queries(size_t num = 1);
     void decrease_active_queries(size_t num = 1);
@@ -120,13 +116,56 @@ struct tgl_dc {
     void remove_pending_query(const std::shared_ptr<query>& q);
     void send_pending_queries();
 
+    bool is_authorized() const { return m_flags & TGLDCF_AUTHORIZED; }
+    void set_authorized(bool b = true)
+    {
+        if (b) {
+            m_flags |= TGLDCF_AUTHORIZED;
+        } else {
+            m_flags &= ~TGLDCF_AUTHORIZED;
+        }
+    }
+
+    bool is_logged_in() const { return m_flags & TGLDCF_LOGGED_IN; }
+    void set_logged_in(bool b = true)
+    {
+        if (b) {
+            m_flags |= TGLDCF_LOGGED_IN;
+        } else {
+            m_flags &= ~TGLDCF_LOGGED_IN;
+        }
+    }
+
+    bool is_configured() const { return m_flags & TGLDCF_CONFIGURED; }
+    void set_configured(bool b = true)
+    {
+        if (b) {
+            m_flags |= TGLDCF_CONFIGURED;
+        } else {
+            m_flags &= ~TGLDCF_CONFIGURED;
+        }
+    }
+
+    bool is_bound() const { return m_flags & TGLDCF_BOUND; }
+    void set_bound(bool b = true)
+    {
+        if (b) {
+            m_flags |= TGLDCF_BOUND;
+        } else {
+            m_flags &= ~TGLDCF_BOUND;
+        }
+    }
+
+private:
+    void reset_temp_authorization();
+
 private:
     size_t m_active_queries;
+    int m_flags;
     std::list<std::shared_ptr<query>> m_pending_queries;
 
     void cleanup_timer_expired();
     std::shared_ptr<tgl_timer> m_session_cleanup_timer;
 };
 
-#pragma pack(pop)
 #endif

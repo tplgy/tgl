@@ -236,11 +236,6 @@ void tgl_connection_asio::try_rpc_read() {
         switch (m_mtproto_client->execute(shared_from_this(), op, len)) {
         case mtproto_client::execute_result::ok:
             break;
-        case mtproto_client::execute_result::bad_session:
-            // The client has already handled this case
-            // and the connection should be closed.
-            assert(m_state == conn_closed);
-            break;
         case mtproto_client::execute_result::bad_connection:
             if (m_state != conn_closed) {
                 set_state(conn_failed);
@@ -390,7 +385,6 @@ void tgl_connection_asio::start_read() {
 }
 
 ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
-    //TGL_DEBUG("write: " << len << " bytes to DC " << m_dc.lock()->id);
     const unsigned char* data = static_cast<const unsigned char*>(data_in);
     if (!len) {
         return 0;
@@ -509,8 +503,6 @@ void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::ve
         TGL_WARNING("invalid write to closed connection");
         return;
     }
-
-    //TGL_DEBUG("wrote " << bytes_transferred << " bytes to DC " << m_dc.lock()->id);
 
     if (m_write_buffer_queue.size() > 0) {
         m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));

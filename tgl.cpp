@@ -88,11 +88,12 @@ void tgl_state::set_auth_key(int num, const char* buf)
         memcpy(m_dcs[num]->auth_key, buf, 256);
     }
 
-    static unsigned char sha1_buffer[20];
+    unsigned char sha1_buffer[20];
+    memset(sha1_buffer, 0, sizeof(sha1_buffer));
     TGLC_sha1((unsigned char *)m_dcs[num]->auth_key, 256, sha1_buffer);
     memcpy(&m_dcs[num]->auth_key_id, sha1_buffer + 12, 8);
 
-    m_dcs[num]->flags |= TGLDCF_AUTHORIZED;
+    m_dcs[num]->set_authorized();
 
     m_callback->dc_update(m_dcs[num]);
 }
@@ -132,12 +133,12 @@ void tgl_state::set_dc_option(bool is_v6, int id, const std::string& ip, int por
     }
 }
 
-void tgl_state::set_dc_signed(int num)
+void tgl_state::set_dc_logged_in(int num)
 {
     TGL_DEBUG2("set signed " << num);
     assert(num > 0 && num <= MAX_DC_ID);
     assert(m_dcs[num]);
-    m_dcs[num]->flags |= TGLDCF_LOGGED_IN;
+    m_dcs[num]->set_logged_in();
     m_callback->dc_update(m_dcs[num]);
 }
 
@@ -229,7 +230,7 @@ int tgl_state::init(const std::string& download_dir, int app_id, const std::stri
     assert(m_timer_factory);
     assert(m_connection_factory);
     if (!m_temp_key_expire_time) {
-        m_temp_key_expire_time = 100000;
+        m_temp_key_expire_time = 7200; // seconds
     }
 
     if (tglmp_on_start() < 0) {
@@ -244,18 +245,6 @@ int tgl_state::init(const std::string& download_dir, int app_id, const std::stri
     m_state_lookup_timer = m_timer_factory->create_timer(std::bind(&tgl_state::state_lookup_timeout, this));
     m_state_lookup_timer->start(3600);
     return 0;
-}
-
-int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& dc)
-{
-    assert(dc);
-    return dc->flags & TGLDCF_AUTHORIZED;
-}
-
-int tgl_signed_dc(const std::shared_ptr<tgl_dc>& dc)
-{
-    assert(dc);
-    return (dc->flags & TGLDCF_LOGGED_IN) != 0;
 }
 
 void tgl_state::set_enable_pfs(bool val)

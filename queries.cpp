@@ -96,11 +96,11 @@ void query::alarm()
     TGL_DEBUG("alarm query #" << m_msg_id << " (type '" << m_name << "')");
 
     bool pending = false;
-    if (!(m_dc->flags & TGLDCF_CONFIGURED) && !is_force()) {
+    if (!m_dc->is_configured() && !is_force()) {
         pending = true;
     }
 
-    if (!tgl_signed_dc(m_dc) && !is_login() && !is_force()) {
+    if (!m_dc->is_logged_in() && !is_login() && !is_force()) {
         pending = true;
     }
 
@@ -133,11 +133,11 @@ void query::alarm()
             handle_error(400, "client failed to send message");
             return;
         }
-        TGL_NOTICE("Resent query #" << old_id << " as #" << m_msg_id << " of size " << m_serializer->char_size() << " to DC " << m_dc->id);
+        TGL_NOTICE("resent query #" << old_id << " as #" << m_msg_id << " of size " << m_serializer->char_size() << " to DC " << m_dc->id);
         tgl_state::instance()->add_query(shared_from_this());
         m_session_id = m_session->session_id;
         auto dc = m_session->dc.lock();
-        if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !is_force()) {
+        if (dc && !dc->is_configured() && !is_force()) {
             m_session_id = 0;
         }
     } else {
@@ -165,7 +165,7 @@ void query::regen()
         m_session_id = 0;
     } else {
         auto dc = m_session->dc.lock();
-        if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !is_force()) {
+        if (dc && !dc->is_configured() && !is_force()) {
             m_session_id = 0;
         }
     }
@@ -185,7 +185,8 @@ void tglq_query_restart(int64_t id)
 static void alarm_query_gateway(const std::shared_ptr<query>& q)
 {
     assert(q);
-    if (q->on_timeout()) {
+    q->on_timeout();
+    if (!q->should_retry()) {
         if (q->msg_id()) {
             tgl_state::instance()->remove_query(q);
         }
@@ -209,18 +210,18 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
         pending = true;
     }
 
-    if (!(m_dc->flags & TGLDCF_CONFIGURED) && !is_force()) {
+    if (!m_dc->is_configured() && !is_force()) {
         pending = true;
     }
 
-    if (!tgl_signed_dc(m_dc) && !is_login() && !is_force()) {
+    if (!m_dc->is_logged_in() && !is_login() && !is_force()) {
         pending = true;
         if (m_dc != tgl_state::instance()->working_dc()) {
             tgl_do_transfer_auth(m_dc, std::bind(tgl_transfer_auth_callback, m_dc, std::placeholders::_1));
         }
     }
 
-    TGL_DEBUG("Sending query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << (pending ? " (pending)" : ""));
+    TGL_DEBUG("sending query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << (pending ? " (pending)" : ""));
 
     m_timer = tgl_state::instance()->timer_factory()->create_timer(std::bind(&alarm_query_gateway, shared_from_this()));
 
@@ -245,7 +246,7 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
         double timeout = timeout_interval();
         m_timer->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
 
-        TGL_DEBUG("Sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << ": #" << m_msg_id);
+        TGL_DEBUG("sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << ": #" << m_msg_id);
     }
 }
 
@@ -260,13 +261,17 @@ bool query::execute_after_pending()
         tglmp_dc_create_session(m_dc);
     }
 
-    if (!m_dc->auth_key_id) {
-        TGL_DEBUG("not ready to send pending query " << this << " (" << m_name << "), re-queuing");
-        m_dc->add_pending_query(shared_from_this());
-        return false;
+    bool pending = false;
+    if (!m_dc->is_configured() && !is_force()) {
+        pending = true;
     }
-    if (!tgl_signed_dc(m_dc) && !is_login()) {
-        TGL_DEBUG("not ready to send pending non-login query " << this << " (" << m_name << "), re-queuing");
+
+    if (!m_dc->is_logged_in() && !is_login() && !is_force()) {
+        pending = true;
+    }
+
+    if (pending) {
+        TGL_DEBUG("not ready to send pending query " << this << " (" << m_name << "), re-queuing");
         m_dc->add_pending_query(shared_from_this());
         return false;
     }
@@ -283,11 +288,11 @@ bool query::execute_after_pending()
     tgl_state::instance()->add_query(shared_from_this());
     m_session_id = m_session->session_id;
     auto dc = m_session->dc.lock();
-    if (dc && !(dc->flags & TGLDCF_CONFIGURED) && !is_force()) {
+    if (dc && !dc->is_configured() && !is_force()) {
         m_session_id = 0;
     }
 
-    TGL_DEBUG("Sending pending query \"" << m_name << "\" (" << m_msg_id << ") of size " << m_serializer->char_size() << " to DC " << m_dc->id);
+    TGL_DEBUG("sent pending query \"" << m_name << "\" (" << m_msg_id << ") of size " << m_serializer->char_size() << " to DC " << m_dc->id);
 
     m_timer->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
 
@@ -424,7 +429,6 @@ int query::handle_error(int error_code, const std::string& error_string)
         tgl_state::instance()->remove_query(shared_from_this());
     }
 
-    int res = 0;
     bool error_handled = false;
 
     switch (error_code) {
@@ -434,22 +438,17 @@ int query::handle_error(int error_code, const std::string& error_string)
             int new_dc = get_dc_from_migration(error_string);
             if (new_dc > 0 && new_dc < TGL_MAX_DC_NUM) {
                 tgl_state::instance()->set_working_dc(new_dc);
-                tgl_state::instance()->login();
+                auto dc = tgl_state::instance()->working_dc();
+
+                if (!dc->is_authorized()) {
+                    dc->restart_authorization();
+                }
+
                 m_ack_received = false;
-                //m_session_id = 0;
-                //struct tgl_dc* DC = q->DC;
-                //if (!(DC->flags & 4) && !(q->flags & QUERY_FORCE_SEND)) {
                 m_session_id = 0;
-                //}
                 m_dc = tgl_state::instance()->working_dc();
                 m_timer->start(0);
                 error_handled = true;
-                res = 1;
-            }
-            if (error_handled) {
-                TGL_NOTICE("handled migration error of " << error_string);
-            } else {
-                TGL_WARNING("failed to handle migration error of " << error_string);
             }
             break;
         }
@@ -463,7 +462,9 @@ int query::handle_error(int error_code, const std::string& error_string)
                     tgl_state::instance()->locks |= TGL_LOCK_PASSWORD;
                     tgl_do_check_password(std::bind(resend_query_cb, shared_from_this(), std::placeholders::_1));
                 }
-                res = 1;
+                if (should_retry()) {
+                    m_timer->start(0);
+                }
                 error_handled = true;
             } else if (error_string == "AUTH_KEY_UNREGISTERED" || error_string == "AUTH_KEY_INVALID") {
                 for (const auto& dc: tgl_state::instance()->dcs()) {
@@ -474,11 +475,20 @@ int query::handle_error(int error_code, const std::string& error_string)
                         dc->session->clear();
                         dc->session = nullptr;
                     }
-                    dc->flags &= ~TGLDCF_LOGGED_IN;
+                    dc->set_logged_in(false);
                 }
                 tgl_state::instance()->locks = 0;
                 tgl_state::instance()->login();
-                res = 1;
+                if (should_retry()) {
+                    m_timer->start(0);
+                }
+                error_handled = true;
+            } else if (error_string == "AUTH_KEY_PERM_EMPTY") {
+                assert(tgl_state::instance()->pfs_enabled());
+                m_dc->restart_temp_authorization();
+                if (should_retry()) {
+                    m_timer->start(0);
+                }
                 error_handled = true;
             }
             break;
@@ -498,9 +508,11 @@ int query::handle_error(int error_code, const std::string& error_string)
                 wait = 10;
             }
             m_ack_received = false;
-            m_timer->start(wait);
+            if (should_retry()) {
+                m_timer->start(wait);
+            }
             std::shared_ptr<tgl_dc> DC = m_dc;
-            if (!(DC->flags & 4) && !is_force()) {
+            if (!DC->is_configured() && !is_force()) {
                 m_session_id = 0;
             }
             error_handled = true;
@@ -508,21 +520,16 @@ int query::handle_error(int error_code, const std::string& error_string)
         }
     }
 
-    if (error_handled) {
-        TGL_NOTICE("error for query #" << m_msg_id << " error:" << error_code << " " << error_string << " (HANDLED)");
-    } else {
-        res = on_error(error_code, error_string);
-    }
-
-    if (res <= 0) {
+    if (!should_retry()) {
         clear_timer();
     }
 
-    if (res == -11) {
-        return -1;
+    if (error_handled) {
+        TGL_NOTICE("error for query #" << m_msg_id << " error:" << error_code << " " << error_string << " (HANDLED)");
+        return 0;
     }
 
-    return 0;
+    return on_error(error_code, error_string);
 }
 
 int tglq_query_result(tgl_in_buffer* in, int64_t id)
@@ -675,7 +682,7 @@ void tgl_do_help_get_config_dc(const std::shared_ptr<tgl_dc>& dc)
     auto q = std::make_shared<query_help_get_config>(std::bind(set_dc_configured, dc, std::placeholders::_1));
     q->out_header();
     q->out_i32(CODE_help_get_config);
-    q->execute(tgl_state::instance()->working_dc(), query::execution_option::FORCE);
+    q->execute(dc, query::execution_option::FORCE);
 }
 /* }}} */
 
@@ -780,7 +787,7 @@ public:
         TGL_DEBUG2("sign_in_on_answer");
         tl_ds_auth_authorization* DS_AA = static_cast<tl_ds_auth_authorization*>(D);
         std::shared_ptr<struct tgl_user> user = tglf_fetch_alloc_user(DS_AA->user);
-        tgl_state::instance()->set_dc_signed(tgl_state::instance()->working_dc()->id);
+        tgl_state::instance()->set_dc_logged_in(tgl_state::instance()->working_dc()->id);
         if (m_callback) {
             m_callback(!!user, user);
         }
@@ -2397,7 +2404,7 @@ static void resend_query_cb(const std::shared_ptr<query>& q, bool success)
     assert(success);
 
     TGL_DEBUG2("resend_query_cb");
-    tgl_state::instance()->set_dc_signed(tgl_state::instance()->working_dc()->id);
+    tgl_state::instance()->set_dc_logged_in(tgl_state::instance()->working_dc()->id);
 
     auto user_info_q = std::make_shared<query_user_info>(nullptr);
     user_info_q->out_i32(CODE_users_get_full_user);
@@ -2430,7 +2437,7 @@ public:
         assert(m_dc);
         TGL_NOTICE("auth imported from DC " << tgl_state::instance()->working_dc()->id << " to DC " << m_dc->id);
 
-        tgl_state::instance()->set_dc_signed(m_dc->id);
+        tgl_state::instance()->set_dc_logged_in(m_dc->id);
 
         if (m_callback) {
             m_callback(true);
@@ -4267,66 +4274,69 @@ void tgl_do_upgrade_group(const tgl_peer_id_t& id, const std::function<void(bool
 }
 
 
-static void set_dc_configured(const std::shared_ptr<tgl_dc>& D, bool success)
+static void set_dc_configured(const std::shared_ptr<tgl_dc>& dc, bool success)
 {
     if (!success) {
         return;
     }
 
-    D->flags |= TGLDCF_CONFIGURED;
+    dc->set_configured();
 
-    TGL_DEBUG("DC " << D->id << " is now configured");
+    TGL_DEBUG("DC " << dc->id << " is now configured");
 
-    //D->ev->start(tgl_state::instance()->temp_key_expire_time() * 0.9);
-    if (D == tgl_state::instance()->working_dc() || tgl_signed_dc(D)) {
-        D->send_pending_queries();
-    } else if (!tgl_signed_dc(D)) {
-        if (D->auth_transfer_in_process) {
-            D->send_pending_queries();
+    if (dc == tgl_state::instance()->working_dc() || dc->is_logged_in()) {
+        dc->send_pending_queries();
+    } else if (!dc->is_logged_in()) {
+        if (dc->auth_transfer_in_process) {
+            dc->send_pending_queries();
         } else {
-            tgl_do_transfer_auth(D, std::bind(tgl_transfer_auth_callback, D, std::placeholders::_1));
+            tgl_do_transfer_auth(dc, std::bind(tgl_transfer_auth_callback, dc, std::placeholders::_1));
         }
     }
 }
 
-class query_send_bind_temp_auth_key: public query
+class query_bind_temp_auth_key: public query
 {
 public:
-    query_send_bind_temp_auth_key(const std::shared_ptr<tgl_dc>& dc, int64_t message_id)
+    query_bind_temp_auth_key(const std::shared_ptr<tgl_dc>& dc, int64_t message_id)
         : query("bind temp auth key", TYPE_TO_PARAM(bool), message_id)
         , m_dc(dc)
     { }
 
     virtual void on_answer(void*) override
     {
-        m_dc->flags |= TGLDCF_BOUND;
-        TGL_DEBUG("Bind successful in DC " << m_dc->id);
+        m_dc->set_bound();
+        TGL_DEBUG("bind temp auth key successfully for DC " << m_dc->id);
         tgl_do_help_get_config_dc(m_dc);
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-        TGL_WARNING("Bind: error " << error_code << " " << error_string);
+        TGL_WARNING("bind temp auth key error " << error_code << " " << error_string << " for DC " << m_dc->id);
         if (error_code == 400) {
-            return -11;
+            m_dc->restart_temp_authorization();
         }
         return 0;
     }
 
-    virtual bool on_timeout() override
+    virtual void on_timeout() override
     {
-        TGL_NOTICE("Bind timed out for DC " << m_dc->id);
-        m_dc->reset();
-        return true;
+        TGL_WARNING("bind timed out for DC " << m_dc->id);
+        m_dc->restart_temp_authorization();
+    }
+
+    virtual bool should_retry() override
+    {
+        return false;
     }
 
 private:
     std::shared_ptr<tgl_dc> m_dc;
 };
 
-void tgl_do_send_bind_temp_key(const std::shared_ptr<tgl_dc>& D, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id)
+void tgl_do_bind_temp_key(const std::shared_ptr<tgl_dc>& D, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id)
 {
-    auto q = std::make_shared<query_send_bind_temp_auth_key>(D, msg_id);
+    auto q = std::make_shared<query_bind_temp_auth_key>(D, msg_id);
     q->out_i32(CODE_auth_bind_temp_auth_key);
     q->out_i64(D->auth_key_id);
     q->out_i64(nonce);
@@ -4402,7 +4412,7 @@ static void tgl_transfer_auth_callback(const std::shared_ptr<tgl_dc>& DC, bool s
 void tgl_export_all_auth()
 {
     for (const auto& dc: tgl_state::instance()->dcs()) {
-        if (dc && !tgl_signed_dc(dc)) {
+        if (dc && !dc->is_logged_in()) {
             tgl_do_transfer_auth(dc, std::bind(tgl_transfer_auth_callback, dc, std::placeholders::_1));
         }
     }
@@ -4542,7 +4552,7 @@ void tgl_bot_hash_cb(const void* code)
 
 static void tgl_sign_in()
 {
-    assert(!tgl_signed_dc(tgl_state::instance()->working_dc()));
+    assert(!tgl_state::instance()->working_dc()->is_logged_in());
 
     if (!(tgl_state::instance()->locks & TGL_LOCK_PHONE)) {
         TGL_DEBUG("asking for phone number");
@@ -4558,15 +4568,11 @@ void tgl_state::login()
         return;
     }
 
-    if (!tgl_authorized_dc(dc)) {
-        if (dc->session) {
-            dc->session->clear();
-            dc->session = nullptr;
-        }
-        tglmp_dc_create_session(dc);
+    if (!dc->is_authorized()) {
+        dc->restart_authorization();
     }
 
-    if (tgl_signed_dc(dc)) {
+    if (dc->is_logged_in()) {
         tgl_signed_in();
         return;
     }

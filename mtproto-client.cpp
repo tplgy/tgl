@@ -242,7 +242,7 @@ static int send_req_pq_temp_packet(const std::shared_ptr<tgl_connection>& c)
 // req_DH_params#d712e4be nonce:int128 server_nonce:int128 p:string q:string public_key_fingerprint:long encrypted_data:string = Server_DH_Params;
 // p_q_inner_data#83c95aec pq:string p:string q:string nonce:int128 server_nonce:int128 new_nonce:int256 = P_Q_inner_data;
 // p_q_inner_data_temp#3c6a84d4 pq:string p:string q:string nonce:int128 server_nonce:int128 new_nonce:int256 expires_in:int = P_Q_inner_data;
-static void send_req_dh_packet(const std::shared_ptr<tgl_connection>& c, TGLC_bn* pq, int temp_key)
+static void send_req_dh_packet(const std::shared_ptr<tgl_connection>& c, TGLC_bn* pq, bool temp_key)
 {
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
     if (!DC) {
@@ -262,11 +262,12 @@ static void send_req_dh_packet(const std::shared_ptr<tgl_connection>& c, TGLC_bn
     s.out_bignum(p.get());
     s.out_bignum(q.get());
 
-    s.out_i32s((int *) DC->nonce, 4);
-    s.out_i32s((int *) DC->server_nonce, 4);
+    s.out_i32s((int *)DC->nonce, 4);
+    s.out_i32s((int *)DC->server_nonce, 4);
     tglt_secure_random(DC->new_nonce, 32);
-    s.out_i32s((int *) DC->new_nonce, 8);
+    s.out_i32s((int *)DC->new_nonce, 8);
     if (temp_key) {
+        TGL_DEBUG("creating temp auth key expiring in " << tgl_state::instance()->temp_key_expire_time() << " seconds for DC " << DC->id);
         s.out_i32(tgl_state::instance()->temp_key_expire_time());
     }
 
@@ -301,7 +302,7 @@ static void send_req_dh_packet(const std::shared_ptr<tgl_connection>& c, TGLC_bn
 /* {{{ SEND DH PARAMS */
 // set_client_DH_params#f5045f1f nonce:int128 server_nonce:int128 encrypted_data:string = Set_client_DH_params_answer;
 // client_DH_inner_data#6643b654 nonce:int128 server_nonce:int128 retry_id:long g_b:string = Client_DH_Inner_Data
-static void send_dh_params(const std::shared_ptr<tgl_connection>& c, TGLC_bn* dh_prime, TGLC_bn* g_a, int g, int temp_key)
+static void send_dh_params(const std::shared_ptr<tgl_connection>& c, TGLC_bn* dh_prime, TGLC_bn* g_a, int g, bool temp_key)
 {
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
     if (!DC) {
@@ -366,7 +367,7 @@ static void send_dh_params(const std::shared_ptr<tgl_connection>& c, TGLC_bn* dh
 
 /* {{{ RECV RESPQ */
 // resPQ#05162463 nonce:int128 server_nonce:int128 pq:string server_public_key_fingerprints:Vector long = ResPQ
-static mtproto_client::execute_result process_respq_answer(const std::shared_ptr<tgl_connection>& c, char* packet, int len, int temp_key)
+static mtproto_client::execute_result process_respq_answer(const std::shared_ptr<tgl_connection>& c, char* packet, int len, bool temp_key)
 {
     assert(!(len & 3));
     tgl_in_buffer in;
@@ -435,7 +436,7 @@ static mtproto_client::execute_result process_respq_answer(const std::shared_ptr
 // server_DH_params_fail#79cb045d nonce:int128 server_nonce:int128 new_nonce_hash:int128 = Server_DH_Params;
 // server_DH_params_ok#d0e8075c nonce:int128 server_nonce:int128 encrypted_answer:string = Server_DH_Params;
 // server_DH_inner_data#b5890dba nonce:int128 server_nonce:int128 g:int dh_prime:string g_a:string server_time:int = Server_DH_inner_data;
-static mtproto_client::execute_result process_dh_answer(const std::shared_ptr<tgl_connection>& c, char* packet, int len, int temp_key)
+static mtproto_client::execute_result process_dh_answer(const std::shared_ptr<tgl_connection>& c, char* packet, int len, bool temp_key)
 {
     assert(!(len & 3));
     tgl_in_buffer in;
@@ -567,15 +568,24 @@ static void create_temp_auth_key(const std::shared_ptr<tgl_connection>& c)
     send_req_pq_temp_packet(c);
 }
 
-int tglmp_encrypt_inner_temp(const std::shared_ptr<tgl_connection>& c, const int32_t* msg, int msg_ints, int useful, void* data, int64_t msg_id);
+static int tglmp_encrypt_inner_temp(const std::shared_ptr<tgl_connection>& c, const int32_t* msg, int msg_ints, void* data, int64_t msg_id);
 static void bind_temp_auth_key(const std::shared_ptr<tgl_connection>& c);
+
+static void restart_dc_authorization(const std::shared_ptr<tgl_dc>& dc, bool temp_key)
+{
+    if (temp_key) {
+        dc->restart_temp_authorization();
+    } else {
+        dc->restart_authorization();
+    }
+}
 
 /* {{{ RECV AUTH COMPLETE */
 
 // dh_gen_ok#3bcbf734 nonce:int128 server_nonce:int128 new_nonce_hash1:int128 = Set_client_DH_params_answer;
 // dh_gen_retry#46dc1fb9 nonce:int128 server_nonce:int128 new_nonce_hash2:int128 = Set_client_DH_params_answer;
 // dh_gen_fail#a69dae02 nonce:int128 server_nonce:int128 new_nonce_hash3:int128 = Set_client_DH_params_answer;
-static mtproto_client::execute_result process_auth_complete(const std::shared_ptr<tgl_connection>& c, char* packet, int len, int temp_key)
+static mtproto_client::execute_result process_auth_complete(const std::shared_ptr<tgl_connection>& c, char* packet, int len, bool temp_key)
 {
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
     if (!DC) {
@@ -587,14 +597,17 @@ static mtproto_client::execute_result process_auth_complete(const std::shared_pt
     in.ptr = reinterpret_cast<int*>(packet);
     in.end = in.ptr + (len / 4);
     if (check_unauthorized_header(&in) < 0) {
-        return mtproto_client::execute_result::bad_connection;
+        TGL_ERROR("check header failed");
+        restart_dc_authorization(DC, temp_key);
+        return mtproto_client::execute_result::ok;
     }
 
     tgl_in_buffer skip_in = in;
     struct paramed_type type = TYPE_TO_PARAM(set_client_d_h_params_answer);
     if (skip_type_any(&skip_in, &type) < 0 || skip_in.ptr != skip_in.end) {
         TGL_ERROR("can not parse server_DH_params answer");
-        return mtproto_client::execute_result::bad_connection;
+        restart_dc_authorization(DC, temp_key);
+        return mtproto_client::execute_result::ok;
     }
 
     uint32_t op = fetch_i32(&in);
@@ -604,16 +617,19 @@ static mtproto_client::execute_result process_auth_complete(const std::shared_pt
     fetch_i32s(&in, tmp, 4);
     if (memcmp(DC->nonce, tmp, 16)) {
         TGL_ERROR("nonce mismatch");
-        return mtproto_client::execute_result::bad_connection;
+        restart_dc_authorization(DC, temp_key);
+        return mtproto_client::execute_result::ok;
     }
     fetch_i32s(&in, tmp, 4);
     if (memcmp(DC->server_nonce, tmp, 16)) {
         TGL_ERROR("nonce mismatch");
-        return mtproto_client::execute_result::bad_connection;
+        restart_dc_authorization(DC, temp_key);
+        return mtproto_client::execute_result::ok;
     }
     if (op != CODE_dh_gen_ok) {
-        TGL_ERROR("DH failed. Retry");
-        return mtproto_client::execute_result::bad_connection;
+        TGL_DEBUG("DH failed for DC " << DC->id << ", retrying");
+        restart_dc_authorization(DC, temp_key);
+        return mtproto_client::execute_result::ok;
     }
 
     fetch_i32s(&in, tmp, 4);
@@ -624,40 +640,42 @@ static mtproto_client::execute_result process_auth_complete(const std::shared_pt
     memcpy(th, DC->new_nonce, 32);
     th[32] = 1;
     if (!temp_key) {
-        TGLC_sha1((unsigned char *)DC->auth_key, 256, sha1_buffer);
+        TGLC_sha1(DC->auth_key, 256, sha1_buffer);
     } else {
-        TGLC_sha1((unsigned char *)DC->temp_auth_key, 256, sha1_buffer);
+        TGLC_sha1(DC->temp_auth_key, 256, sha1_buffer);
     }
     memcpy(th + 33, sha1_buffer, 8);
     TGLC_sha1(th, 41, sha1_buffer);
     if (memcmp(tmp, sha1_buffer + 4, 16)) {
         TGL_ERROR("hash mismatch");
-        return mtproto_client::execute_result::bad_connection;
+        restart_dc_authorization(DC, temp_key);
+        return mtproto_client::execute_result::ok;
     }
 
     if (!temp_key) {
         tgl_state::instance()->set_auth_key(DC->id, NULL);
     } else {
-        TGLC_sha1((unsigned char *)DC->temp_auth_key, 256, sha1_buffer);
-        DC->temp_auth_key_id = *reinterpret_cast<int64_t*>((sha1_buffer + 12));
+        memset(sha1_buffer, 0, sizeof(sha1_buffer));
+        TGLC_sha1(DC->temp_auth_key, 256, sha1_buffer);
+        DC->temp_auth_key_id = *reinterpret_cast<int64_t*>(sha1_buffer + 12);
     }
 
     DC->server_salt = *reinterpret_cast<int64_t*>(DC->server_nonce) ^ *reinterpret_cast<int64_t*>(DC->new_nonce);
 
     DC->state = st_authorized;
 
-    TGL_DEBUG("Auth success for DC " << DC->id << " " << (temp_key ? "(temp)" : "") << " salt=" << DC->server_salt);
+    TGL_DEBUG("auth success for DC " << DC->id << " " << (temp_key ? "(temp)" : "") << " salt=" << DC->server_salt);
     if (temp_key) {
         bind_temp_auth_key(c);
     } else {
-        DC->flags |= TGLDCF_AUTHORIZED;
+        DC->set_authorized();
         if (tgl_state::instance()->pfs_enabled()) {
             create_temp_auth_key(c);
         } else {
             DC->temp_auth_key_id = DC->auth_key_id;
             memcpy(DC->temp_auth_key, DC->auth_key, 256);
-            DC->flags |= TGLDCF_BOUND;
-            if (!(DC->flags & TGLDCF_CONFIGURED)) {
+            DC->set_bound();
+            if (!DC->is_configured()) {
                 tgl_do_help_get_config_dc(DC);
             }
         }
@@ -697,9 +715,9 @@ static void bind_temp_auth_key(const std::shared_ptr<tgl_connection>& c)
 
     int data[1000];
     memset(data, 0, sizeof(data));
-    int len = tglmp_encrypt_inner_temp(c, s.i32_data(), s.i32_size(), 0, data, msg_id);
+    int len = tglmp_encrypt_inner_temp(c, s.i32_data(), s.i32_size(), data, msg_id);
     DC->temp_auth_key_bind_query_id = msg_id;
-    tgl_do_send_bind_temp_key(DC, rand, expires, (void *)data, len, msg_id);
+    tgl_do_bind_temp_key(DC, rand, expires, (void *)data, len, msg_id);
 }
 
 /*
@@ -720,7 +738,7 @@ static int64_t generate_next_msg_id(const std::shared_ptr<tgl_dc>& DC, const std
 {
     int64_t next_id = static_cast<int64_t>(get_server_time(DC)*(1LL << 32)) & -4;
     if (next_id <= S->last_msg_id) {
-        next_id = S->last_msg_id  += 4;
+        next_id = S->last_msg_id += 4;
     } else {
         S->last_msg_id = next_id;
     }
@@ -803,10 +821,7 @@ int64_t tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
         return -1;
     }
 
-    if (!(DC->flags & TGLDCF_CONFIGURED) && !force_send) {
-        TGL_NOTICE("generate next msg ID...request not sent");
-        return generate_next_msg_id(DC, S);
-    }
+    assert(DC->is_configured() || force_send);
 
     const int UNENCSZ = offsetof(struct encrypted_message, server_salt);
     if (msg_ints <= 0) {
@@ -827,17 +842,17 @@ int64_t tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
 
     enc_msg->msg_id = msg_id_override;
     init_enc_msg(*enc_msg, S, useful);
+    int64_t msg_id = enc_msg->msg_id;
 
     int l = aes_encrypt_message(DC->temp_auth_key, enc_msg);
     assert(l > 0);
     rpc_send_message(c, enc_msg, l + UNENCSZ);
 
-    return S->last_msg_id;
+    return msg_id;
 }
 
-int tglmp_encrypt_inner_temp(const std::shared_ptr<tgl_connection>& c, const int32_t* msg, int msg_ints, int useful, void* data, int64_t msg_id)
+static int tglmp_encrypt_inner_temp(const std::shared_ptr<tgl_connection>& c, const int32_t* msg, int msg_ints, void* data, int64_t msg_id)
 {
-    TGL_UNUSED(useful);
     std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
     std::shared_ptr<tgl_session> S = c->get_session().lock();
     if (!DC || !S) {
@@ -857,12 +872,11 @@ int tglmp_encrypt_inner_temp(const std::shared_ptr<tgl_connection>& c, const int
 
     init_enc_msg_inner_temp(*enc_msg, DC, msg_id);
 
-    int l = aes_encrypt_message(DC->auth_key, enc_msg);
-    assert(l > 0);
-    //rpc_send_message(c, &enc_msg, l + UNENCSZ);
-    memcpy(data, enc_msg, l + UNENCSZ);
+    int length = aes_encrypt_message(DC->auth_key, enc_msg);
+    assert(length > 0);
+    memcpy(data, enc_msg, length + UNENCSZ);
 
-    return l + UNENCSZ;
+    return length + UNENCSZ;
 }
 
 static int rpc_execute_answer(const std::shared_ptr<tgl_connection>& c, tgl_in_buffer* in, int64_t msg_id, bool in_gzip = false);
@@ -917,7 +931,7 @@ static int work_new_session_created(const std::shared_ptr<tgl_connection>& c, tg
 
     //tglq_regen_queries_from_old_session(DC, S);
 
-    if (tgl_state::instance()->is_started() && !(tgl_state::instance()->locks & TGL_LOCK_DIFF) && (tgl_state::instance()->working_dc()->flags & TGLDCF_LOGGED_IN)) {
+    if (tgl_state::instance()->is_started() && !(tgl_state::instance()->locks & TGL_LOCK_DIFF) && (tgl_state::instance()->working_dc()->is_logged_in())) {
         tgl_do_get_difference(false, nullptr);
     }
     return 0;
@@ -1119,16 +1133,6 @@ static void create_connection(const std::shared_ptr<tgl_session>& S)
     S->c->open();
 }
 
-static void restart_session(const std::shared_ptr<tgl_dc>& dc)
-{
-    if (dc->session) {
-        TGL_NOTICE("failing session " << dc->session->session_id);
-        dc->session->clear();
-        dc->session = nullptr;
-    }
-    tglmp_dc_create_session(dc);
-}
-
 static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<tgl_connection>& c, struct encrypted_message* enc, int len)
 {
     const int MINSZ = offsetof(struct encrypted_message, message);
@@ -1146,7 +1150,7 @@ static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<
 
     if (enc->auth_key_id != DC->temp_auth_key_id && enc->auth_key_id != DC->auth_key_id) {
         TGL_WARNING("received msg from dc " << DC->id << " with auth_key_id " << enc->auth_key_id <<
-                " (perm_auth_key_id " << DC->auth_key_id << " temp_auth_key_id "<< DC->temp_auth_key_id << "). Dropping");
+                " (perm_auth_key_id " << DC->auth_key_id << " temp_auth_key_id "<< DC->temp_auth_key_id << "), dropping");
         return mtproto_client::execute_result::ok;
     }
 
@@ -1199,8 +1203,7 @@ static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<
     if (this_server_time < st - 300 || this_server_time > st + 30) {
         TGL_WARNING("bad msg time: salt = " << enc->server_salt << ", session_id = " << enc->session_id << ", msg_id = " << enc->msg_id
                 << ", seq_no = " << enc->seq_no << ", st = " << st << ", now = " << tgl_get_system_time());
-        restart_session(DC);
-        return mtproto_client::execute_result::bad_session;
+        return mtproto_client::execute_result::bad_connection;
     }
     S->received_messages ++;
 
@@ -1224,8 +1227,7 @@ static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<
     assert(S->session_id == enc->session_id);
 
     if (rpc_execute_answer(c, &in, enc->msg_id) < 0) {
-        restart_session(DC);
-        return mtproto_client::execute_result::bad_session;
+        return mtproto_client::execute_result::bad_connection;
     }
     assert(in.ptr == in.end);
     return mtproto_client::execute_result::ok;
@@ -1251,35 +1253,66 @@ static mtproto_client::execute_result rpc_execute(const std::shared_ptr<tgl_conn
 #if !defined(__MACH__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__CYGWIN__)
     //  setsockopt(c->fd, IPPROTO_TCP, TCP_QUICKACK, (int[]){0}, 4);
 #endif
-    int o = DC->state;
-    //if (DC->flags & TGLDCF_AUTHORIZED) { o = st_authorized;}
-    if (o != st_authorized) {
-        TGL_DEBUG(__func__ << ": state = " << o);
+    tgl_dc_state state = DC->state;
+    if (state != st_authorized) {
+        TGL_DEBUG("state = " << state << " for DC " << DC->id);
     }
-    switch (o) {
+    switch (state) {
     case st_reqpq_sent:
-        return process_respq_answer(c, response.get()/* + 8*/, len/* - 12*/, 0);
+        return process_respq_answer(c, response.get()/* + 8*/, len/* - 12*/, false);
     case st_reqdh_sent:
-        return process_dh_answer(c, response.get()/* + 8*/, len/* - 12*/, 0);
+        return process_dh_answer(c, response.get()/* + 8*/, len/* - 12*/, false);
     case st_client_dh_sent:
-        return process_auth_complete(c, response.get()/* + 8*/, len/* - 12*/, 0);
+        return process_auth_complete(c, response.get()/* + 8*/, len/* - 12*/, false);
     case st_reqpq_sent_temp:
-        return process_respq_answer(c, response.get()/* + 8*/, len/* - 12*/, 1);
+        return process_respq_answer(c, response.get()/* + 8*/, len/* - 12*/, true);
     case st_reqdh_sent_temp:
-        return process_dh_answer(c, response.get()/* + 8*/, len/* - 12*/, 1);
+        return process_dh_answer(c, response.get()/* + 8*/, len/* - 12*/, true);
     case st_client_dh_sent_temp:
-        return process_auth_complete(c, response.get()/* + 8*/, len/* - 12*/, 1);
+        return process_auth_complete(c, response.get()/* + 8*/, len/* - 12*/, true);
     case st_authorized:
         if (op < 0 && op >= -999) {
-            TGL_WARNING("Server error " << op << " from DC " << DC->id);
-            DC->reset();
-            return mtproto_client::execute_result::bad_connection;
+            if (tgl_state::instance()->pfs_enabled() && op == -404) {
+                TGL_DEBUG("bind temp auth key failed with -404 error for DC "
+                        << DC->id << ", which is not unusual, requesting a new temp auth key and trying again");
+                DC->restart_temp_authorization();
+                return mtproto_client::execute_result::ok;
+            } else {
+                TGL_WARNING("server error " << op << " from DC " << DC->id);
+                return mtproto_client::execute_result::bad_connection;
+            }
         } else {
             return process_rpc_message(c, (struct encrypted_message *)(response.get()/* + 8*/), len/* - 12*/);
         }
     default:
         TGL_ERROR("cannot receive answer in state " << DC->state);
         return mtproto_client::execute_result::bad_connection;
+    }
+}
+
+void tgl_dc::restart_temp_authorization()
+{
+    TGL_DEBUG("restarting temp authorization for DC " << id);
+    reset_temp_authorization();
+    assert(is_authorized());
+    if (is_authorized()) {
+        state = st_authorized;
+    }
+    if (!session) {
+        tglmp_dc_create_session(shared_from_this());
+    } else {
+        create_temp_auth_key(session->c);
+    }
+}
+
+void tgl_dc::restart_authorization()
+{
+    TGL_DEBUG("restarting authorization for DC " << id);
+    reset_authorization();
+    if (!session) {
+        tglmp_dc_create_session(shared_from_this());
+    } else {
+        send_req_pq_packet(session->c);
     }
 }
 
@@ -1295,31 +1328,32 @@ static int tc_becomes_ready(const std::shared_ptr<tgl_connection>& c)
     //assert(c->write_out(&byte, 1) == 1);
     //c->flush();
 
-    if (DC->flags & TGLDCF_AUTHORIZED) { DC->state = st_authorized; }
-    int o = DC->state;
-    if (o == st_authorized && !tgl_state::instance()->pfs_enabled()) {
+    if (DC->is_authorized()) {
+        DC->state = st_authorized;
+    }
+    tgl_dc_state state = DC->state;
+    if (state == st_authorized && !tgl_state::instance()->pfs_enabled()) {
         DC->temp_auth_key_id = DC->auth_key_id;
         memcpy(DC->temp_auth_key, DC->auth_key, 256);
-        DC->flags |= TGLDCF_BOUND;
+        DC->set_bound();
     }
-    switch (o) {
+    switch (state) {
     case st_init:
         TGL_DEBUG("DC " << DC->id << " is in init state");
         send_req_pq_packet(c);
         break;
     case st_authorized:
         TGL_DEBUG("DC " << DC->id << " is in authorized state");
-        if (!(DC->flags & TGLDCF_BOUND)) {
+        if (!DC->is_bound()) {
             TGL_DEBUG("DC " << DC->id << " is not bond");
             assert(tgl_state::instance()->pfs_enabled());
             if (!DC->temp_auth_key_id) {
-                assert(!DC->temp_auth_key_id);
                 assert(tgl_state::instance()->pfs_enabled());
                 create_temp_auth_key(c);
             } else {
                 bind_temp_auth_key(c);
             }
-        } else if (!(DC->flags & TGLDCF_CONFIGURED)) {
+        } else if (!DC->is_configured()) {
             TGL_DEBUG("DC " << DC->id << " is not configured");
             tgl_do_help_get_config_dc(DC);
         }
@@ -1368,6 +1402,15 @@ int tglmp_on_start()
 
 static int send_all_acks(const std::shared_ptr<tgl_session>& session)
 {
+    auto dc = session->dc.lock();
+    if (!dc) {
+        return -1;
+    }
+
+    if (!dc->is_configured()) {
+        return -1;
+    }
+
     mtprotocol_serializer s;
     s.out_i32(CODE_msgs_ack);
     s.out_i32(CODE_vector);
@@ -1398,19 +1441,18 @@ void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& s, int64_t id)
     s->ack_set.insert(id);
 }
 
-void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC)
+void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& dc)
 {
     std::shared_ptr<tgl_session> S = std::make_shared<tgl_session>();
-    auto result = TGLC_rand_pseudo_bytes((unsigned char *) &S->session_id, 8);
-    TGL_ASSERT_UNUSED(result, result >= 0);
-    S->dc = DC;
+    tglt_secure_random((unsigned char *)&S->session_id, 8);
+    S->dc = dc;
 
     create_connection(S);
     S->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&send_all_acks_gateway, S));
-    assert(!DC->session);
+    assert(!dc->session);
 
     if (S->c) {
-        DC->session = S;
+        dc->session = S;
     } else {
         S->clear();
         S = nullptr;
@@ -1419,6 +1461,16 @@ void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& DC)
 
 void tgl_do_send_ping(const std::shared_ptr<tgl_connection>& c)
 {
+    auto dc = c->get_dc().lock();
+    if (!dc) {
+        TGL_WARNING("no dc, can't send ping");
+        return;
+    }
+
+    if (!dc->is_configured()) {
+        return;
+    }
+
     int32_t buffer[3];
     buffer[0] = CODE_ping;
     *reinterpret_cast<int64_t*>(buffer + 1) = tgl_random<int64_t>();

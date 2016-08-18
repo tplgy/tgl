@@ -45,8 +45,7 @@ void tgl_session::clear()
 
 tgl_dc::tgl_dc()
     : id(0)
-    , flags(0)
-    , rsa_key_idx(0)
+    , rsa_key_idx(-1)
     , state(st_init)
     , auth_key_id(0)
     , temp_auth_key_id(0)
@@ -55,43 +54,43 @@ tgl_dc::tgl_dc()
     , server_time_delta(0)
     , server_time_udelta(0)
     , auth_transfer_in_process(false)
+    , m_active_queries(0)
+    , m_flags(0)
     , m_session_cleanup_timer(tgl_state::instance()->timer_factory()->create_timer(std::bind(&tgl_dc::cleanup_timer_expired, this)))
 {
-    memset(auth_key, 0, 256);
-    memset(temp_auth_key, 0, 256);
-    memset(nonce, 0, 256);
-    memset(new_nonce, 0, 256);
-    memset(server_nonce, 0, 256);
+    memset(auth_key, 0, sizeof(auth_key));
+    memset(temp_auth_key, 0, sizeof(temp_auth_key));
+    memset(nonce, 0, sizeof(nonce));
+    memset(new_nonce, 0, sizeof(new_nonce));
+    memset(server_nonce, 0, sizeof(server_nonce));
 }
 
-void tgl_dc::reset()
+void tgl_dc::reset_authorization()
 {
-    TGL_DEBUG("resetting DC " << id);
-    if (session) {
-        session->c->close();
-        session->ev->cancel();
-        session->c = nullptr;
-        session->ev = nullptr;
-        session = nullptr;
+    reset_temp_authorization();
+    state = st_init;
+    memset(auth_key, 0, sizeof(auth_key));
+    auth_key_id = 0;
+    if (!m_pending_queries.empty()) {
+        send_pending_queries();
     }
+}
+
+void tgl_dc::reset_temp_authorization()
+{
     if (temp_auth_key_bind_query_id) {
         tglq_query_delete(temp_auth_key_bind_query_id);
         temp_auth_key_bind_query_id = 0;
     }
-    flags = 0;
-    rsa_key_idx = 0;
-    state = st_init;
-    memset(auth_key, 0, 256);
-    memset(temp_auth_key, 0, 256);
-    memset(nonce, 0, 256);
-    memset(new_nonce, 0, 256);
-    memset(server_nonce, 0, 256);
-    auth_key_id = 0;
+    rsa_key_idx = -1;
+    memset(temp_auth_key, 0, sizeof(temp_auth_key));
+    memset(nonce, 0, sizeof(nonce));
+    memset(new_nonce, 0, sizeof(new_nonce));
+    memset(server_nonce, 0, sizeof(server_nonce));
     temp_auth_key_id = 0;
     server_salt = 0;
-    if (!m_pending_queries.empty()) {
-        send_pending_queries();
-    }
+    set_configured(false);
+    set_bound(false);
 }
 
 void tgl_dc::send_pending_queries()
@@ -141,10 +140,7 @@ void tgl_dc::cleanup_timer_expired()
     if (!m_active_queries && m_pending_queries.empty()) {
         TGL_DEBUG("cleanup timer expired for DC " << id << ", deleting session");
         if (session) {
-            session->c->close();
-            session->ev->cancel();
-            session->c = nullptr;
-            session->ev = nullptr;
+            session->clear();
             session = nullptr;
         }
     }

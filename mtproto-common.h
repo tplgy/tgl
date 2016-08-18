@@ -105,6 +105,7 @@
 #define CODE_msg_new_detailed_info 0x809db6df
 
 #define CODE_msg_detailed_info 0x276d3ec6
+
 #define MAX_PROTO_MESSAGE_INTS	1048576
 
 void tgl_prng_seed(const char* password_filename, int password_length);

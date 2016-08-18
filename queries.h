@@ -128,9 +128,10 @@ public:
 
     virtual void on_answer(void* DS) = 0;
     virtual int on_error(int error_code, const std::string& error_string) = 0;
+    virtual void on_timeout() { }
 
     virtual double timeout_interval() const { return 0; }
-    virtual bool on_timeout() { return false; };
+    virtual bool should_retry() { return true; }
 
 private:
     bool is_force() const { return m_exec_option == execution_option::FORCE; }
@@ -185,7 +186,7 @@ void tglq_query_restart(int64_t id);
 
 double get_double_time(void);
 
-void tgl_do_send_bind_temp_key(const std::shared_ptr<tgl_dc>& D, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id);
+void tgl_do_bind_temp_key(const std::shared_ptr<tgl_dc>& D, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id);
 void tgl_do_get_difference(bool sync_from_start, const std::function<void(bool success)>& callback);
 void tgl_do_get_channel_difference(int id, const std::function<void(bool success)>& callback);
 void tgl_do_lookup_state();

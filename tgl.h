@@ -134,7 +134,7 @@ struct tgl_state {
     void set_auth_key(int num, const char* buf);
     void set_our_id(int id);
     void set_dc_option(bool is_v6, int id, const std::string& ip, int port);
-    void set_dc_signed(int num);
+    void set_dc_logged_in(int num);
     void set_working_dc(int num);
     void set_qts(int32_t qts, bool force = false);
     void set_pts(int32_t pts, bool force = false);
@@ -242,11 +242,6 @@ private:
 };
 
 int tgl_secret_chat_for_user(tgl_peer_id_t user_id);
-
-int tgl_authorized_dc(const std::shared_ptr<tgl_dc>& dc);
-int tgl_signed_dc(const std::shared_ptr<tgl_dc>& dc);
-
-void tgl_dc_authorize(const std::shared_ptr<tgl_dc>& dc);
 
 #define TGL_SEND_MSG_FLAG_DISABLE_PREVIEW 1
 #define TGL_SEND_MSG_FLAG_ENABLE_PREVIEW 2
