@@ -568,6 +568,7 @@ int query::handle_result(tgl_in_buffer* in)
     if (skip_type_any(&skip_in, &m_type) < 0) {
         TGL_ERROR("Skipped " << (long)(skip_in.ptr - in->ptr) << " int out of " << (long)(skip_in.end - in->ptr) << " (type " << m_type.type.id << ") (query type " << name() << ")");
         TGL_ERROR("0x" << std::hex << *(in->ptr - 1) << " 0x" << *(in->ptr) << " 0x" << *(in->ptr + 1) << " 0x" << *(in->ptr + 2));
+        TGL_ERROR(in->print_buffer());
         assert(false);
     }
 
@@ -1148,7 +1149,7 @@ class query_mark_read: public query
 public:
     query_mark_read(const tgl_input_peer_t& id, int max_id,
             const std::function<void(bool)>& callback)
-        : query("mark read", TYPE_TO_PARAM(messages_affected_history))
+        : query("mark read", TYPE_TO_PARAM(messages_affected_messages))
         , m_id(id)
         , m_callback(callback)
     { }
