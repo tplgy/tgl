@@ -1161,15 +1161,9 @@ public:
         if (tgl_check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count))) {
             tgl_state::instance()->set_pts(DS_LVAL(DS_MAM->pts));
         }
-
-#if 0
-        if (tgl_get_peer_type(E->id) == tgl_peer_type::user) {
-          bl_do_user(TLS, tgl_get_peer_id(E->id), NULL, NULL, 0, NULL, 0, NULL, 0, NULL, 0, NULL, NULL, &E->max_id, NULL, NULL, TGL_FLAGS_UNCHANGED);
-        } else {
-          assert(tgl_get_peer_type(E->id) == tgl_peer_type::chat);
-          bl_do_chat(TLS, tgl_get_peer_id(E->id), NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &E->max_id, NULL, TGL_FLAGS_UNCHANGED);
+        if (tgl_state::instance()->callback()) {
+            tgl_state::instance()->callback()->messages_mark_read_in(tgl_peer_id_t::from_input_peer(m_id), DS_LVAL(DS_MAM->pts));
         }
-#endif
         if (m_callback) {
             m_callback(true);
         }
