@@ -76,8 +76,6 @@
 #define O_BINARY 0
 #endif
 
-static constexpr float DEFAULT_QUERY_TIMEOUT = 6.0;
-
 void query::clear_timers()
 {
     if (m_timer) {
@@ -96,6 +94,10 @@ void query::alarm()
     TGL_DEBUG("alarm query #" << m_msg_id << " (type '" << m_name << "')");
     clear_timers();
 
+    if (!check_connectivity()) {
+        return;
+    }
+
     bool pending = false;
     if (!m_dc->is_configured() && !is_force()) {
         pending = true;
@@ -104,9 +106,6 @@ void query::alarm()
     if (!m_dc->is_logged_in() && !is_login() && !is_force()) {
         pending = true;
     }
-
-    double timeout = timeout_interval();
-    timeout = timeout ? timeout : DEFAULT_QUERY_TIMEOUT;
 
     if (!pending && m_session && m_session_id && m_dc && m_dc->session == m_session && m_session->session_id == m_session_id) {
         mtprotocol_serializer s;
@@ -120,7 +119,7 @@ void query::alarm()
             handle_error(400, "client failed to send message");
             return;
         }
-        timeout_within(timeout);
+        timeout_within(timeout_interval());
     } else if (!pending && m_dc->session) {
         m_ack_received = false;
         if (m_msg_id) {
@@ -141,7 +140,7 @@ void query::alarm()
         if (dc && !dc->is_configured() && !is_force()) {
             m_session_id = 0;
         }
-        timeout_within(timeout);
+        timeout_within(timeout_interval());
     } else {
         // we don't have a valid session with the DC, so defer query until we do
         m_dc->add_pending_query(shared_from_this());
@@ -200,6 +199,10 @@ static void tgl_do_transfer_auth(const std::shared_ptr<tgl_dc>& dc, const std::f
 
 void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
 {
+    if (!check_connectivity()) {
+        return;
+    }
+
     m_ack_received = false;
     m_exec_option = option;
     m_dc = dc;
@@ -241,8 +244,7 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
         m_seq_no = m_session->seq_no - 1;
 
         tgl_state::instance()->add_query(shared_from_this());
-        double timeout = timeout_interval();
-        timeout_within(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
+        timeout_within(timeout_interval());
 
         TGL_DEBUG("sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << ": #" << m_msg_id);
     }
@@ -250,10 +252,13 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
 
 bool query::execute_after_pending()
 {
+    if (!check_connectivity()) {
+        // We gave an error in check_connectity above. So this has been executed but failed.
+        return true;
+    }
+
     assert(m_dc);
     assert(m_exec_option != execution_option::UNKNOWN);
-
-    double timeout = timeout_interval();
 
     if (!m_dc->session) {
         tglmp_dc_create_session(m_dc);
@@ -292,7 +297,7 @@ bool query::execute_after_pending()
 
     TGL_DEBUG("sent pending query \"" << m_name << "\" (" << m_msg_id << ") of size " << m_serializer->char_size() << " to DC " << m_dc->id);
 
-    timeout_within(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
+    timeout_within(timeout_interval());
 
     return true;
 }
@@ -545,6 +550,22 @@ void query::timeout_within(double seconds)
     }
 
     m_timer->start(seconds);
+}
+
+bool query::check_connectivity()
+{
+    if (tgl_state::instance()->online_status() != tgl_online_status::not_online) {
+        return true;
+    }
+
+    TGL_WARNING("we don't have internet connection, failing query (" << name() << ")");
+    on_disconnected();
+    return false;
+}
+
+void query::on_disconnected()
+{
+    on_error(600, "NOT_CONNECTED");
 }
 
 int tglq_query_result(tgl_in_buffer* in, int64_t id)

@@ -128,8 +128,9 @@ public:
     virtual void on_answer(void* DS) = 0;
     virtual int on_error(int error_code, const std::string& error_string) = 0;
     virtual void on_timeout() { }
+    virtual void on_disconnected();
 
-    virtual double timeout_interval() const { return 0; }
+    virtual double timeout_interval() const { return 6.0; }
     virtual bool should_retry_on_timeout() { return true; }
     virtual bool should_retry_after_recover_from_error() { return true; }
 
@@ -139,6 +140,7 @@ private:
     void retry_within(double seconds);
     void timeout_within(double seconds);
     void timeout_alarm();
+    bool check_connectivity();
 
 private:
     int64_t m_msg_id;
