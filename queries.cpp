@@ -78,22 +78,23 @@
 
 static constexpr float DEFAULT_QUERY_TIMEOUT = 6.0;
 
-void query::cancel_timer()
+void query::clear_timers()
 {
     if (m_timer) {
         m_timer->cancel();
     }
-}
-
-void query::clear_timer()
-{
-    cancel_timer();
     m_timer = nullptr;
+
+    if (m_retry_timer) {
+        m_retry_timer->cancel();
+    }
+    m_retry_timer = nullptr;
 }
 
 void query::alarm()
 {
     TGL_DEBUG("alarm query #" << m_msg_id << " (type '" << m_name << "')");
+    clear_timers();
 
     bool pending = false;
     if (!m_dc->is_configured() && !is_force()) {
@@ -104,9 +105,8 @@ void query::alarm()
         pending = true;
     }
 
-    assert(m_timer);
     double timeout = timeout_interval();
-    m_timer->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
+    timeout = timeout ? timeout : DEFAULT_QUERY_TIMEOUT;
 
     if (!pending && m_session && m_session_id && m_dc && m_dc->session == m_session && m_session->session_id == m_session_id) {
         mtprotocol_serializer s;
@@ -120,6 +120,7 @@ void query::alarm()
             handle_error(400, "client failed to send message");
             return;
         }
+        timeout_within(timeout);
     } else if (!pending && m_dc->session) {
         m_ack_received = false;
         if (m_msg_id) {
@@ -140,9 +141,9 @@ void query::alarm()
         if (dc && !dc->is_configured() && !is_force()) {
             m_session_id = 0;
         }
+        timeout_within(timeout);
     } else {
         // we don't have a valid session with the DC, so defer query until we do
-        m_timer->cancel();
         m_dc->add_pending_query(shared_from_this());
         TGL_DEBUG("added query #" << msg_id() << "(type '" << name() << "') to pending list");
     }
@@ -169,7 +170,7 @@ void query::regen()
             m_session_id = 0;
         }
     }
-    m_timer->start(0.001);
+    retry_within(0);
 }
 
 void tglq_query_restart(int64_t id)
@@ -177,21 +178,20 @@ void tglq_query_restart(int64_t id)
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (q) {
         TGL_NOTICE("restarting query " << id);
-        q->cancel_timer();
         q->alarm();
     }
 }
 
-static void alarm_query_gateway(const std::shared_ptr<query>& q)
+void query::timeout_alarm()
 {
-    assert(q);
-    q->on_timeout();
-    if (!q->should_retry()) {
-        if (q->msg_id()) {
-            tgl_state::instance()->remove_query(q);
+    clear_timers();
+    on_timeout();
+    if (!should_retry_on_timeout()) {
+        if (msg_id()) {
+            tgl_state::instance()->remove_query(shared_from_this());
         }
     } else {
-        q->alarm();
+        alarm();
     }
 }
 
@@ -223,8 +223,6 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
 
     TGL_DEBUG("sending query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << (pending ? " (pending)" : ""));
 
-    m_timer = tgl_state::instance()->timer_factory()->create_timer(std::bind(&alarm_query_gateway, shared_from_this()));
-
     if (pending) {
         m_msg_id = 0;
         m_session = 0;
@@ -244,7 +242,7 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
 
         tgl_state::instance()->add_query(shared_from_this());
         double timeout = timeout_interval();
-        m_timer->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
+        timeout_within(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
 
         TGL_DEBUG("sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << ": #" << m_msg_id);
     }
@@ -294,7 +292,7 @@ bool query::execute_after_pending()
 
     TGL_DEBUG("sent pending query \"" << m_name << "\" (" << m_msg_id << ") of size " << m_serializer->char_size() << " to DC " << m_dc->id);
 
-    m_timer->start(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
+    timeout_within(timeout ? timeout : DEFAULT_QUERY_TIMEOUT);
 
     return true;
 }
@@ -342,7 +340,7 @@ void query::ack()
 {
     if (!m_ack_received) {
         m_ack_received = true;
-        cancel_timer();
+        clear_timers();
     }
 }
 
@@ -353,7 +351,7 @@ void tglq_query_delete(int64_t id)
         return;
     }
 
-    q->clear_timer();
+    q->clear_timers();
     if (id) {
         tgl_state::instance()->remove_query(q);
     }
@@ -421,14 +419,13 @@ static int get_dc_from_migration(const std::string& migration_error_string)
 
 int query::handle_error(int error_code, const std::string& error_string)
 {
-    if (!m_ack_received) {
-        cancel_timer();
-    }
-
     if (m_msg_id) {
         tgl_state::instance()->remove_query(shared_from_this());
     }
+    clear_timers();
 
+    int retry_within_seconds = 0;
+    bool should_retry = false;
     bool error_handled = false;
 
     switch (error_code) {
@@ -447,7 +444,9 @@ int query::handle_error(int error_code, const std::string& error_string)
                 m_ack_received = false;
                 m_session_id = 0;
                 m_dc = tgl_state::instance()->working_dc();
-                m_timer->start(0);
+                if (should_retry_after_recover_from_error() || is_login()) {
+                    should_retry = true;
+                }
                 error_handled = true;
             }
             break;
@@ -462,8 +461,8 @@ int query::handle_error(int error_code, const std::string& error_string)
                     tgl_state::instance()->locks |= TGL_LOCK_PASSWORD;
                     tgl_do_check_password(std::bind(resend_query_cb, shared_from_this(), std::placeholders::_1));
                 }
-                if (should_retry()) {
-                    m_timer->start(0);
+                if (should_retry_after_recover_from_error()) {
+                    should_retry = true;
                 }
                 error_handled = true;
             } else if (error_string == "AUTH_KEY_UNREGISTERED" || error_string == "AUTH_KEY_INVALID") {
@@ -479,15 +478,15 @@ int query::handle_error(int error_code, const std::string& error_string)
                 }
                 tgl_state::instance()->locks = 0;
                 tgl_state::instance()->login();
-                if (should_retry()) {
-                    m_timer->start(0);
+                if (should_retry_after_recover_from_error()) {
+                    should_retry = true;
                 }
                 error_handled = true;
             } else if (error_string == "AUTH_KEY_PERM_EMPTY") {
                 assert(tgl_state::instance()->pfs_enabled());
                 m_dc->restart_temp_authorization();
-                if (should_retry()) {
-                    m_timer->start(0);
+                if (should_retry_after_recover_from_error()) {
+                    should_retry = true;
                 }
                 error_handled = true;
             }
@@ -500,16 +499,15 @@ int query::handle_error(int error_code, const std::string& error_string)
         case 500: // internal error
         default: // anything else treated as internal error
         {
-            int wait;
-            if (!get_int_from_prefixed_string(wait, error_string, "FLOOD_WAIT_")) {
+            if (!get_int_from_prefixed_string(retry_within_seconds, error_string, "FLOOD_WAIT_")) {
                 if (error_code == 420) {
                     TGL_ERROR("error 420: " << error_string);
                 }
-                wait = 10;
+                retry_within_seconds = 10;
             }
             m_ack_received = false;
-            if (should_retry()) {
-                m_timer->start(wait);
+            if (should_retry_after_recover_from_error()) {
+                should_retry = true;
             }
             std::shared_ptr<tgl_dc> DC = m_dc;
             if (!DC->is_configured() && !is_force()) {
@@ -520,8 +518,8 @@ int query::handle_error(int error_code, const std::string& error_string)
         }
     }
 
-    if (!should_retry()) {
-        clear_timer();
+    if (should_retry) {
+        retry_within(retry_within_seconds);
     }
 
     if (error_handled) {
@@ -530,6 +528,23 @@ int query::handle_error(int error_code, const std::string& error_string)
     }
 
     return on_error(error_code, error_string);
+}
+
+void query::retry_within(double seconds)
+{
+    if (!m_retry_timer) {
+        m_retry_timer = tgl_state::instance()->timer_factory()->create_timer(std::bind(&query::alarm, shared_from_this()));
+    }
+    m_retry_timer->start(seconds);
+}
+
+void query::timeout_within(double seconds)
+{
+    if (!m_timer) {
+        m_timer = tgl_state::instance()->timer_factory()->create_timer(std::bind(&query::timeout_alarm, shared_from_this()));
+    }
+
+    m_timer->start(seconds);
 }
 
 int tglq_query_result(tgl_in_buffer* in, int64_t id)
@@ -567,9 +582,6 @@ int query::handle_result(tgl_in_buffer* in)
     }
 
     TGL_DEBUG2("result for query #" << m_msg_id << ". Size " << (long)4 * (in->end - in->ptr) << " bytes");
-    if (!m_ack_received) {
-        cancel_timer();
-    }
 
     tgl_in_buffer skip_in = *in;
     if (skip_type_any(&skip_in, &m_type) < 0) {
@@ -589,7 +601,7 @@ int query::handle_result(tgl_in_buffer* in)
 
     assert(in->ptr == in->end);
 
-    clear_timer();
+    clear_timers();
     tgl_state::instance()->remove_query(shared_from_this());
 
     if (save_in.ptr) {
@@ -712,6 +724,24 @@ public:
             m_callback(false, false, std::string());
         }
         return 0;
+    }
+
+    virtual void on_timeout() override
+    {
+        TGL_ERROR("timed out for query #" << msg_id() << " (" << name() << ")");
+        if (m_callback) {
+            m_callback(false, false, "TIME_OUT");
+        }
+    }
+
+    virtual double timeout_interval() const override
+    {
+        return 20;
+    }
+
+    virtual bool should_retry_on_timeout() override
+    {
+        return false;
     }
 
 private:
@@ -4325,7 +4355,12 @@ public:
         m_dc->restart_temp_authorization();
     }
 
-    virtual bool should_retry() override
+    virtual bool should_retry_on_timeout() override
+    {
+        return false;
+    }
+
+    virtual bool should_retry_after_recover_from_error() override
     {
         return false;
     }
@@ -4506,7 +4541,6 @@ void tgl_sign_in_phone_cb(const std::shared_ptr<sign_up_extra>& E, bool success,
 {
     tgl_state::instance()->locks ^= TGL_LOCK_PHONE;
     if (!success) {
-        TGL_ERROR("incorrect phone number");
         E->phone = std::string();
         tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone);
         return;

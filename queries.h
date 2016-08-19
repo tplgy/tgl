@@ -61,16 +61,15 @@ public:
 
     ~query()
     {
-        clear_timer();
+        clear_timers();
     }
 
     void execute(const std::shared_ptr<tgl_dc>& dc, execution_option = execution_option::NORMAL);
     bool execute_after_pending();
-    void alarm();
     void regen();
     void ack();
-    void cancel_timer();
-    void clear_timer();
+    void alarm();
+    void clear_timers();
     int handle_error(int error_code, const std::string& error_string);
     int handle_result(tgl_in_buffer* in);
     const std::shared_ptr<mtprotocol_serializer>& serializer() const { return m_serializer; }
@@ -131,11 +130,15 @@ public:
     virtual void on_timeout() { }
 
     virtual double timeout_interval() const { return 0; }
-    virtual bool should_retry() { return true; }
+    virtual bool should_retry_on_timeout() { return true; }
+    virtual bool should_retry_after_recover_from_error() { return true; }
 
 private:
     bool is_force() const { return m_exec_option == execution_option::FORCE; }
     bool is_login() const { return m_exec_option == execution_option::LOGIN; }
+    void retry_within(double seconds);
+    void timeout_within(double seconds);
+    void timeout_alarm();
 
 private:
     int64_t m_msg_id;
@@ -148,6 +151,7 @@ private:
     paramed_type m_type;
     std::shared_ptr<mtprotocol_serializer> m_serializer;
     std::shared_ptr<tgl_timer> m_timer;
+    std::shared_ptr<tgl_timer> m_retry_timer;
     std::shared_ptr<tgl_dc> m_dc;
     std::shared_ptr<tgl_session> m_session;
 };
