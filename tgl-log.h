@@ -40,23 +40,23 @@ void tgl_log(const std::string& str, int severity);
 #define TGL_CRASH() do { *reinterpret_cast<int*>(0xbadbeef) = 0; abort(); } while (false)
 
 #define TGL_DEBUG(X) do { std::stringstream str_stream; \
-                    str_stream << X ; \
+                    str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
                     tgl_log(str_stream.str(), E_DEBUG);} while (false)
 
 #define TGL_DEBUG2(X) do { std::stringstream str_stream; \
-                    str_stream << X; \
+                    str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
                     tgl_log(str_stream.str(), E_DEBUG2);} while (false)
 
 #define TGL_NOTICE(X) do { std::stringstream str_stream; \
-                    str_stream << X; \
+                    str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
                     tgl_log(str_stream.str(), E_NOTICE);} while (false)
 
 #define TGL_WARNING(X) do { std::stringstream str_stream; \
-                    str_stream << __FILE__ <<  "(" << __LINE__ << "): " << X; \
+                    str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
                     tgl_log(str_stream.str(), E_WARNING);} while (false)
 
 #define TGL_ERROR(X) do { std::stringstream str_stream; \
-                    str_stream << __FILE__ <<  "(" << __LINE__ << "): " << X; \
+                    str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
                     tgl_log(str_stream.str(), E_ERROR);} while (false)
 
 
