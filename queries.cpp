@@ -62,20 +62,6 @@
 #include "types/tgl_peer_id.h"
 #include "updates.h"
 
-#ifndef EPROTO
-// BSD doesn't define EPROTO, even though it is POSIX:
-// https://lists.freebsd.org/pipermail/freebsd-standards/2003-June/000124.html
-#define EPROTO EIO
-#endif
-
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
-
-#ifndef O_BINARY
-#define O_BINARY 0
-#endif
-
 void query::clear_timers()
 {
     if (m_timer) {
