@@ -101,11 +101,34 @@ struct send_file {
 
 struct download {
     download(int32_t size, const tgl_file_location& location)
-        : location(location), offset(0), size(size), fd(-1), iv(), key(), type(0)
+        : id(next_id())
+        , offset(0)
+        , size(size)
+        , type(0)
+        , fd(-1)
+        , cancelled(false)
+        , location(location)
+        , iv()
+        , key()
     {
     }
 
-    download(int32_t type, const std::shared_ptr<tgl_document>&);
+    download(int32_t type, const std::shared_ptr<tgl_document>& document)
+        : id(next_id())
+        , offset(0)
+        , size(document->size)
+        , type(type)
+        , fd(-1)
+        , cancelled(false)
+        , iv()
+        , key()
+    {
+        location.set_dc(document->dc_id);
+        location.set_local_id(0);
+        location.set_secret(document->access_hash);
+        location.set_volume(document->id);
+    }
+
 
     ~download()
     {
@@ -113,17 +136,25 @@ struct download {
         memset(key.data(), 0, key.size());
     }
 
-    tgl_file_location location;
+    int32_t id;
     int32_t offset;
     int32_t size;
+    int32_t type;
     int fd;
+    bool cancelled;
+    tgl_file_location location;
     std::string name;
     std::string ext;
     //encrypted documents
     std::vector<unsigned char> iv;
     std::vector<unsigned char> key;
     // ---
-    int32_t type;
+
+    static int32_t next_id()
+    {
+        static int32_t next = 0;
+        return ++next;
+    }
 };
 
 class query_send_file_part: public query
@@ -341,18 +372,6 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_message>&, float)> m_callback;
 };
 
-download::download(int type, const std::shared_ptr<tgl_document>& document)
-    : offset(0)
-    , size(document->size)
-    , fd(-1)
-    , type(type)
-{
-    location.set_dc(document->dc_id);
-    location.set_local_id(0);
-    location.set_secret(document->access_hash);
-    location.set_volume(document->id);
-}
-
 tgl_download_manager::tgl_download_manager(std::string download_directory)
     : m_download_directory(download_directory)
 {
@@ -362,16 +381,6 @@ bool tgl_download_manager::file_exists(const tgl_file_location &location)
 {
     std::string path = get_file_path(location.access_hash());
     return boost::filesystem::exists(path);
-}
-
-bool tgl_download_manager::currently_donwloading(const tgl_file_location& location)
-{
-    for (auto it=m_downloads.begin(); it!= m_downloads.end(); it++) {
-        if ((*it)->location.secret() == location.secret()) {
-            return true;
-        }
-    }
-    return false;
 }
 
 std::string tgl_download_manager::get_file_path(int64_t secret)
@@ -879,19 +888,14 @@ void tgl_download_manager::send_document(const tgl_input_peer_t& to_id, int64_t 
 void tgl_download_manager::end_download(const std::shared_ptr<download>& d,
         const tgl_download_callback& callback)
 {
-    for (auto it = m_downloads.begin(); it != m_downloads.end(); ++it) {
-        if (*it == d) {
-            m_downloads.erase(it);
-            break;
-        }
-    }
+    m_downloads.erase(d->id);
 
     if (d->fd >= 0) {
         close(d->fd);
     }
 
     if (callback) {
-        callback(true, d->name, 1);
+        callback(d->cancelled ? tgl_download_status::cancelled : tgl_download_status::succeeded, d->name, 1);
     }
 }
 
@@ -905,7 +909,7 @@ int tgl_download_manager::download_on_answer(const std::shared_ptr<query_downloa
         if (d->fd < 0) {
             TGL_ERROR("Can not open file for writing: %m");
             if (q->callback()) {
-                (q->callback())(false, std::string(), 0);
+                (q->callback())(tgl_download_status::failed, std::string(), 0);
             }
 
             return 0;
@@ -935,7 +939,7 @@ int tgl_download_manager::download_on_answer(const std::shared_ptr<query_downloa
     d->offset += len;
     if (d->offset < d->size) {
         float progress = static_cast<float>(d->offset)/d->size;
-        (q->callback())(false, std::string(), progress);
+        (q->callback())(tgl_download_status::downloading, std::string(), progress);
         download_next_part(d, q->callback());
         return 0;
     } else {
@@ -954,7 +958,7 @@ int tgl_download_manager::download_on_error(const std::shared_ptr<query_download
     }
 
     if (q->callback()) {
-        (q->callback())(false, d->name, 0);
+        (q->callback())(tgl_download_status::failed, d->name, 0);
     }
 
     return 0;
@@ -962,12 +966,17 @@ int tgl_download_manager::download_on_error(const std::shared_ptr<query_download
 
 void tgl_download_manager::begin_download(const std::shared_ptr<download>& new_download)
 {
-    m_downloads.push_back(new_download);
+    m_downloads[new_download->id] = new_download;
 }
 
 void tgl_download_manager::download_next_part(const std::shared_ptr<download>& d,
         const tgl_download_callback& callback)
 {
+    if (d->cancelled) {
+        end_download(d, callback);
+        return;
+    }
+
     TGL_DEBUG("download_next_part (file size " << d->size << ")");
     if (!d->offset) {
         std::string path = get_file_path(d->location.access_hash());
@@ -1010,47 +1019,49 @@ void tgl_download_manager::download_next_part(const std::shared_ptr<download>& d
     q->execute(tgl_state::instance()->dc_at(d->location.dc()));
 }
 
-void tgl_download_manager::download_by_photo_size(const std::shared_ptr<tgl_photo_size>& photo_size,
+int32_t tgl_download_manager::download_by_photo_size(const std::shared_ptr<tgl_photo_size>& photo_size,
         const tgl_download_callback& callback)
 {
     assert(photo_size);
     if (!photo_size->loc.dc()) {
         TGL_WARNING("bad video thumb");
         if (callback) {
-            callback(false, std::string(), 0);
+            callback(tgl_download_status::failed, std::string(), 0);
         }
-        return;
+        return 0;
     }
 
     std::shared_ptr<download> d = std::make_shared<download>(photo_size->size, photo_size->loc);
     download_next_part(d, callback);
+    return d->id;
 }
 
-void tgl_download_manager::download_by_file_location(const tgl_file_location& file_location, const int32_t file_size,
+int32_t tgl_download_manager::download_by_file_location(const tgl_file_location& file_location, const int32_t file_size,
         const tgl_download_callback& callback)
 {
     if (!file_location.dc()) {
         TGL_ERROR("bad file location");
         if (callback) {
-            callback(false, std::string(), 0);
+            callback(tgl_download_status::failed, std::string(), 0);
         }
-        return;
+        return 0;
     }
 
     std::shared_ptr<download> d = std::make_shared<download>(file_size, file_location);
     TGL_DEBUG("download_file_location - file_size: " << file_size);
     download_next_part(d, callback);
+    return d->id;
 }
 
-void tgl_download_manager::download_photo(const std::shared_ptr<tgl_photo>& photo,
+int32_t tgl_download_manager::download_photo(const std::shared_ptr<tgl_photo>& photo,
         const tgl_download_callback& callback)
 {
     if (!photo->sizes.size()) {
         TGL_ERROR("bad photo (no photo sizes");
         if (callback) {
-            callback(false, std::string(), 0);
+            callback(tgl_download_status::failed, std::string(), 0);
         }
-        return;
+        return 0;
     }
     size_t max_i = 0;
     int max = photo->sizes[0]->w + photo->sizes[0]->h;
@@ -1061,16 +1072,16 @@ void tgl_download_manager::download_photo(const std::shared_ptr<tgl_photo>& phot
             max_i = i;
         }
     }
-    download_by_photo_size(photo->sizes[max_i], callback);
+    return download_by_photo_size(photo->sizes[max_i], callback);
 }
 
-void tgl_download_manager::download_document_thumb(const std::shared_ptr<tgl_document>& document,
+int32_t tgl_download_manager::download_document_thumb(const std::shared_ptr<tgl_document>& document,
         const tgl_download_callback& callback)
 {
-    download_by_photo_size(document->thumb, callback);
+    return download_by_photo_size(document->thumb, callback);
 }
 
-void tgl_download_manager::download_document(const std::shared_ptr<tgl_document>& document,
+int32_t tgl_download_manager::download_document(const std::shared_ptr<tgl_document>& document,
         const std::shared_ptr<download>& d,
         const tgl_download_callback& callback)
 {
@@ -1084,30 +1095,31 @@ void tgl_download_manager::download_document(const std::shared_ptr<tgl_document>
     }
     begin_download(d);
     download_next_part(d, callback);
+    return d->id;
 }
 
-void tgl_download_manager::download_document(const std::shared_ptr<tgl_document>& document,
+int32_t tgl_download_manager::download_document(const std::shared_ptr<tgl_document>& document,
         const tgl_download_callback& callback)
 {
     std::shared_ptr<download> d = std::make_shared<download>(CODE_input_document_file_location, document);
-    download_document(document, d, callback);
+    return download_document(document, d, callback);
 }
 
-void tgl_download_manager::download_video(const std::shared_ptr<tgl_document>& document,
+int32_t tgl_download_manager::download_video(const std::shared_ptr<tgl_document>& document,
         const tgl_download_callback& callback)
 {
     std::shared_ptr<download> d = std::make_shared<download>(CODE_input_video_file_location, document);
-    download_document(document, d, callback);
+    return download_document(document, d, callback);
 }
 
-void tgl_download_manager::download_audio(const std::shared_ptr<tgl_document>& document,
+int32_t tgl_download_manager::download_audio(const std::shared_ptr<tgl_document>& document,
         const tgl_download_callback& callback)
 {
     std::shared_ptr<download> d = std::make_shared<download>(CODE_input_audio_file_location, document);
-    download_document(document, d, callback);
+    return download_document(document, d, callback);
 }
 
-void tgl_download_manager::download_encr_document(const std::shared_ptr<tgl_encr_document>& document,
+int32_t tgl_download_manager::download_encr_document(const std::shared_ptr<tgl_encr_document>& document,
         const tgl_download_callback& callback)
 {
     assert(document);
@@ -1128,4 +1140,16 @@ void tgl_download_manager::download_encr_document(const std::shared_ptr<tgl_encr
     memcpy(str + 32, document->iv.data(), 32);
     TGLC_md5(str, 64, md5);
     assert(document->key_fingerprint == ((*(int *)md5) ^ (*(int *)(md5 + 4))));
+    return d->id;
+}
+
+void tgl_download_manager::cancel_download(int32_t download_id)
+{
+    auto it = m_downloads.find(download_id);
+    if (it == m_downloads.end()) {
+        TGL_DEBUG("can't find download " << download_id);
+        return;
+    }
+    it->second->cancelled = true;
+    TGL_DEBUG("download " << download_id << " has been cancelled");
 }

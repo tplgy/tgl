@@ -22,17 +22,19 @@
 #ifndef TGL_DOWNLOAD_MANAGER_H
 #define TGL_DOWNLOAD_MANAGER_H
 
-
 #include "types/tgl_file_location.h"
 #include "types/tgl_peer_id.h"
 #include "types/tgl_message.h"
 
-#include <string.h>
 #include <array>
+#include <cassert>
 #include <functional>
+#include <iostream>
+#include <map>
 #include <memory>
-#include <vector>
 #include <string>
+#include <string.h>
+#include <vector>
 
 struct tgl_document;
 struct tgl_encr_document;
@@ -45,7 +47,38 @@ struct download;
 class query_download;
 class query_send_file_part;
 
-using tgl_download_callback = std::function<void(bool success, const std::string& file_name, float progress)>;
+enum class tgl_download_status
+{
+    downloading,
+    succeeded,
+    failed,
+    cancelled,
+};
+
+inline static std::string to_string(tgl_download_status status)
+{
+    switch (status) {
+    case tgl_download_status::downloading:
+        return "downloading";
+    case tgl_download_status::succeeded:
+        return "succeeded";
+    case tgl_download_status::failed:
+        return "failed";
+    case tgl_download_status::cancelled:
+        return "cancelled";
+    default:
+        assert(false);
+        return "unknown";
+    }
+}
+
+inline static std::ostream& operator<<(std::ostream& oss, tgl_download_status status)
+{
+    oss << to_string(status);
+    return oss;
+}
+
+using tgl_download_callback = std::function<void(tgl_download_status status, const std::string& file_name, float progress)>;
 using tgl_upload_callback = std::function<void(bool success, const std::shared_ptr<tgl_message>& message, float progress)>;
 using tgl_read_callback = std::function<std::shared_ptr<std::vector<uint8_t>>(uint32_t chunk_size)>;
 using tgl_send_part_done_callback = std::function<void()>;
@@ -58,18 +91,18 @@ public:
 
     bool file_exists(const tgl_file_location &location);
 
-    bool currently_donwloading(const tgl_file_location& location);
-
     std::string get_file_path(int64_t secret);  // parameter is either secret or access hash depending on file type
 
-    void download_encr_document(const std::shared_ptr<tgl_encr_document>& document, const tgl_download_callback& callback);
-    void download_audio(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
-    void download_video(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
-    void download_document_thumb(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
-    void download_photo(const std::shared_ptr<tgl_photo>& photo, const tgl_download_callback& callback);
-    void download_by_photo_size(const std::shared_ptr<tgl_photo_size>& photo_size, const tgl_download_callback& callback);
-    void download_by_file_location(const tgl_file_location& location, int32_t file_size, const tgl_download_callback& callback);
-    void download_document(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
+    int32_t download_encr_document(const std::shared_ptr<tgl_encr_document>& document, const tgl_download_callback& callback);
+    int32_t download_audio(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
+    int32_t download_video(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
+    int32_t download_document_thumb(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
+    int32_t download_photo(const std::shared_ptr<tgl_photo>& photo, const tgl_download_callback& callback);
+    int32_t download_by_photo_size(const std::shared_ptr<tgl_photo_size>& photo_size, const tgl_download_callback& callback);
+    int32_t download_by_file_location(const tgl_file_location& location, int32_t file_size, const tgl_download_callback& callback);
+    int32_t download_document(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
+
+    void cancel_download(int32_t download_id);
 
     void send_document(const tgl_input_peer_t& to_id, int64_t message_id,
             const std::string& file_name, int32_t file_size, int32_t width, int32_t height, int32_t duration, const std::string& caption,
@@ -110,14 +143,14 @@ private:
             const std::vector<uint8_t>& thumb_data, int thumb_width, int thumb_height,
             const tgl_upload_callback& callback, const tgl_read_callback& read_callback, const tgl_send_part_done_callback& done_callback);
 
-    void download_document(const std::shared_ptr<tgl_document>& document, const std::shared_ptr<download>& d,
+    int32_t download_document(const std::shared_ptr<tgl_document>& document, const std::shared_ptr<download>& d,
              const tgl_download_callback& callback);
 
     void begin_download(const std::shared_ptr<download>&);
     void download_next_part(const std::shared_ptr<download>&, const tgl_download_callback& callback);
     void end_download(const std::shared_ptr<download>&, const tgl_download_callback& callback);
 
-    std::vector<std::shared_ptr<download>> m_downloads;
+    std::map<int32_t, std::shared_ptr<download>> m_downloads;
     std::string m_download_directory;
 };
 
