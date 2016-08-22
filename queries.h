@@ -121,7 +121,7 @@ public:
 
     const std::string& name() const { return m_name; }
     int64_t session_id() const { return m_session_id; }
-    int64_t msg_id() const { return m_msg_id; }
+    int64_t msg_id() const { return m_msg_id_override ? m_msg_id_override : m_msg_id; }
     const std::shared_ptr<tgl_session>& session() const { return m_session; }
     const std::shared_ptr<tgl_dc>& dc() const { return m_dc; }
 
