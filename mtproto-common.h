@@ -251,9 +251,10 @@ struct tgl_in_buffer {
     int32_t* ptr;
     int32_t* end;
 
-    std::string print_buffer() {
+    std::string print_buffer()
+    {
         std::stringstream ss;
-        for (int32_t* i=ptr; i<end; ++i) {
+        for (int32_t* i = ptr; i < end; ++i) {
             ss << std::hex << "0x" << *i << " ";
         }
         return ss.str();
