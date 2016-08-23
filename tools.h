@@ -48,12 +48,21 @@ void tglt_secure_random(unsigned char* s, int l);
 template<typename IntegerType>
 static inline IntegerType tgl_random()
 {
+#ifdef VALGRIND_FIXES
+    static bool seed = false;
+    if (!seed) {
+        seed = true;
+        srand(time(nullptr));
+    }
+    return static_cast<IntegerType>(rand());
+#else
     static std::random_device device;
     static std::mt19937 generator(device());
     static std::uniform_int_distribution<IntegerType> distribution(std::numeric_limits<IntegerType>::min(),
             std::numeric_limits<IntegerType>::max());
 
     return distribution(generator);
+#endif
 }
 
 static inline void tgl_secure_free(void* ptr, size_t size)

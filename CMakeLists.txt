@@ -37,6 +37,7 @@ include_directories(
 option(ENABLE_ASAN "ASAN build" OFF)
 option(ENABLE_TSAN "TSAN build" OFF)
 option(ENABLE_UBSAN "UBSAN build" OFF)
+option(ENABLE_VALGRIND_FIXES "Workaround Valgrind bugs" OFF)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "-Wno-error=shorten-64-to-32 ${CMAKE_CXX_FLAGS}")
@@ -79,6 +80,10 @@ if(NOT MSVC)
 endif()
 
 add_definitions(-D_FILE_OFFSET_BITS=64)
+
+if (ENABLE_VALGRIND_FIXES)
+    add_definitions(-DVALGRIND_FIXES)
+endif()
 
 set(GENERATED_TGL_HEADERS
     ${CMAKE_BINARY_DIR}/auto/auto-fetch-ds.h
