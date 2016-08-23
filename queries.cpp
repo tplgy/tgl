@@ -4478,13 +4478,14 @@ struct sign_up_extra {
     std::string last_name;
 };
 
+void tgl_sign_in_phone(const void* phone);
 void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void* code);
 void tgl_sign_in_result(const std::shared_ptr<sign_up_extra>& E, bool success, const std::shared_ptr<tgl_user>& U)
 {
     TGL_DEBUG(".....tgl_sign_in_result");
     if (!success) {
         TGL_ERROR("incorrect code");
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
         return;
     }
     tgl_signed_in();
@@ -4494,7 +4495,10 @@ void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void* code)
 {
     if (!strcmp((const char *)code, "call")) {
         tgl_do_phone_call(E->phone, E->hash, nullptr);
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
+        return;
+    } else if (!strcmp((const char *)code, "resend")) {
+        tgl_sign_in_phone(E->phone.c_str());
         return;
     }
 
@@ -4508,7 +4512,7 @@ void tgl_sign_up_result(const std::shared_ptr<sign_up_extra>& E, bool success, c
     TGL_UNUSED(U);
     if (!success) {
         TGL_ERROR("incorrect code");
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
         return;
     }
     tgl_signed_in();
@@ -4518,7 +4522,10 @@ void tgl_sign_up_code(const std::shared_ptr<sign_up_extra>& E, const void* code)
 {
     if (!strcmp((const char*)code, "call")) {
         tgl_do_phone_call(E->phone, E->hash, nullptr);
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
+        return;
+    } else if (!strcmp((const char *)code, "resend")) {
+        tgl_sign_in_phone(E->phone.c_str()); // there is no tgl_sign_up_phone(), so this is okay
         return;
     }
 
@@ -4533,7 +4540,7 @@ void tgl_register_cb(const std::shared_ptr<sign_up_extra>& E, const void* rinfo)
         E->first_name = static_cast<const char*>(yn[1]);
         if (E->first_name.size() >= 1) {
             E->last_name = static_cast<const char*>(yn[2]);
-            tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
+            tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
         } else {
             tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, std::bind(tgl_register_cb, E, std::placeholders::_1));
         }
@@ -4543,7 +4550,6 @@ void tgl_register_cb(const std::shared_ptr<sign_up_extra>& E, const void* rinfo)
     }
 }
 
-void tgl_sign_in_phone(const void* phone);
 void tgl_sign_in_phone_cb(const std::shared_ptr<sign_up_extra>& E, bool success, bool registered, const std::string& mhash)
 {
     tgl_state::instance()->locks ^= TGL_LOCK_PHONE;
@@ -4557,7 +4563,7 @@ void tgl_sign_in_phone_cb(const std::shared_ptr<sign_up_extra>& E, bool success,
 
     if (registered) {
         TGL_NOTICE("already registered, need code");
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
     } else {
         TGL_NOTICE("not registered");
         tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, std::bind(tgl_register_cb, E, std::placeholders::_1));
