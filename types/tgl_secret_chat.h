@@ -98,8 +98,13 @@ struct tgl_secret_chat {
     }
 
     const unsigned char* key() const { return m_key; }
-    int64_t key_fingerprint() const { return* reinterpret_cast<const int64_t*>(m_key_sha + 12); }
     const unsigned char* key_sha() const { return m_key_sha; }
+    // Telegram secret chat key fingerprints are the last 64 bits of SHA1(key)
+    int64_t key_fingerprint() const {
+        int64_t fingerprint;
+        memcpy(&fingerprint, m_key_sha + 12, 8);
+        return fingerprint;
+    }
 
     static size_t key_size() { return 256; }
     static size_t key_sha_size() { return 20; }
