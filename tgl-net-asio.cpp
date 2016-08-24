@@ -80,16 +80,19 @@ void tgl_connection_asio::ping(const boost::system::error_code& error) {
     }
 }
 
-void tgl_connection_asio::stop_ping_timer() {
+void tgl_connection_asio::stop_ping_timer()
+{
     m_ping_timer.cancel();
 }
 
-void tgl_connection_asio::start_ping_timer() {
+void tgl_connection_asio::start_ping_timer()
+{
     m_ping_timer.expires_from_now(boost::posix_time::milliseconds(PING_CHECK_DURATION.count()));
     m_ping_timer.async_wait(std::bind(&tgl_connection_asio::ping, shared_from_this(), std::placeholders::_1));
 }
 
-ssize_t tgl_connection_asio::read_in_lookup(void* data_out, size_t len) {
+ssize_t tgl_connection_asio::read_in_lookup(void* data_out, size_t len)
+{
     unsigned char* data = static_cast<unsigned char*>(data_out);
     if (!len || !m_in_bytes) {
         return 0;
@@ -270,12 +273,12 @@ void tgl_connection_asio::clear_buffers()
     m_in_bytes = 0;
 }
 
-bool tgl_connection_asio::connect() {
+bool tgl_connection_asio::connect()
+{
     if (m_state == conn_closed) {
         return false;
     }
 
-    start_ping_timer();
     set_state(conn_connecting);
 
     boost::system::error_code ec;
@@ -319,6 +322,7 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
         return;
     }
 
+    start_ping_timer();
     m_restart_duration = MIN_RESTART_DURATION;
 
     if (m_state == conn_connecting) {
@@ -334,7 +338,8 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
     m_io_service.post(std::bind(&tgl_connection_asio::start_read, shared_from_this()));
 }
 
-ssize_t tgl_connection_asio::read(void* data_out, size_t len) {
+ssize_t tgl_connection_asio::read(void* data_out, size_t len)
+{
     unsigned char* data = static_cast<unsigned char*>(data_out);
     if (!len) {
         return 0;
@@ -373,7 +378,8 @@ ssize_t tgl_connection_asio::read(void* data_out, size_t len) {
     return read_bytes;
 }
 
-void tgl_connection_asio::start_read() {
+void tgl_connection_asio::start_read()
+{
     if (m_state == conn_closed) {
         return;
     }
@@ -384,7 +390,8 @@ void tgl_connection_asio::start_read() {
             std::bind(&tgl_connection_asio::handle_read, shared_from_this(), m_temp_read_buffer, std::placeholders::_1, std::placeholders::_2));
 }
 
-ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
+ssize_t tgl_connection_asio::write(const void* data_in, size_t len)
+{
     const unsigned char* data = static_cast<const unsigned char*>(data_in);
     if (!len) {
         return 0;
@@ -401,7 +408,8 @@ ssize_t tgl_connection_asio::write(const void* data_in, size_t len) {
     return len;
 }
 
-void tgl_connection_asio::start_write() {
+void tgl_connection_asio::start_write()
+{
     if (m_state == conn_closed) {
         return;
     }
@@ -419,11 +427,13 @@ void tgl_connection_asio::start_write() {
     }
 }
 
-void tgl_connection_asio::flush() {
+void tgl_connection_asio::flush()
+{
 }
 
 void tgl_connection_asio::handle_read(const std::shared_ptr<std::vector<char>>& buffer,
-        const boost::system::error_code& ec, size_t bytes_transferred) {
+        const boost::system::error_code& ec, size_t bytes_transferred)
+{
     if (m_temp_read_buffer != buffer) {
         TGL_DEBUG("the temp reading buffer has changed due to connection restart");
         return;
@@ -482,7 +492,8 @@ static inline bool starts_with_buffers(const std::deque<std::shared_ptr<std::vec
 }
 
 void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::vector<char>>>& buffers,
-        const boost::system::error_code& ec, size_t bytes_transferred) {
+        const boost::system::error_code& ec, size_t bytes_transferred)
+{
     if (!starts_with_buffers(m_write_buffer_queue, buffers)) {
         TGL_DEBUG("the front writing buffers have changed due to connection restart");
         return;
