@@ -79,15 +79,20 @@ private:
     ssize_t read_in_lookup(void* data, size_t len);
     void try_rpc_read();
 
-    void handle_connect(const boost::system::error_code&);
+    void handle_connect(bool is_ipv6, const boost::system::error_code&);
     void clear_buffers();
     void set_state(connection_state state);
-    void update_endpoint(bool due_to_failed_connection = false);
+    bool create_sockets();
+    void destroy_sockets();
 
-    boost::asio::ip::tcp::endpoint m_endpoint;
+    boost::asio::ip::tcp::endpoint m_ipv4_endpoint;
+    boost::asio::ip::tcp::endpoint m_ipv6_endpoint;
+
     connection_state m_state;
     boost::asio::io_service& m_io_service;
-    boost::asio::ip::tcp::socket m_socket;
+    std::unique_ptr<boost::asio::ip::tcp::socket> m_socket;
+    std::unique_ptr<boost::asio::ip::tcp::socket> m_ipv4_socket;
+    std::unique_ptr<boost::asio::ip::tcp::socket> m_ipv6_socket;
     boost::asio::deadline_timer m_ping_timer;
     std::chrono::time_point<std::chrono::steady_clock>  m_last_receive_time;
 

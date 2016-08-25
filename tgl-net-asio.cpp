@@ -41,7 +41,9 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
         const std::shared_ptr<mtproto_client>& client)
     : m_state(connection_state::none)
     , m_io_service(io_service)
-    , m_socket(io_service)
+    , m_socket()
+    , m_ipv4_socket()
+    , m_ipv6_socket()
     , m_ping_timer(io_service)
     , m_last_receive_time()
     , m_restart_timer()
@@ -54,7 +56,19 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
     , m_write_pending(false)
     , m_online_status(tgl_state::instance()->online_status())
 {
-    update_endpoint();
+    auto data_center = m_dc.lock();
+    if (!data_center) {
+        TGL_WARNING("the dc object has gone");
+        return;
+    }
+
+    m_ipv4_endpoint = boost::asio::ip::tcp::endpoint(
+            boost::asio::ip::address::from_string(std::get<0>(data_center->ipv4_options.option_list[0])),
+            std::get<1>(data_center->ipv4_options.option_list[0]));
+
+    m_ipv6_endpoint = boost::asio::ip::tcp::endpoint(
+            boost::asio::ip::address::from_string(std::get<0>(data_center->ipv6_options.option_list[0])),
+            std::get<1>(data_center->ipv6_options.option_list[0]));
 }
 
 tgl_connection_asio::~tgl_connection_asio()
@@ -131,7 +145,6 @@ void tgl_connection_asio::open()
     tgl_state::instance()->add_online_status_observer(m_this_weak_observer);
 
     if (!connect()) {
-        TGL_ERROR("can not connect to " << m_endpoint);
         return;
     }
 
@@ -188,12 +201,10 @@ void tgl_connection_asio::restart(const boost::system::error_code& error)
 
     stop_ping_timer();
     clear_buffers();
+    destroy_sockets();
     set_state(connection_state::failed);
-    if (m_socket.is_open()) {
-        m_socket.close();
-    }
 
-    TGL_NOTICE("restarting connection to " << m_endpoint);
+    TGL_NOTICE("restarting connection");
     open();
 }
 
@@ -276,7 +287,7 @@ void tgl_connection_asio::close()
 
     set_state(connection_state::closed);
     m_ping_timer.cancel();
-    m_socket.close();
+    destroy_sockets();
     clear_buffers();
 }
 
@@ -287,6 +298,28 @@ void tgl_connection_asio::clear_buffers()
     m_in_bytes = 0;
 }
 
+bool static set_socket_options(const std::unique_ptr<boost::asio::ip::tcp::socket>& socket)
+{
+    boost::system::error_code ec;
+    socket->set_option(boost::asio::socket_base::keep_alive(true), ec);
+    if (ec) {
+        TGL_WARNING("error enabling keep-alives on socket: " << ec.message());
+    }
+
+    socket->set_option(boost::asio::ip::tcp::no_delay(true), ec);
+    if (ec) {
+        TGL_WARNING("error disabling Nagle algorithm on socket: " << ec.message());
+    }
+
+    socket->non_blocking(true, ec);
+    if (ec) {
+        TGL_ERROR("error making socket non-blocking: " << ec.message());
+        return false;
+    }
+
+    return true;
+}
+
 bool tgl_connection_asio::connect()
 {
     if (m_state == connection_state::closed) {
@@ -295,48 +328,64 @@ bool tgl_connection_asio::connect()
 
     set_state(connection_state::connecting);
 
-    boost::system::error_code ec;
-    m_socket.open(m_endpoint.protocol(), ec);
-    if (ec) {
-        TGL_WARNING("error opening socket: " << ec.message());
-        return false;
+    create_sockets();
+
+    if (m_ipv6_socket) {
+        TGL_DEBUG("connecting to " << m_ipv6_endpoint);
+        m_ipv6_socket->async_connect(m_ipv6_endpoint,
+                std::bind(&tgl_connection_asio::handle_connect, shared_from_this(), true, std::placeholders::_1));
     }
 
-    m_socket.set_option(boost::asio::socket_base::keep_alive(true), ec);
-    if (ec) {
-        TGL_WARNING("error enabling keep-alives on socket: " << ec.message());
+    if (m_ipv4_socket) {
+        TGL_DEBUG("connecting to " << m_ipv4_endpoint);
+        m_ipv4_socket->async_connect(m_ipv4_endpoint,
+                std::bind(&tgl_connection_asio::handle_connect, shared_from_this(), false, std::placeholders::_1));
     }
-
-    m_socket.set_option(boost::asio::ip::tcp::no_delay(true), ec);
-    if (ec) {
-        TGL_WARNING("error disabling Nagle algorithm on socket: " << ec.message());
-    }
-
-    m_socket.non_blocking(true, ec);
-    if (ec) {
-        TGL_WARNING("error making socket non-blocking: " << ec.message());
-        return false;
-    }
-
-    m_socket.async_connect(m_endpoint, std::bind(&tgl_connection_asio::handle_connect, shared_from_this(), std::placeholders::_1));
     m_write_pending = false;
     m_last_receive_time = std::chrono::steady_clock::now();
     return true;
 }
 
-void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
+void tgl_connection_asio::handle_connect(bool is_ipv6, const boost::system::error_code& ec)
 {
-    if (ec) {
-        if (ec != boost::asio::error::operation_aborted) {
-            TGL_WARNING("error connecting to " << m_endpoint << ": " << ec.value() << " - "<< ec.message());
-            set_state(connection_state::failed);
-            update_endpoint(true);
-            schedule_restart();
+    if (m_socket) {
+        if (is_ipv6) {
+            m_ipv6_socket.reset();
+        } else {
+            m_ipv4_socket.reset();
         }
         return;
     }
 
-    TGL_NOTICE("connected to " << m_endpoint);
+    if (is_ipv6) {
+        m_socket = std::move(m_ipv6_socket);
+        m_ipv6_socket.reset();
+    } else {
+        m_socket = std::move(m_ipv4_socket);
+        m_ipv4_socket.reset();
+    }
+
+    if (!m_socket) {
+        TGL_ERROR("the IPv" << (is_ipv6 ? 6 : 4) << " socket has gone");
+        return;
+    }
+
+    if (ec) {
+        m_socket.reset();
+        if (ec != boost::asio::error::operation_aborted) {
+            TGL_WARNING("error connecting to " << (is_ipv6 ? m_ipv6_endpoint : m_ipv4_endpoint) << ": " << ec.value() << " - "<< ec.message());
+            if ((is_ipv6 && !m_ipv4_socket) || (!is_ipv6 && !m_ipv6_socket))  {
+                TGL_WARNING("no connection outstanding, scheduling restart");
+                set_state(connection_state::failed);
+                schedule_restart();
+                return;
+            }
+            TGL_DEBUG("we still have IPv" << (is_ipv6 ? 4 : 6) << " socket outstanding");
+        }
+        return;
+    }
+
+    TGL_NOTICE("connected to " << (is_ipv6 ? m_ipv6_endpoint : m_ipv4_endpoint));
 
     start_ping_timer();
     m_restart_duration = MIN_RESTART_DURATION;
@@ -395,13 +444,13 @@ ssize_t tgl_connection_asio::read(void* data_out, size_t len)
 
 void tgl_connection_asio::start_read()
 {
-    if (m_state == connection_state::closed) {
+    if (m_state == connection_state::closed || !m_socket) {
         return;
     }
 
     m_temp_read_buffer = std::make_shared<std::vector<char>>(TEMP_READ_BUFFER_SIZE);
 
-    m_socket.async_read_some(boost::asio::buffer(m_temp_read_buffer->data(), m_temp_read_buffer->size()),
+    m_socket->async_read_some(boost::asio::buffer(m_temp_read_buffer->data(), m_temp_read_buffer->size()),
             std::bind(&tgl_connection_asio::handle_read, shared_from_this(), m_temp_read_buffer, std::placeholders::_1, std::placeholders::_2));
 }
 
@@ -423,7 +472,7 @@ ssize_t tgl_connection_asio::write(const void* data_in, size_t len)
 
 void tgl_connection_asio::start_write()
 {
-    if (m_state == connection_state::closed || m_write_pending || !m_write_buffer_queue.size()) {
+    if (m_state == connection_state::closed || m_write_pending || !m_write_buffer_queue.size() || !m_socket) {
         return;
     }
 
@@ -434,7 +483,7 @@ void tgl_connection_asio::start_write()
         buffers.push_back(boost::asio::buffer(buffer->data(), buffer->size()));
         pending_buffers.push_back(buffer);
     }
-    boost::asio::async_write(m_socket, buffers,
+    boost::asio::async_write(*m_socket, buffers,
             std::bind(&tgl_connection_asio::handle_write, shared_from_this(), pending_buffers, std::placeholders::_1, std::placeholders::_2));
 }
 
@@ -521,11 +570,6 @@ void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::ve
         return;
     }
 
-    if (m_state == connection_state::closed) {
-        TGL_WARNING("invalid write to closed connection");
-        return;
-    }
-
     m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));
 }
 
@@ -576,22 +620,55 @@ void tgl_connection_asio::set_state(connection_state state)
     tgl_state::instance()->callback()->connection_status_changed(status);
 }
 
-void tgl_connection_asio::update_endpoint(bool due_to_failed_connection)
+bool tgl_connection_asio::create_sockets()
 {
-    auto data_center = m_dc.lock();
-    if (!data_center) {
-        TGL_WARNING("the dc object has gone");
-        return;
+    assert(!m_socket);
+    assert(!m_ipv4_socket);
+    assert(!m_ipv6_socket);
+
+    boost::system::error_code ec;
+    m_ipv4_socket = std::make_unique<boost::asio::ip::tcp::socket>(m_io_service);
+    m_ipv4_socket->open(m_ipv4_endpoint.protocol(), ec);
+    if (ec && !tgl_state::instance()->ipv6_enabled()) {
+        TGL_WARNING("error opening ipv4 socket: " << ec.message());
+        m_ipv4_socket.reset();
+        return false;
     }
 
-    if (tgl_state::instance()->ipv6_enabled()
-            && !(due_to_failed_connection && m_endpoint.protocol() == boost::asio::ip::tcp::v6())) {
-        m_endpoint = boost::asio::ip::tcp::endpoint(
-                boost::asio::ip::address::from_string(std::get<0>(data_center->ipv6_options.option_list[0])),
-                std::get<1>(data_center->ipv6_options.option_list[0]));
-    } else {
-        m_endpoint = boost::asio::ip::tcp::endpoint(
-                boost::asio::ip::address::from_string(std::get<0>(data_center->ipv4_options.option_list[0])),
-                std::get<1>(data_center->ipv4_options.option_list[0]));
+    if (tgl_state::instance()->ipv6_enabled()) {
+        m_ipv6_socket = std::make_unique<boost::asio::ip::tcp::socket>(m_io_service);
+        m_ipv6_socket->open(m_ipv6_endpoint.protocol(), ec);
+        if (ec && !m_ipv4_socket) {
+            TGL_WARNING("error opening ipv6 socket: " << ec.message());
+            m_ipv6_socket.reset();
+            return false;
+        }
+    }
+
+    assert(m_ipv4_socket || m_ipv6_socket);
+
+    if (m_ipv4_socket && !set_socket_options(m_ipv4_socket)) {
+        return false;
+    }
+
+    if (m_ipv6_socket && !set_socket_options(m_ipv6_socket)) {
+        return false;
+    }
+
+    return true;
+}
+
+void tgl_connection_asio::destroy_sockets()
+{
+    if (m_socket) {
+        m_socket.reset();
+    }
+
+    if (m_ipv4_socket) {
+        m_ipv4_socket.reset();
+    }
+
+    if (m_ipv6_socket) {
+        m_ipv6_socket.reset();
     }
 }
