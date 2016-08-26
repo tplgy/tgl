@@ -322,6 +322,8 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
         return;
     }
 
+    TGL_NOTICE("connected to " << m_endpoint);
+
     start_ping_timer();
     m_restart_duration = MIN_RESTART_DURATION;
 
@@ -332,9 +334,8 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
         return;
     }
 
-    TGL_NOTICE("connected to " << m_endpoint);
-
     m_last_receive_time = std::chrono::steady_clock::now();
+    m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));
     m_io_service.post(std::bind(&tgl_connection_asio::start_read, shared_from_this()));
 }
 
@@ -401,30 +402,26 @@ ssize_t tgl_connection_asio::write(const void* data_in, size_t len)
     memcpy(buffer->data(), data, len);
     m_write_buffer_queue.push_back(buffer);
 
-    if (!m_write_pending) {
-        m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));
-    }
+    m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));
 
     return len;
 }
 
 void tgl_connection_asio::start_write()
 {
-    if (m_state == conn_closed) {
+    if (m_state == conn_closed || m_write_pending || !m_write_buffer_queue.size()) {
         return;
     }
 
-    if (!m_write_pending && m_write_buffer_queue.size() > 0) {
-        m_write_pending = true;
-        std::vector<boost::asio::const_buffer> buffers;
-        std::vector<std::shared_ptr<std::vector<char>>> pending_buffers;
-        for (const auto& buffer: m_write_buffer_queue) {
-            buffers.push_back(boost::asio::buffer(buffer->data(), buffer->size()));
-            pending_buffers.push_back(buffer);
-        }
-        boost::asio::async_write(m_socket, buffers,
-                std::bind(&tgl_connection_asio::handle_write, shared_from_this(), pending_buffers, std::placeholders::_1, std::placeholders::_2));
+    m_write_pending = true;
+    std::vector<boost::asio::const_buffer> buffers;
+    std::vector<std::shared_ptr<std::vector<char>>> pending_buffers;
+    for (const auto& buffer: m_write_buffer_queue) {
+        buffers.push_back(boost::asio::buffer(buffer->data(), buffer->size()));
+        pending_buffers.push_back(buffer);
     }
+    boost::asio::async_write(m_socket, buffers,
+            std::bind(&tgl_connection_asio::handle_write, shared_from_this(), pending_buffers, std::placeholders::_1, std::placeholders::_2));
 }
 
 void tgl_connection_asio::flush()
@@ -515,9 +512,7 @@ void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::ve
         return;
     }
 
-    if (m_write_buffer_queue.size() > 0) {
-        m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));
-    }
+    m_io_service.post(std::bind(&tgl_connection_asio::start_write, shared_from_this()));
 }
 
 void tgl_connection_asio::on_online_status_changed(tgl_online_status status)
