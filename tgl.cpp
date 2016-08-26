@@ -401,6 +401,8 @@ void tgl_state::set_online_status(tgl_online_status status)
         return;
     }
 
+    TGL_DEBUG("setting online status to " << static_cast<int>(status)
+            << " (previous: " << static_cast<int>(m_online_status) << ")");
     m_online_status = status;
     for (const auto& weak_observer: m_online_status_observers) {
         if (auto observer = weak_observer.lock()) {
