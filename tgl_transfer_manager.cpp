@@ -1005,6 +1005,10 @@ int tgl_transfer_manager::download_on_error(const std::shared_ptr<query_download
         close(d->fd);
     }
 
+    boost::system::error_code ec;
+    boost::filesystem::remove(d->file_name, ec);
+    d->file_name = std::string();
+
     if (q->callback()) {
         (q->callback())(tgl_download_status::failed, d->file_name, 0);
     }
