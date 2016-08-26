@@ -78,8 +78,39 @@ inline static std::ostream& operator<<(std::ostream& oss, tgl_download_status st
     return oss;
 }
 
+enum class tgl_upload_status
+{
+    uploading,
+    succeeded,
+    failed,
+    cancelled,
+};
+
+inline static std::string to_string(tgl_upload_status status)
+{
+    switch (status) {
+    case tgl_upload_status::uploading:
+        return "uploading";
+    case tgl_upload_status::succeeded:
+        return "succeeded";
+    case tgl_upload_status::failed:
+        return "failed";
+    case tgl_upload_status::cancelled:
+        return "cancelled";
+    default:
+        assert(false);
+        return "unknown";
+    }
+}
+
+inline static std::ostream& operator<<(std::ostream& oss, tgl_upload_status status)
+{
+    oss << to_string(status);
+    return oss;
+}
+
 using tgl_download_callback = std::function<void(tgl_download_status status, const std::string& file_name, float progress)>;
-using tgl_upload_callback = std::function<void(bool success, const std::shared_ptr<tgl_message>& message, float progress)>;
+using tgl_upload_callback = std::function<void(tgl_upload_status status, const std::shared_ptr<tgl_message>& message, float progress)>;
 using tgl_read_callback = std::function<std::shared_ptr<std::vector<uint8_t>>(uint32_t chunk_size)>;
 using tgl_send_part_done_callback = std::function<void()>;
 
@@ -108,6 +139,7 @@ public:
             const std::string& file_name, int32_t file_size, int32_t width, int32_t height, int32_t duration, const std::string& caption,
             const std::vector<uint8_t>& thumb_data, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
             const tgl_upload_callback& callback, const tgl_read_callback& read_callback, const tgl_send_part_done_callback& done_callback);
+    void cancel_send_document(int64_t message_id);
 
     // sets self profile photo
     // server will cut central square from this photo
@@ -151,6 +183,7 @@ private:
     void end_download(const std::shared_ptr<download>&, const tgl_download_callback& callback);
 
     std::map<int32_t, std::shared_ptr<download>> m_downloads;
+    std::map<int64_t, std::shared_ptr<send_file>> m_uploads;
     std::string m_download_directory;
 };
 
