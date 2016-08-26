@@ -19,8 +19,8 @@
     Copyright Topology LP 2016
 */
 
-#ifndef TGL_DOWNLOAD_MANAGER_H
-#define TGL_DOWNLOAD_MANAGER_H
+#ifndef TGL_TRANSFER_MANAGER_H
+#define TGL_TRANSFER_MANAGER_H
 
 #include "types/tgl_file_location.h"
 #include "types/tgl_peer_id.h"
@@ -114,10 +114,10 @@ using tgl_upload_callback = std::function<void(tgl_upload_status status, const s
 using tgl_read_callback = std::function<std::shared_ptr<std::vector<uint8_t>>(uint32_t chunk_size)>;
 using tgl_upload_part_done_callback = std::function<void()>;
 
-class tgl_download_manager
+class tgl_transfer_manager
 {
 public:
-    tgl_download_manager(std::string download_directory);
+    tgl_transfer_manager(std::string download_directory);
     std::string download_directory() { return m_download_directory; }
 
     bool file_exists(const tgl_file_location &location);
@@ -195,4 +195,4 @@ private:
     std::string m_download_directory;
 };
 
-#endif // TGL_DOWNLOAD_MANAGER_H
+#endif // TGL_TRANSFER_MANAGER_H

@@ -98,7 +98,7 @@ enum tgl_user_status_type {
 #define TGL_LOCK_PASSWORD 2
 #define TGL_LOCK_PHONE 4
 
-class tgl_download_manager;
+class tgl_transfer_manager;
 class tgl_connection_factory;
 class tgl_rsa_key;
 class tgl_timer;
@@ -166,7 +166,7 @@ struct tgl_state {
     int32_t app_id() const { return m_app_id; }
     const std::vector<std::unique_ptr<tgl_rsa_key>>& rsa_key_list() const { return m_rsa_key_list; }
 
-    const std::shared_ptr<tgl_download_manager>& download_manager() const { return m_download_manager; }
+    const std::shared_ptr<tgl_transfer_manager>& transfer_manager() const { return m_transfer_manager; }
     const std::shared_ptr<tgl_connection_factory>& connection_factory() const { return m_connection_factory; }
     const std::shared_ptr<tgl_timer_factory>& timer_factory() const { return m_timer_factory; }
     const std::shared_ptr<tgl_update_callback>& callback() const { return m_callback; }
@@ -226,7 +226,7 @@ private:
     std::map<int32_t/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
     std::map<int64_t/*msg_id*/, std::shared_ptr<query>> m_active_queries;
 
-    std::shared_ptr<tgl_download_manager> m_download_manager;
+    std::shared_ptr<tgl_transfer_manager> m_transfer_manager;
     std::shared_ptr<tgl_timer_factory> m_timer_factory;
     std::shared_ptr<tgl_connection_factory> m_connection_factory;
     std::shared_ptr<tgl_update_callback> m_callback;

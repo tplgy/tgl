@@ -26,7 +26,7 @@
 #include "tools.h"
 #include "mtproto-client.h"
 #include "structures.h"
-#include "tgl_download_manager.h"
+#include "tgl_transfer_manager.h"
 #include "tgl-timer.h"
 #include "tgl-queries.h"
 #include "tools.h"
@@ -223,7 +223,7 @@ void tgl_state::add_rsa_key(const std::string& key)
 
 int tgl_state::init(const std::string& download_dir, int app_id, const std::string& app_hash, const std::string& app_version)
 {
-    m_download_manager = std::make_shared<tgl_download_manager>(download_dir);
+    m_transfer_manager = std::make_shared<tgl_transfer_manager>(download_dir);
     m_app_id = app_id;
     m_app_hash = app_hash;
     m_app_version = app_version;

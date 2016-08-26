@@ -51,7 +51,6 @@
 #include "queries-encrypted.h"
 #include "structures.h"
 #include "tgl.h"
-#include "tgl_download_manager.h"
 #include "tgl-log.h"
 #include "tgl-timer.h"
 #include "tgl-queries.h"

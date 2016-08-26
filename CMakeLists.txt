@@ -146,7 +146,7 @@ set(HEADERS
     tgl-queries.h
     tgl-timer.h
     tgl-timer-asio.h
-    tgl_download_manager.h
+    tgl_transfer_manager.h
     tools.h
     updates.h
 )
@@ -178,7 +178,7 @@ set(SOURCES
     tgl-dc.cpp
     tgl-log.cpp
     tgl-net-asio.cpp
-    tgl_download_manager.cpp
+    tgl_transfer_manager.cpp
     tools.cpp
     updates.cpp
     )
