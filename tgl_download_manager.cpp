@@ -143,7 +143,7 @@ struct download {
     int fd;
     bool cancelled;
     tgl_file_location location;
-    std::string name;
+    std::string file_name;
     std::string ext;
     //encrypted documents
     std::vector<unsigned char> iv;
@@ -894,8 +894,17 @@ void tgl_download_manager::end_download(const std::shared_ptr<download>& d,
         close(d->fd);
     }
 
+    if (d->cancelled) {
+        boost::system::error_code ec;
+        boost::filesystem::remove(d->file_name, ec);
+        if (ec) {
+            TGL_WARNING("failed to remove cancelled download: " << d->file_name << ": " << ec.value() << " - " << ec.message());
+        }
+        d->file_name = std::string();
+    }
+
     if (callback) {
-        callback(d->cancelled ? tgl_download_status::cancelled : tgl_download_status::succeeded, d->name, 1);
+        callback(d->cancelled ? tgl_download_status::cancelled : tgl_download_status::succeeded, d->file_name, 1);
     }
 }
 
@@ -905,7 +914,7 @@ int tgl_download_manager::download_on_answer(const std::shared_ptr<query_downloa
 
     const std::shared_ptr<download>& d = q->get_download();
     if (d->fd == -1) {
-        d->fd = open(d->name.c_str(), O_CREAT | O_WRONLY, 0640);
+        d->fd = open(d->file_name.c_str(), O_CREAT | O_WRONLY, 0640);
         if (d->fd < 0) {
             TGL_ERROR("Can not open file for writing: %m");
             if (q->callback()) {
@@ -958,7 +967,7 @@ int tgl_download_manager::download_on_error(const std::shared_ptr<query_download
     }
 
     if (q->callback()) {
-        (q->callback())(tgl_download_status::failed, d->name, 0);
+        (q->callback())(tgl_download_status::failed, d->file_name, 0);
     }
 
     return 0;
@@ -985,7 +994,7 @@ void tgl_download_manager::download_next_part(const std::shared_ptr<download>& d
             path += std::string(".") + d->ext;
         }
 
-        d->name = path;
+        d->file_name = path;
         if (boost::filesystem::exists(path)) {
             boost::system::error_code ec;
             d->offset = boost::filesystem::file_size(path, ec);
