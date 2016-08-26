@@ -869,7 +869,7 @@ void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id,
     }
 }
 
-void tgl_transfer_manager::set_chat_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
+void tgl_transfer_manager::upload_chat_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
         const std::function<void(bool success)>& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
@@ -884,7 +884,7 @@ void tgl_transfer_manager::set_chat_photo(const tgl_input_peer_t& chat_id, const
             }, read_callback, done_callback);
 }
 
-void tgl_transfer_manager::set_profile_photo(const std::string& file_name, int32_t file_size,
+void tgl_transfer_manager::upload_profile_photo(const std::string& file_name, int32_t file_size,
         const std::function<void(bool success)>& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)

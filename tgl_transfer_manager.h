@@ -139,18 +139,19 @@ public:
             const std::string& file_name, int32_t file_size, int32_t width, int32_t height, int32_t duration, const std::string& caption,
             const std::vector<uint8_t>& thumb_data, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
             const tgl_upload_callback& callback, const tgl_read_callback& read_callback, const tgl_upload_part_done_callback& done_callback);
-    void cancel_upload(int64_t message_id);
 
-    // sets self profile photo
-    // server will cut central square from this photo
-    void set_profile_photo(const std::string &file_name, int32_t file_size,
+    // Upload self profile photo. The server will cut central square from this photo.
+    void upload_profile_photo(const std::string &file_name, int32_t file_size,
                            const std::function<void(bool success)>& callback,
                            const tgl_read_callback& read_callback,
                            const tgl_upload_part_done_callback& done_callback);
-    void set_chat_photo(const tgl_input_peer_t& chat_id, const std::string &file_name, int32_t file_size,
+
+    void upload_chat_photo(const tgl_input_peer_t& chat_id, const std::string &file_name, int32_t file_size,
                         const std::function<void(bool success)>& callback,
                         const tgl_read_callback& read_callback,
                         const tgl_upload_part_done_callback& done_callback);
+
+    void cancel_upload(int64_t message_id);
 
 private:
     friend class query_download;
