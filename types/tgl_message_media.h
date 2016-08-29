@@ -29,21 +29,21 @@
 #include <string>
 #include <vector>
 
-enum tgl_message_media_type {
-    tgl_message_media_type_none,
-    tgl_message_media_type_photo,
-    tgl_message_media_type_document,
-    tgl_message_media_type_geo,
-    tgl_message_media_type_contact,
-    tgl_message_media_type_unsupported,
-    //tgl_message_media_type_photo_encr,
-    //tgl_message_media_type_video_encr,
-    //tgl_message_media_type_audio_encr,
-    tgl_message_media_type_document_encr,
-    tgl_message_media_type_webpage,
-    tgl_message_media_type_venue,
-    tgl_message_media_type_video,
-    tgl_message_media_type_audio
+enum class tgl_message_media_type {
+    none,
+    photo,
+    document,
+    geo,
+    contact,
+    unsupported,
+    //photo_encr,
+    //video_encr,
+    //audio_encr,
+    document_encr,
+    webpage,
+    venue,
+    video,
+    audio,
 };
 
 struct tgl_photo_size {
@@ -150,29 +150,29 @@ struct tgl_message_media {
 };
 
 struct tgl_message_media_none: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_none; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::none; }
 };
 
 struct tgl_message_media_photo: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_photo; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::photo; }
     std::shared_ptr<tgl_photo> photo;
     std::string caption;
 };
 
 struct tgl_message_media_document: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_document; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::document; }
     std::shared_ptr<tgl_document> document;
     std::string caption;
 };
 
 struct tgl_message_media_geo: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_geo; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::geo; }
     tgl_geo geo;
 };
 
 struct tgl_message_media_contact: public tgl_message_media {
     tgl_message_media_contact(): user_id(0) { }
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_contact; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::contact; }
     std::string phone;
     std::string first_name;
     std::string last_name;
@@ -180,21 +180,21 @@ struct tgl_message_media_contact: public tgl_message_media {
 };
 
 struct tgl_message_media_unsupported: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_unsupported; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::unsupported; }
 };
 
 struct tgl_message_media_document_encr: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_document_encr; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::document_encr; }
     std::shared_ptr<tgl_encr_document> encr_document;
 };
 
 struct tgl_message_media_webpage: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_webpage; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::webpage; }
     std::shared_ptr<tgl_webpage> webpage;
 };
 
 struct tgl_message_media_venue: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_venue; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::venue; }
     struct tgl_geo geo;
     std::string title;
     std::string address;
@@ -203,13 +203,13 @@ struct tgl_message_media_venue: public tgl_message_media {
 };
 
 struct tgl_message_media_video: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_video; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::video; }
     std::shared_ptr<tgl_document> document;
     std::string caption;
 };
 
 struct tgl_message_media_audio: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type_audio; }
+    virtual tgl_message_media_type type() override { return tgl_message_media_type::audio; }
     std::shared_ptr<tgl_document> document;
     std::string caption;
 };

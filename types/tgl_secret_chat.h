@@ -29,26 +29,79 @@
 #include "tgl_peer_id.h"
 
 #include <algorithm>
-#include <string.h>
+#include <cassert>
 #include <memory>
+#include <string.h>
 #include <vector>
 
-enum tgl_secret_chat_state {
-    sc_none,
-    sc_waiting,
-    sc_request,
-    sc_ok,
-    sc_deleted
+enum class tgl_secret_chat_state {
+    none = 0,
+    waiting,
+    request,
+    ok,
+    deleted,
 };
 
-enum tgl_secret_chat_exchange_state {
-    tgl_sce_none,
-    tgl_sce_requested,
-    tgl_sce_accepted,
-    tgl_sce_committed,
-    tgl_sce_confirmed,
-    tgl_sce_aborted
+enum class tgl_secret_chat_exchange_state {
+    none = 0,
+    requested,
+    accepted,
+    committed,
+    confirmed,
+    aborted,
 };
+
+inline static std::string to_string(tgl_secret_chat_state state)
+{
+    switch (state) {
+    case tgl_secret_chat_state::none:
+        return "none";
+    case tgl_secret_chat_state::waiting:
+        return "waiting";
+    case tgl_secret_chat_state::request:
+        return "request";
+    case tgl_secret_chat_state::ok:
+        return "ok";
+    case tgl_secret_chat_state::deleted:
+        return "deleted";
+    default:
+        assert(false);
+        return "unknown secret chat status";
+    }
+}
+
+inline static std::string to_string(tgl_secret_chat_exchange_state state)
+{
+    switch (state) {
+    case tgl_secret_chat_exchange_state::none:
+        return "none";
+    case tgl_secret_chat_exchange_state::requested:
+        return "requested";
+    case tgl_secret_chat_exchange_state::accepted:
+        return "accepted";
+    case tgl_secret_chat_exchange_state::committed:
+        return "committed";
+    case tgl_secret_chat_exchange_state::confirmed:
+        return "confirmed";
+    case tgl_secret_chat_exchange_state::aborted:
+        return "aborted";
+    default:
+        assert(false);
+        return "unknown secret chat exchange state";
+    }
+}
+
+inline static std::ostream& operator<<(std::ostream& os, tgl_secret_chat_state state)
+{
+    os << to_string(state);
+    return os;
+}
+
+inline static std::ostream& operator<<(std::ostream& os, tgl_secret_chat_exchange_state state)
+{
+    os << to_string(state);
+    return os;
+}
 
 struct tgl_secret_chat {
     tgl_input_peer_t id;
@@ -68,8 +121,8 @@ struct tgl_secret_chat {
     int32_t last_in_seq_no;
     int32_t encr_root;
     int32_t encr_param_version;
-    enum tgl_secret_chat_state state;
-    enum tgl_secret_chat_exchange_state exchange_state;
+    tgl_secret_chat_state state;
+    tgl_secret_chat_exchange_state exchange_state;
 
     std::vector<unsigned char> g_key;
 
@@ -126,8 +179,8 @@ struct tgl_secret_chat {
         , last_in_seq_no(0)
         , encr_root(0)
         , encr_param_version(0)
-        , state(sc_none)
-        , exchange_state(tgl_sce_none)
+        , state(tgl_secret_chat_state::none)
+        , exchange_state(tgl_secret_chat_exchange_state::none)
         , g_key()
         , m_encr_prime()
         , m_encr_prime_bn(nullptr)

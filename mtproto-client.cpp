@@ -203,7 +203,7 @@ static int send_req_pq_packet(const std::shared_ptr<tgl_connection>& c)
         return -1;
     }
 
-    assert(DC->state == st_init);
+    assert(DC->state == tgl_dc_state::init);
 
     tglt_secure_random(DC->nonce, 16);
     mtprotocol_serializer s;
@@ -212,7 +212,7 @@ static int send_req_pq_packet(const std::shared_ptr<tgl_connection>& c)
     TGL_DEBUG(__FUNCTION__ << " DC " << DC->id);
     rpc_send_packet(c, s.char_data(), s.char_size());
 
-    DC->state = st_reqpq_sent;
+    DC->state = tgl_dc_state::reqpq_sent;
     return 1;
 }
 
@@ -224,7 +224,7 @@ static int send_req_pq_temp_packet(const std::shared_ptr<tgl_connection>& c)
         return -1;
     }
 
-    assert(DC->state == st_authorized);
+    assert(DC->state == tgl_dc_state::authorized);
 
     tglt_secure_random(DC->nonce, 16);
     mtprotocol_serializer s;
@@ -233,7 +233,7 @@ static int send_req_pq_temp_packet(const std::shared_ptr<tgl_connection>& c)
     TGL_DEBUG(__FUNCTION__ << " DC " << DC->id);
     rpc_send_packet(c, s.char_data(), s.char_size());
 
-    DC->state = st_reqpq_sent_temp;
+    DC->state = tgl_dc_state::reqpq_sent_temp;
     return 1;
 }
 /* }}} */
@@ -293,7 +293,7 @@ static void send_req_dh_packet(const std::shared_ptr<tgl_connection>& c, TGLC_bn
     s.out_i64(tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->fingerprint());
     s.out_string(encrypted_data.get(), encrypted_data_size);
 
-    DC->state = temp_key ? st_reqdh_sent_temp : st_reqdh_sent;
+    DC->state = temp_key ? tgl_dc_state::reqdh_sent_temp : tgl_dc_state::reqdh_sent;
     TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " DC " << DC->id);
     rpc_send_packet(c, s.char_data(), s.char_size());
 }
@@ -359,7 +359,7 @@ static void send_dh_params(const std::shared_ptr<tgl_connection>& c, TGLC_bn* dh
     s.out_i32s((int *) DC->server_nonce, 4);
     s.out_string(encrypted_data.get(), encrypted_data_size);
 
-    DC->state = temp_key ? st_client_dh_sent_temp : st_client_dh_sent;;
+    DC->state = temp_key ? tgl_dc_state::client_dh_sent_temp : tgl_dc_state::client_dh_sent;;
     TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " DC " << DC->id);
     rpc_send_packet(c, s.char_data(), s.char_size());
 }
@@ -662,7 +662,7 @@ static mtproto_client::execute_result process_auth_complete(const std::shared_pt
 
     DC->server_salt = *reinterpret_cast<int64_t*>(DC->server_nonce) ^ *reinterpret_cast<int64_t*>(DC->new_nonce);
 
-    DC->state = st_authorized;
+    DC->state = tgl_dc_state::authorized;
 
     TGL_DEBUG("auth success for DC " << DC->id << " " << (temp_key ? "(temp)" : "") << " salt=" << DC->server_salt);
     if (temp_key) {
@@ -753,7 +753,7 @@ static void init_enc_msg(encrypted_message& enc_msg, std::shared_ptr<tgl_session
         return;
     }
 
-    assert(DC->state == st_authorized);
+    assert(DC->state == tgl_dc_state::authorized);
     assert(DC->temp_auth_key_id);
     enc_msg.auth_key_id = DC->temp_auth_key_id;
     enc_msg.server_salt = DC->server_salt;
@@ -1254,23 +1254,23 @@ static mtproto_client::execute_result rpc_execute(const std::shared_ptr<tgl_conn
     //  setsockopt(c->fd, IPPROTO_TCP, TCP_QUICKACK, (int[]){0}, 4);
 #endif
     tgl_dc_state state = DC->state;
-    if (state != st_authorized) {
+    if (state != tgl_dc_state::authorized) {
         TGL_DEBUG("state = " << state << " for DC " << DC->id);
     }
     switch (state) {
-    case st_reqpq_sent:
+    case tgl_dc_state::reqpq_sent:
         return process_respq_answer(c, response.get()/* + 8*/, len/* - 12*/, false);
-    case st_reqdh_sent:
+    case tgl_dc_state::reqdh_sent:
         return process_dh_answer(c, response.get()/* + 8*/, len/* - 12*/, false);
-    case st_client_dh_sent:
+    case tgl_dc_state::client_dh_sent:
         return process_auth_complete(c, response.get()/* + 8*/, len/* - 12*/, false);
-    case st_reqpq_sent_temp:
+    case tgl_dc_state::reqpq_sent_temp:
         return process_respq_answer(c, response.get()/* + 8*/, len/* - 12*/, true);
-    case st_reqdh_sent_temp:
+    case tgl_dc_state::reqdh_sent_temp:
         return process_dh_answer(c, response.get()/* + 8*/, len/* - 12*/, true);
-    case st_client_dh_sent_temp:
+    case tgl_dc_state::client_dh_sent_temp:
         return process_auth_complete(c, response.get()/* + 8*/, len/* - 12*/, true);
-    case st_authorized:
+    case tgl_dc_state::authorized:
         if (op < 0 && op >= -999) {
             if (tgl_state::instance()->pfs_enabled() && op == -404) {
                 TGL_DEBUG("bind temp auth key failed with -404 error for DC "
@@ -1296,7 +1296,7 @@ void tgl_dc::restart_temp_authorization()
     reset_temp_authorization();
     assert(is_authorized());
     if (is_authorized()) {
-        state = st_authorized;
+        state = tgl_dc_state::authorized;
     }
     if (!session) {
         tglmp_dc_create_session(shared_from_this());
@@ -1329,20 +1329,20 @@ static int tc_becomes_ready(const std::shared_ptr<tgl_connection>& c)
     //c->flush();
 
     if (DC->is_authorized()) {
-        DC->state = st_authorized;
+        DC->state = tgl_dc_state::authorized;
     }
     tgl_dc_state state = DC->state;
-    if (state == st_authorized && !tgl_state::instance()->pfs_enabled()) {
+    if (state == tgl_dc_state::authorized && !tgl_state::instance()->pfs_enabled()) {
         DC->temp_auth_key_id = DC->auth_key_id;
         memcpy(DC->temp_auth_key, DC->auth_key, 256);
         DC->set_bound();
     }
     switch (state) {
-    case st_init:
+    case tgl_dc_state::init:
         TGL_DEBUG("DC " << DC->id << " is in init state");
         send_req_pq_packet(c);
         break;
-    case st_authorized:
+    case tgl_dc_state::authorized:
         TGL_DEBUG("DC " << DC->id << " is in authorized state");
         if (!DC->is_bound()) {
             TGL_DEBUG("DC " << DC->id << " is not bond");
@@ -1360,7 +1360,7 @@ static int tc_becomes_ready(const std::shared_ptr<tgl_connection>& c)
         break;
     default:
         TGL_DEBUG("c_state = " << DC->state);
-        DC->state = st_init; // previous connection was reset
+        DC->state = tgl_dc_state::init; // previous connection was reset
         send_req_pq_packet(c);
         break;
     }

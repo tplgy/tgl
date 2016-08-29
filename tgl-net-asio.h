@@ -30,12 +30,12 @@
 #include <deque>
 #include <memory>
 
-enum conn_state {
-    conn_none,
-    conn_connecting,
-    conn_ready,
-    conn_failed,
-    conn_closed,
+enum class connection_state {
+    none,
+    connecting,
+    ready,
+    failed,
+    closed,
 };
 
 struct tgl_dc;
@@ -81,11 +81,11 @@ private:
 
     void handle_connect(const boost::system::error_code&);
     void clear_buffers();
-    void set_state(conn_state state);
+    void set_state(connection_state state);
     void update_endpoint(bool due_to_failed_connection = false);
 
     boost::asio::ip::tcp::endpoint m_endpoint;
-    conn_state m_state;
+    connection_state m_state;
     boost::asio::io_service& m_io_service;
     boost::asio::ip::tcp::socket m_socket;
     boost::asio::deadline_timer m_ping_timer;

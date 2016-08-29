@@ -352,7 +352,7 @@ public:
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-        if (m_secret_chat && m_secret_chat->state != sc_deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
+        if (m_secret_chat && m_secret_chat->state != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
             tgl_secret_chat_deleted(m_secret_chat);
         }
 
@@ -662,7 +662,7 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
         TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED | TGLMF_CREATE | TGLMF_CREATED);
     free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
 
-    if (message->media->type() == tgl_message_media_type_document_encr) {
+    if (message->media->type() == tgl_message_media_type::document_encr) {
         if (auto encr_document = std::static_pointer_cast<tgl_message_media_document_encr>(message->media)->encr_document) {
             if (u->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
                 encr_document->flags |= TGLDF_IMAGE;

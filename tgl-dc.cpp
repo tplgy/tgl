@@ -46,7 +46,7 @@ void tgl_session::clear()
 tgl_dc::tgl_dc()
     : id(0)
     , rsa_key_idx(-1)
-    , state(st_init)
+    , state(tgl_dc_state::init)
     , auth_key_id(0)
     , temp_auth_key_id(0)
     , temp_auth_key_bind_query_id(0)
@@ -68,7 +68,7 @@ tgl_dc::tgl_dc()
 void tgl_dc::reset_authorization()
 {
     reset_temp_authorization();
-    state = st_init;
+    state = tgl_dc_state::init;
     memset(auth_key, 0, sizeof(auth_key));
     auth_key_id = 0;
     if (!m_pending_queries.empty()) {

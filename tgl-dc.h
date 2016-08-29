@@ -22,6 +22,8 @@
 #define __TGL_DC_H__
 
 #include <array>
+#include <cassert>
+#include <iostream>
 #include <list>
 #include <memory>
 #include <set>
@@ -29,18 +31,53 @@
 #include <vector>
 #include "types/tgl_peer_id.h"
 
-enum tgl_dc_state {
-  st_init,
-  st_reqpq_sent,
-  st_reqdh_sent,
-  st_client_dh_sent,
-  st_init_temp,
-  st_reqpq_sent_temp,
-  st_reqdh_sent_temp,
-  st_client_dh_sent_temp,
-  st_authorized,
-  st_error
+enum class tgl_dc_state {
+    init,
+    reqpq_sent,
+    reqdh_sent,
+    client_dh_sent,
+    init_temp,
+    reqpq_sent_temp,
+    reqdh_sent_temp,
+    client_dh_sent_temp,
+    authorized,
+    error,
 };
+
+inline static std::string to_string(tgl_dc_state state)
+{
+    switch (state) {
+    case tgl_dc_state::init:
+        return "init";
+    case tgl_dc_state::reqpq_sent:
+        return "request pq sent";
+    case tgl_dc_state::reqdh_sent:
+        return "request dh sent";
+    case tgl_dc_state::client_dh_sent:
+        return "client_dh_sent";
+    case tgl_dc_state::init_temp:
+        return "init (temp)";
+    case tgl_dc_state::reqpq_sent_temp:
+        return "request pq sent (temp)";
+    case tgl_dc_state::reqdh_sent_temp:
+        return "request dh sent (temp)";
+    case tgl_dc_state::client_dh_sent_temp:
+        return "client_dh_sent (temp)";
+    case tgl_dc_state::authorized:
+        return "authorized";
+    case tgl_dc_state::error:
+        return "error";
+    default:
+        assert(false);
+        return "unknown dc state";
+    }
+}
+
+inline static std::ostream& operator<<(std::ostream& os, tgl_dc_state state)
+{
+    os << to_string(state);
+    return os;
+}
 
 #define TGLDCF_AUTHORIZED 1
 #define TGLDCF_BOUND 2
@@ -82,7 +119,7 @@ struct tgl_dc_option {
 struct tgl_dc: public std::enable_shared_from_this<tgl_dc> {
     int32_t id;
     int rsa_key_idx;
-    enum tgl_dc_state state;
+    tgl_dc_state state;
     std::shared_ptr<tgl_session> session;
     unsigned char auth_key[256];
     unsigned char temp_auth_key[256];

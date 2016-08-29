@@ -22,18 +22,59 @@
 #ifndef __TGL_TYPING_STATUS_H__
 #define __TGL_TYPING_STATUS_H__
 
-enum tgl_typing_status {
-    tgl_typing_none,
-    tgl_typing_typing,
-    tgl_typing_cancel,
-    tgl_typing_record_video,
-    tgl_typing_upload_video,
-    tgl_typing_record_audio,
-    tgl_typing_upload_audio,
-    tgl_typing_upload_photo,
-    tgl_typing_upload_document,
-    tgl_typing_geo,
-    tgl_typing_choose_contact
+#include <cassert>
+#include <iostream>
+#include <string>
+
+enum class tgl_typing_status {
+    none,
+    typing,
+    cancel,
+    record_video,
+    upload_video,
+    record_audio,
+    upload_audio,
+    upload_photo,
+    upload_document,
+    geo,
+    choose_contact,
 };
+
+inline static std::string to_string(tgl_typing_status status)
+{
+    switch (status) {
+    case tgl_typing_status::none:
+        return "none";
+    case tgl_typing_status::typing:
+        return "typing";
+    case tgl_typing_status::cancel:
+        return "cancel";
+    case tgl_typing_status::record_video:
+        return "record_video";
+    case tgl_typing_status::upload_video:
+        return "upload_video";
+    case tgl_typing_status::record_audio:
+        return "record_audio";
+    case tgl_typing_status::upload_audio:
+        return "upload_audio";
+    case tgl_typing_status::upload_photo:
+        return "upload_photo";
+    case tgl_typing_status::upload_document:
+        return "upload_document";
+    case tgl_typing_status::geo:
+        return "geo";
+    case tgl_typing_status::choose_contact:
+        return "choose_contact";
+    default:
+        assert(false);
+        return "unknown typing status";
+    }
+}
+
+inline std::ostream& operator<<(std::ostream& os, tgl_typing_status status)
+{
+    os << to_string(status);
+    return os;
+}
 
 #endif

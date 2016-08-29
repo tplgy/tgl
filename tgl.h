@@ -26,7 +26,9 @@
 #include "tgl-layout.h"
 #include "tgl-log.h"
 #include "types/tgl_online_status.h"
+#include <cassert>
 #include <cstdint>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <set>
@@ -68,15 +70,44 @@ class query;
 struct tgl_user;
 struct tgl_state;
 
-enum tgl_value_type {
-    tgl_phone_number,           // user phone number
-    tgl_code,                   // telegram login code, or 'call' for phone call request
-    tgl_register_info,          // "Y/n" register?, first name, last name
-    tgl_new_password,           // new pass, confirm new pass
-    tgl_cur_and_new_password,   // curr pass, new pass, confirm new pass
-    tgl_cur_password,           // current pass
-    tgl_bot_hash
+enum class tgl_value_type {
+    phone_number,           // user phone number
+    code,                   // telegram login code, or 'call' for phone call request
+    register_info,          // "Y/n" register?, first name, last name
+    new_password,           // new pass, confirm new pass
+    cur_and_new_password,   // curr pass, new pass, confirm new pass
+    cur_password,           // current pass
+    bot_hash,
 };
+
+inline static std::string to_string(tgl_value_type type)
+{
+    switch (type) {
+    case tgl_value_type::phone_number:
+        return "phone_number";
+    case tgl_value_type::code:
+        return "code";
+    case tgl_value_type::register_info:
+        return "register_info";
+    case tgl_value_type::new_password:
+        return "new_password";
+    case tgl_value_type::cur_and_new_password:
+        return "cur_and_new_password";
+    case tgl_value_type::cur_password:
+        return "cur_password";
+    case tgl_value_type::bot_hash:
+        return "bot_hash";
+    default:
+        assert(false);
+        return "unknown tgl value type";
+    }
+}
+
+inline std::ostream& operator<<(std::ostream& os, tgl_value_type type)
+{
+    os << to_string(type);
+    return os;
+}
 
 enum class tgl_user_update_type: int8_t {
     firstname = 0,
@@ -86,12 +117,12 @@ enum class tgl_user_update_type: int8_t {
     blocked
 };
 
-enum tgl_user_status_type {
-    tgl_user_status_offline,
-    tgl_user_status_online,
-    tgl_user_status_recently,
-    tgl_user_status_last_week,
-    tgl_user_status_last_month
+enum class tgl_user_status_type {
+    offline,
+    online,
+    recently,
+    last_week,
+    last_month,
 };
 
 #define TGL_LOCK_DIFF 1

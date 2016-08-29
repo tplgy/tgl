@@ -271,7 +271,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_encryption:
         if (auto secret_chat = tglf_fetch_alloc_encrypted_chat(DS_U->encr_chat)) {
-            if (secret_chat->state == sc_ok) {
+            if (secret_chat->state == tgl_secret_chat_state::ok) {
                 tgl_do_send_encr_chat_layer(secret_chat);
             }
         }
@@ -279,7 +279,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
     case CODE_update_encrypted_chat_typing:
         if (auto secret_chat = tgl_state::instance()->secret_chat_for_id(DS_LVAL(DS_U->chat_id))) {
             tgl_state::instance()->callback()->typing_status_changed(secret_chat->user_id, DS_LVAL(DS_U->chat_id),
-                    tgl_peer_type::enc_chat, tgl_typing_status::tgl_typing_typing);
+                    tgl_peer_type::enc_chat, tgl_typing_status::typing);
         }
         break;
     case CODE_update_encrypted_messages_read:

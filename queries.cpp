@@ -1089,22 +1089,22 @@ static void tgl_do_send_msg(const std::shared_ptr<tgl_message>& M,
         for (size_t i = 0; i < M->entities.size(); i++) {
             auto entity = M->entities[i];
             switch (entity->type) {
-            case tgl_message_entity_bold:
+            case tgl_message_entity_type::bold:
                 q->out_i32(CODE_message_entity_bold);
                 q->out_i32(entity->start);
                 q->out_i32(entity->length);
                 break;
-            case tgl_message_entity_italic:
+            case tgl_message_entity_type::italic:
                 q->out_i32(CODE_message_entity_italic);
                 q->out_i32(entity->start);
                 q->out_i32(entity->length);
                 break;
-            case tgl_message_entity_code:
+            case tgl_message_entity_type::code:
                 q->out_i32(CODE_message_entity_code);
                 q->out_i32(entity->start);
                 q->out_i32(entity->length);
                 break;
-            case tgl_message_entity_text_url:
+            case tgl_message_entity_type::text_url:
                 q->out_i32(CODE_message_entity_text_url);
                 q->out_i32(entity->start);
                 q->out_i32(entity->length);
@@ -1136,7 +1136,7 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
             }
             return;
         }
-        if (secret_chat->state != sc_ok) {
+        if (secret_chat->state != tgl_secret_chat_state::ok) {
             TGL_ERROR("secret chat not in ok state");
             if (callback) {
                 callback(false, nullptr);
@@ -3103,7 +3103,7 @@ void tgl_do_get_channel_difference(int32_t id, const std::function<void(bool suc
 //int tgl_do_visualize_key(tgl_peer_id_t id, unsigned char buf[16]) {
 //    assert(id.peer_type == tgl_peer_type::enc_chat);
 //    assert(P);
-//    if (P->encr_chat.state != sc_ok) {
+//    if (P->encr_chat.state != tgl_secret_chat_state::ok) {
 //        TGL_WARNING("Chat is not initialized yet");
 //        return -1;
 //    }
@@ -3476,7 +3476,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_send_typing(const tgl_input_peer_t& id, enum tgl_typing_status status,
+void tgl_do_send_typing(const tgl_input_peer_t& id, tgl_typing_status status,
         const std::function<void(bool success)>& callback)
 {
     if (id.peer_type != tgl_peer_type::enc_chat) {
@@ -3484,39 +3484,39 @@ void tgl_do_send_typing(const tgl_input_peer_t& id, enum tgl_typing_status statu
         q->out_i32(CODE_messages_set_typing);
         q->out_input_peer(id);
         switch (status) {
-        case tgl_typing_none:
-        case tgl_typing_typing:
+        case tgl_typing_status::none:
+        case tgl_typing_status::typing:
             q->out_i32(CODE_send_message_typing_action);
             break;
-        case tgl_typing_cancel:
+        case tgl_typing_status::cancel:
             q->out_i32(CODE_send_message_cancel_action);
             break;
-        case tgl_typing_record_video:
+        case tgl_typing_status::record_video:
             q->out_i32(CODE_send_message_record_video_action);
             break;
-        case tgl_typing_upload_video:
+        case tgl_typing_status::upload_video:
             q->out_i32(CODE_send_message_upload_video_action);
             q->out_i32(0);
             break;
-        case tgl_typing_record_audio:
+        case tgl_typing_status::record_audio:
             q->out_i32(CODE_send_message_record_audio_action);
             break;
-        case tgl_typing_upload_audio:
+        case tgl_typing_status::upload_audio:
             q->out_i32(CODE_send_message_upload_audio_action);
             q->out_i32(0);
             break;
-        case tgl_typing_upload_photo:
+        case tgl_typing_status::upload_photo:
             q->out_i32(CODE_send_message_upload_photo_action);
             q->out_i32(0);
             break;
-        case tgl_typing_upload_document:
+        case tgl_typing_status::upload_document:
             q->out_i32(CODE_send_message_upload_document_action);
             q->out_i32(0);
             break;
-        case tgl_typing_geo:
+        case tgl_typing_status::geo:
             q->out_i32(CODE_send_message_geo_location_action);
             break;
-        case tgl_typing_choose_contact:
+        case tgl_typing_status::choose_contact:
             q->out_i32(CODE_send_message_choose_contact_action);
             break;
         }
@@ -3841,7 +3841,7 @@ void tgl_on_new_pwd(const std::shared_ptr<change_password_state>& state, const v
 
     if (state->new_password != new_password_confirm) {
         TGL_ERROR("passwords do not match");
-        tgl_state::instance()->callback()->get_values(tgl_new_password, "new password: ", 2, std::bind(tgl_on_new_pwd, state, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_value_type::new_password, "new password: ", 2, std::bind(tgl_on_new_pwd, state, std::placeholders::_1));
         return;
     }
 
@@ -3889,12 +3889,12 @@ public:
         state->callback = m_callback;
 
         if (DS_AP->magic == CODE_account_no_password) {
-            tgl_state::instance()->callback()->get_values(tgl_new_password, "new password: ", 2, std::bind(tgl_on_new_pwd, state, std::placeholders::_1));
+            tgl_state::instance()->callback()->get_values(tgl_value_type::new_password, "new password: ", 2, std::bind(tgl_on_new_pwd, state, std::placeholders::_1));
         } else {
             char s[512];
             memset(s, 0, sizeof(s));
             snprintf(s, sizeof(s) - 1, "old password (hint %.*s): ", DS_RSTR(DS_AP->hint));
-            tgl_state::instance()->callback()->get_values(tgl_cur_and_new_password, s, 3, std::bind(tgl_on_old_pwd, state, std::placeholders::_1));
+            tgl_state::instance()->callback()->get_values(tgl_value_type::cur_and_new_password, s, 3, std::bind(tgl_on_old_pwd, state, std::placeholders::_1));
         }
     }
 
@@ -4018,7 +4018,7 @@ public:
             current_salt = std::string(DS_AP->current_salt->data, DS_AP->current_salt->len);
         }
 
-        tgl_state::instance()->callback()->get_values(tgl_cur_password, s, 1,
+        tgl_state::instance()->callback()->get_values(tgl_value_type::cur_password, s, 1,
                 std::bind(tgl_pwd_got, current_salt, m_callback, std::placeholders::_1));
     }
 
@@ -4484,7 +4484,7 @@ void tgl_sign_in_result(const std::shared_ptr<sign_up_extra>& E, bool success, c
     TGL_DEBUG(".....tgl_sign_in_result");
     if (!success) {
         TGL_ERROR("incorrect code");
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_value_type::code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
         return;
     }
     tgl_signed_in();
@@ -4494,7 +4494,7 @@ void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void* code)
 {
     if (!strcmp((const char *)code, "call")) {
         tgl_do_phone_call(E->phone, E->hash, nullptr);
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_value_type::code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
         return;
     } else if (!strcmp((const char *)code, "resend")) {
         tgl_sign_in_phone(E->phone.c_str());
@@ -4511,7 +4511,7 @@ void tgl_sign_up_result(const std::shared_ptr<sign_up_extra>& E, bool success, c
     TGL_UNUSED(U);
     if (!success) {
         TGL_ERROR("incorrect code");
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_value_type::code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
         return;
     }
     tgl_signed_in();
@@ -4521,7 +4521,7 @@ void tgl_sign_up_code(const std::shared_ptr<sign_up_extra>& E, const void* code)
 {
     if (!strcmp((const char*)code, "call")) {
         tgl_do_phone_call(E->phone, E->hash, nullptr);
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_value_type::code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
         return;
     } else if (!strcmp((const char *)code, "resend")) {
         tgl_sign_in_phone(E->phone.c_str()); // there is no tgl_sign_up_phone(), so this is okay
@@ -4539,9 +4539,9 @@ void tgl_register_cb(const std::shared_ptr<sign_up_extra>& E, const void* rinfo)
         E->first_name = static_cast<const char*>(yn[1]);
         if (E->first_name.size() >= 1) {
             E->last_name = static_cast<const char*>(yn[2]);
-            tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
+            tgl_state::instance()->callback()->get_values(tgl_value_type::code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_up_code, E, std::placeholders::_1));
         } else {
-            tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, std::bind(tgl_register_cb, E, std::placeholders::_1));
+            tgl_state::instance()->callback()->get_values(tgl_value_type::register_info, "registration info:", 3, std::bind(tgl_register_cb, E, std::placeholders::_1));
         }
     } else {
         TGL_ERROR("stopping registration");
@@ -4554,7 +4554,7 @@ void tgl_sign_in_phone_cb(const std::shared_ptr<sign_up_extra>& E, bool success,
     tgl_state::instance()->locks ^= TGL_LOCK_PHONE;
     if (!success) {
         E->phone = std::string();
-        tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone);
+        tgl_state::instance()->callback()->get_values(tgl_value_type::phone_number, "phone number:", 1, tgl_sign_in_phone);
         return;
     }
 
@@ -4562,10 +4562,10 @@ void tgl_sign_in_phone_cb(const std::shared_ptr<sign_up_extra>& E, bool success,
 
     if (registered) {
         TGL_NOTICE("already registered, need code");
-        tgl_state::instance()->callback()->get_values(tgl_code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_value_type::code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
     } else {
         TGL_NOTICE("not registered");
-        tgl_state::instance()->callback()->get_values(tgl_register_info, "registration info:", 3, std::bind(tgl_register_cb, E, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_value_type::register_info, "registration info:", 3, std::bind(tgl_register_cb, E, std::placeholders::_1));
     }
 }
 
@@ -4585,7 +4585,7 @@ void tgl_sign_in_bot_cb(bool success, const std::shared_ptr<tgl_user>& U)
 {
     if (!success) {
         TGL_ERROR("incorrect bot hash");
-        tgl_state::instance()->callback()->get_values(tgl_bot_hash, "bot hash:", 1, tgl_bot_hash_cb);
+        tgl_state::instance()->callback()->get_values(tgl_value_type::bot_hash, "bot hash:", 1, tgl_bot_hash_cb);
         return;
     }
     tgl_signed_in();
@@ -4602,7 +4602,7 @@ static void tgl_sign_in()
 
     if (!(tgl_state::instance()->locks & TGL_LOCK_PHONE)) {
         TGL_DEBUG("asking for phone number");
-        tgl_state::instance()->callback()->get_values(tgl_phone_number, "phone number:", 1, tgl_sign_in_phone);
+        tgl_state::instance()->callback()->get_values(tgl_value_type::phone_number, "phone number:", 1, tgl_sign_in_phone);
     }
 }
 
@@ -4706,7 +4706,7 @@ static void tgl_set_number_result(const std::shared_ptr<change_phone_state>& sta
         }
     } else {
         TGL_ERROR("incorrect code");
-        tgl_state::instance()->callback()->get_values(tgl_code, "code:", 1, std::bind(tgl_set_number_code, state, std::placeholders::_1));
+        tgl_state::instance()->callback()->get_values(tgl_value_type::code, "code:", 1, std::bind(tgl_set_number_code, state, std::placeholders::_1));
     }
 }
 
@@ -4734,7 +4734,7 @@ static void tgl_set_phone_number_cb(const std::shared_ptr<change_phone_state>& s
     }
 
     state->hash = hash;
-    tgl_state::instance()->callback()->get_values(tgl_code, "code:", 1, std::bind(tgl_set_number_code, state, std::placeholders::_1));
+    tgl_state::instance()->callback()->get_values(tgl_value_type::code, "code:", 1, std::bind(tgl_set_number_code, state, std::placeholders::_1));
 }
 
 void tgl_do_set_phone_number(const std::string& phonenumber, const std::function<void(bool success)>& callback)

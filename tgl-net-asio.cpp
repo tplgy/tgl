@@ -39,7 +39,7 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
         const std::weak_ptr<tgl_session>& session,
         const std::weak_ptr<tgl_dc>& dc,
         const std::shared_ptr<mtproto_client>& client)
-    : m_state(conn_none)
+    : m_state(connection_state::none)
     , m_io_service(io_service)
     , m_socket(io_service)
     , m_ping_timer(io_service)
@@ -70,9 +70,9 @@ void tgl_connection_asio::ping(const boost::system::error_code& error) {
     auto duration_since_last_receive = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_last_receive_time);
     if (duration_since_last_receive > PING_FAIL_DURATION) {
         TGL_WARNING("connection failed or ping timeout, scheduling restart");
-        set_state(conn_failed);
+        set_state(connection_state::failed);
         schedule_restart();
-    } else if (duration_since_last_receive > PING_DURATION && m_state == conn_ready) {
+    } else if (duration_since_last_receive > PING_DURATION && m_state == connection_state::ready) {
         tgl_do_send_ping(shared_from_this());
         start_ping_timer();
     } else {
@@ -138,12 +138,12 @@ void tgl_connection_asio::open()
 
 void tgl_connection_asio::schedule_restart()
 {
-    if (m_state == conn_closed) {
+    if (m_state == connection_state::closed) {
         TGL_WARNING("can not restart a closed connection");
         return;
     }
 
-    if (m_state == conn_connecting) {
+    if (m_state == connection_state::connecting) {
         TGL_DEBUG("restart is already in process");
         return;
     }
@@ -183,7 +183,7 @@ void tgl_connection_asio::restart(const boost::system::error_code& error)
 
     stop_ping_timer();
     clear_buffers();
-    set_state(conn_failed);
+    set_state(connection_state::failed);
     if (m_socket.is_open()) {
         m_socket.close();
     }
@@ -193,7 +193,7 @@ void tgl_connection_asio::restart(const boost::system::error_code& error)
 }
 
 void tgl_connection_asio::try_rpc_read() {
-    if (m_state == conn_closed) {
+    if (m_state == connection_state::closed) {
         return;
     }
 
@@ -240,8 +240,8 @@ void tgl_connection_asio::try_rpc_read() {
         case mtproto_client::execute_result::ok:
             break;
         case mtproto_client::execute_result::bad_connection:
-            if (m_state != conn_closed) {
-                set_state(conn_failed);
+            if (m_state != connection_state::closed) {
+                set_state(connection_state::failed);
                 schedule_restart();
             }
             break;
@@ -254,13 +254,13 @@ void tgl_connection_asio::try_rpc_read() {
 
 void tgl_connection_asio::close()
 {
-    if (m_state == conn_closed) {
+    if (m_state == connection_state::closed) {
         return;
     }
 
     tgl_state::instance()->remove_online_status_observer(shared_from_this());
     m_mtproto_client->close(shared_from_this());
-    set_state(conn_closed);
+    set_state(connection_state::closed);
     m_ping_timer.cancel();
     m_socket.close();
     clear_buffers();
@@ -275,11 +275,11 @@ void tgl_connection_asio::clear_buffers()
 
 bool tgl_connection_asio::connect()
 {
-    if (m_state == conn_closed) {
+    if (m_state == connection_state::closed) {
         return false;
     }
 
-    set_state(conn_connecting);
+    set_state(connection_state::connecting);
 
     boost::system::error_code ec;
     m_socket.open(m_endpoint.protocol(), ec);
@@ -315,7 +315,7 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
     if (ec) {
         if (ec != boost::asio::error::operation_aborted) {
             TGL_WARNING("error connecting to " << m_endpoint << ": " << ec.value() << " - "<< ec.message());
-            set_state(conn_failed);
+            set_state(connection_state::failed);
             update_endpoint(true);
             schedule_restart();
         }
@@ -327,8 +327,8 @@ void tgl_connection_asio::handle_connect(const boost::system::error_code& ec)
     start_ping_timer();
     m_restart_duration = MIN_RESTART_DURATION;
 
-    if (m_state == conn_connecting) {
-        set_state(conn_ready);
+    if (m_state == connection_state::connecting) {
+        set_state(connection_state::ready);
         m_mtproto_client->ready(shared_from_this());
     } else {
         return;
@@ -381,7 +381,7 @@ ssize_t tgl_connection_asio::read(void* data_out, size_t len)
 
 void tgl_connection_asio::start_read()
 {
-    if (m_state == conn_closed) {
+    if (m_state == connection_state::closed) {
         return;
     }
 
@@ -409,7 +409,7 @@ ssize_t tgl_connection_asio::write(const void* data_in, size_t len)
 
 void tgl_connection_asio::start_write()
 {
-    if (m_state == conn_closed || m_write_pending || !m_write_buffer_queue.size()) {
+    if (m_state == connection_state::closed || m_write_pending || !m_write_buffer_queue.size()) {
         return;
     }
 
@@ -444,7 +444,7 @@ void tgl_connection_asio::handle_read(const std::shared_ptr<std::vector<char>>& 
         return;
     }
 
-    if (m_state == conn_closed) {
+    if (m_state == connection_state::closed) {
         TGL_WARNING("invalid read from closed connection");
         return;
     }
@@ -507,7 +507,7 @@ void tgl_connection_asio::handle_write(const std::vector<std::shared_ptr<std::ve
         return;
     }
 
-    if (m_state == conn_closed) {
+    if (m_state == connection_state::closed) {
         TGL_WARNING("invalid write to closed connection");
         return;
     }
@@ -523,17 +523,17 @@ void tgl_connection_asio::on_online_status_changed(tgl_online_status status)
 
     m_online_status = status;
 
-    if (m_state == conn_closed || !is_online()) {
+    if (m_state == connection_state::closed || !is_online()) {
         return;
     }
 
-    set_state(conn_failed);
+    set_state(connection_state::failed);
     m_restart_timer.reset();
     m_restart_duration = MIN_RESTART_DURATION;
     schedule_restart();
 }
 
-void tgl_connection_asio::set_state(conn_state state)
+void tgl_connection_asio::set_state(connection_state state)
 {
     if (state == m_state) {
         return;
@@ -548,10 +548,10 @@ void tgl_connection_asio::set_state(conn_state state)
 
     tgl_connection_status status;
     switch (m_state) {
-    case conn_connecting:
+    case connection_state::connecting:
         status = tgl_connection_status::connecting;
         break;
-    case conn_ready:
+    case connection_state::ready:
         status = tgl_connection_status::connected;
         break;
     default:

@@ -25,27 +25,27 @@
 #include <cstdint>
 #include <string>
 
-enum tgl_message_entity_type {
-    tgl_message_entity_unknown,
-    tgl_message_entity_mention,
-    tgl_message_entity_hashtag,
-    tgl_message_entity_bot_command,
-    tgl_message_entity_url,
-    tgl_message_entity_email,
-    tgl_message_entity_bold,
-    tgl_message_entity_italic,
-    tgl_message_entity_code,
-    tgl_message_entity_pre,
-    tgl_message_entity_text_url
+enum class tgl_message_entity_type {
+    unknown,
+    mention,
+    hashtag,
+    bot_command,
+    url,
+    email,
+    bold,
+    italic,
+    code,
+    pre,
+    text_url
 };
 
 struct tgl_message_entity {
-    enum tgl_message_entity_type type;
+    tgl_message_entity_type type;
     int32_t start;
     int32_t length;
     std::string text_url;
     tgl_message_entity()
-        : type(tgl_message_entity_unknown)
+        : type(tgl_message_entity_type::unknown)
         , start(0)
         , length(0)
     { }

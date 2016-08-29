@@ -49,32 +49,32 @@
 enum tgl_typing_status tglf_fetch_typing(const tl_ds_send_message_action* DS_SMA)
 {
     if (!DS_SMA) {
-        return tgl_typing_none;
+        return tgl_typing_status::none;
     }
     switch (DS_SMA->magic) {
     case CODE_send_message_typing_action:
-        return tgl_typing_typing;
+        return tgl_typing_status::typing;
     case CODE_send_message_cancel_action:
-        return tgl_typing_cancel;
+        return tgl_typing_status::cancel;
     case CODE_send_message_record_video_action:
-        return tgl_typing_record_video;
+        return tgl_typing_status::record_video;
     case CODE_send_message_upload_video_action:
-        return tgl_typing_upload_video;
+        return tgl_typing_status::upload_video;
     case CODE_send_message_record_audio_action:
-        return tgl_typing_record_audio;
+        return tgl_typing_status::record_audio;
     case CODE_send_message_upload_audio_action:
-        return tgl_typing_upload_audio;
+        return tgl_typing_status::upload_audio;
     case CODE_send_message_upload_photo_action:
-        return tgl_typing_upload_photo;
+        return tgl_typing_status::upload_photo;
     case CODE_send_message_upload_document_action:
-        return tgl_typing_upload_document;
+        return tgl_typing_status::upload_document;
     case CODE_send_message_geo_location_action:
-        return tgl_typing_geo;
+        return tgl_typing_status::geo;
     case CODE_send_message_choose_contact_action:
-        return tgl_typing_choose_contact;
+        return tgl_typing_status::choose_contact;
     default:
         assert(false);
-        return tgl_typing_none;
+        return tgl_typing_status::none;
     }
 }
 
@@ -351,7 +351,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
         str_to_256(g_key, DS_STR(DS_EC->g_a));
 
         int user_id = DS_LVAL(DS_EC->participant_id) + DS_LVAL(DS_EC->admin_id) - tgl_state::instance()->our_id().peer_id;
-        tgl_secret_chat_state state = sc_request;
+        tgl_secret_chat_state state = tgl_secret_chat_state::request;
         tgl_update_secret_chat(secret_chat,
                 DS_EC->access_hash,
                 DS_EC->date,
@@ -366,7 +366,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
                 TGLECF_CREATE | TGLECF_CREATED);
     } else {
         if (DS_EC->magic == CODE_encrypted_chat_waiting) {
-            tgl_secret_chat_state state = sc_waiting;
+            tgl_secret_chat_state state = tgl_secret_chat_state::waiting;
             tgl_update_secret_chat(secret_chat,
                   DS_EC->access_hash,
                   DS_EC->date,
@@ -384,7 +384,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
 
         str_to_256(g_key, DS_STR(DS_EC->g_a_or_b));
 
-        tgl_secret_chat_state state = sc_ok;
+        tgl_secret_chat_state state = tgl_secret_chat_state::ok;
         secret_chat->temp_key_fingerprint = DS_LVAL(DS_EC->key_fingerprint);
         tgl_update_secret_chat(secret_chat,
                 DS_EC->access_hash,
@@ -1333,37 +1333,37 @@ static std::shared_ptr<tgl_message_entity> tglf_fetch_message_entity(const tl_ds
     entity->length = DS_LVAL(DS_ME->length);
     switch (DS_ME->magic) {
     case CODE_message_entity_unknown:
-        entity->type = tgl_message_entity_unknown;
+        entity->type = tgl_message_entity_type::unknown;
         break;
     case CODE_message_entity_mention:
-        entity->type = tgl_message_entity_mention;
+        entity->type = tgl_message_entity_type::mention;
         break;
     case CODE_message_entity_hashtag:
-        entity->type = tgl_message_entity_hashtag;
+        entity->type = tgl_message_entity_type::hashtag;
         break;
     case CODE_message_entity_bot_command:
-        entity->type = tgl_message_entity_bot_command;
+        entity->type = tgl_message_entity_type::bot_command;
         break;
     case CODE_message_entity_url:
-        entity->type = tgl_message_entity_url;
+        entity->type = tgl_message_entity_type::url;
         break;
     case CODE_message_entity_email:
-        entity->type = tgl_message_entity_email;
+        entity->type = tgl_message_entity_type::email;
         break;
     case CODE_message_entity_bold:
-        entity->type = tgl_message_entity_bold;
+        entity->type = tgl_message_entity_type::bold;
         break;
     case CODE_message_entity_italic:
-        entity->type = tgl_message_entity_italic;
+        entity->type = tgl_message_entity_type::italic;
         break;
     case CODE_message_entity_code:
-        entity->type = tgl_message_entity_code;
+        entity->type = tgl_message_entity_type::code;
         break;
     case CODE_message_entity_pre:
-        entity->type = tgl_message_entity_pre;
+        entity->type = tgl_message_entity_type::pre;
         break;
     case CODE_message_entity_text_url:
-        entity->type = tgl_message_entity_text_url;
+        entity->type = tgl_message_entity_type::text_url;
         entity->text_url = DS_STDSTR(DS_ME->url);
         break;
     default:
@@ -1463,7 +1463,7 @@ static int decrypt_encrypted_message(const tgl_secret_chat* secret_chat, int*& d
     memset(sha1d_buffer, 0, sizeof(sha1d_buffer));
     memset(buf, 0, sizeof(buf));
 
-    const int* e_key = secret_chat->exchange_state != tgl_sce_committed
+    const int* e_key = secret_chat->exchange_state != tgl_secret_chat_exchange_state::committed
         ? reinterpret_cast<const int*>(secret_chat->key()) : secret_chat->exchange_key;
 
     memcpy(buf, msg_key, 16);
@@ -1523,7 +1523,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
     }
 
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(DS_LVAL(DS_EM->chat_id));
-    if (!secret_chat || secret_chat->state != sc_ok) {
+    if (!secret_chat || secret_chat->state != tgl_secret_chat_state::ok) {
         TGL_WARNING("encrypted message to unknown chat, dropping");
         return nullptr;
     }
@@ -1548,12 +1548,12 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
     int* decr_ptr = reinterpret_cast<int*>(DS_EM->bytes->data);
     int* decr_end = decr_ptr + (DS_EM->bytes->len / 4);
 
-    if (secret_chat->exchange_state == tgl_sce_committed && secret_chat->key_fingerprint() == *(int64_t*)decr_ptr) {
+    if (secret_chat->exchange_state == tgl_secret_chat_exchange_state::committed && secret_chat->key_fingerprint() == *(int64_t*)decr_ptr) {
         tgl_do_confirm_exchange(secret_chat, 0);
-        assert(secret_chat->exchange_state == tgl_sce_none);
+        assert(secret_chat->exchange_state == tgl_secret_chat_exchange_state::none);
     }
 
-    int64_t key_fingerprint = secret_chat->exchange_state != tgl_sce_committed ? secret_chat->key_fingerprint() : secret_chat->exchange_key_fingerprint;
+    int64_t key_fingerprint = secret_chat->exchange_state != tgl_secret_chat_exchange_state::committed ? secret_chat->key_fingerprint() : secret_chat->exchange_key_fingerprint;
     if (*(int64_t*)decr_ptr != key_fingerprint) {
         TGL_WARNING("encrypted message with bad fingerprint to chat " << secret_chat->id.peer_id);
         return nullptr;
@@ -1647,10 +1647,10 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
 void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>& M, const tl_ds_encrypted_file* DS_EF)
 {
     if (DS_EF->magic == CODE_encrypted_file_empty) {
-        assert(M->type() != tgl_message_media_type_document_encr);
+        assert(M->type() != tgl_message_media_type::document_encr);
     } else {
-        assert(M->type() == tgl_message_media_type_document_encr);
-        if (M->type() != tgl_message_media_type_document_encr) {
+        assert(M->type() == tgl_message_media_type::document_encr);
+        if (M->type() != tgl_message_media_type::document_encr) {
             return;
         }
 
@@ -1727,42 +1727,42 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
         }
     }
 
-    auto action_type = message->action ? message->action->type() : tgl_message_action_type_none;
-    if (action_type == tgl_message_action_type_request_key) {
+    auto action_type = message->action ? message->action->type() : tgl_message_action_type::none;
+    if (action_type == tgl_message_action_type::request_key) {
         auto action = std::static_pointer_cast<tgl_message_action_request_key>(message->action);
-        if (secret_chat->exchange_state == tgl_sce_none || (secret_chat->exchange_state == tgl_sce_requested && secret_chat->exchange_id > action->exchange_id )) {
+        if (secret_chat->exchange_state == tgl_secret_chat_exchange_state::none || (secret_chat->exchange_state == tgl_secret_chat_exchange_state::requested && secret_chat->exchange_id > action->exchange_id )) {
             tgl_do_accept_exchange(secret_chat, action->exchange_id, action->g_a);
         } else {
             TGL_WARNING("secret_chat exchange: incorrect state (received request, state = " << secret_chat->exchange_state << ")");
         }
-    } else if (action_type == tgl_message_action_type_accept_key) {
+    } else if (action_type == tgl_message_action_type::accept_key) {
         auto action = std::static_pointer_cast<tgl_message_action_accept_key>(message->action);
-        if (secret_chat->exchange_state == tgl_sce_requested && secret_chat->exchange_id == action->exchange_id) {
+        if (secret_chat->exchange_state == tgl_secret_chat_exchange_state::requested && secret_chat->exchange_id == action->exchange_id) {
             tgl_do_commit_exchange(secret_chat, action->g_a);
         } else {
             TGL_WARNING("secret_chat exchange: Incorrect state (received accept, state = " << secret_chat->exchange_state << ")");
         }
-    } else if (action_type == tgl_message_action_type_commit_key) {
+    } else if (action_type == tgl_message_action_type::commit_key) {
         auto action = std::static_pointer_cast<tgl_message_action_commit_key>(message->action);
-        if (secret_chat->exchange_state == tgl_sce_accepted && secret_chat->exchange_id == action->exchange_id) {
+        if (secret_chat->exchange_state == tgl_secret_chat_exchange_state::accepted && secret_chat->exchange_id == action->exchange_id) {
             tgl_do_confirm_exchange(secret_chat, 1);
         } else {
             TGL_WARNING("secret_chat exchange: Incorrect state (received commit, state = " << secret_chat->exchange_state << ")");
         }
-    } else if (action_type == tgl_message_action_type_abort_key) {
+    } else if (action_type == tgl_message_action_type::abort_key) {
         auto action = std::static_pointer_cast<tgl_message_action_abort_key>(message->action);
-        if (secret_chat->exchange_state != tgl_sce_none && secret_chat->exchange_id == action->exchange_id) {
+        if (secret_chat->exchange_state != tgl_secret_chat_exchange_state::none && secret_chat->exchange_id == action->exchange_id) {
             tgl_do_abort_exchange(secret_chat);
         } else {
             TGL_WARNING("secret_chat exchange: Incorrect state (received abort, state = " << secret_chat->exchange_state << ")");
         }
-    } else if (action_type == tgl_message_action_type_notify_layer) {
+    } else if (action_type == tgl_message_action_type::notify_layer) {
         auto action = std::static_pointer_cast<tgl_message_action_notify_layer>(message->action);
         layer = action->layer;
-    } else if (action_type == tgl_message_action_type_set_message_ttl) {
+    } else if (action_type == tgl_message_action_type::set_message_ttl) {
         auto action = std::static_pointer_cast<tgl_message_action_set_message_ttl>(message->action);
         ttl_ptr = &(action->ttl);
-    } else if (action_type == tgl_message_action_type_delete_messages) {
+    } else if (action_type == tgl_message_action_type::delete_messages) {
         auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(message->action);
         for (int64_t id : action->msg_ids) {
             tgl_state::instance()->callback()->message_deleted(id);
@@ -1770,7 +1770,7 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
     }
 
     tgl_update_secret_chat(secret_chat, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, ttl_ptr, &layer, our_in_seq_no_ptr, TGL_FLAGS_UNCHANGED);
-    if (action_type == tgl_message_action_type_none) {
+    if (action_type == tgl_message_action_type::none) {
         tgl_state::instance()->callback()->new_messages({message});
     }
 }
@@ -1933,7 +1933,7 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(
         tglf_fetch_encrypted_message_file(M->media, file);
     }
 
-    if (action && !(M->flags & TGLMF_OUT) && M->action && M->action->type() == tgl_message_action_type_notify_layer) {
+    if (action && !(M->flags & TGLMF_OUT) && M->action && M->action->type() == tgl_message_action_type::notify_layer) {
         secret_chat->layer = std::static_pointer_cast<tgl_message_action_notify_layer>(M->action)->layer;
     }
 
