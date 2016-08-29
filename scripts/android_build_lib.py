@@ -1,3 +1,7 @@
+#
+#    Copyright Topology LP 2016
+#
+
 import os
 import platform
 import shutil
