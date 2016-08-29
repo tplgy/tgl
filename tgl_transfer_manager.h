@@ -72,10 +72,10 @@ inline static std::string to_string(tgl_download_status status)
     }
 }
 
-inline static std::ostream& operator<<(std::ostream& oss, tgl_download_status status)
+inline static std::ostream& operator<<(std::ostream& os, tgl_download_status status)
 {
-    oss << to_string(status);
-    return oss;
+    os << to_string(status);
+    return os;
 }
 
 enum class tgl_upload_status

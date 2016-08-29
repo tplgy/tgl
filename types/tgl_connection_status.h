@@ -21,10 +21,35 @@
 #ifndef __TGL_CONNECTION_STATUS_H__
 #define __TGL_CONNECTION_STATUS_H__
 
+#include <cassert>
+#include <iostream>
+#include <string>
+
 enum class tgl_connection_status {
     disconnected,
     connecting,
     connected,
 };
+
+inline static std::string to_string(tgl_connection_status status)
+{
+    switch (status) {
+    case tgl_connection_status::disconnected:
+        return "disconnected";
+    case tgl_connection_status::connecting:
+        return "connecting";
+    case tgl_connection_status::connected:
+        return "connected";
+    default:
+        assert(false);
+        return "unknown connection status";
+    }
+}
+
+inline static std::ostream& operator<<(std::ostream& os, tgl_connection_status status)
+{
+    os << to_string(status);
+    return os;
+}
 
 #endif
