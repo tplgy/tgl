@@ -245,6 +245,11 @@ void tgl_connection_asio::try_rpc_read() {
                 schedule_restart();
             }
             break;
+       case mtproto_client::execute_result::bad_session:
+            // The client has already handled this case
+            // and the connection should be closed.
+            assert(m_state == connection_state::closed);
+            break;
         case mtproto_client::execute_result::bad_dc:
             close();
             break;

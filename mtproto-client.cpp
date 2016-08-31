@@ -1133,6 +1133,16 @@ static void create_connection(const std::shared_ptr<tgl_session>& S)
     S->c->open();
 }
 
+static void restart_session(const std::shared_ptr<tgl_dc>& dc)
+{
+    if (dc->session) {
+        TGL_WARNING("failing session " << dc->session->session_id);
+        dc->session->clear();
+        dc->session = nullptr;
+    }
+    tglmp_dc_create_session(dc);
+}
+
 static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<tgl_connection>& c, struct encrypted_message* enc, int len)
 {
     const int MINSZ = offsetof(struct encrypted_message, message);
@@ -1189,7 +1199,7 @@ static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<
         return mtproto_client::execute_result::bad_connection;
     }
 
-    int this_server_time = enc->msg_id >> 32LL;
+    int32_t this_server_time = enc->msg_id >> 32LL;
     if (!S->received_messages) {
         DC->server_time_delta = this_server_time - tgl_get_system_time();
         if (DC->server_time_udelta) {
@@ -1199,20 +1209,22 @@ static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<
         DC->server_time_udelta = this_server_time - tgl_get_monotonic_time();
     }
 
-    double st = get_server_time(DC);
-    if (this_server_time < st - 300 || this_server_time > st + 30) {
-        TGL_WARNING("bad msg time: salt = " << enc->server_salt << ", session_id = " << enc->session_id << ", msg_id = " << enc->msg_id
-                << ", seq_no = " << enc->seq_no << ", st = " << st << ", now = " << tgl_get_system_time());
-        return mtproto_client::execute_result::bad_connection;
+    int64_t server_time = get_server_time(DC);
+    if (this_server_time < server_time - 300 || this_server_time > server_time + 30) {
+        TGL_WARNING("bad msg time: salt = " << enc->server_salt << ", session_id = " << enc->session_id
+                << ", msg_id = " << enc->msg_id << ", seq_no = " << enc->seq_no
+                << ", server_time = " << server_time << ", time from msg_id = " << this_server_time
+                << ", now = " << static_cast<int64_t>(tgl_get_system_time()));
+        restart_session(DC);
+        return mtproto_client::execute_result::bad_session;
     }
-    S->received_messages ++;
+    S->received_messages++;
 
     if (DC->server_salt != enc->server_salt) {
         TGL_DEBUG("updating server salt from " << DC->server_salt << " to " << enc->server_salt);
         DC->server_salt = enc->server_salt;
     }
 
-    assert(this_server_time >= st - 300 && this_server_time <= st + 30);
     //assert(enc->msg_id > server_last_msg_id && (enc->msg_id & 3) == 1);
     TGL_DEBUG("received mesage id " << enc->msg_id);
     //server_last_msg_id = enc->msg_id;
@@ -1227,7 +1239,8 @@ static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<
     assert(S->session_id == enc->session_id);
 
     if (rpc_execute_answer(c, &in, enc->msg_id) < 0) {
-        return mtproto_client::execute_result::bad_connection;
+        restart_session(DC);
+        return mtproto_client::execute_result::bad_session;
     }
     assert(in.ptr == in.end);
     return mtproto_client::execute_result::ok;

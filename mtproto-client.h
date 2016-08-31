@@ -37,6 +37,7 @@ public:
     enum class execute_result {
         ok,
         bad_connection,
+        bad_session,
         bad_dc,
     };
     execute_result execute(const std::shared_ptr<tgl_connection>& c, int op, int len);
