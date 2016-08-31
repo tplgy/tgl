@@ -135,7 +135,7 @@ void tgl_state::set_dc_option(bool is_v6, int id, const std::string& ip, int por
 
 void tgl_state::set_dc_logged_in(int num)
 {
-    TGL_DEBUG2("set signed " << num);
+    TGL_DEBUG("set signed " << num);
     assert(num > 0 && num <= MAX_DC_ID);
     assert(m_dcs[num]);
     m_dcs[num]->set_logged_in();
@@ -147,7 +147,7 @@ void tgl_state::set_working_dc(int num)
     if (m_working_dc && m_working_dc->id == num) {
         return;
     }
-    TGL_DEBUG2("change working DC to " << num);
+    TGL_DEBUG("change working DC to " << num);
     assert(num > 0 && num <= MAX_DC_ID);
     m_working_dc = m_dcs[num];
     m_callback->change_active_dc(num);

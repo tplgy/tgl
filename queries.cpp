@@ -587,7 +587,7 @@ int query::handle_result(tgl_in_buffer* in)
         in->end = in->ptr + total_out / 4;
     }
 
-    TGL_DEBUG2("result for query #" << m_msg_id << ". Size " << (long)4 * (in->end - in->ptr) << " bytes");
+    TGL_DEBUG("result for query #" << m_msg_id << ". Size " << (long)4 * (in->end - in->ptr) << " bytes");
 
     tgl_in_buffer skip_in = *in;
     if (skip_type_any(&skip_in, &m_type) < 0) {
@@ -820,7 +820,7 @@ public:
 
     virtual void on_answer(void* D) override
     {
-        TGL_DEBUG2("sign_in_on_answer");
+        TGL_DEBUG("sign_in_on_answer");
         tl_ds_auth_authorization* DS_AA = static_cast<tl_ds_auth_authorization*>(D);
         std::shared_ptr<struct tgl_user> user = tglf_fetch_alloc_user(DS_AA->user);
         tgl_state::instance()->set_dc_logged_in(tgl_state::instance()->working_dc()->id);
@@ -2439,7 +2439,7 @@ static void resend_query_cb(const std::shared_ptr<query>& q, bool success)
 {
     assert(success);
 
-    TGL_DEBUG2("resend_query_cb");
+    TGL_DEBUG("resend_query_cb");
     tgl_state::instance()->set_dc_logged_in(tgl_state::instance()->working_dc()->id);
 
     auto user_info_q = std::make_shared<query_user_info>(nullptr);
@@ -2865,7 +2865,7 @@ public:
             tgl_state::instance()->set_date(DS_LVAL(DS_UD->date));
             tgl_state::instance()->set_seq(DS_LVAL(DS_UD->seq));
 
-            TGL_DEBUG2("Empty difference. Seq = " << tgl_state::instance()->seq());
+            TGL_DEBUG("empty difference, seq = " << tgl_state::instance()->seq());
             if (m_callback) {
                 m_callback(true);
             }

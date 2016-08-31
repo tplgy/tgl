@@ -20,22 +20,19 @@
 
 #include "tgl-log.h"
 
-log_function registered_logfunction = 0;
-std::stringstream str_stream;
-int g_severity = E_NOTICE;
+static tgl_log_function g_log_function;
+static tgl_log_level g_log_level = tgl_log_level::NOTICE;
 
-void init_tgl_log(log_function log_f, int s)
+void tgl_init_log(const tgl_log_function& log_function, tgl_log_level level)
 {
-    registered_logfunction = log_f;
-    g_severity = s;
+    g_log_function = log_function;
+    g_log_level = level;
 }
 
-void tgl_log(const std::string& str, int severity)
+void tgl_log(const std::string& str, tgl_log_level level)
 {
-    if (severity <= g_severity) {
-        if (registered_logfunction) {
-            registered_logfunction(str, severity);
-        }
+    if (level <= g_log_level && g_log_function) {
+        g_log_function(str, level);
     }
 }
 
