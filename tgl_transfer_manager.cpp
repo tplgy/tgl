@@ -955,7 +955,7 @@ int tgl_transfer_manager::download_on_answer(const std::shared_ptr<query_downloa
     if (d->fd == -1) {
         d->fd = open(d->file_name.c_str(), O_CREAT | O_WRONLY, 0640);
         if (d->fd < 0) {
-            TGL_ERROR("Can not open file for writing: %m");
+            TGL_ERROR("can not open file [" << d->file_name << "] for writing: " << errno << " - " << strerror(errno));
             if (q->callback()) {
                 (q->callback())(tgl_download_status::failed, std::string(), 0);
             }
