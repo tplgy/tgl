@@ -1,4 +1,6 @@
-This is library that handles telegram api and protocol.
+# tgl
+
+Unofficial C++ Telegram client library.
 
 Current versions:
 
@@ -13,22 +15,26 @@ Documentation for MTproto protocol is available here: https://core.telegram.org/
 
 ### Installation
 
-Clone GitHub Repository
+```
+git clone --recursive  https://github.com/tplgy/tgl.git && cd tgl
+```
 
-     git clone --recursive  https://github.com/vysheng/tgl.git && cd tgl
+### MacOS and Linux Dependencies
 
-#### Linux and BSDs
+It also requires a modern compiler with C++11/C++14 support like Clang or GCC, as well as CMake.
 
-Install libs: openssl, zlib
-if you want to use provided net/timers then install libevent and add --enable-libevent key to configure
+tgl depends on the following libraries being present:
+- openssl
+- zlib
+- boost
 
-You can also avoid the OpenSSL dependency: Install gcrypt (>= 1.60, Debian derivates know it as "libgcrypt20-dev"), and add --disable-openssl key to configure
+### Building
 
-Then,
-
-     ./configure
-     make
-
-### Contacts 
-If you would like to ask a question, you can write to my telegram or to the github (or both). To contact me via telegram, you should use import_card method with argument 000653bf:0738ca5d:5521fbac:29246815:a27d0cda
-
+Assuming you are in the top-level tgl directory and would like to do an out of source build:
+```
+cd ..
+mkdir tgl-build && cd tgl-build
+cmake ../tgl
+make
+make install <optional>
+```
