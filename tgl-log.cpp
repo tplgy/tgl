@@ -21,7 +21,7 @@
 #include "tgl-log.h"
 
 static tgl_log_function g_log_function;
-static tgl_log_level g_log_level = tgl_log_level::NOTICE;
+static tgl_log_level g_log_level = tgl_log_level::level_notice;
 
 void tgl_init_log(const tgl_log_function& log_function, tgl_log_level level)
 {

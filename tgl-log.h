@@ -29,10 +29,10 @@
 #include <sstream>
 
 enum class tgl_log_level {
-    ERROR = 0,
-    WARNING = 1,
-    NOTICE = 2,
-    DEBUG = 6,
+    level_error = 0,
+    level_warning = 1,
+    level_notice = 2,
+    level_debug = 6,
 };
 
 using tgl_log_function = std::function<void(const std::string& log, tgl_log_level level)>;
@@ -43,19 +43,19 @@ void tgl_log(const std::string& str, tgl_log_level level);
 
 #define TGL_DEBUG(X) do { std::ostringstream str_stream; \
                     str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
-                    tgl_log(str_stream.str(), tgl_log_level::DEBUG);} while (false)
+                    tgl_log(str_stream.str(), tgl_log_level::level_debug);} while (false)
 
 #define TGL_NOTICE(X) do { std::ostringstream str_stream; \
                     str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
-                    tgl_log(str_stream.str(), tgl_log_level::NOTICE);} while (false)
+                    tgl_log(str_stream.str(), tgl_log_level::level_notice);} while (false)
 
 #define TGL_WARNING(X) do { std::ostringstream str_stream; \
                     str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
-                    tgl_log(str_stream.str(), tgl_log_level::WARNING);} while (false)
+                    tgl_log(str_stream.str(), tgl_log_level::level_warning);} while (false)
 
 #define TGL_ERROR(X) do { std::ostringstream str_stream; \
                     str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
-                    tgl_log(str_stream.str(), tgl_log_level::ERROR);} while (false)
+                    tgl_log(str_stream.str(), tgl_log_level::level_error);} while (false)
 
 
 #define TGL_ASSERT(x) assert(x)
