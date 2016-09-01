@@ -41,9 +41,13 @@ void tgl_log(const std::string& str, tgl_log_level level);
 
 #define TGL_CRASH() do { *reinterpret_cast<int*>(0xbadbeef) = 0; abort(); } while (false)
 
+#ifndef NDEBUG
 #define TGL_DEBUG(X) do { std::ostringstream str_stream; \
                     str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
                     tgl_log(str_stream.str(), tgl_log_level::level_debug);} while (false)
+#else
+#define TGL_DEBUG(X)
+#endif
 
 #define TGL_NOTICE(X) do { std::ostringstream str_stream; \
                     str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
