@@ -42,7 +42,7 @@ bool tgl_check_pts_diff(int32_t pts, int32_t pts_count) {
     }
 
     if (pts < tgl_state::instance()->pts() + pts_count) {
-        TGL_NOTICE("Duplicate message with pts=" << pts);
+        TGL_NOTICE("duplicate message with pts=" << pts);
         return false;
     }
     if (pts > tgl_state::instance()->pts() + pts_count) {
@@ -54,7 +54,7 @@ bool tgl_check_pts_diff(int32_t pts, int32_t pts_count) {
         TGL_DEBUG("Update during get_difference. pts = " << pts);
         return false;
     }
-    TGL_DEBUG("Ok update. pts = " << pts);
+    TGL_DEBUG("OK update, pts = " << pts);
     return true;
 }
 
@@ -91,7 +91,7 @@ static bool tgl_check_channel_pts_diff(const tgl_peer_id_t& channel_id, int32_t 
     }
     //assert(tgl_state::instance()->pts);
     if (pts < E->pts + pts_count) {
-      TGL_NOTICE("Duplicate message with pts=" << pts);
+      TGL_NOTICE("duplicate message with pts=" << pts);
       return false;
     }
     if (pts > E->pts + pts_count) {
@@ -103,7 +103,7 @@ static bool tgl_check_channel_pts_diff(const tgl_peer_id_t& channel_id, int32_t 
       TGL_DEBUG("Update during get_difference. pts = " << pts);
       return false;
     }
-    TGL_DEBUG("Ok update. pts = " << pts);
+    TGL_DEBUG("OK update, pts = " << pts);
 #endif
     return true;
 }

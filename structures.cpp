@@ -1740,21 +1740,21 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
         if (secret_chat->exchange_state == tgl_secret_chat_exchange_state::requested && secret_chat->exchange_id == action->exchange_id) {
             tgl_do_commit_exchange(secret_chat, action->g_a);
         } else {
-            TGL_WARNING("secret_chat exchange: Incorrect state (received accept, state = " << secret_chat->exchange_state << ")");
+            TGL_WARNING("secret_chat exchange: incorrect state (received accept, state = " << secret_chat->exchange_state << ")");
         }
     } else if (action_type == tgl_message_action_type::commit_key) {
         auto action = std::static_pointer_cast<tgl_message_action_commit_key>(message->action);
         if (secret_chat->exchange_state == tgl_secret_chat_exchange_state::accepted && secret_chat->exchange_id == action->exchange_id) {
             tgl_do_confirm_exchange(secret_chat, 1);
         } else {
-            TGL_WARNING("secret_chat exchange: Incorrect state (received commit, state = " << secret_chat->exchange_state << ")");
+            TGL_WARNING("secret_chat exchange: incorrect state (received commit, state = " << secret_chat->exchange_state << ")");
         }
     } else if (action_type == tgl_message_action_type::abort_key) {
         auto action = std::static_pointer_cast<tgl_message_action_abort_key>(message->action);
         if (secret_chat->exchange_state != tgl_secret_chat_exchange_state::none && secret_chat->exchange_id == action->exchange_id) {
             tgl_do_abort_exchange(secret_chat);
         } else {
-            TGL_WARNING("secret_chat exchange: Incorrect state (received abort, state = " << secret_chat->exchange_state << ")");
+            TGL_WARNING("secret_chat exchange: incorrect state (received abort, state = " << secret_chat->exchange_state << ")");
         }
     } else if (action_type == tgl_message_action_type::notify_layer) {
         auto action = std::static_pointer_cast<tgl_message_action_notify_layer>(message->action);

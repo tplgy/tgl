@@ -1042,7 +1042,7 @@ void tgl_transfer_manager::download_next_part(const std::shared_ptr<tgl_download
             boost::system::error_code ec;
             d->offset = boost::filesystem::file_size(path, ec);
             if (!ec && d->offset >= d->size) {
-                TGL_NOTICE("Already downloaded");
+                TGL_NOTICE("file [" << path << "] already downloaded");
                 end_download(d, callback);
                 return;
             }

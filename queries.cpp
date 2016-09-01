@@ -591,7 +591,7 @@ int query::handle_result(tgl_in_buffer* in)
 
     tgl_in_buffer skip_in = *in;
     if (skip_type_any(&skip_in, &m_type) < 0) {
-        TGL_ERROR("Skipped " << (long)(skip_in.ptr - in->ptr) << " int out of " << (long)(skip_in.end - in->ptr) << " (type " << m_type.type.id << ") (query type " << name() << ")");
+        TGL_ERROR("skipped " << (long)(skip_in.ptr - in->ptr) << " int out of " << (long)(skip_in.end - in->ptr) << " (type " << m_type.type.id << ") (query type " << name() << ")");
         TGL_ERROR("0x" << std::hex << *(in->ptr - 1) << " 0x" << *(in->ptr) << " 0x" << *(in->ptr + 1) << " 0x" << *(in->ptr + 2));
         TGL_ERROR(in->print_buffer());
         assert(false);
@@ -2539,7 +2539,7 @@ static void tgl_do_transfer_auth(const std::shared_ptr<tgl_dc>& dc, const std::f
         return;
     }
     dc->auth_transfer_in_process = true;
-    TGL_NOTICE("Transferring auth from DC " << tgl_state::instance()->working_dc()->id << " to DC " << dc->id);
+    TGL_NOTICE("transferring auth from DC " << tgl_state::instance()->working_dc()->id << " to DC " << dc->id);
     auto q = std::make_shared<query_export_auth>(dc, callback);
     q->out_i32(CODE_auth_export_authorization);
     q->out_i32(dc->id);
@@ -2559,11 +2559,7 @@ public:
     virtual void on_answer(void* D) override
     {
         tl_ds_contacts_imported_contacts* DS_CIC = static_cast<tl_ds_contacts_imported_contacts*>(D);
-        if (DS_LVAL(DS_CIC->imported->cnt) > 0) {
-            TGL_DEBUG("Added successfully");
-        } else {
-            TGL_DEBUG("Not added");
-        }
+        TGL_DEBUG(DS_LVAL(DS_CIC->imported->cnt) << " contact(s) added");
         int n = DS_LVAL(DS_CIC->users->cnt);
         std::vector<int> users(n);
         for (int i = 0; i < n; i++) {
@@ -3009,7 +3005,7 @@ public:
 
         if (DS_UD->magic == CODE_updates_channel_difference_empty) {
             //bl_do_set_channel_pts(tgl_get_peer_id(channel->id), DS_LVAL(DS_UD->channel_pts));
-            TGL_DEBUG("Empty difference. Seq = " << tgl_state::instance()->seq());
+            TGL_DEBUG("empty difference, seq = " << tgl_state::instance()->seq());
             if (m_callback) {
                 m_callback(true);
             }
@@ -3728,21 +3724,21 @@ public:
     {
         if (error_code == 400) {
             if (error_string == "PASSWORD_HASH_INVALID") {
-                TGL_WARNING("Bad old password");
+                TGL_WARNING("bad old password");
                 if (m_callback) {
                     m_callback(false);
                 }
                 return 0;
             }
             if (error_string == "NEW_PASSWORD_BAD") {
-                TGL_WARNING("Bad new password (unchanged or equals hint)");
+                TGL_WARNING("bad new password (unchanged or equals hint)");
                 if (m_callback) {
                     m_callback(false);
                 }
                 return 0;
             }
             if (error_string == "NEW_SALT_INVALID") {
-                TGL_WARNING("Bad new salt");
+                TGL_WARNING("bad new salt");
                 if (m_callback) {
                     m_callback(false);
                 }
@@ -4481,7 +4477,7 @@ void tgl_sign_in_phone(const void* phone);
 void tgl_sign_in_code(const std::shared_ptr<sign_up_extra>& E, const void* code);
 void tgl_sign_in_result(const std::shared_ptr<sign_up_extra>& E, bool success, const std::shared_ptr<tgl_user>& U)
 {
-    TGL_DEBUG(".....tgl_sign_in_result");
+    TGL_DEBUG("tgl_sign_in_result, success: " << std::boolalpha << success);
     if (!success) {
         TGL_ERROR("incorrect code");
         tgl_state::instance()->callback()->get_values(tgl_value_type::code, "code ('call' for phone call, 'resend' to resend the code):", 1, std::bind(tgl_sign_in_code, E, std::placeholders::_1));
@@ -4726,7 +4722,7 @@ static void tgl_set_number_code(const std::shared_ptr<change_phone_state>& state
 static void tgl_set_phone_number_cb(const std::shared_ptr<change_phone_state>& state, bool success, const std::string& hash)
 {
     if (!success) {
-        TGL_ERROR("Incorrect phone number");
+        TGL_ERROR("incorrect phone number");
         if (state->callback) {
             state->callback(false);
         }

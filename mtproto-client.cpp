@@ -209,7 +209,7 @@ static int send_req_pq_packet(const std::shared_ptr<tgl_connection>& c)
     mtprotocol_serializer s;
     s.out_i32(CODE_req_pq);
     s.out_i32s((int *)DC->nonce, 4);
-    TGL_DEBUG(__FUNCTION__ << " DC " << DC->id);
+    TGL_DEBUG("sending request pq to DC " << DC->id);
     rpc_send_packet(c, s.char_data(), s.char_size());
 
     DC->state = tgl_dc_state::reqpq_sent;
@@ -230,7 +230,7 @@ static int send_req_pq_temp_packet(const std::shared_ptr<tgl_connection>& c)
     mtprotocol_serializer s;
     s.out_i32(CODE_req_pq);
     s.out_i32s((int *)DC->nonce, 4);
-    TGL_DEBUG(__FUNCTION__ << " DC " << DC->id);
+    TGL_DEBUG("send request pq (temp) to DC " << DC->id);
     rpc_send_packet(c, s.char_data(), s.char_size());
 
     DC->state = tgl_dc_state::reqpq_sent_temp;
@@ -294,7 +294,7 @@ static void send_req_dh_packet(const std::shared_ptr<tgl_connection>& c, TGLC_bn
     s.out_string(encrypted_data.get(), encrypted_data_size);
 
     DC->state = temp_key ? tgl_dc_state::reqdh_sent_temp : tgl_dc_state::reqdh_sent;
-    TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " DC " << DC->id);
+    TGL_DEBUG("sending request dh (temp_key=" << std::boolalpha << temp_key << ") to DC " << DC->id);
     rpc_send_packet(c, s.char_data(), s.char_size());
 }
 /* }}} */
@@ -360,7 +360,7 @@ static void send_dh_params(const std::shared_ptr<tgl_connection>& c, TGLC_bn* dh
     s.out_string(encrypted_data.get(), encrypted_data_size);
 
     DC->state = temp_key ? tgl_dc_state::client_dh_sent_temp : tgl_dc_state::client_dh_sent;;
-    TGL_DEBUG(__FUNCTION__ << " temp_key=" << temp_key << " DC " << DC->id);
+    TGL_DEBUG("sending dh parameters (temp_key=" << std::boolalpha << temp_key << ") to DC " << DC->id);
     rpc_send_packet(c, s.char_data(), s.char_size());
 }
 /* }}} */
@@ -469,7 +469,7 @@ static mtproto_client::execute_result process_dh_answer(const std::shared_ptr<tg
     }
     fetch_i32s(&in, tmp, 4);
     if (memcmp(tmp, DC->server_nonce, 16)) {
-        TGL_ERROR("nonce mismatch");
+        TGL_ERROR("server nonce mismatch");
         return mtproto_client::execute_result::bad_connection;
     }
 
@@ -512,12 +512,12 @@ static mtproto_client::execute_result process_dh_answer(const std::shared_ptr<tg
     TGL_ASSERT_UNUSED(result, result == static_cast<int32_t>(CODE_server_DH_inner_data));
     fetch_i32s(&in, tmp, 4);
     if (memcmp(tmp, DC->nonce, 16)) {
-        TGL_ERROR("nonce mismatch");
+        TGL_ERROR("inner nonce mismatch");
         return mtproto_client::execute_result::bad_connection;
     }
     fetch_i32s(&in, tmp, 4);
     if (memcmp(tmp, DC->server_nonce, 16)) {
-        TGL_ERROR("nonce mismatch");
+        TGL_ERROR("inner server nonce mismatch");
         return mtproto_client::execute_result::bad_connection;
     }
     int32_t g = fetch_i32(&in);
@@ -622,7 +622,7 @@ static mtproto_client::execute_result process_auth_complete(const std::shared_pt
     }
     fetch_i32s(&in, tmp, 4);
     if (memcmp(DC->server_nonce, tmp, 16)) {
-        TGL_ERROR("nonce mismatch");
+        TGL_ERROR("server nonce mismatch");
         restart_dc_authorization(DC, temp_key);
         return mtproto_client::execute_result::ok;
     }
@@ -1102,7 +1102,7 @@ static int rpc_execute_answer(const std::shared_ptr<tgl_connection>& c, tgl_in_b
     case CODE_bad_msg_notification:
         return work_bad_msg_notification(c, in, msg_id);
     }
-    TGL_WARNING("Unknown message: " << op);
+    TGL_WARNING("unknown message: " << op);
     in->ptr = in->end; // Will not fail due to assertion in->ptr == in->end
     return 0;
 }
