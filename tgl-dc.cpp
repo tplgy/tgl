@@ -55,7 +55,10 @@ tgl_dc::tgl_dc()
     , server_time_udelta(0)
     , auth_transfer_in_process(false)
     , m_active_queries(0)
-    , m_flags(0)
+    , m_authorized(false)
+    , m_logged_in(false)
+    , m_configured(false)
+    , m_bound(false)
     , m_session_cleanup_timer(tgl_state::instance()->timer_factory()->create_timer(std::bind(&tgl_dc::cleanup_timer_expired, this)))
 {
     memset(auth_key, 0, sizeof(auth_key));

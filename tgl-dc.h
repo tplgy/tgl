@@ -79,11 +79,6 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_dc_state state)
     return os;
 }
 
-#define TGLDCF_AUTHORIZED 1
-#define TGLDCF_BOUND 2
-#define TGLDCF_CONFIGURED 4
-#define TGLDCF_LOGGED_IN 8
-
 struct tgl_dc;
 class tgl_connection;
 class tgl_timer;
@@ -153,52 +148,27 @@ struct tgl_dc: public std::enable_shared_from_this<tgl_dc> {
     void remove_pending_query(const std::shared_ptr<query>& q);
     void send_pending_queries();
 
-    bool is_authorized() const { return m_flags & TGLDCF_AUTHORIZED; }
-    void set_authorized(bool b = true)
-    {
-        if (b) {
-            m_flags |= TGLDCF_AUTHORIZED;
-        } else {
-            m_flags &= ~TGLDCF_AUTHORIZED;
-        }
-    }
+    bool is_authorized() const { return m_authorized; }
+    void set_authorized(bool b = true) { m_authorized = b; }
 
-    bool is_logged_in() const { return m_flags & TGLDCF_LOGGED_IN; }
-    void set_logged_in(bool b = true)
-    {
-        if (b) {
-            m_flags |= TGLDCF_LOGGED_IN;
-        } else {
-            m_flags &= ~TGLDCF_LOGGED_IN;
-        }
-    }
+    bool is_logged_in() const { return m_logged_in; }
+    void set_logged_in(bool b = true) { m_logged_in = b; }
 
-    bool is_configured() const { return m_flags & TGLDCF_CONFIGURED; }
-    void set_configured(bool b = true)
-    {
-        if (b) {
-            m_flags |= TGLDCF_CONFIGURED;
-        } else {
-            m_flags &= ~TGLDCF_CONFIGURED;
-        }
-    }
+    bool is_configured() const { return m_configured; }
+    void set_configured(bool b = true) { m_configured = b; }
 
-    bool is_bound() const { return m_flags & TGLDCF_BOUND; }
-    void set_bound(bool b = true)
-    {
-        if (b) {
-            m_flags |= TGLDCF_BOUND;
-        } else {
-            m_flags &= ~TGLDCF_BOUND;
-        }
-    }
+    bool is_bound() const { return m_bound; }
+    void set_bound(bool b = true) { m_bound = true; }
 
 private:
     void reset_temp_authorization();
 
 private:
     size_t m_active_queries;
-    int m_flags;
+    bool m_authorized;
+    bool m_logged_in;
+    bool m_configured;
+    bool m_bound;
     std::list<std::shared_ptr<query>> m_pending_queries;
 
     void cleanup_timer_expired();
