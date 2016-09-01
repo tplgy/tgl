@@ -158,7 +158,7 @@ struct tgl_dc: public std::enable_shared_from_this<tgl_dc> {
     void set_configured(bool b = true) { m_configured = b; }
 
     bool is_bound() const { return m_bound; }
-    void set_bound(bool b = true) { m_bound = true; }
+    void set_bound(bool b = true) { m_bound = b; }
 
 private:
     void reset_temp_authorization();
