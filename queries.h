@@ -134,11 +134,15 @@ public:
     virtual bool should_retry_on_timeout() { return true; }
     virtual bool should_retry_after_recover_from_error() { return true; }
 
+    virtual void will_be_pending() { }
+
+protected:
+    void timeout_within(double seconds);
+    void retry_within(double seconds);
+
 private:
     bool is_force() const { return m_exec_option == execution_option::FORCE; }
     bool is_login() const { return m_exec_option == execution_option::LOGIN; }
-    void retry_within(double seconds);
-    void timeout_within(double seconds);
     void timeout_alarm();
     bool check_connectivity();
 

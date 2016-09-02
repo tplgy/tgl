@@ -127,6 +127,7 @@ void query::alarm()
         }
         timeout_within(timeout_interval());
     } else {
+        will_be_pending();
         // we don't have a valid session with the DC, so defer query until we do
         m_dc->add_pending_query(shared_from_this());
         TGL_DEBUG("added query #" << msg_id() << "(type '" << name() << "') to pending list");
@@ -174,6 +175,7 @@ void query::timeout_alarm()
         if (msg_id()) {
             tgl_state::instance()->remove_query(shared_from_this());
         }
+        m_dc->remove_pending_query(shared_from_this());
     } else {
         alarm();
     }
@@ -212,6 +214,7 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
     TGL_DEBUG("sending query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << (pending ? " (pending)" : ""));
 
     if (pending) {
+        will_be_pending();
         m_msg_id = 0;
         m_session = 0;
         m_session_id = 0;
@@ -259,6 +262,7 @@ bool query::execute_after_pending()
     }
 
     if (pending) {
+        will_be_pending();
         TGL_DEBUG("not ready to send pending query " << this << " (" << m_name << "), re-queuing");
         m_dc->add_pending_query(shared_from_this());
         return false;
@@ -750,6 +754,11 @@ public:
         return false;
     }
 
+    virtual void will_be_pending() override
+    {
+        timeout_within(timeout_interval());
+    }
+
 private:
     std::function<void(bool, bool, const std::string)> m_callback;
 };
@@ -789,6 +798,29 @@ public:
             m_callback(false);
         }
         return 0;
+    }
+
+    virtual void on_timeout() override
+    {
+        TGL_ERROR("timed out for query #" << msg_id() << " (" << name() << ")");
+        if (m_callback) {
+            m_callback(false);
+        }
+    }
+
+    virtual double timeout_interval() const override
+    {
+        return 20;
+    }
+
+    virtual bool should_retry_on_timeout() override
+    {
+        return false;
+    }
+
+    virtual void will_be_pending() override
+    {
+        timeout_within(timeout_interval());
     }
 
 private:
@@ -836,6 +868,29 @@ public:
             m_callback(false, nullptr);
         }
         return 0;
+    }
+
+    virtual void on_timeout() override
+    {
+        TGL_ERROR("timed out for query #" << msg_id() << " (" << name() << ")");
+        if (m_callback) {
+            m_callback(false, nullptr);
+        }
+    }
+
+    virtual double timeout_interval() const override
+    {
+        return 20;
+    }
+
+    virtual bool should_retry_on_timeout() override
+    {
+        return false;
+    }
+
+    virtual void will_be_pending() override
+    {
+        timeout_within(timeout_interval());
     }
 
 private:
