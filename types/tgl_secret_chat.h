@@ -110,7 +110,6 @@ struct tgl_secret_chat {
     int64_t exchange_id;
     int64_t exchange_key_fingerprint;
     int32_t exchange_key[64];
-    int32_t flags;
     int32_t user_id;
     int32_t admin_id;
     int32_t date;
@@ -152,9 +151,10 @@ struct tgl_secret_chat {
 
     const unsigned char* key() const { return m_key; }
     const unsigned char* key_sha() const { return m_key_sha; }
-    // Telegram secret chat key fingerprints are the last 64 bits of SHA1(key)
-    int64_t key_fingerprint() const {
+    int64_t key_fingerprint() const
+    {
         int64_t fingerprint;
+        // Telegram secret chat key fingerprints are the last 64 bits of SHA1(key)
         memcpy(&fingerprint, m_key_sha + 12, 8);
         return fingerprint;
     }
@@ -168,7 +168,6 @@ struct tgl_secret_chat {
         , temp_key_fingerprint(0)
         , exchange_id(0)
         , exchange_key_fingerprint(0)
-        , flags(0)
         , user_id(0)
         , admin_id(0)
         , date(0)

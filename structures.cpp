@@ -299,11 +299,13 @@ inline static void str_to_32(unsigned char* dst, const char* src, int src_len)
 
 std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_encrypted_chat* DS_EC)
 {
+    TGL_DEBUG("fetching secret chat from " << DS_EC);
     if (!DS_EC) {
         return nullptr;
     }
 
     if (DS_EC->magic == CODE_encrypted_chat_empty) {
+        TGL_DEBUG("empty secret chat found, discarding");
         return nullptr;
     }
 
@@ -311,32 +313,37 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
 
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(chat_id);
 
+    bool is_new = false;
     if (!secret_chat) {
         int admin_id = DS_LVAL(DS_EC->id);
 
         if (!admin_id) {
-            // It must be a secret chat which is encryptedChatDiscarded#13d6dd27
+            // It must be a secret chat which is encryptedChatDiscarded#13d6dd27.
             // For a discarded secret chat which is not on our side either, we do nothing.
+            TGL_DEBUG("discarded secret chat " << chat_id.peer_id << " found, doing nothing");
             return nullptr;
         }
 
         if (admin_id != tgl_state::instance()->our_id().peer_id) {
             // It must be a new secret chat requested from the peer.
             secret_chat = tgl_state::instance()->create_secret_chat(chat_id);
+            is_new = true;
+            TGL_DEBUG("new secret chat " << chat_id.peer_id << " found");
         }
     }
 
     if (!secret_chat) {
+        TGL_DEBUG("no secret chat found or created for id " << chat_id.peer_id);
         return nullptr;
     }
 
-    bool is_new = !(secret_chat->flags & TGLPF_CREATED);
-
     if (DS_EC->magic == CODE_encrypted_chat_discarded) {
         if (is_new) {
+            TGL_DEBUG("this is a new scret chat " << chat_id.peer_id << " but has been discarded, doing nothing");
             return nullptr;
         }
 
+        TGL_DEBUG("discarded secret chat " << chat_id.peer_id << " found, setting it to deleted state");
         tgl_secret_chat_deleted(secret_chat);
         return secret_chat;
     }
@@ -345,8 +352,10 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
     memset(g_key, 0, sizeof(g_key));
     if (is_new) {
         if (DS_EC->magic != CODE_encrypted_chat_requested) {
+            TGL_DEBUG("new secret chat " << chat_id.peer_id << " but not in requested state");
             return secret_chat;
         }
+        TGL_DEBUG("updating new secret chat " << chat_id.peer_id);
 
         str_to_256(g_key, DS_STR(DS_EC->g_a));
 
@@ -362,42 +371,30 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
                 &state,
                 nullptr,
                 nullptr,
-                nullptr,
-                TGLECF_CREATE | TGLECF_CREATED);
+                nullptr);
     } else {
+        TGL_DEBUG("updating existing secret chat " << chat_id.peer_id);
+        const unsigned char* g_key_ptr = nullptr;
+        tgl_secret_chat_state state;
         if (DS_EC->magic == CODE_encrypted_chat_waiting) {
-            tgl_secret_chat_state state = tgl_secret_chat_state::waiting;
-            tgl_update_secret_chat(secret_chat,
-                  DS_EC->access_hash,
-                  DS_EC->date,
-                  nullptr,
-                  nullptr,
-                  nullptr,
-                  nullptr,
-                  &state,
-                  nullptr,
-                  nullptr,
-                  nullptr,
-                  TGL_FLAGS_UNCHANGED);
-            return secret_chat; // We needed only access hash from here
+            state = tgl_secret_chat_state::waiting;
+        } else {
+            state = tgl_secret_chat_state::ok;
+            str_to_256(g_key, DS_STR(DS_EC->g_a_or_b));
+            g_key_ptr = g_key;
+            secret_chat->temp_key_fingerprint = DS_LVAL(DS_EC->key_fingerprint);
         }
-
-        str_to_256(g_key, DS_STR(DS_EC->g_a_or_b));
-
-        tgl_secret_chat_state state = tgl_secret_chat_state::ok;
-        secret_chat->temp_key_fingerprint = DS_LVAL(DS_EC->key_fingerprint);
         tgl_update_secret_chat(secret_chat,
                 DS_EC->access_hash,
                 DS_EC->date,
                 nullptr,
                 nullptr,
                 nullptr,
-                g_key,
+                g_key_ptr,
                 &state,
                 nullptr,
                 nullptr,
-                nullptr,
-                TGL_FLAGS_UNCHANGED);
+                nullptr);
     }
 
     return secret_chat;
@@ -1769,7 +1766,7 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
         }
     }
 
-    tgl_update_secret_chat(secret_chat, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, ttl_ptr, &layer, our_in_seq_no_ptr, TGL_FLAGS_UNCHANGED);
+    tgl_update_secret_chat(secret_chat, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, ttl_ptr, &layer, our_in_seq_no_ptr);
     if (action_type == tgl_message_action_type::none) {
         tgl_state::instance()->callback()->new_messages({message});
     }

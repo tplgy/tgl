@@ -166,17 +166,16 @@ void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat
 {
      tgl_secret_chat_state state = tgl_secret_chat_state::deleted;
      tgl_update_secret_chat(secret_chat,
-         NULL,
-         NULL,
-         NULL,
-         NULL,
-         NULL,
-         NULL,
+         nullptr,
+         nullptr,
+         nullptr,
+         nullptr,
+         nullptr,
+         nullptr,
          &state,
-         NULL,
-         NULL,
-         NULL,
-         TGL_FLAGS_UNCHANGED);
+         nullptr,
+         nullptr,
+         nullptr);
 }
 
 void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
@@ -189,23 +188,9 @@ void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const tgl_secret_chat_state* state,
         const int32_t* ttl,
         const int32_t* layer,
-        const int32_t* in_seq_no,
-        int32_t flags)
+        const int32_t* in_seq_no)
 {
     assert(secret_chat);
-
-    if ((flags & TGLPF_CREATE) && (flags != TGL_FLAGS_UNCHANGED)) {
-        assert(!(secret_chat->flags & TGLPF_CREATED));
-    } else {
-        assert(secret_chat->flags & TGLPF_CREATED);
-    }
-
-    if (flags == TGL_FLAGS_UNCHANGED) {
-        flags = secret_chat->flags;
-    }
-    flags &= TGLECF_TYPE_MASK;
-
-    secret_chat->flags = (secret_chat->flags & ~TGLECF_TYPE_MASK) | flags;
 
     if (access_hash && *access_hash != secret_chat->access_hash) {
         secret_chat->access_hash = *access_hash;
@@ -749,17 +734,16 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
 
     tgl_secret_chat_state state = tgl_secret_chat_state::ok;
     tgl_update_secret_chat(secret_chat,
-            NULL,
-            NULL,
-            NULL,
-            NULL,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
             buffer,
-            NULL,
+            nullptr,
             &state,
-            NULL,
-            NULL,
-            NULL,
-            TGL_FLAGS_UNCHANGED);
+            nullptr,
+            nullptr,
+            nullptr);
 
     memset(buffer, 0, sizeof(buffer));
     check_crypto_result(TGLC_bn_set_word(g_a.get(), secret_chat->encr_root));
@@ -836,17 +820,16 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     tgl_secret_chat_state state = tgl_secret_chat_state::waiting;
     int our_id = tgl_state::instance()->our_id().peer_id;
     tgl_update_secret_chat(secret_chat,
-          NULL,
-          NULL,
+          nullptr,
+          nullptr,
           &our_id,
-          NULL,
+          nullptr,
           random.data(),
-          NULL,
+          nullptr,
           &state,
-          NULL,
-          NULL,
-          NULL,
-          TGLPF_CREATE | TGLPF_CREATED);
+          nullptr,
+          nullptr,
+          nullptr);
 
     auto q = std::make_shared<query_send_encr_request>(callback);
     q->out_i32(CODE_messages_request_encryption);
