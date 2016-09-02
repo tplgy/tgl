@@ -3263,7 +3263,7 @@ void tgl_do_create_group_chat(const std::vector<tgl_input_peer_t>& user_ids, con
         q->out_i32(id.peer_id);
         q->out_i64(id.access_hash);
     }
-    TGL_NOTICE("sending out chat creat request users number:%d" << user_ids.size());
+    TGL_NOTICE("sending out chat creat request users number: " << user_ids.size());
     q->out_string(chat_topic.c_str(), chat_topic.length());
     q->execute(tgl_state::instance()->working_dc());
 }
