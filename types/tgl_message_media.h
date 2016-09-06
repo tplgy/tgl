@@ -82,6 +82,14 @@ struct tgl_photo {
     { }
 };
 
+enum class tgl_document_type {
+    unknown,
+    image,
+    sticker,
+    audio,
+    video,
+};
+
 struct tgl_document {
     int64_t id;
     int64_t access_hash;
@@ -91,8 +99,9 @@ struct tgl_document {
     int32_t dc_id;
     int32_t w;
     int32_t h;
-    int32_t flags;
     int32_t duration;
+    tgl_document_type type;
+    bool is_animated;
     std::shared_ptr<tgl_photo_size> thumb;
     std::string caption;
     std::string mime_type;
@@ -105,9 +114,12 @@ struct tgl_document {
         , dc_id(0)
         , w(0)
         , h(0)
-        , flags(0)
         , duration(0)
+        , type(tgl_document_type::unknown)
+        , is_animated(false)
     { }
+
+    virtual bool is_encrypted() const { return false; }
 };
 
 struct tgl_encr_document: public tgl_document {
@@ -118,6 +130,7 @@ struct tgl_encr_document: public tgl_document {
     int32_t thumb_height;
     int32_t key_fingerprint;
     tgl_encr_document() : thumb_width(0), thumb_height(0), key_fingerprint(0) { }
+    virtual bool is_encrypted() const override { return true; }
 };
 
 struct tgl_webpage {

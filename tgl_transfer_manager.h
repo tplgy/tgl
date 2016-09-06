@@ -25,6 +25,7 @@
 #include "types/tgl_file_location.h"
 #include "types/tgl_peer_id.h"
 #include "types/tgl_message.h"
+#include "types/tgl_message_media.h"
 
 #include <array>
 #include <cassert>
@@ -109,6 +110,39 @@ inline static std::ostream& operator<<(std::ostream& oss, tgl_upload_status stat
     return oss;
 }
 
+enum class tgl_upload_option
+{
+    as_photo,
+    as_document,
+    auto_detect_document_type, // implies as_document
+};
+
+struct tgl_upload_document
+{
+    tgl_document_type type;
+    bool is_animated;
+    size_t file_size;
+    int32_t width;
+    int32_t height;
+    int32_t duration;
+    int32_t thumb_width;
+    int32_t thumb_height;
+    std::string file_name;
+    std::string caption;
+    std::vector<uint8_t> thumb_data;
+
+    tgl_upload_document()
+        : type(tgl_document_type::unknown)
+        , is_animated(false)
+        , file_size(0)
+        , width(0)
+        , height(0)
+        , duration(0)
+        , thumb_width(0)
+        , thumb_height(0)
+    { }
+};
+
 using tgl_download_callback = std::function<void(tgl_download_status status, const std::string& file_name, float progress)>;
 using tgl_upload_callback = std::function<void(tgl_upload_status status, const std::shared_ptr<tgl_message>& message, float progress)>;
 using tgl_read_callback = std::function<std::shared_ptr<std::vector<uint8_t>>(uint32_t chunk_size)>;
@@ -124,21 +158,18 @@ public:
 
     std::string get_file_path(int64_t secret);  // parameter is either secret or access hash depending on file type
 
-    int32_t download_encr_document(const std::shared_ptr<tgl_encr_document>& document, const tgl_download_callback& callback);
-    int32_t download_audio(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
-    int32_t download_video(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
-    int32_t download_document_thumb(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
-    int32_t download_photo(const std::shared_ptr<tgl_photo>& photo, const tgl_download_callback& callback);
-    int32_t download_by_photo_size(const std::shared_ptr<tgl_photo_size>& photo_size, const tgl_download_callback& callback);
     int32_t download_by_file_location(const tgl_file_location& location, int32_t file_size, const tgl_download_callback& callback);
     int32_t download_document(const std::shared_ptr<tgl_document>& document, const tgl_download_callback& callback);
 
     void cancel_download(int32_t download_id);
 
     void upload_document(const tgl_input_peer_t& to_id, int64_t message_id,
-            const std::string& file_name, int32_t file_size, int32_t width, int32_t height, int32_t duration, const std::string& caption,
-            const std::vector<uint8_t>& thumb_data, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
-            const tgl_upload_callback& callback, const tgl_read_callback& read_callback, const tgl_upload_part_done_callback& done_callback);
+            const std::shared_ptr<tgl_upload_document>& document,
+            tgl_upload_option option,
+            const tgl_upload_callback& callback,
+            const tgl_read_callback& read_callback,
+            const tgl_upload_part_done_callback& part_done_callback,
+            int32_t reply = 0);
 
     // Upload self profile photo. The server will cut central square from this photo.
     void upload_profile_photo(const std::string &file_name, int32_t file_size,
@@ -157,7 +188,6 @@ private:
     friend class query_download;
     friend class query_upload_part;
 
-    // Callbacks
     int download_on_answer(const std::shared_ptr<query_download>& q, void* answer);
     int download_on_error(const std::shared_ptr<query_download>& q, int error_code, const std::string &error);
     int upload_part_on_answer(const std::shared_ptr<query_upload_part>& q, void* answer);
@@ -176,15 +206,14 @@ private:
             const tgl_read_callback& read_callback,
             const tgl_upload_part_done_callback& done_callback);
 
-    void upload_document(const tgl_input_peer_t& to_id, int64_t message_id, const std::string &file_name, int32_t file_size,
-            int32_t avatar, int32_t width, int32_t height, int32_t duration,
-            const std::string& caption, uint64_t flags,
-            const std::vector<uint8_t>& thumb_data, int thumb_width, int thumb_height,
+    void upload_document(const tgl_input_peer_t& to_id,
+            int64_t message_id, int32_t avatar, int32_t reply, bool as_photo,
+            const std::shared_ptr<tgl_upload_document>& document,
             const tgl_upload_callback& callback,
             const tgl_read_callback& read_callback,
-            const tgl_upload_part_done_callback& done_callback);
+            const tgl_upload_part_done_callback& part_done_callback);
 
-    int32_t download_document(const std::shared_ptr<tgl_document>& document, const std::shared_ptr<tgl_download>&,
+    int32_t download_document(const std::shared_ptr<tgl_download>&, const std::string& mime_type,
              const tgl_download_callback& callback);
 
     void begin_download(const std::shared_ptr<tgl_download>&);

@@ -49,10 +49,11 @@ struct tgl_upload {
     int64_t id;
     int64_t thumb_id;
     tgl_input_peer_t to_id;
-    int32_t flags;
+    tgl_document_type doc_type;
     std::string file_name;
-    bool encr;
+    bool as_photo;
     bool cancelled;
+    bool animated;
     int32_t avatar;
     int32_t reply;
     std::array<unsigned char, 32> iv;
@@ -79,9 +80,10 @@ struct tgl_upload {
         , id(0)
         , thumb_id(0)
         , to_id()
-        , flags(0)
-        , encr(false)
+        , doc_type(tgl_document_type::unknown)
+        , as_photo(false)
         , cancelled(false)
+        , animated(false)
         , avatar(0)
         , reply(0)
         , width(0)
@@ -99,6 +101,14 @@ struct tgl_upload {
         memset(init_iv.data(), 0, init_iv.size());
         memset(key.data(), 0, key.size());
     }
+
+    bool is_encrypted() const { return to_id.peer_type == tgl_peer_type::enc_chat; }
+    bool is_animated() const { return animated; }
+    bool is_image() const { return doc_type == tgl_document_type::image; }
+    bool is_audio() const { return doc_type == tgl_document_type::audio; }
+    bool is_video() const { return doc_type == tgl_document_type::video; }
+    bool is_sticker() const { return doc_type == tgl_document_type::sticker; }
+    bool is_unknown() const { return doc_type == tgl_document_type::unknown; }
 };
 
 struct tgl_download {
@@ -112,25 +122,28 @@ struct tgl_download {
         , location(location)
         , iv()
         , key()
+        , valid(true)
     {
     }
 
-    tgl_download(int32_t type, const std::shared_ptr<tgl_document>& document)
+    tgl_download(const std::shared_ptr<tgl_document>& document)
         : id(next_id())
         , offset(0)
         , size(document->size)
-        , type(type)
+        , type(0)
         , fd(-1)
         , cancelled(false)
+        , location()
         , iv()
         , key()
+        , valid(true)
     {
         location.set_dc(document->dc_id);
         location.set_local_id(0);
         location.set_secret(document->access_hash);
         location.set_volume(document->id);
+        init_from_document(document);
     }
-
 
     ~tgl_download()
     {
@@ -150,12 +163,46 @@ struct tgl_download {
     //encrypted documents
     std::vector<unsigned char> iv;
     std::vector<unsigned char> key;
+    bool valid;
     // ---
 
     static int32_t next_id()
     {
         static int32_t next = 0;
         return ++next;
+    }
+
+private:
+    void init_from_document(const std::shared_ptr<tgl_document>& document)
+    {
+        if (document->is_encrypted()) {
+            type = CODE_input_encrypted_file_location;
+            auto encr_document = std::static_pointer_cast<tgl_encr_document>(document);
+            iv = std::move(encr_document->iv);
+            key = std::move(encr_document->key);
+            unsigned char md5[16];
+            unsigned char str[64];
+            memcpy(str, key.data(), 32);
+            memcpy(str + 32, iv.data(), 32);
+            TGLC_md5(str, 64, md5);
+            if (encr_document->key_fingerprint != ((*(int *)md5) ^ (*(int *)(md5 + 4)))) {
+                valid = false;
+                return;
+            }
+            return;
+        }
+
+        switch (document->type) {
+        case tgl_document_type::audio:
+            type = CODE_input_audio_file_location;
+            break;
+        case tgl_document_type::video:
+            type = CODE_input_video_file_location;
+            break;
+        default:
+            type = CODE_input_document_file_location;
+            break;
+        }
     }
 };
 
@@ -465,7 +512,7 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
     if (u->reply) {
         q->out_i32(u->reply);
     }
-    if (u->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
+    if (u->as_photo) {
         q->out_i32(CODE_input_media_uploaded_photo);
     } else {
         if (u->thumb_id > 0) {
@@ -489,8 +536,7 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
         q->out_string("");
     }
 
-    if (!(u->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO)) {
-
+    if (!u->as_photo) {
         if (u->thumb_id > 0) {
             q->out_i32(CODE_input_file);
             q->out_i64(u->thumb_id);
@@ -502,8 +548,8 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
         q->out_string(tg_mime_by_filename(u->file_name.c_str()));
 
         q->out_i32(CODE_vector);
-        if (u->flags & TGLDF_IMAGE) {
-            if (u->flags & TGLDF_ANIMATED) {
+        if (u->is_image()) {
+            if (u->is_animated()) {
                 q->out_i32(2);
                 q->out_i32(CODE_document_attribute_image_size);
                 q->out_i32(u->width);
@@ -515,7 +561,7 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
                 q->out_i32(u->width);
                 q->out_i32(u->height);
             }
-        } else if (u->flags & TGLDF_AUDIO) {
+        } else if (u->is_audio()) {
             q->out_i32(2);
             q->out_i32(CODE_document_attribute_audio);
             q->out_i32(u->duration);
@@ -523,7 +569,7 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
             q->out_std_string("");
             q->out_i32(CODE_document_attribute_filename);
             q->out_std_string(file_name);
-        } else if (u->flags & TGLDF_VIDEO) {
+        } else if (u->is_video()) {
             q->out_i32(2);
             q->out_i32(CODE_document_attribute_video);
             q->out_i32(u->duration);
@@ -531,10 +577,11 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
             q->out_i32(u->height);
             q->out_i32(CODE_document_attribute_filename);
             q->out_std_string(file_name);
-        } else if (u->flags & TGLDF_STICKER) {
+        } else if (u->is_sticker()) {
             q->out_i32(1);
             q->out_i32(CODE_document_attribute_sticker);
         } else {
+            assert(u->is_unknown());
             q->out_i32(1);
             q->out_i32(CODE_document_attribute_filename);
             q->out_std_string(file_name);
@@ -580,30 +627,31 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
 
     size_t start = q->serializer()->i32_size();
 
-    if (u->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
-       q->out_i32(CODE_decrypted_message_media_photo);
-    } else if ((u->flags & TGLDF_VIDEO)) {
-       q->out_i32(CODE_decrypted_message_media_video);
-    } else if ((u->flags & TGLDF_AUDIO)) {
-       q->out_i32(CODE_decrypted_message_media_audio);
+    if (u->as_photo) {
+        q->out_i32(CODE_decrypted_message_media_photo);
+    } else if (u->is_video()) {
+        q->out_i32(CODE_decrypted_message_media_video);
+    } else if (u->is_audio()) {
+        q->out_i32(CODE_decrypted_message_media_audio);
     } else {
-       q->out_i32(CODE_decrypted_message_media_document);
+        q->out_i32(CODE_decrypted_message_media_document);
     }
-    if ((u->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) || !(u->flags & TGLDF_AUDIO)) {
+    if (u->as_photo || !u->is_audio()) {
+        TGL_DEBUG("secret chat thumb data " << u->thumb.size() << " bytes @ " << u->thumb_width << "x" << u->thumb_height);
         q->out_string(reinterpret_cast<char*>(u->thumb.data()), u->thumb.size());
         q->out_i32(u->thumb_width);
         q->out_i32(u->thumb_height);
     }
 
-    if (u->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
+    if (u->as_photo) {
         q->out_i32(u->width);
         q->out_i32(u->height);
-    } else if (u->flags & TGLDF_VIDEO) {
+    } else if (u->is_video()) {
         q->out_i32(u->duration);
         q->out_string(tg_mime_by_filename(u->file_name.c_str()));
         q->out_i32(u->width);
         q->out_i32(u->height);
-    } else if (u->flags & TGLDF_AUDIO) {
+    } else if (u->is_audio()) {
         q->out_i32(u->duration);
         q->out_string(tg_mime_by_filename(u->file_name.c_str()));
     } else { // document
@@ -664,14 +712,21 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
 
     if (message->media->type() == tgl_message_media_type::document_encr) {
         if (auto encr_document = std::static_pointer_cast<tgl_message_media_document_encr>(message->media)->encr_document) {
-            if (u->flags & TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO) {
-                encr_document->flags |= TGLDF_IMAGE;
-            }
-            if (u->flags & TGLDF_VIDEO) {
-                encr_document->flags |= TGLDF_VIDEO;
-            }
-            if (u->flags & TGLDF_AUDIO) {
-                encr_document->flags |= TGLDF_AUDIO;
+            if (u->is_image() || u->as_photo) {
+                encr_document->type = tgl_document_type::image;
+                if (u->is_animated()) {
+                    encr_document->is_animated = true;
+                } else {
+                    encr_document->is_animated = false;
+                }
+            } else if (u->is_video()) {
+                encr_document->type = tgl_document_type::video;
+            } else if (u->is_audio()) {
+                encr_document->type = tgl_document_type::audio;
+            } else if (u->is_sticker()) {
+                encr_document->type = tgl_document_type::sticker;
+            } else {
+                encr_document->type = tgl_document_type::unknown;
             }
         }
     }
@@ -703,13 +758,13 @@ void tgl_transfer_manager::upload_end(const std::shared_ptr<tgl_upload>& u,
                 });
         return;
     }
-    if (!u->encr) {
+    if (u->is_encrypted()) {
+        TGL_NOTICE("upload_end - upload_encrypted_file_end");
+        upload_encrypted_file_end(u, callback);
+    } else {
         TGL_NOTICE("upload_end - upload_unencrypted_file_end");
         upload_unencrypted_file_end(u, callback);
-        return;
     }
-    TGL_NOTICE("upload_end - upload_encrypted_file_end");
-    upload_encrypted_file_end(u, callback);
     return;
 }
 
@@ -752,7 +807,7 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
         assert(read_size > 0);
         u->offset += read_size;
 
-        if (u->encr) {
+        if (u->is_encrypted()) {
             if (read_size & 15) {
                 assert(u->offset == u->size);
                 tglt_secure_random(reinterpret_cast<unsigned char*>(sending_buffer->data()) + read_size, (-read_size) & 15);
@@ -783,7 +838,7 @@ void tgl_transfer_manager::upload_thumb(const std::shared_ptr<tgl_upload>& u,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
 {
-    TGL_NOTICE("upload_thumb");
+    TGL_NOTICE("upload_thumb " << u->thumb.size() << " bytes @ " << u->thumb_width << "x" << u->thumb_height);
 
     if (u->cancelled) {
         done_callback();
@@ -810,26 +865,21 @@ void tgl_transfer_manager::upload_thumb(const std::shared_ptr<tgl_upload>& u,
 
 
 void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id,
-        int64_t message_id, const std::string &file_name, int32_t file_size,
-        int32_t avatar, int32_t width, int32_t height, int32_t duration,
-        const std::string& caption, uint64_t flags,
-        const std::vector<uint8_t>& thumb_data, int32_t thumb_width, int32_t thumb_height,
+        int64_t message_id, int32_t avatar, int32_t reply, bool as_photo,
+        const std::shared_ptr<tgl_upload_document>& document,
         const tgl_upload_callback& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
 {
-    TGL_NOTICE("upload_document " << file_name << " with size " << file_size << " and dimension " << width << " X " << height);
+    TGL_NOTICE("upload_document " << document->file_name << " with size " << document->file_size
+            << " and dimension " << document->width << "x" << document->height);
 
     auto u = std::make_shared<tgl_upload>();
-    u->size = file_size;
-    u->avatar = avatar;
-    u->message_id = message_id;
-    u->reply = flags >> 32;
+    u->size = document->file_size;
     u->part_size = MAX_PART_SIZE;
-    u->flags = flags;
 
     static constexpr int MAX_PARTS = 3000; // How do we get this number?
-    if (((file_size + u->part_size - 1) / u->part_size) > MAX_PARTS) {
+    if (((u->size + u->part_size - 1) / u->part_size) > MAX_PARTS) {
         TGL_ERROR("file is too big");
         if (callback) {
             callback(tgl_upload_status::failed, nullptr, 0);
@@ -838,31 +888,35 @@ void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id,
     }
 
     tglt_secure_random(reinterpret_cast<unsigned char*>(&u->id), 8);
+    u->avatar = avatar;
+    u->message_id = message_id;
+    u->reply = reply;
+    u->as_photo = as_photo;
     u->to_id = to_id;
-    u->flags = flags;
-    u->file_name = file_name;
-    u->width = width;
-    u->height = height;
-    u->duration = duration;
-    u->caption = caption;
+    u->doc_type = document->type;
+    u->animated = document->is_animated;
+    u->file_name = std::move(document->file_name);
+    u->width = document->width;
+    u->height = document->height;
+    u->duration = document->duration;
+    u->caption = std::move(document->caption);
 
-    if (u->to_id.peer_type == tgl_peer_type::enc_chat) {
-        u->encr = true;
+    if (u->is_encrypted()) {
         tglt_secure_random(u->iv.data(), u->iv.size());
         memcpy(u->init_iv.data(), u->iv.data(), u->iv.size());
         tglt_secure_random(u->key.data(), u->key.size());
     }
 
-    auto thumb_size = thumb_data.size();
+    auto thumb_size = document->thumb_data.size();
     if (thumb_size) {
-        u->thumb = thumb_data;
-        u->thumb_width = thumb_width;
-        u->thumb_height = thumb_height;
+        u->thumb = std::move(document->thumb_data);
+        u->thumb_width = document->thumb_width;
+        u->thumb_height = document->thumb_height;
     }
 
     m_uploads[message_id] = u;
 
-    if (!u->encr && u->flags != -1 && thumb_size > 0) {
+    if (!u->is_encrypted() && thumb_size > 0) {
         upload_thumb(u, callback, read_callback, done_callback);
     } else {
         upload_part(u, callback, read_callback, done_callback);
@@ -875,13 +929,23 @@ void tgl_transfer_manager::upload_chat_photo(const tgl_input_peer_t& chat_id, co
         const tgl_upload_part_done_callback& done_callback)
 {
     assert(chat_id.peer_type == tgl_peer_type::chat);
-    upload_document(chat_id, 0, file_name, 0, chat_id.peer_id,
-            0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::vector<uint8_t>(), 0 , 0,
+    auto document = std::make_shared<tgl_upload_document>();
+    document->type = tgl_document_type::image;
+    document->file_name = file_name;
+    document->file_size = file_size;
+    upload_document(chat_id,
+            0 /* message_id */,
+            0 /* avatar */,
+            chat_id.peer_id /* reply */,
+            true /* as_photo */,
+            document,
             [=](tgl_upload_status status, const std::shared_ptr<tgl_message>&, float) {
                 if (callback) {
                     callback(status == tgl_upload_status::succeeded);
                 }
-            }, read_callback, done_callback);
+            },
+            read_callback,
+            done_callback);
 }
 
 void tgl_transfer_manager::upload_profile_photo(const std::string& file_name, int32_t file_size,
@@ -889,39 +953,58 @@ void tgl_transfer_manager::upload_profile_photo(const std::string& file_name, in
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
 {
-    upload_document(tgl_input_peer_t::from_peer_id(tgl_state::instance()->our_id()), 0, file_name, file_size, -1,
-            0, 0, 0, std::string(), TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO, std::vector<uint8_t>(), 0, 0,
+    auto document = std::make_shared<tgl_upload_document>();
+    document->type = tgl_document_type::image;
+    document->file_name = file_name;
+    document->file_size = file_size;
+    upload_document(tgl_input_peer_t::from_peer_id(tgl_state::instance()->our_id()),
+            0 /* message_id */,
+            -1 /* avatar */,
+            0 /* reply */,
+            true /* as_photo */,
+            document,
             [=](tgl_upload_status status, const std::shared_ptr<tgl_message>&, float) {
                 if (callback) {
                     callback(status == tgl_upload_status::succeeded);
                 }
-            }, read_callback, done_callback);
+            },
+            read_callback,
+            done_callback);
 }
 
 void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id, int64_t message_id,
-        const std::string& file_name, int32_t file_size, int32_t width, int32_t height, int32_t duration, const std::string& caption,
-        const std::vector<uint8_t>& thumb_data, int32_t thumb_width, int32_t thumb_height, uint64_t flags,
+        const std::shared_ptr<tgl_upload_document>& document,
+        tgl_upload_option option,
         const tgl_upload_callback& callback,
         const tgl_read_callback& read_callback,
-        const tgl_upload_part_done_callback& done_callback)
+        const tgl_upload_part_done_callback& done_callback,
+        int32_t reply)
 {
-    TGL_DEBUG("upload_document - file_name: " + file_name);
-    if (flags & TGL_SEND_MSG_FLAG_DOCUMENT_AUTO) {
-        const char* mime_type = tg_mime_by_filename(file_name.c_str());
-        TGL_DEBUG("upload_document - detected mime_type: " + std::string(mime_type));
-        if (strcmp(mime_type, "image/gif") == 0) {
-            flags |= TGL_SEND_MSG_FLAG_DOCUMENT_ANIMATED;
-        } else if (!memcmp(mime_type, "image/", 6)) {
-            flags |= TGL_SEND_MSG_FLAG_DOCUMENT_PHOTO;
+    TGL_DEBUG("upload_document - file_name: " << document->file_name);
+
+    bool as_photo = false;
+    if (option == tgl_upload_option::auto_detect_document_type) {
+        const char* mime_type = tg_mime_by_filename(document->file_name.c_str());
+        TGL_DEBUG("upload_document - detected mime_type: " << mime_type);
+        if (!memcmp(mime_type, "image/", 6)) {
+            document->type = tgl_document_type::image;
+            if (!strcmp(mime_type, "image/gif")) {
+                document->is_animated = true;
+            }
         } else if (!memcmp(mime_type, "video/", 6)) {
-            flags |= TGLDF_VIDEO;
+            document->type = tgl_document_type::video;
         } else if (!memcmp(mime_type, "audio/", 6)) {
-            flags |= TGLDF_AUDIO;
+            document->type = tgl_document_type::audio;
+        } else {
+            document->type = tgl_document_type::unknown;
         }
+    } else if (option == tgl_upload_option::as_photo) {
+        as_photo = true;
+    } else {
+        assert(option == tgl_upload_option::as_document);
     }
 
-    upload_document(to_id, message_id, file_name, file_size, 0,
-            width, height, duration, caption, flags, thumb_data, thumb_width, thumb_height, callback, read_callback, done_callback);
+    upload_document(to_id, message_id, 0 /* avatar */, reply, as_photo, document, callback, read_callback, done_callback);
 }
 
 void tgl_transfer_manager::end_download(const std::shared_ptr<tgl_download>& d,
@@ -1057,11 +1140,7 @@ void tgl_transfer_manager::download_next_part(const std::shared_ptr<tgl_download
         q->out_i32(d->location.local_id());
         q->out_i64(d->location.secret());
     } else {
-        if (!d->iv.empty()) {
-            q->out_i32(CODE_input_encrypted_file_location);
-        } else {
-            q->out_i32(d->type);
-        }
+        q->out_i32(d->type);
         q->out_i64(d->location.document_id());
         q->out_i64(d->location.access_hash());
     }
@@ -1069,23 +1148,6 @@ void tgl_transfer_manager::download_next_part(const std::shared_ptr<tgl_download
     q->out_i32(MAX_PART_SIZE);
 
     q->execute(tgl_state::instance()->dc_at(d->location.dc()));
-}
-
-int32_t tgl_transfer_manager::download_by_photo_size(const std::shared_ptr<tgl_photo_size>& photo_size,
-        const tgl_download_callback& callback)
-{
-    assert(photo_size);
-    if (!photo_size->loc.dc()) {
-        TGL_WARNING("bad video thumb");
-        if (callback) {
-            callback(tgl_download_status::failed, std::string(), 0);
-        }
-        return 0;
-    }
-
-    auto d = std::make_shared<tgl_download>(photo_size->size, photo_size->loc);
-    download_next_part(d, callback);
-    return d->id;
 }
 
 int32_t tgl_transfer_manager::download_by_file_location(const tgl_file_location& file_location, const int32_t file_size,
@@ -1105,42 +1167,12 @@ int32_t tgl_transfer_manager::download_by_file_location(const tgl_file_location&
     return d->id;
 }
 
-int32_t tgl_transfer_manager::download_photo(const std::shared_ptr<tgl_photo>& photo,
+int32_t tgl_transfer_manager::download_document(const std::shared_ptr<tgl_download>& d,
+        const std::string& mime_type,
         const tgl_download_callback& callback)
 {
-    if (!photo->sizes.size()) {
-        TGL_ERROR("bad photo (no photo sizes");
-        if (callback) {
-            callback(tgl_download_status::failed, std::string(), 0);
-        }
-        return 0;
-    }
-    size_t max_i = 0;
-    int max = photo->sizes[0]->w + photo->sizes[0]->h;
-    for (size_t i = 1; i < photo->sizes.size(); ++i) {
-        int current = photo->sizes[i]->w + photo->sizes[i]->h;
-        if (current > max) {
-            max = current;
-            max_i = i;
-        }
-    }
-    return download_by_photo_size(photo->sizes[max_i], callback);
-}
-
-int32_t tgl_transfer_manager::download_document_thumb(const std::shared_ptr<tgl_document>& document,
-        const tgl_download_callback& callback)
-{
-    return download_by_photo_size(document->thumb, callback);
-}
-
-int32_t tgl_transfer_manager::download_document(const std::shared_ptr<tgl_document>& document,
-        const std::shared_ptr<tgl_download>& d,
-        const tgl_download_callback& callback)
-{
-    assert(document);
-
-    if (!document->mime_type.empty()) {
-        const char* ext = tg_extension_by_mime(document->mime_type.c_str());
+    if (!mime_type.empty()) {
+        const char* ext = tg_extension_by_mime(mime_type.c_str());
         if (ext) {
             d->ext = std::string(ext);
         }
@@ -1153,46 +1185,17 @@ int32_t tgl_transfer_manager::download_document(const std::shared_ptr<tgl_docume
 int32_t tgl_transfer_manager::download_document(const std::shared_ptr<tgl_document>& document,
         const tgl_download_callback& callback)
 {
-    auto d = std::make_shared<tgl_download>(CODE_input_document_file_location, document);
-    return download_document(document, d, callback);
-}
+    std::shared_ptr<tgl_download> d = std::make_shared<tgl_download>(document);
 
-int32_t tgl_transfer_manager::download_video(const std::shared_ptr<tgl_document>& document,
-        const tgl_download_callback& callback)
-{
-    auto d = std::make_shared<tgl_download>(CODE_input_video_file_location, document);
-    return download_document(document, d, callback);
-}
-
-int32_t tgl_transfer_manager::download_audio(const std::shared_ptr<tgl_document>& document,
-        const tgl_download_callback& callback)
-{
-    auto d = std::make_shared<tgl_download>(CODE_input_audio_file_location, document);
-    return download_document(document, d, callback);
-}
-
-int32_t tgl_transfer_manager::download_encr_document(const std::shared_ptr<tgl_encr_document>& document,
-        const tgl_download_callback& callback)
-{
-    assert(document);
-    auto d = std::make_shared<tgl_download>(document->size, document);
-    d->key = document->key;
-    d->iv = document->iv;
-    if (!document->mime_type.empty()) {
-        const char* extension  = tg_extension_by_mime(document->mime_type.c_str());
-        if (extension) {
-            d->ext = std::string(extension);
+    if (!d->valid) {
+        TGL_WARNING("encrypted document key finger print doesn't match");
+        if (callback) {
+            callback(tgl_download_status::failed, std::string(), 0);
         }
+        return 0;
     }
-    download_next_part(d, callback);
 
-    unsigned char md5[16];
-    unsigned char str[64];
-    memcpy(str, document->key.data(), 32);
-    memcpy(str + 32, document->iv.data(), 32);
-    TGLC_md5(str, 64, md5);
-    assert(document->key_fingerprint == ((*(int *)md5) ^ (*(int *)(md5 + 4))));
-    return d->id;
+    return download_document(d, document->mime_type, callback);
 }
 
 void tgl_transfer_manager::cancel_download(int32_t download_id)

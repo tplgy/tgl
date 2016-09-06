@@ -20,12 +20,6 @@
 #ifndef __TGL_LAYOUT_H__
 #define __TGL_LAYOUT_H__
 
-#define TGLDF_IMAGE 1
-#define TGLDF_STICKER 2
-#define TGLDF_ANIMATED 4
-#define TGLDF_AUDIO 8
-#define TGLDF_VIDEO 16
-
 #define TGLMF_UNREAD 1
 #define TGLMF_OUT (1<<1)
 #define TGLMF_DISABLE_PREVIEW (1<<2)

@@ -754,7 +754,7 @@ std::shared_ptr<tgl_document> tglf_fetch_alloc_video(const tl_ds_video* DS_V)
     auto document = std::make_shared<tgl_document>();
     document->id = DS_LVAL(DS_V->id);
 
-    document->flags = TGLDF_VIDEO;
+    document->type = tgl_document_type::video;
 
     document->access_hash = DS_LVAL(DS_V->access_hash);
     //document->user_id = DS_LVAL(DS_V->user_id);
@@ -790,7 +790,7 @@ std::shared_ptr<tgl_document> tglf_fetch_alloc_audio(const tl_ds_audio* DS_A)
 
     auto document = std::make_shared<tgl_document>();
     document->id = DS_LVAL(DS_A->id);
-    document->flags = TGLDF_AUDIO;
+    document->type = tgl_document_type::audio;
 
     document->access_hash = DS_LVAL(DS_A->access_hash);
     //document->user_id = DS_LVAL(DS_A->user_id);
@@ -807,24 +807,24 @@ void tglf_fetch_document_attribute(const std::shared_ptr<tgl_document>& document
 {
     switch (DS_DA->magic) {
     case CODE_document_attribute_image_size:
-        document->flags |= TGLDF_IMAGE;
+        document->type = tgl_document_type::image;
         document->w = DS_LVAL(DS_DA->w);
         document->h = DS_LVAL(DS_DA->h);
         return;
     case CODE_document_attribute_animated:
-        document->flags |= TGLDF_ANIMATED;
+        document->is_animated = true;
         return;
     case CODE_document_attribute_sticker:
-        document->flags |= TGLDF_STICKER;
+        document->type = tgl_document_type::sticker;
         return;
     case CODE_document_attribute_video:
-        document->flags |= TGLDF_VIDEO;
+        document->type = tgl_document_type::video;
         document->duration = DS_LVAL(DS_DA->duration);
         document->w = DS_LVAL(DS_DA->w);
         document->h = DS_LVAL(DS_DA->h);
         return;
     case CODE_document_attribute_audio:
-        document->flags |= TGLDF_AUDIO;
+        document->type = tgl_document_type::audio;
         document->duration = DS_LVAL(DS_DA->duration);
         return;
     case CODE_document_attribute_filename:
@@ -1182,28 +1182,31 @@ std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_d
 
         switch (DS_DMM->magic) {
         case CODE_decrypted_message_media_photo:
-            media->encr_document->flags = TGLDF_IMAGE;
+            media->encr_document->type = tgl_document_type::image;
             if (media->encr_document->mime_type.empty()) {
                 media->encr_document->mime_type = "image/jpeg"; // Default mime in case there is no mime from the message media
             }
             break;
         case CODE_decrypted_message_media_video:
         case CODE_decrypted_message_media_video_l12:
-            media->encr_document->flags = TGLDF_VIDEO;
+            media->encr_document->type = tgl_document_type::video;
             break;
         case CODE_decrypted_message_media_document:
             if (media->encr_document->mime_type.size() >= 6) {
                 if (!media->encr_document->mime_type.compare(0, 6, "image/")) {
-                    media->encr_document->flags = TGLDF_IMAGE;
+                    media->encr_document->type = tgl_document_type::image;
+                    if (!media->encr_document->mime_type.compare(0, 9, "image/gif")) {
+                        media->encr_document->is_animated = true;
+                    }
                 } else if (!media->encr_document->mime_type.compare(0, 6, "video/")) {
-                    media->encr_document->flags = TGLDF_VIDEO;
+                    media->encr_document->type = tgl_document_type::video;
                 } else if (!media->encr_document->mime_type.compare(0, 6, "audio/")) {
-                    media->encr_document->flags = TGLDF_AUDIO;
+                    media->encr_document->type = tgl_document_type::audio;
                 }
             }
             break;
         case CODE_decrypted_message_media_audio:
-            media->encr_document->flags = TGLDF_AUDIO;
+            media->encr_document->type = tgl_document_type::audio;
             break;
         }
 
