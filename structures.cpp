@@ -209,25 +209,24 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(const tl_ds_user* DS_U, bool inv
         flags &= ~TGLUF_OFFICIAL;
     }
 
+    user->flags = (flags & TGLUF_MASK);
+    user->firstname = DS_STDSTR(DS_U->first_name);
+    user->lastname = DS_STDSTR(DS_U->last_name);
+    user->username = DS_STDSTR(DS_U->username);
+    user->phone = DS_STDSTR(DS_U->phone);
+    user->status = tglf_fetch_user_status(DS_U->status);
+
     if (DS_LVAL(DS_U->flags) & (1 << 13)) {
         tgl_state::instance()->callback()->user_deleted(user_id.peer_id);
         return user;
     } else {
-        user->firstname = DS_STDSTR(DS_U->first_name);
-        user->lastname = DS_STDSTR(DS_U->last_name);
-        user->username = DS_STDSTR(DS_U->username);
-        user->phone = DS_STDSTR(DS_U->phone);
-
-        tgl_user_status status = tglf_fetch_user_status(DS_U->status);
         if (invoke_callback) {
-            tgl_state::instance()->callback()->new_user(user_id.peer_id, user->phone, user->firstname, user->lastname, user->username,
-                DS_U->access_hash ? * DS_U->access_hash : 0, status, flags);
+            tgl_state::instance()->callback()->new_user(user);
         }
 
         if (DS_U->photo && invoke_callback) {
             tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
             tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
-
             tgl_state::instance()->callback()->avatar_update(user_id.peer_id, user_id.peer_type, photo_small, photo_big);
         }
         return user;

@@ -32,6 +32,7 @@
 #include <memory>
 
 struct tgl_user_status;
+struct tgl_user;
 
 class tgl_update_callback {
 public:
@@ -52,9 +53,7 @@ public:
     virtual void status_notification(int user_id, const tgl_user_status& status) = 0;
     virtual void user_registered(int user_id) = 0;
     virtual void new_authorization(const std::string& device, const std::string& location) = 0;
-    virtual void new_user(int user_id, const std::string &phone, const std::string &firstname,
-                     const std::string &lastname, const std::string &username, int64_t access_hash,
-                     const tgl_user_status& status, int32_t flags) = 0;
+    virtual void new_user(const std::shared_ptr<tgl_user>& user) = 0;
     virtual void user_update(int32_t user_id, const std::map<tgl_user_update_type, std::string>& updates) = 0;
     virtual void user_deleted(int32_t id) = 0;
     virtual void avatar_update(int32_t peer_id, tgl_peer_type peer_type, const tgl_file_location &photo_small, const tgl_file_location &photo_big) = 0;

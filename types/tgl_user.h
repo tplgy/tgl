@@ -46,6 +46,16 @@ struct tgl_user_status {
     tgl_user_status(): online(tgl_user_online_status::unknown), when(0) { }
 };
 
+constexpr int32_t TGLUF_CONTACT = 1 << 16;
+constexpr int32_t TGLUF_MUTUAL_CONTACT = 1 << 17;
+constexpr int32_t TGLUF_BLOCKED = 1 << 18;
+constexpr int32_t TGLUF_SELF = 1 << 19;
+constexpr int32_t TGLUF_BOT = 1 << 20;
+constexpr int32_t TGLUF_OFFICIAL = 1 << 3;
+constexpr int32_t TGLUF_DELETED = 1 << 2;
+constexpr int32_t TGLUF_MASK = TGLUF_DELETED | TGLUF_OFFICIAL | TGLUF_CONTACT
+        | TGLUF_MUTUAL_CONTACT | TGLUF_BLOCKED | TGLUF_SELF | TGLUF_BOT | TGLUF_OFFICIAL;
+
 struct tgl_user {
     tgl_input_peer_t id;
     int32_t flags;
@@ -55,7 +65,19 @@ struct tgl_user {
     std::string firstname;
     std::string lastname;
     std::string phone;
-    tgl_user(): flags(0), access_hash(0) { }
+
+    tgl_user()
+        : flags(0)
+        , access_hash(0)
+    { }
+
+    bool is_contact() const { return flags & TGLUF_CONTACT; }
+    bool is_mutual_contact() const { return flags & TGLUF_MUTUAL_CONTACT; }
+    bool is_blocked() const { return flags & TGLUF_BLOCKED; }
+    bool is_self() const { return flags & TGLUF_SELF; }
+    bool is_bot() const { return flags & TGLUF_BOT; }
+    bool is_deleted() const { return flags & TGLUF_DELETED; }
+    bool is_official() const { return flags & TGLUF_MASK; }
 };
 
 #endif
