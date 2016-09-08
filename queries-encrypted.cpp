@@ -466,7 +466,7 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
             NULL,
             &action,
             NULL,
-            TGLMF_PENDING | TGLMF_OUT | TGLMF_UNREAD | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
+            TGLMF_PENDING | TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED);
 
     assert(M);
     tgl_state::instance()->callback()->new_messages({M});
@@ -601,7 +601,7 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, d
           &TDSM,
           NULL,
           NULL,
-          TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_ENCRYPTED);
+          TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_ENCRYPTED);
 
     free(TDSM.latitude);
     free(TDSM.longitude);

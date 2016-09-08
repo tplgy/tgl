@@ -1223,7 +1223,7 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
         }
 
         M = tglm_create_message(message_id, from_id, peer_id, NULL, NULL, &date, text, &TDSM, NULL, reply_id, reply_markup,
-                TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_TEMP_MSG_ID);
+                TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING);
         tgl_state::instance()->callback()->new_messages({M});
 
         tgl_do_send_msg(M, callback);
@@ -1235,7 +1235,7 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
 
         assert(secret_chat);
         M = tglm_create_encr_message(secret_chat, message_id, from_id, peer_id, &date, text, &TDSM, NULL, NULL,
-                TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED | TGLMF_SESSION_OUTBOUND | TGLMF_ENCRYPTED);
+                TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_ENCRYPTED);
         tgl_state::instance()->callback()->new_messages({M});
         tgl_do_send_encr_msg(secret_chat, M, callback);
     }
@@ -4131,7 +4131,7 @@ void tgl_do_send_broadcast(int num, tgl_input_peer_t peer_id[], const std::strin
         TDSM.magic = CODE_message_media_empty;
 
         auto msg = tglm_create_message(message_id, from_id, peer_id[i], NULL, NULL, &date, text, &TDSM, NULL, 0, NULL,
-                TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_CREATE | TGLMF_CREATED);
+                TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING);
         tgl_state::instance()->callback()->new_messages({msg});
     }
 

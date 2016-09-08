@@ -707,7 +707,7 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
         DS_DMM,
         NULL,
         NULL,
-        TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED | TGLMF_CREATE | TGLMF_CREATED);
+        TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED);
     free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
 
     if (message->media->type() == tgl_message_media_type::document_encr) {
