@@ -3120,7 +3120,7 @@ void tgl_do_get_channel_difference(int32_t id, const std::function<void(bool suc
     std::shared_ptr<struct tgl_channel> channel = std::make_shared<struct tgl_channel>();
     channel->id = tgl_input_peer_t(tgl_peer_type::channel, id, 0); // FIXME: get access_hash correct.
 
-    if (!channel || !(channel->flags & TGLPF_CREATED) || !channel->pts) {
+    if (!channel || !(channel->flags & TGLCHF_CREATED) || !channel->pts) {
         if (callback) {
             callback(false);
         }
