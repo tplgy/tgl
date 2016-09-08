@@ -59,7 +59,6 @@ constexpr int32_t TGLUF_MASK = TGLUF_DELETED | TGLUF_OFFICIAL | TGLUF_CONTACT
 struct tgl_user {
     tgl_input_peer_t id;
     int32_t flags;
-    int64_t access_hash;
     struct tgl_user_status status;
     std::string username;
     std::string firstname;
@@ -68,7 +67,6 @@ struct tgl_user {
 
     tgl_user()
         : flags(0)
-        , access_hash(0)
     { }
 
     bool is_contact() const { return flags & TGLUF_CONTACT; }

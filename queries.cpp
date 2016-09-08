@@ -3142,7 +3142,7 @@ void tgl_do_get_channel_difference(int32_t id, const std::function<void(bool suc
     q->out_i32(CODE_updates_get_channel_difference);
     q->out_i32(CODE_input_channel);
     q->out_i32(channel->id.peer_id);
-    q->out_i64(channel->access_hash);
+    q->out_i64(channel->id.access_hash);
     q->out_i32(CODE_channel_messages_filter_empty);
     q->out_i32(channel->pts);
     q->out_i32(100);
