@@ -426,27 +426,27 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(const tl_ds_chat* DS_C, bool inv
     bool admin = false;
 
     if (DS_LVAL(DS_C->flags) & 1) {
-        creator = TGLCF_CREATED;
+        creator = true;
     }
 
     if (DS_LVAL(DS_C->flags) & 2) {
-        kicked = TGLCF_KICKED;
+        kicked = true;
     }
 
     if (DS_LVAL(DS_C->flags) & 4) {
-        left = TGLCF_LEFT;
+        left = true;
     }
 
     if (DS_LVAL(DS_C->flags) & 8) {
-        admins_enabled = TGLCF_ADMINS_ENABLED;
+        admins_enabled = true;
     }
 
     if (DS_LVAL(DS_C->flags) & 16) {
-        admin = TGLCF_ADMIN;
+        admin = true;
     }
 
     if (DS_LVAL(DS_C->flags) & 32) {
-        deactivated |= TGLCF_DEACTIVATED;
+        deactivated = true;
     }
 
     chat->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
