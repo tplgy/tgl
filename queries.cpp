@@ -639,10 +639,10 @@ void query::out_header()
 
 void fetch_dc_option(const tl_ds_dc_option* DS_DO)
 {
-    if (DS_TRUE(DS_DO->media_only)) { // We do not support media only ip addresses yet
+    if (DS_BOOL(DS_DO->media_only)) { // We do not support media only ip addresses yet
         return;
     }
-    tgl_state::instance()->set_dc_option(DS_TRUE(DS_DO->ipv6),
+    tgl_state::instance()->set_dc_option(DS_BOOL(DS_DO->ipv6),
             DS_LVAL(DS_DO->id),
             DS_STDSTR(DS_DO->ip_address),
             DS_LVAL(DS_DO->port));
@@ -3055,8 +3055,8 @@ public:
     {
         tl_ds_updates_channel_difference* DS_UD = static_cast<tl_ds_updates_channel_difference*>(D);
 
-        assert(m_channel->flags & TGLCHF_DIFF);
-        m_channel->flags ^= TGLCHF_DIFF;
+        assert(m_channel->diff_locked);
+        m_channel->diff_locked = false;
 
         if (DS_UD->magic == CODE_updates_channel_difference_empty) {
             //bl_do_set_channel_pts(tgl_get_peer_id(channel->id), DS_LVAL(DS_UD->channel_pts));
@@ -3120,7 +3120,7 @@ void tgl_do_get_channel_difference(int32_t id, const std::function<void(bool suc
     std::shared_ptr<struct tgl_channel> channel = std::make_shared<struct tgl_channel>();
     channel->id = tgl_input_peer_t(tgl_peer_type::channel, id, 0); // FIXME: get access_hash correct.
 
-    if (!channel || !(channel->flags & TGLCHF_CREATED) || !channel->pts) {
+    if (!channel->pts) {
         if (callback) {
             callback(false);
         }
@@ -3128,13 +3128,14 @@ void tgl_do_get_channel_difference(int32_t id, const std::function<void(bool suc
     }
     //get_difference_active = 1;
     //difference_got = 0;
-    if (channel->flags & TGLCHF_DIFF) {
+    if (channel->diff_locked) {
+        TGL_WARNING("channel " << id << " diff locked");
         if (callback) {
             callback(false);
         }
         return;
     }
-    channel->flags |= TGLCHF_DIFF;
+    channel->diff_locked = true;
 
     auto q = std::make_shared<query_get_channel_difference>(channel, callback);
     q->out_header();

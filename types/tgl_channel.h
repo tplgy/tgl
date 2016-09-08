@@ -34,6 +34,9 @@ struct tgl_channel: public tgl_chat {
     int32_t admins_count;
     int32_t kicked_count;
     int32_t pts;
+    bool official;
+    bool broadcast;
+    bool diff_locked;
     std::string about;
 
     tgl_channel()
@@ -42,6 +45,9 @@ struct tgl_channel: public tgl_chat {
         , admins_count(0)
         , kicked_count(0)
         , pts(0)
+        , official(false)
+        , broadcast(false)
+        , diff_locked(false)
     { }
 };
 

@@ -38,23 +38,38 @@ struct tgl_chat_user {
 
 struct tgl_chat {
     tgl_input_peer_t id;
-    int32_t flags;
-    //std::string print_title;
+    int64_t date;
+    int32_t participants_count;
+    bool creator;
+    bool kicked;
+    bool left;
+    bool admins_enabled;
+    bool deactivated;
+    bool admin;
+    bool editor;
+    bool moderator;
+    bool verified;
+    bool megagroup;
+    bool restricted;
     std::string username;
-    //int structure_version;
     tgl_file_location photo_big;
     tgl_file_location photo_small;
-    //int last_read_in;
-    //int last_read_out;
-    //struct tgl_photo* photo;
     std::string title;
-    //int users_num;
-    //int user_list_version;
-    //std::vector<std::shared_ptr<tgl_chat_user>> user_list;
-    //int date;
-    //int version;
-    //int admin_id;
-    tgl_chat(): flags(0) { }
+    tgl_chat()
+        : date(0)
+        , participants_count(0)
+        , creator(false)
+        , kicked(false)
+        , left(false)
+        , admins_enabled(false)
+        , deactivated(false)
+        , admin(false)
+        , editor(false)
+        , moderator(false)
+        , verified(false)
+        , megagroup(false)
+        , restricted(false)
+    { }
 };
 
 #endif
