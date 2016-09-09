@@ -32,7 +32,6 @@ class mtproto_client
 {
 public:
     int ready(const std::shared_ptr<tgl_connection>& c);
-    int close(const std::shared_ptr<tgl_connection>& c);
 
     enum class execute_result {
         ok,

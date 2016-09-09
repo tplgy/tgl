@@ -60,6 +60,9 @@ tgl_connection_asio::tgl_connection_asio(boost::asio::io_service& io_service,
 tgl_connection_asio::~tgl_connection_asio()
 {
     close();
+    if (auto dc = m_dc.lock()) {
+        TGL_DEBUG("connection to DC " << dc->id << " destroyed");
+    }
 }
 
 void tgl_connection_asio::ping(const boost::system::error_code& error) {
@@ -124,7 +127,9 @@ ssize_t tgl_connection_asio::read_in_lookup(void* data_out, size_t len)
 
 void tgl_connection_asio::open()
 {
-    tgl_state::instance()->add_online_status_observer(shared_from_this());
+    m_this_weak_observer = shared_from_this();
+    tgl_state::instance()->add_online_status_observer(m_this_weak_observer);
+
     if (!connect()) {
         TGL_ERROR("can not connect to " << m_endpoint);
         return;
@@ -263,8 +268,12 @@ void tgl_connection_asio::close()
         return;
     }
 
-    tgl_state::instance()->remove_online_status_observer(shared_from_this());
-    m_mtproto_client->close(shared_from_this());
+    if (auto dc = m_dc.lock()) {
+        TGL_DEBUG("connection to DC " << dc->id << " closed");
+    }
+
+    tgl_state::instance()->remove_online_status_observer(m_this_weak_observer);
+
     set_state(connection_state::closed);
     m_ping_timer.cancel();
     m_socket.close();

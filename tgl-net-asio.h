@@ -102,6 +102,7 @@ private:
     std::weak_ptr<tgl_dc> m_dc;
     std::weak_ptr<tgl_session> m_session;
     std::shared_ptr<mtproto_client> m_mtproto_client;
+    std::weak_ptr<tgl_online_status_observer> m_this_weak_observer;
 
     bool m_write_pending;
     tgl_online_status m_online_status;

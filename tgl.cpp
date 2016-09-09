@@ -404,9 +404,16 @@ void tgl_state::set_online_status(tgl_online_status status)
     TGL_DEBUG("setting online status to " << status
             << " (previous: " << m_online_status << ")");
     m_online_status = status;
+    std::vector<std::weak_ptr<tgl_online_status_observer>> dead_weak_observers;
     for (const auto& weak_observer: m_online_status_observers) {
         if (auto observer = weak_observer.lock()) {
             observer->on_online_status_changed(status);
+        } else {
+            dead_weak_observers.push_back(weak_observer);
         }
+    }
+
+    for (const auto& dead_weak_observer: dead_weak_observers) {
+        m_online_status_observers.erase(dead_weak_observer);
     }
 }

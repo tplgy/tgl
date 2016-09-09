@@ -81,16 +81,10 @@ static double get_server_time(const std::shared_ptr<tgl_dc>& DC);
 
 static mtproto_client::execute_result rpc_execute(const std::shared_ptr<tgl_connection>& c, int32_t op, int len);
 static int rpc_becomes_ready(const std::shared_ptr<tgl_connection>& c);
-static int rpc_close(const std::shared_ptr<tgl_connection>& c);
 
 int mtproto_client::ready(const std::shared_ptr<tgl_connection>& c)
 {
     return rpc_becomes_ready(c);
-}
-
-int mtproto_client::close(const std::shared_ptr<tgl_connection>& c)
-{
-    return rpc_close(c);
 }
 
 mtproto_client::execute_result mtproto_client::execute(const std::shared_ptr<tgl_connection>& c, int op, int len)
@@ -1107,17 +1101,6 @@ static int rpc_execute_answer(const std::shared_ptr<tgl_connection>& c, tgl_in_b
     return 0;
 }
 
-static int tc_close(const std::shared_ptr<tgl_connection>& c, int who)
-{
-    std::shared_ptr<tgl_dc> DC = c->get_dc().lock();
-    if (!DC) {
-        return -1;
-    }
-
-    TGL_DEBUG("outbound rpc connection from dc #" << DC->id << " : closing by " << who);
-    return 0;
-}
-
 static void create_connection(const std::shared_ptr<tgl_session>& S)
 {
     std::shared_ptr<tgl_dc> DC = S->dc.lock();
@@ -1383,11 +1366,6 @@ static int tc_becomes_ready(const std::shared_ptr<tgl_connection>& c)
 static int rpc_becomes_ready(const std::shared_ptr<tgl_connection>& c)
 {
     return tc_becomes_ready(c);
-}
-
-static int rpc_close(const std::shared_ptr<tgl_connection>& c)
-{
-    return tc_close(c, 0);
 }
 
 #define RANDSEED_PASSWORD_FILENAME     NULL
