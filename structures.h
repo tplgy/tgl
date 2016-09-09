@@ -24,7 +24,6 @@
 #include <assert.h>
 
 #include "auto/auto-types.h"
-#include "tgl-layout.h"
 #include "tgl.h"
 #include "tools.h"
 #include "types/tgl_bot.h"
@@ -38,7 +37,7 @@ std::shared_ptr<tgl_message> tglm_create_message(int64_t message_id, const tgl_p
         const tgl_input_peer_t& to_id, const tgl_peer_id_t* fwd_from_id, const int64_t* fwd_date,
         const int64_t* date, const std::string& message,
         const tl_ds_message_media* media, const tl_ds_message_action* action,
-        int32_t reply_id, const tl_ds_reply_markup* reply_markup, int flags);
+        int32_t reply_id, const tl_ds_reply_markup* reply_markup);
 
 std::shared_ptr<tgl_message> tglm_create_encr_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         int64_t message_id,
@@ -48,8 +47,7 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(const std::shared_ptr<tgl_
         const std::string& message,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
-        const tl_ds_encrypted_file* file,
-        int flags);
+        const tl_ds_encrypted_file* file);
 
 void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& secret_message);
 

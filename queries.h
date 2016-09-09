@@ -25,7 +25,6 @@
 #include "auto/auto.h"
 #include "mtproto-common.h"
 #include "structures.h"
-#include "tgl-layout.h"
 #include "types/tgl_message.h"
 #include "tgl-dc.h"
 

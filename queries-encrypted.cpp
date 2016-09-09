@@ -49,7 +49,6 @@
 #include "mtproto-utils.h"
 #include "queries.h"
 #include "tgl.h"
-#include "tgl-layout.h"
 #include "tgl-log.h"
 #include "tg-mime-types.h"
 #include "tools.h"
@@ -297,7 +296,6 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
         return;
     }
 
-    assert(M->flags & TGLMF_ENCRYPTED);
     assert(M->action);
 
     auto q = std::make_shared<query_msg_send_encr>(secret_chat, M, callback);
@@ -390,7 +388,7 @@ void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::shared_ptr<tgl_message>& M,
         const std::function<void(bool, const std::shared_ptr<tgl_message>& M)>& callback)
 {
-    if (M->flags & TGLMF_SERVICE) {
+    if (M->is_service()) {
         if (!M->action) {
             return;
         }
@@ -405,8 +403,6 @@ void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         }
         return;
     }
-
-    assert(M->flags & TGLMF_ENCRYPTED);
 
     auto q = std::make_shared<query_msg_send_encr>(secret_chat, M, callback);
     secret_chat_encryptor encryptor(secret_chat, q->serializer());
@@ -463,12 +459,10 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
             secret_chat->id,
             &date,
             std::string(),
-            NULL,
+            nullptr,
             &action,
-            NULL,
-            TGLMF_PENDING | TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED);
-
-    assert(M);
+            nullptr);
+    M->set_pending(true).set_outgoing(true).set_unread(true);
     tgl_state::instance()->callback()->new_messages({M});
     tgl_do_send_encr_msg(secret_chat, M, callback);
 }
@@ -572,7 +566,7 @@ void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secr
     q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, double longitude, unsigned long long flags,
+void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, double longitude,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     struct tl_ds_decrypted_message_media TDSM;
@@ -599,9 +593,9 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, d
           &date,
           std::string(),
           &TDSM,
-          NULL,
-          NULL,
-          TGLMF_UNREAD | TGLMF_OUT | TGLMF_PENDING | TGLMF_ENCRYPTED);
+          nullptr,
+          nullptr);
+    M->set_unread(true).set_outgoing(true).set_pending(true);
 
     free(TDSM.latitude);
     free(TDSM.longitude);

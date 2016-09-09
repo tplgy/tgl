@@ -125,7 +125,6 @@ set(HEADERS
     tg-mime-types.h
     tgl.h
     tgl-dc.h
-    tgl-layout.h
     tgl-log.h
     tgl-net.h
     tgl-net-asio.h

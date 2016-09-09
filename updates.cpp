@@ -610,17 +610,8 @@ static void tglu_work_update_short_sent_message(const tl_ds_updates* DS_U,
     }
 
     if (std::shared_ptr<tgl_message> message = std::static_pointer_cast<tgl_message>(extra)) {
-        int32_t f = DS_LVAL(DS_U->flags);
-        unsigned flags = message->flags;
-        if (f & 1) {
-            flags |= TGLMF_UNREAD;
-        }
-        if (f & 2) {
-            flags |= TGLMF_OUT;
-        }
-        if (f & 16) {
-            flags |= TGLMF_MENTION;
-        }
+        int32_t flags = DS_LVAL(DS_U->flags);
+        message->set_unread(flags&1).set_outgoing(flags&2).set_mention(flags&16);
         tgl_state::instance()->callback()->new_messages({message});
     }
 

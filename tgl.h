@@ -23,7 +23,6 @@
 
 #include "crypto/bn.h"
 #include "tgl-dc.h"
-#include "tgl-layout.h"
 #include "tgl-log.h"
 #include "types/tgl_online_status.h"
 #include <cassert>
@@ -273,9 +272,6 @@ private:
 };
 
 int tgl_secret_chat_for_user(tgl_peer_id_t user_id);
-
-#define TGL_SEND_MSG_FLAG_DISABLE_PREVIEW 1
-#define TGL_SEND_MSG_FLAG_ENABLE_PREVIEW 2
 
 typedef int tgl_user_id_t;
 typedef int tgl_chat_id_t;

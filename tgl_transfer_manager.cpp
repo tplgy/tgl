@@ -25,7 +25,6 @@
 #include "tgl_transfer_manager.h"
 #include "queries.h"
 #include "tg-mime-types.h"
-#include "tgl-layout.h"
 #include "crypto/aes.h"
 #include "crypto/md5.h"
 #include "mtproto-common.h"
@@ -381,7 +380,7 @@ public:
     {
         tl_ds_messages_sent_encrypted_message* DS_MSEM = static_cast<tl_ds_messages_sent_encrypted_message*>(D);
 
-        m_message->flags = m_message->flags & (~TGLMF_PENDING);
+        m_message->set_pending(false);
         if (DS_MSEM->date) {
             m_message->date = *DS_MSEM->date;
         }
@@ -408,8 +407,7 @@ public:
         }
 
         if (m_message) {
-            m_message->flags &= (~TGLMF_PENDING);
-            m_message->flags |= (TGLMF_SEND_FAILED);
+            m_message->set_pending(false).set_send_failed(true);
             tgl_state::instance()->callback()->new_messages({m_message});
         }
         return 0;
@@ -699,15 +697,15 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
 
     int64_t date = tgl_get_system_time();
     std::shared_ptr<tgl_message> message = tglm_create_encr_message(secret_chat,
-        u->message_id,
-        from_id,
-        u->to_id,
-        &date,
-        std::string(),
-        DS_DMM,
-        NULL,
-        NULL,
-        TGLMF_OUT | TGLMF_UNREAD | TGLMF_ENCRYPTED);
+            u->message_id,
+            from_id,
+            u->to_id,
+            &date,
+            std::string(),
+            DS_DMM,
+            nullptr,
+            nullptr);
+    message->set_outgoing(true).set_unread(true);
     free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
 
     if (message->media->type() == tgl_message_media_type::document_encr) {
