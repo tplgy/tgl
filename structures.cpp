@@ -167,32 +167,19 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(const tl_ds_user* DS_U, bool inv
     std::shared_ptr<tgl_user> user = std::make_shared<tgl_user>();
     user->id = user_id;
 
-    int flags = user->flags;
+    //int flags = user->flags;
+    int32_t flags = DS_LVAL(DS_U->flags);
 
-    if (DS_LVAL(DS_U->flags) & (1 << 10)) {
+    if (flags & (1 << 10)) {
         tgl_state::instance()->set_our_id(user_id.peer_id);
-        flags |= TGLUF_SELF;
+        user->set_self(true);
     } else {
-        flags &= ~TGLUF_SELF;
+        user->set_self(false);
     }
 
-    if (DS_LVAL(DS_U->flags) & (1 << 11)) {
-        flags |= TGLUF_CONTACT;
-    } else {
-        flags &= ~TGLUF_CONTACT;
-    }
-
-    if (DS_LVAL(DS_U->flags) & (1 << 12)) {
-        flags |= TGLUF_MUTUAL_CONTACT;
-    } else {
-        flags &= ~TGLUF_MUTUAL_CONTACT;
-    }
-
-    if (DS_LVAL(DS_U->flags) & (1 << 14)) {
-        flags |= TGLUF_BOT;
-    } else {
-        flags &= ~TGLUF_BOT;
-    }
+    user->set_contact(flags & (1 << 11));
+    user->set_mutual_contact(flags & (1 << 12));
+    user->set_bot(flags & (1 << 14));
 
     /*
     if (DS_LVAL(DS_U->flags) & (1 << 15)) {
@@ -203,13 +190,8 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user(const tl_ds_user* DS_U, bool inv
         flags |= TGLUF_BOT_NO_GROUPS;
     }*/
 
-    if (DS_LVAL(DS_U->flags) & (1 << 17)) {
-        flags |= TGLUF_OFFICIAL;
-    } else {
-        flags &= ~TGLUF_OFFICIAL;
-    }
+    user->set_official(flags & (1 << 17));
 
-    user->flags = (flags & TGLUF_MASK);
     user->firstname = DS_STDSTR(DS_U->first_name);
     user->lastname = DS_STDSTR(DS_U->last_name);
     user->username = DS_STDSTR(DS_U->username);
@@ -244,28 +226,7 @@ std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(const tl_ds_user_full* DS_U
         return nullptr;
     }
 
-    int flags = user->flags;
-
-    if (DS_BVAL(DS_UF->blocked)) {
-        flags |= TGLUF_BLOCKED;
-    } else {
-        flags &= ~TGLUF_BLOCKED;
-    }
-
-#if 0
-    bl_do_user(tgl_get_peer_id(user->id),
-        NULL,
-        NULL, 0,
-        NULL, 0,
-        NULL, 0,
-        NULL, 0,
-        DS_UF->profile_photo,
-        NULL,
-        NULL, NULL,
-        DS_UF->bot_info,
-        flags
-    );
-#endif
+    user->set_blocked(DS_BVAL(DS_UF->blocked));
 
     if (DS_UF->user->photo) {
         tgl_file_location photo_big = tglf_fetch_file_location(DS_UF->user->photo->photo_big);

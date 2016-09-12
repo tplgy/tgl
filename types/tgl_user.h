@@ -46,19 +46,8 @@ struct tgl_user_status {
     tgl_user_status(): online(tgl_user_online_status::unknown), when(0) { }
 };
 
-constexpr int32_t TGLUF_CONTACT = 1 << 16;
-constexpr int32_t TGLUF_MUTUAL_CONTACT = 1 << 17;
-constexpr int32_t TGLUF_BLOCKED = 1 << 18;
-constexpr int32_t TGLUF_SELF = 1 << 19;
-constexpr int32_t TGLUF_BOT = 1 << 20;
-constexpr int32_t TGLUF_OFFICIAL = 1 << 3;
-constexpr int32_t TGLUF_DELETED = 1 << 2;
-constexpr int32_t TGLUF_MASK = TGLUF_DELETED | TGLUF_OFFICIAL | TGLUF_CONTACT
-        | TGLUF_MUTUAL_CONTACT | TGLUF_BLOCKED | TGLUF_SELF | TGLUF_BOT | TGLUF_OFFICIAL;
-
 struct tgl_user {
     tgl_input_peer_t id;
-    int32_t flags;
     struct tgl_user_status status;
     std::string username;
     std::string firstname;
@@ -66,16 +55,39 @@ struct tgl_user {
     std::string phone;
 
     tgl_user()
-        : flags(0)
+        : m_contact(false)
+        , m_mutual_contact(false)
+        , m_blocked(false)
+        , m_self(false)
+        , m_bot(false)
+        , m_deleted(false)
+        , m_official(false)
     { }
 
-    bool is_contact() const { return flags & TGLUF_CONTACT; }
-    bool is_mutual_contact() const { return flags & TGLUF_MUTUAL_CONTACT; }
-    bool is_blocked() const { return flags & TGLUF_BLOCKED; }
-    bool is_self() const { return flags & TGLUF_SELF; }
-    bool is_bot() const { return flags & TGLUF_BOT; }
-    bool is_deleted() const { return flags & TGLUF_DELETED; }
-    bool is_official() const { return flags & TGLUF_MASK; }
+    bool is_contact() const { return m_contact; }
+    bool is_mutual_contact() const { return m_mutual_contact; }
+    bool is_blocked() const { return m_blocked; }
+    bool is_self() const { return m_self; }
+    bool is_bot() const { return m_bot; }
+    bool is_deleted() const { return m_deleted; }
+    bool is_official() const { return m_official; }
+
+    tgl_user& set_contact(bool b) { m_contact = b; return *this; }
+    tgl_user& set_mutual_contact(bool b) { m_mutual_contact = b; return *this; }
+    tgl_user& set_blocked(bool b) { m_blocked = b; return *this; }
+    tgl_user& set_self(bool b) { m_self = b; return *this; }
+    tgl_user& set_bot(bool b) { m_bot = b; return *this; }
+    tgl_user& set_deleted(bool b) { m_deleted = b; return *this; }
+    tgl_user& set_official(bool b) { m_official = b; return *this; }
+
+private:
+    bool m_contact;
+    bool m_mutual_contact;
+    bool m_blocked;
+    bool m_self;
+    bool m_bot;
+    bool m_deleted;
+    bool m_official;
 };
 
 #endif
