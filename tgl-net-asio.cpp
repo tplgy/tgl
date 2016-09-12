@@ -385,6 +385,12 @@ void tgl_connection_asio::handle_connect(bool is_ipv6, const boost::system::erro
         return;
     }
 
+    if (is_ipv6) {
+        m_ipv4_socket.reset();
+    } else {
+        m_ipv6_socket.reset();
+    }
+
     TGL_NOTICE("connected to " << (is_ipv6 ? m_ipv6_endpoint : m_ipv4_endpoint));
 
     start_ping_timer();
