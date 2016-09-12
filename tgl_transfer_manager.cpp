@@ -704,8 +704,9 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
             std::string(),
             DS_DMM,
             nullptr,
-            nullptr);
-    message->set_outgoing(true).set_unread(true);
+            nullptr,
+            true);
+    message->set_pending(true).set_unread(true);
     free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
 
     if (message->media->type() == tgl_message_media_type::document_encr) {

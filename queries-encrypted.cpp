@@ -461,8 +461,9 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
             std::string(),
             nullptr,
             &action,
-            nullptr);
-    M->set_pending(true).set_outgoing(true).set_unread(true);
+            nullptr,
+            true);
+    M->set_pending(true).set_unread(true);
     tgl_state::instance()->callback()->new_messages({M});
     tgl_do_send_encr_msg(secret_chat, M, callback);
 }
@@ -594,8 +595,9 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, d
           std::string(),
           &TDSM,
           nullptr,
-          nullptr);
-    M->set_unread(true).set_outgoing(true).set_pending(true);
+          nullptr,
+          true);
+    M->set_unread(true).set_pending(true);
 
     free(TDSM.latitude);
     free(TDSM.longitude);

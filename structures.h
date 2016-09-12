@@ -47,7 +47,8 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(const std::shared_ptr<tgl_
         const std::string& message,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
-        const tl_ds_encrypted_file* file);
+        const tl_ds_encrypted_file* file,
+        bool is_outgoing = false);
 
 void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& secret_message);
 

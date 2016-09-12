@@ -1756,7 +1756,8 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(
         const std::string& message,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
-        const tl_ds_encrypted_file* file)
+        const tl_ds_encrypted_file* file,
+        bool is_outgoing)
 {
     std::shared_ptr<tgl_message> M = tglm_alloc_message(message_id);
 
@@ -1784,6 +1785,8 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(
     if (file) {
         tglf_fetch_encrypted_message_file(M->media, file);
     }
+
+    M->set_outgoing(is_outgoing);
 
     if (action && !M->is_outgoing() && M->action && M->action->type() == tgl_message_action_type::notify_layer) {
         secret_chat->layer = std::static_pointer_cast<tgl_message_action_notify_layer>(M->action)->layer;
