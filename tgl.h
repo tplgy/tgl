@@ -271,13 +271,6 @@ private:
     static std::unique_ptr<tgl_state> s_instance;
 };
 
-int tgl_secret_chat_for_user(tgl_peer_id_t user_id);
-
-typedef int tgl_user_id_t;
-typedef int tgl_chat_id_t;
-typedef int tgl_secret_chat_id_t;
-typedef int tgl_user_or_chat_id_t;
-
 void tgl_do_lookup_state();
 
 #endif
