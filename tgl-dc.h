@@ -147,7 +147,6 @@ struct tgl_dc: public std::enable_shared_from_this<tgl_dc> {
     int64_t temp_auth_key_bind_query_id;
 
     int64_t server_salt;
-    std::shared_ptr<tgl_timer> ev;
 
     int server_time_delta;
     double server_time_udelta;
