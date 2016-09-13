@@ -404,7 +404,7 @@ static mtproto_client::execute_result process_respq_answer(const std::shared_ptr
     assert(fingerprints_num >= 0);
     DC->set_rsa_key(nullptr);
 
-    for (int i = 0; i < fingerprints_num && !DC->rsa_key(); i++) {
+    for (int i = 0; i < fingerprints_num; i++) {
         int64_t fingerprint = fetch_i64(&in);
         for (const auto& key : tgl_state::instance()->rsa_key_list()) {
             if (key->is_loaded() && fingerprint == key->fingerprint()) {
