@@ -1188,7 +1188,7 @@ static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<
     if (!S->received_messages) {
         DC->server_time_delta = this_server_time - tgl_get_system_time();
         if (DC->server_time_udelta) {
-            TGL_WARNING("adjusting CLOCK_MONOTONIC delta to " <<
+            TGL_WARNING("adjusting monotonic clock delta to " <<
                     DC->server_time_udelta - this_server_time + tgl_get_monotonic_time());
         }
         DC->server_time_udelta = this_server_time - tgl_get_monotonic_time();
