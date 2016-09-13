@@ -46,10 +46,7 @@ constexpr const char* TG_APP_HASH = "844584f2b1fd2daecee726166dcc1ef8";
 std::unique_ptr<tgl_state> tgl_state::s_instance;
 
 tgl_state::tgl_state()
-    : locks(0)
-    , ev_login(NULL)
-    , m_is_started(false)
-    , m_online_status(tgl_online_status::not_online)
+    : m_online_status(tgl_online_status::not_online)
     , m_app_id(0)
     , m_error_code(0)
     , m_temp_key_expire_time(0)
@@ -57,10 +54,14 @@ tgl_state::tgl_state()
     , m_qts(0)
     , m_date(0)
     , m_seq(0)
-    , m_test_mode(0)
-    , m_our_id()
+    , m_is_started(false)
+    , m_test_mode(false)
     , m_enable_pfs(false)
     , m_ipv6_enabled(false)
+    , m_diff_locked(false)
+    , m_password_locked(false)
+    , m_phone_number_input_locked(false)
+    , m_our_id()
     , m_bn_ctx(TGLC_bn_ctx_new())
     , m_online_status_observers()
 {
@@ -155,7 +156,7 @@ void tgl_state::set_working_dc(int num)
 
 void tgl_state::set_qts(int32_t qts, bool force)
 {
-    if (locks & TGL_LOCK_DIFF) {
+    if (is_diff_locked()) {
         return;
     }
 
@@ -169,7 +170,7 @@ void tgl_state::set_qts(int32_t qts, bool force)
 
 void tgl_state::set_pts(int32_t pts, bool force)
 {
-    if (locks & TGL_LOCK_DIFF && !force) {
+    if (is_diff_locked() && !force) {
         return;
     }
 
@@ -183,7 +184,7 @@ void tgl_state::set_pts(int32_t pts, bool force)
 
 void tgl_state::set_date(int64_t date, bool force)
 {
-    if (locks & TGL_LOCK_DIFF && !force) {
+    if (is_diff_locked() && !force) {
         return;
     }
 
@@ -197,7 +198,7 @@ void tgl_state::set_date(int64_t date, bool force)
 
 void tgl_state::set_seq(int32_t seq)
 {
-    if (locks & TGL_LOCK_DIFF) {
+    if (is_diff_locked()) {
         return;
     }
 

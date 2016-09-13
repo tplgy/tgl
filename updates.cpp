@@ -46,12 +46,12 @@ bool tgl_check_pts_diff(int32_t pts, int32_t pts_count) {
         return false;
     }
     if (pts > tgl_state::instance()->pts() + pts_count) {
-        TGL_NOTICE("Hole in pts: pts = "<< pts <<", count = "<< pts_count <<", cur_pts = "<< tgl_state::instance()->pts());
+        TGL_NOTICE("hole in pts: pts = "<< pts <<", count = "<< pts_count <<", cur_pts = "<< tgl_state::instance()->pts());
         tgl_do_get_difference(false, nullptr);
         return false;
     }
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
-        TGL_DEBUG("Update during get_difference. pts = " << pts);
+    if (tgl_state::instance()->is_diff_locked()) {
+        TGL_DEBUG("update during get_difference. pts = " << pts);
         return false;
     }
     TGL_DEBUG("OK update, pts = " << pts);
@@ -72,7 +72,7 @@ static bool tgl_check_qts_diff(int32_t qts, int32_t qts_count)
         return false;
     }
 
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         TGL_WARNING("update during get_difference. qts = " << qts);
         return false;
     }
@@ -126,7 +126,7 @@ static bool tglu_check_seq_diff(int32_t seq)
             tgl_do_get_difference(false, nullptr);
             return false;
         }
-        if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+        if (tgl_state::instance()->is_diff_locked()) {
             TGL_DEBUG("update during get_difference, seq = " << seq);
             return false;
         }
@@ -139,7 +139,7 @@ static bool tglu_check_seq_diff(int32_t seq)
 
 void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         TGL_WARNING("update during get_difference, dropping update");
         return;
     }
@@ -448,7 +448,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
 
 void tglu_work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         return;
     }
 
@@ -486,7 +486,7 @@ void tglu_work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& e
 
 static void tglu_work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         return;
     }
 
@@ -518,7 +518,7 @@ static void tglu_work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mod
 
 void tglu_work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         return;
     }
 
@@ -529,7 +529,7 @@ void tglu_work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mode m
 
     tglf_fetch_alloc_message_short(DS_U);
 
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         return;
     }
 
@@ -543,7 +543,7 @@ void tglu_work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mode m
 
 void tglu_work_update_short_chat_message(const tl_ds_updates* DS_U, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         return;
     }
 
@@ -556,7 +556,7 @@ void tglu_work_update_short_chat_message(const tl_ds_updates* DS_U, tgl_update_m
         tgl_state::instance()->callback()->new_messages({message});
     }
 
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         return;
     }
 
@@ -578,7 +578,7 @@ void tglu_work_update_short_chat_message(const tl_ds_updates* DS_U, tgl_update_m
 
 static void tglu_work_updates_too_long(const tl_ds_updates* DS_U, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         return;
     }
 
@@ -593,7 +593,7 @@ static void tglu_work_updates_too_long(const tl_ds_updates* DS_U, tgl_update_mod
 
 static void tglu_work_update_short(const tl_ds_updates* DS_U, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         return;
     }
 
@@ -627,7 +627,7 @@ static void tglu_work_update_short_sent_message(const tl_ds_updates* DS_U,
 
 void tglu_work_any_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         return;
     }
 

@@ -61,6 +61,10 @@
 #include "types/tgl_peer_id.h"
 #include "updates.h"
 
+constexpr int32_t TGL_SCHEME_LAYER = 45;
+constexpr int TGL_MAX_DC_NUM = 100;
+const char* TGL_VERSION = "0.1.0";
+
 void query::clear_timers()
 {
     if (m_timer) {
@@ -451,8 +455,8 @@ int query::handle_error(int error_code, const std::string& error_string)
             break;
         case 401:
             if (error_string == "SESSION_PASSWORD_NEEDED") {
-                if (!(tgl_state::instance()->locks & TGL_LOCK_PASSWORD)) {
-                    tgl_state::instance()->locks |= TGL_LOCK_PASSWORD;
+                if (!tgl_state::instance()->is_password_locked()) {
+                    tgl_state::instance()->set_password_locked(true);
                     tgl_do_check_password(std::bind(resend_query_cb, shared_from_this(), std::placeholders::_1));
                 }
                 if (should_retry_after_recover_from_error()) {
@@ -470,7 +474,7 @@ int query::handle_error(int error_code, const std::string& error_string)
                     }
                     dc->set_logged_in(false);
                 }
-                tgl_state::instance()->locks = 0;
+                tgl_state::instance()->clear_all_locks();
                 tgl_state::instance()->login();
                 if (should_retry_after_recover_from_error()) {
                     should_retry = true;
@@ -2830,8 +2834,8 @@ public:
     virtual void on_answer(void* D) override
     {
         tl_ds_updates_state* DS_US = static_cast<tl_ds_updates_state*>(D);
-        assert(tgl_state::instance()->locks & TGL_LOCK_DIFF);
-        tgl_state::instance()->locks ^= TGL_LOCK_DIFF;
+        assert(tgl_state::instance()->is_diff_locked());
+        tgl_state::instance()->set_diff_locked(false);
         tgl_state::instance()->set_pts(DS_LVAL(DS_US->pts));
         tgl_state::instance()->set_qts(DS_LVAL(DS_US->qts));
         tgl_state::instance()->set_date(DS_LVAL(DS_US->date));
@@ -2900,8 +2904,8 @@ public:
 
         tl_ds_updates_difference* DS_UD = static_cast<tl_ds_updates_difference*>(D);
 
-        assert(tgl_state::instance()->locks & TGL_LOCK_DIFF);
-        tgl_state::instance()->locks ^= TGL_LOCK_DIFF;
+        assert(tgl_state::instance()->is_diff_locked());
+        tgl_state::instance()->set_diff_locked(false);
 
         if (DS_UD->magic == CODE_updates_difference_empty) {
             tgl_state::instance()->set_date(DS_LVAL(DS_UD->date));
@@ -2989,7 +2993,7 @@ private:
 
 void tgl_do_lookup_state()
 {
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         return;
     }
     auto q = std::make_shared<query_lookup_state>(nullptr);
@@ -3000,13 +3004,13 @@ void tgl_do_lookup_state()
 
 void tgl_do_get_difference(bool sync_from_start, const std::function<void(bool success)>& callback)
 {
-    if (tgl_state::instance()->locks & TGL_LOCK_DIFF) {
+    if (tgl_state::instance()->is_diff_locked()) {
         if (callback) {
             callback(false);
         }
         return;
     }
-    tgl_state::instance()->locks |= TGL_LOCK_DIFF;
+    tgl_state::instance()->set_diff_locked(true);
     if (tgl_state::instance()->pts() > 0 || sync_from_start) {
         if (tgl_state::instance()->pts() == 0) {
             tgl_state::instance()->set_pts(1, true);
@@ -3975,7 +3979,7 @@ public:
 
     virtual void on_answer(void*) override
     {
-        tgl_state::instance()->locks ^= TGL_LOCK_PASSWORD;
+        tgl_state::instance()->set_password_locked(false);
         if (m_callback) {
             m_callback(true);
         }
@@ -3989,7 +3993,7 @@ public:
             return 0;
         }
 
-        tgl_state::instance()->locks ^= TGL_LOCK_PASSWORD;
+        tgl_state::instance()->set_password_locked(false);
         TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
 
         if (m_callback) {
@@ -4048,7 +4052,7 @@ public:
         tl_ds_account_password* DS_AP = static_cast<tl_ds_account_password*>(D);
 
         if (DS_AP->magic == CODE_account_no_password) {
-            tgl_state::instance()->locks ^= TGL_LOCK_PASSWORD;
+            tgl_state::instance()->set_password_locked(false);
             return;
         }
 
@@ -4067,7 +4071,7 @@ public:
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-        tgl_state::instance()->locks ^= TGL_LOCK_PASSWORD;
+        tgl_state::instance()->set_password_locked(false);
         TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
         if (m_callback) {
             m_callback(false);
@@ -4589,7 +4593,7 @@ void tgl_register_cb(const std::shared_ptr<sign_up_extra>& E, const void* rinfo)
 
 void tgl_sign_in_phone_cb(const std::shared_ptr<sign_up_extra>& E, bool success, bool registered, const std::string& mhash)
 {
-    tgl_state::instance()->locks ^= TGL_LOCK_PHONE;
+    tgl_state::instance()->set_phone_number_input_locked(false);
     if (!success) {
         E->phone = std::string();
         tgl_state::instance()->callback()->get_values(tgl_value_type::phone_number, "phone number:", 1, tgl_sign_in_phone);
@@ -4612,7 +4616,7 @@ void tgl_sign_in_phone(const void* phone)
     std::shared_ptr<sign_up_extra> E = std::make_shared<sign_up_extra>();
     E->phone = static_cast<const char*>(phone);
 
-    tgl_state::instance()->locks |= TGL_LOCK_PHONE;
+    tgl_state::instance()->set_phone_number_input_locked(true);
 
     tgl_do_send_code(E->phone, std::bind(tgl_sign_in_phone_cb, E, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
@@ -4638,7 +4642,7 @@ static void tgl_sign_in()
 {
     assert(!tgl_state::instance()->working_dc()->is_logged_in());
 
-    if (!(tgl_state::instance()->locks & TGL_LOCK_PHONE)) {
+    if (!tgl_state::instance()->is_phone_number_input_locked()) {
         TGL_DEBUG("asking for phone number");
         tgl_state::instance()->callback()->get_values(tgl_value_type::phone_number, "phone number:", 1, tgl_sign_in_phone);
     }

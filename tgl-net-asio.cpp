@@ -21,6 +21,7 @@
 
 #include "tgl-net-asio.h"
 
+#include "tgl-dc.h"
 #include "tgl-log.h"
 #include "mtproto-client.h"
 #include "types/tgl_connection_status.h"

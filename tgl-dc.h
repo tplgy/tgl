@@ -31,6 +31,26 @@
 #include <vector>
 #include "types/tgl_peer_id.h"
 
+static const char* TG_SERVER_1 = "149.154.175.50";
+static const char* TG_SERVER_2 = "149.154.167.50";
+static const char* TG_SERVER_3 = "149.154.175.100";
+static const char* TG_SERVER_4 = "149.154.167.91";
+static const char* TG_SERVER_5 = "149.154.171.5";
+static const char* TG_SERVER_IPV6_1 = "2001:b28:f23d:f001::a";
+static const char* TG_SERVER_IPV6_2 = "2001:67c:4e8:f002::a";
+static const char* TG_SERVER_IPV6_3 = "2001:b28:f23d:f003::a";
+static const char* TG_SERVER_IPV6_4 = "2001:67c:4e8:f004::a";
+static const char* TG_SERVER_IPV6_5 = "2001:b28:f23f:f005::a";
+static constexpr int TG_SERVER_DEFAULT = 2;
+
+static const char* TG_SERVER_TEST_1 = "149.154.175.10";
+static const char* TG_SERVER_TEST_2 = "149.154.167.40";
+static const char* TG_SERVER_TEST_3 = "149.154.175.117";
+static const char* TG_SERVER_TEST_IPV6_1 = "2001:b28:f23d:f001::e";
+static const char* TG_SERVER_TEST_IPV6_2 = "2001:67c:4e8:f002::e";
+static const char* TG_SERVER_TEST_IPV6_3 = "2001:b28:f23d:f003::e";
+static constexpr int TG_SERVER_TEST_DEFAULT = 1;
+
 enum class tgl_dc_state {
     init,
     reqpq_sent,

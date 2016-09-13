@@ -22,9 +22,9 @@
 #define __TGL_H__
 
 #include "crypto/bn.h"
-#include "tgl-dc.h"
-#include "tgl-log.h"
 #include "types/tgl_online_status.h"
+#include "types/tgl_peer_id.h"
+
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -35,31 +35,6 @@
 #include <string.h>
 #include <vector>
 
-#define TGL_MAX_DC_NUM 100
-#define TG_SERVER_1 "149.154.175.50"
-#define TG_SERVER_2 "149.154.167.50"
-#define TG_SERVER_3 "149.154.175.100"
-#define TG_SERVER_4 "149.154.167.91"
-#define TG_SERVER_5 "149.154.171.5"
-#define TG_SERVER_IPV6_1 "2001:b28:f23d:f001::a"
-#define TG_SERVER_IPV6_2 "2001:67c:4e8:f002::a"
-#define TG_SERVER_IPV6_3 "2001:b28:f23d:f003::a"
-#define TG_SERVER_IPV6_4 "2001:67c:4e8:f004::a"
-#define TG_SERVER_IPV6_5 "2001:b28:f23f:f005::a"
-#define TG_SERVER_DEFAULT 2
-
-#define TG_SERVER_TEST_1 "149.154.175.10"
-#define TG_SERVER_TEST_2 "149.154.167.40"
-#define TG_SERVER_TEST_3 "149.154.175.117"
-#define TG_SERVER_TEST_IPV6_1 "2001:b28:f23d:f001::e"
-#define TG_SERVER_TEST_IPV6_2 "2001:67c:4e8:f002::e"
-#define TG_SERVER_TEST_IPV6_3 "2001:b28:f23d:f003::e"
-#define TG_SERVER_TEST_DEFAULT 1
-
-#define TGL_VERSION "0.1.0"
-
-#define TGL_ENCRYPTED_LAYER 17
-#define TGL_SCHEME_LAYER 45
 
 class tgl_connection;
 class tgl_online_status_observer;
@@ -124,10 +99,6 @@ enum class tgl_user_status_type {
     last_month,
 };
 
-#define TGL_LOCK_DIFF 1
-#define TGL_LOCK_PASSWORD 2
-#define TGL_LOCK_PHONE 4
-
 class tgl_transfer_manager;
 class tgl_connection_factory;
 class tgl_rsa_key;
@@ -141,10 +112,6 @@ struct tgl_state {
     static tgl_state* instance();
 
     static void reset();
-
-    int64_t locks;
-    std::vector<std::shared_ptr<tgl_message>> unsent_messages;
-    std::shared_ptr<tgl_timer> ev_login;
 
     bool is_started() const { return m_is_started; }
     void set_started(bool b) { m_is_started = b; }
@@ -227,12 +194,24 @@ struct tgl_state {
     void remove_query(const std::shared_ptr<query>& q);
     void remove_all_queries();
 
+    bool is_diff_locked() const { return m_diff_locked; }
+    bool is_password_locked() const { return m_password_locked; }
+    bool is_phone_number_input_locked() const { return m_phone_number_input_locked; }
+    void set_diff_locked(bool b) { m_diff_locked = b; }
+    void set_password_locked(bool b) { m_password_locked = b; }
+    void set_phone_number_input_locked(bool b) { m_phone_number_input_locked = b; }
+    void clear_all_locks()
+    {
+        m_diff_locked = false;
+        m_password_locked = false;
+        m_phone_number_input_locked = false;
+    }
+
 private:
     tgl_state();
     void state_lookup_timeout();
 
 private:
-    bool m_is_started;
     tgl_online_status m_online_status;
 
     int32_t m_app_id;
@@ -247,11 +226,17 @@ private:
     int32_t m_qts;
     int64_t m_date;
     int32_t m_seq;
+
+    bool m_is_started;
     bool m_test_mode; // Connects to the telegram test servers instead of the regular servers
-    tgl_peer_id_t m_our_id; // ID of logged in user
     bool m_enable_pfs;
-    std::string m_app_version;
     bool m_ipv6_enabled;
+    bool m_diff_locked;
+    bool m_password_locked;
+    bool m_phone_number_input_locked;
+
+    tgl_peer_id_t m_our_id; // ID of logged in user
+    std::string m_app_version;
     std::vector<std::unique_ptr<tgl_rsa_key>> m_rsa_key_list;
     std::map<int32_t/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
     std::map<int64_t/*msg_id*/, std::shared_ptr<query>> m_active_queries;

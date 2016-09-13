@@ -33,6 +33,8 @@
 #include <string.h>
 #include <vector>
 
+static constexpr int32_t TGL_ENCRYPTED_LAYER = 17;
+
 enum class tgl_secret_chat_state {
     none = 0,
     waiting,
