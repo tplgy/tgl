@@ -45,7 +45,6 @@ void tgl_session::clear()
 
 tgl_dc::tgl_dc()
     : id(0)
-    , rsa_key_idx(-1)
     , state(tgl_dc_state::init)
     , auth_key_id(0)
     , temp_auth_key_id(0)
@@ -60,6 +59,7 @@ tgl_dc::tgl_dc()
     , m_configured(false)
     , m_bound(false)
     , m_session_cleanup_timer(tgl_state::instance()->timer_factory()->create_timer(std::bind(&tgl_dc::cleanup_timer_expired, this)))
+    , m_rsa_key()
 {
     memset(auth_key, 0, sizeof(auth_key));
     memset(temp_auth_key, 0, sizeof(temp_auth_key));
@@ -85,7 +85,7 @@ void tgl_dc::reset_temp_authorization()
         tglq_query_delete(temp_auth_key_bind_query_id);
         temp_auth_key_bind_query_id = 0;
     }
-    rsa_key_idx = -1;
+    m_rsa_key = nullptr;
     memset(temp_auth_key, 0, sizeof(temp_auth_key));
     memset(nonce, 0, sizeof(nonce));
     memset(new_nonce, 0, sizeof(new_nonce));

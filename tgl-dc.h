@@ -101,6 +101,7 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_dc_state state)
 
 struct tgl_dc;
 class tgl_connection;
+class tgl_rsa_key;
 class tgl_timer;
 class query;
 
@@ -180,8 +181,12 @@ struct tgl_dc: public std::enable_shared_from_this<tgl_dc> {
     bool is_bound() const { return m_bound; }
     void set_bound(bool b = true) { m_bound = b; }
 
+    const std::shared_ptr<tgl_rsa_key>& rsa_key() const { return m_rsa_key; }
+    void set_rsa_key(const std::shared_ptr<tgl_rsa_key>& rsa_key) { m_rsa_key = rsa_key; }
+
 private:
     void reset_temp_authorization();
+    void cleanup_timer_expired();
 
 private:
     size_t m_active_queries;
@@ -191,8 +196,8 @@ private:
     bool m_bound;
     std::list<std::shared_ptr<query>> m_pending_queries;
 
-    void cleanup_timer_expired();
     std::shared_ptr<tgl_timer> m_session_cleanup_timer;
+    std::shared_ptr<tgl_rsa_key> m_rsa_key;
 };
 
 #endif

@@ -273,7 +273,7 @@ static void send_req_dh_packet(const std::shared_ptr<tgl_connection>& c, TGLC_bn
     int encrypted_buffer_size = tgl_pad_rsa_encrypt_dest_buffer_size(s.char_size());
     assert(encrypted_buffer_size > 0);
     std::unique_ptr<char[]> encrypted_data(new char[encrypted_buffer_size]);
-    const TGLC_rsa* key = tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->public_key();
+    const TGLC_rsa* key = DC->rsa_key()->public_key();
     size_t unpadded_size = s.ensure_char_size(encrypted_buffer_size);
     int encrypted_data_size = tgl_pad_rsa_encrypt(s.char_data(), unpadded_size, encrypted_data.get(), encrypted_buffer_size, TGLC_rsa_n(key), TGLC_rsa_e(key));
 
@@ -284,7 +284,7 @@ static void send_req_dh_packet(const std::shared_ptr<tgl_connection>& c, TGLC_bn
     s.out_bignum(p.get());
     s.out_bignum(q.get());
 
-    s.out_i64(tgl_state::instance()->rsa_key_list()[DC->rsa_key_idx]->fingerprint());
+    s.out_i64(DC->rsa_key()->fingerprint());
     s.out_string(encrypted_data.get(), encrypted_data_size);
 
     DC->state = temp_key ? tgl_dc_state::reqdh_sent_temp : tgl_dc_state::reqdh_sent;
@@ -402,20 +402,19 @@ static mtproto_client::execute_result process_respq_answer(const std::shared_ptr
     TGL_ASSERT_UNUSED(result, result == static_cast<int32_t>(CODE_vector));
     int32_t fingerprints_num = fetch_i32(&in);
     assert(fingerprints_num >= 0);
-    DC->rsa_key_idx = -1;
+    DC->set_rsa_key(nullptr);
 
-    for (int i = 0; i < fingerprints_num; i++) {
-        int64_t fprint = fetch_i64(&in);
-        for (size_t j = 0; j < tgl_state::instance()->rsa_key_list().size(); ++j) {
-            const auto& key = tgl_state::instance()->rsa_key_list()[j];
-            if (key->is_loaded() && fprint == key->fingerprint()) {
-                DC->rsa_key_idx = j;
+    for (int i = 0; i < fingerprints_num && !DC->rsa_key(); i++) {
+        int64_t fingerprint = fetch_i64(&in);
+        for (const auto& key : tgl_state::instance()->rsa_key_list()) {
+            if (key->is_loaded() && fingerprint == key->fingerprint()) {
+                DC->set_rsa_key(key);
                 break;
             }
         }
     }
     assert(in.ptr == in.end);
-    if (DC->rsa_key_idx == -1) {
+    if (!DC->rsa_key()) {
         TGL_ERROR("fatal: don't have any matching keys");
         return mtproto_client::execute_result::bad_connection;
     }
