@@ -4595,6 +4595,7 @@ void tgl_sign_in_phone_cb(const std::shared_ptr<sign_up_extra>& E, bool success,
 {
     tgl_state::instance()->set_phone_number_input_locked(false);
     if (!success) {
+        tgl_state::instance()->callback()->on_failed_login();
         E->phone = std::string();
         tgl_state::instance()->callback()->get_values(tgl_value_type::phone_number, "phone number:", 1, tgl_sign_in_phone);
         return;
