@@ -955,6 +955,7 @@ public:
 
     virtual void on_answer(void*) override
     {
+        TGL_DEBUG("logout successfully");
         if (m_callback) {
             m_callback(true);
         }
@@ -4503,7 +4504,7 @@ void tgl_signed_in()
 {
     tgl_state::instance()->callback()->logged_in();
 
-    TGL_DEBUG("signed in, sending unsent messages and retrieving current server state");
+    TGL_DEBUG("signed in, retrieving current server state");
 
     tgl_export_all_auth();
     tgl_started_cb(true);
