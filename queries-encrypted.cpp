@@ -43,7 +43,7 @@
 #include "auto/auto-types.h"
 #include "auto/constants.h"
 #include "crypto/tgl_crypto_aes.h"
-#include "crypto/md5.h"
+#include "crypto/tgl_crypto_md5.h"
 #include "mtproto-client.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"

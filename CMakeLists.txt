@@ -108,7 +108,7 @@ set(CRYPTO_HEADERS
     crypto/tgl_crypto_aes.h
     crypto/tgl_crypto_bn.h
     crypto/tgl_crypto_err.h
-    crypto/md5.h
+    crypto/tgl_crypto_md5.h
     crypto/meta.h
     crypto/rsa_pem.h
     crypto/sha.h
@@ -145,7 +145,6 @@ set(GENERATED_TGL_SOURCES
 
 set(SOURCES
     ${GENERATED_TGL_SOURCES}
-    crypto/md5_openssl.cpp
     crypto/rand_openssl.cpp
     crypto/rsa_pem_openssl.cpp
     crypto/sha_openssl.cpp

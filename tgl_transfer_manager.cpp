@@ -26,7 +26,7 @@
 #include "queries.h"
 #include "tg-mime-types.h"
 #include "crypto/tgl_crypto_aes.h"
-#include "crypto/md5.h"
+#include "crypto/tgl_crypto_md5.h"
 #include "mtproto-common.h"
 #include "tools.h"
 #include "types/tgl_secret_chat.h"

@@ -18,13 +18,14 @@
     Copyright Ben Wiederhake 2015
 */
 
-#ifndef TGL_AVOID_OPENSSL
+#ifndef __TGL_CRYPTO_MD5_H__
+#define __TGL_CRYPTO_MD5_H__
 
 #include <openssl/md5.h>
 
-#include "md5.h"
+#include <cstddef> /* size_t */
 
-void TGLC_md5(const unsigned char* d, size_t n, unsigned char* md)
+inline static void TGLC_md5(const unsigned char* d, size_t n, unsigned char* md)
 {
     MD5(d, n, md);
 }

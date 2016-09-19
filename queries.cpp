@@ -40,7 +40,7 @@
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
-#include "crypto/md5.h"
+#include "crypto/tgl_crypto_md5.h"
 #include "crypto/rand.h"
 #include "crypto/sha.h"
 #include "mtproto-client.h"
