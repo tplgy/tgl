@@ -35,7 +35,7 @@
 #endif
 
 #include "crypto/tgl_crypto_rand.h"
-#include "crypto/sha.h"
+#include "crypto/tgl_crypto_sha.h"
 #include "mtproto-common.h"
 #include "tools.h"
 

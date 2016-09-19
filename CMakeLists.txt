@@ -109,9 +109,8 @@ set(CRYPTO_HEADERS
     crypto/tgl_crypto_bn.h
     crypto/tgl_crypto_err.h
     crypto/tgl_crypto_md5.h
-    crypto/meta.h
     crypto/tgl_crypto_rsa_pem.h
-    crypto/sha.h
+    crypto/tgl_crypto_sha.h
     crypto/tgl_crypto_rand.h
 )
 
@@ -145,7 +144,6 @@ set(GENERATED_TGL_SOURCES
 
 set(SOURCES
     ${GENERATED_TGL_SOURCES}
-    crypto/sha_openssl.cpp
     mtproto-client.cpp
     mtproto-common.cpp
     mtproto-utils.cpp
@@ -160,7 +158,7 @@ set(SOURCES
     tgl_transfer_manager.cpp
     tools.cpp
     updates.cpp
-    )
+)
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES} ${AUTO_HEADERS} ${CRYPTO_HEADERS} ${TYPES_HEADERS} ${HEADERS})
 

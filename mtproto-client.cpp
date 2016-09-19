@@ -40,7 +40,7 @@
 #include "crypto/tgl_crypto_bn.h"
 #include "crypto/tgl_crypto_rand.h"
 #include "crypto/tgl_crypto_rsa_pem.h"
-#include "crypto/sha.h"
+#include "crypto/tgl_crypto_sha.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "queries.h"

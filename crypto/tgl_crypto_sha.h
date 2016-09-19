@@ -21,9 +21,18 @@
 #ifndef __TGL_CRYPTO_SHA_H__
 #define __TGL_CRYPTO_SHA_H__
 
+#include <openssl/sha.h>
+
 #include <cstddef> /* size_t */
 
-void TGLC_sha1(const unsigned char* d, size_t n, unsigned char* md);
-void TGLC_sha256(const unsigned char* d, size_t n, unsigned char* md);
+inline static void TGLC_sha1(const unsigned char* d, size_t n, unsigned char* md)
+{
+    SHA1(d, n, md);
+}
+
+inline static void TGLC_sha256(const unsigned char* d, size_t n, unsigned char* md)
+{
+    SHA256(d, n, md);
+}
 
 #endif

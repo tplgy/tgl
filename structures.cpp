@@ -28,7 +28,7 @@
 #include "auto/auto-fetch-ds.h"
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_bn.h"
-#include "crypto/sha.h"
+#include "crypto/tgl_crypto_sha.h"
 #include "mtproto-client.h"
 #include "mtproto-common.h"
 #include "queries.h"
