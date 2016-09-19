@@ -112,7 +112,7 @@ set(CRYPTO_HEADERS
     crypto/meta.h
     crypto/rsa_pem.h
     crypto/sha.h
-    crypto/rand.h
+    crypto/tgl_crypto_rand.h
 )
 
 set(HEADERS
@@ -145,7 +145,6 @@ set(GENERATED_TGL_SOURCES
 
 set(SOURCES
     ${GENERATED_TGL_SOURCES}
-    crypto/rand_openssl.cpp
     crypto/rsa_pem_openssl.cpp
     crypto/sha_openssl.cpp
     mtproto-client.cpp

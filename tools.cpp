@@ -24,7 +24,7 @@
 
 #include "tools.h"
 
-#include "crypto/rand.h"
+#include "crypto/tgl_crypto_rand.h"
 #include "tgl-log.h"
 
 #ifdef VALGRIND_FIXES

@@ -41,7 +41,7 @@
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
 #include "crypto/tgl_crypto_md5.h"
-#include "crypto/rand.h"
+#include "crypto/tgl_crypto_rand.h"
 #include "crypto/sha.h"
 #include "mtproto-client.h"
 #include "mtproto-common.h"

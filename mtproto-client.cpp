@@ -38,7 +38,7 @@
 #include "auto/auto-types.h"
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_bn.h"
-#include "crypto/rand.h"
+#include "crypto/tgl_crypto_rand.h"
 #include "crypto/rsa_pem.h"
 #include "crypto/sha.h"
 #include "mtproto-common.h"
