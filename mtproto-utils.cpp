@@ -22,7 +22,7 @@
 #include "tl-parser/portable_endian.h"
 #include <string.h>
 #include "tgl.h"
-#include "crypto/bn.h"
+#include "crypto/tgl_crypto_bn.h"
 #include "mtproto-utils.h"
 #include "tools.h"
 #include "tgl-log.h"

@@ -26,7 +26,7 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 
-#include "bn.h"
+#include "tgl_crypto_bn.h"
 #include "meta.h"
 #include "rsa_pem.h"
 

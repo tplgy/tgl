@@ -22,7 +22,7 @@
 #ifndef __TGL_SECRET_CHAT_H__
 #define __TGL_SECRET_CHAT_H__
 
-#include "crypto/bn.h"
+#include "crypto/tgl_crypto_bn.h"
 #include "crypto/sha.h"
 #include "tgl_file_location.h"
 #include "tgl_peer_id.h"

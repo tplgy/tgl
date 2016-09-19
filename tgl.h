@@ -21,7 +21,7 @@
 #ifndef __TGL_H__
 #define __TGL_H__
 
-#include "crypto/bn.h"
+#include "crypto/tgl_crypto_bn.h"
 #include "types/tgl_online_status.h"
 #include "types/tgl_peer_id.h"
 

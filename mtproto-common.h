@@ -25,7 +25,7 @@
 #include <cstdint>
 #include <string.h>
 #include "crypto/tgl_crypto_aes.h"
-#include "crypto/bn.h"
+#include "crypto/tgl_crypto_bn.h"
 #include "crypto/rsa_pem.h"
 #include <stdio.h>
 #include <assert.h>

@@ -21,7 +21,7 @@
 #ifndef __TGL_CRYPTO_RSA_H__
 #define __TGL_CRYPTO_RSA_H__
 
-#include "bn.h"
+#include "tgl_crypto_bn.h"
 
 #include <cstdio> /* FILE */
 

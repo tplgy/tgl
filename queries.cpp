@@ -40,8 +40,6 @@
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
-#include "crypto/tgl_crypto_aes.h"
-#include "crypto/bn.h"
 #include "crypto/md5.h"
 #include "crypto/rand.h"
 #include "crypto/sha.h"
