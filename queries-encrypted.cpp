@@ -42,7 +42,7 @@
 #include "auto/auto-free-ds.h"
 #include "auto/auto-types.h"
 #include "auto/constants.h"
-#include "crypto/aes.h"
+#include "crypto/tgl_crypto_aes.h"
 #include "crypto/md5.h"
 #include "mtproto-client.h"
 #include "mtproto-common.h"

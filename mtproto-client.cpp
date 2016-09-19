@@ -36,7 +36,7 @@
 #include "auto/auto.h"
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
-#include "crypto/aes.h"
+#include "crypto/tgl_crypto_aes.h"
 #include "crypto/bn.h"
 #include "crypto/rand.h"
 #include "crypto/rsa_pem.h"

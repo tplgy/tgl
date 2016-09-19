@@ -34,7 +34,6 @@
 #include <netdb.h>
 #endif
 
-#include "crypto/aes.h"
 #include "crypto/rand.h"
 #include "crypto/sha.h"
 #include "mtproto-common.h"

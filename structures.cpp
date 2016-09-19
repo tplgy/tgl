@@ -26,7 +26,7 @@
 #include "auto/auto-types.h"
 #include "auto/auto-free-ds.h"
 #include "auto/auto-fetch-ds.h"
-#include "crypto/aes.h"
+#include "crypto/tgl_crypto_aes.h"
 #include "crypto/bn.h"
 #include "crypto/sha.h"
 #include "mtproto-client.h"

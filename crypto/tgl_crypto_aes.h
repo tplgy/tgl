@@ -21,20 +21,30 @@
 #ifndef __TGL_CRYPTO_AES_H__
 #define __TGL_CRYPTO_AES_H__
 
-#include <cstddef> /* size_t */
+#include <openssl/aes.h>
 
-typedef struct TGLC_aes_key {
-  char _dummy[
-#ifdef TGL_AVOID_OPENSSL
-              32
-#else
-              244
-#endif
-              ];
-} TGLC_aes_key;
+#include <cstddef>
+#include <cassert>
 
-void TGLC_aes_set_encrypt_key(const unsigned char* userKey, const int bits, TGLC_aes_key* key);
-void TGLC_aes_set_decrypt_key(const unsigned char* userKey, const int bits, TGLC_aes_key* key);
-void TGLC_aes_ige_encrypt(const unsigned char* in, unsigned char* out, size_t length, const TGLC_aes_key* key, unsigned char* ivec, const int enc);
+typedef AES_KEY TGLC_aes_key;
+
+inline static void TGLC_aes_set_encrypt_key(const unsigned char* userKey, const int bits, TGLC_aes_key* key)
+{
+    int success = AES_set_encrypt_key(userKey, bits, key);
+    (void)success;
+    assert(0 == success);
+}
+
+inline static void TGLC_aes_set_decrypt_key(const unsigned char* userKey, const int bits, TGLC_aes_key* key)
+{
+    int success = AES_set_decrypt_key(userKey, bits, key);
+    (void)success;
+    assert(0 == success);
+}
+
+inline static void TGLC_aes_ige_encrypt(const unsigned char* in, unsigned char* out, size_t length, const TGLC_aes_key* key, unsigned char* ivec, const int enc)
+{
+    AES_ige_encrypt(in, out, length, key, ivec, enc);
+}
 
 #endif
