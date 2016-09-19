@@ -21,8 +21,13 @@
 #ifndef __TGL_CRYPTO_ERR_H__
 #define __TGL_CRYPTO_ERR_H__
 
+#include <openssl/err.h>
+
 #include <cstdio>
 
-void TGLC_err_print_errors_fp(FILE* fp);
+inline static void TGLC_err_print_errors_fp(FILE* fp)
+{
+    ERR_print_errors_fp(fp);
+}
 
 #endif

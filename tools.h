@@ -22,7 +22,7 @@
 #ifndef __TOOLS_H__
 #define __TOOLS_H__
 
-#include "crypto/err.h"
+#include "crypto/tgl_crypto_err.h"
 
 #include <cassert>
 #include <cstdio>
