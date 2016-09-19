@@ -27,7 +27,7 @@
 #include <memory>
 #include <string>
 
-#include "../crypto/rsa_pem.h"
+#include "../crypto/tgl_crypto_rsa_pem.h"
 #include "../mtproto-common.h"
 
 class tgl_rsa_key

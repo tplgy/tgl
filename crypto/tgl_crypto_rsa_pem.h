@@ -18,22 +18,48 @@
     Copyright Ben Wiederhake 2015
 */
 
-#ifndef __TGL_CRYPTO_RSA_H__
-#define __TGL_CRYPTO_RSA_H__
+#ifndef __TGL_CRYPTO_RSA_PEM_H__
+#define __TGL_CRYPTO_RSA_PEM_H__
 
 #include "tgl_crypto_bn.h"
 
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+
 #include <cstdio> /* FILE */
 
-typedef struct TGLC_rsa TGLC_rsa;
+typedef RSA TGLC_rsa;
 
-TGLC_rsa* TGLC_rsa_new(unsigned long e, int n_bytes, const unsigned char* n);
+inline static TGLC_rsa* TGLC_rsa_new(unsigned long e, int n_bytes, const unsigned char* n)
+{
+    RSA* ret = RSA_new();
+    ret->e = TGLC_bn_new();
+    TGLC_bn_set_word(ret->e, e);
+    ret->n = TGLC_bn_bin2bn(n, n_bytes, nullptr);
+    return ret;
+}
 
-TGLC_bn* TGLC_rsa_n(const TGLC_rsa*);
-TGLC_bn* TGLC_rsa_e(const TGLC_rsa*);
+inline static TGLC_bn* TGLC_rsa_n(const TGLC_rsa* key)
+{
+    return key->n;
+}
 
-void TGLC_rsa_free(TGLC_rsa*);
+inline static TGLC_bn* TGLC_rsa_e(const TGLC_rsa* key)
+{
+    return key->e;
+}
 
-TGLC_rsa* TGLC_pem_read_RSAPublicKey(const char* pem);
+inline static void TGLC_rsa_free(TGLC_rsa* key)
+{
+    RSA_free(key);
+}
+
+inline static TGLC_rsa* TGLC_pem_read_RSAPublicKey(const char* pem)
+{
+    BIO* bufio = BIO_new_mem_buf(const_cast<char*>(pem), strlen(pem));
+    RSA* res = PEM_read_bio_RSAPublicKey(bufio, nullptr, 0, nullptr);
+    BIO_free(bufio);
+    return res;
+}
 
 #endif

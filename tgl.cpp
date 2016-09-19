@@ -21,7 +21,7 @@
 
 #include "tgl.h"
 
-#include "crypto/rsa_pem.h"
+#include "crypto/tgl_crypto_rsa_pem.h"
 #include "crypto/sha.h"
 #include "tools.h"
 #include "mtproto-client.h"

@@ -39,7 +39,7 @@
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_bn.h"
 #include "crypto/tgl_crypto_rand.h"
-#include "crypto/rsa_pem.h"
+#include "crypto/tgl_crypto_rsa_pem.h"
 #include "crypto/sha.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
