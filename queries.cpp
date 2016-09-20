@@ -85,6 +85,10 @@ void query::alarm()
         return;
     }
 
+    if (!check_logging_out()) {
+        return;
+    }
+
     bool pending = false;
     if (!m_dc->is_configured() && !is_force()) {
         pending = true;
@@ -196,6 +200,11 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
     m_exec_option = option;
     m_dc = dc;
     assert(m_dc);
+
+    if (!check_logging_out()) {
+        return;
+    }
+
     bool pending = false;
     if (!m_dc->session) {
         tglmp_dc_create_session(m_dc);
@@ -229,6 +238,11 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
             handle_error(400, "client failed to send message");
             return;
         }
+
+        if (is_logout()) {
+            m_dc->set_logout_query_id(msg_id());
+        }
+
         m_session = m_dc->session;
         m_session_id = m_session->session_id;
         m_seq_no = m_session->seq_no - 1;
@@ -244,6 +258,11 @@ bool query::execute_after_pending()
 {
     if (!check_connectivity()) {
         // We gave an error in check_connectity above. So this has been executed but failed.
+        return true;
+    }
+
+    if (!check_logging_out()) {
+        // We gave an error in check_logging_out above. So this has been executed but failed.
         return true;
     }
 
@@ -275,6 +294,10 @@ bool query::execute_after_pending()
         m_msg_id = 0;
         handle_error(400, "client failed to send message");
         return true;
+    }
+
+    if (is_logout()) {
+        m_dc->set_logout_query_id(msg_id());
     }
 
     m_ack_received = false;
@@ -336,7 +359,6 @@ void query::ack()
 {
     if (!m_ack_received) {
         m_ack_received = true;
-        clear_timers();
     }
 }
 
@@ -462,17 +484,7 @@ int query::handle_error(int error_code, const std::string& error_string)
                 }
                 error_handled = true;
             } else if (error_string == "AUTH_KEY_UNREGISTERED" || error_string == "AUTH_KEY_INVALID") {
-                for (const auto& dc: tgl_state::instance()->dcs()) {
-                    if (!dc) {
-                        continue;
-                    }
-                    if (dc->session) {
-                        dc->session->clear();
-                        dc->session = nullptr;
-                    }
-                    dc->set_logged_in(false);
-                }
-                tgl_state::instance()->clear_all_locks();
+                tgl_do_set_dc_logged_out(m_dc, true);
                 tgl_state::instance()->login();
                 if (should_retry_after_recover_from_error()) {
                     should_retry = true;
@@ -552,6 +564,19 @@ bool query::check_connectivity()
     TGL_WARNING("we don't have internet connection, failing query (" << name() << ")");
     on_disconnected();
     return false;
+}
+
+bool query::check_logging_out()
+{
+    if (m_dc->is_logging_out()) {
+        assert(!is_logout());
+        if (!is_force()) {
+            on_error(600, "LOGGING_OUT");
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void query::on_disconnected()
@@ -954,6 +979,7 @@ public:
     virtual void on_answer(void*) override
     {
         TGL_DEBUG("logout successfully");
+        tgl_do_set_dc_logged_out(dc(), true);
         if (m_callback) {
             m_callback(true);
         }
@@ -963,11 +989,36 @@ public:
     virtual int on_error(int error_code, const std::string& error_string) override
     {
         TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        tgl_do_set_dc_logged_out(dc(), false);
         if (m_callback) {
             m_callback(false);
         }
         tgl_state::instance()->callback()->logged_out(false);
         return 0;
+    }
+
+    virtual void on_timeout() override
+    {
+        TGL_ERROR("timed out for query #" << msg_id() << " (" << name() << ")");
+        tgl_do_set_dc_logged_out(dc(), false);
+        if (m_callback) {
+            m_callback(false);
+        }
+    }
+
+    virtual double timeout_interval() const override
+    {
+        return 20;
+    }
+
+    virtual bool should_retry_on_timeout() override
+    {
+        return false;
+    }
+
+    virtual void will_be_pending() override
+    {
+        timeout_within(timeout_interval());
     }
 
 private:
@@ -976,9 +1027,21 @@ private:
 
 void tgl_do_logout(const std::function<void(bool)>& callback)
 {
+    auto dc = tgl_state::instance()->working_dc();
+    if (dc->is_logging_out()) {
+        return;
+    }
+
+    if (!dc->is_logged_in()) {
+        if (callback) {
+            callback(true);
+        }
+        return;
+    }
+
     auto q = std::make_shared<query_logout>(callback);
     q->out_i32(CODE_auth_log_out);
-    q->execute(tgl_state::instance()->working_dc());
+    q->execute(dc, query::execution_option::LOGOUT);
 }
 
 /* {{{ Get contacts */
@@ -4368,6 +4431,34 @@ void tgl_do_set_dc_configured(const std::shared_ptr<tgl_dc>& dc, bool success)
             tgl_do_transfer_auth(dc, std::bind(tgl_transfer_auth_callback, dc, std::placeholders::_1));
         }
     }
+}
+
+void tgl_do_set_dc_logged_out(const std::shared_ptr<tgl_dc>& from_dc, bool success)
+{
+    if (from_dc->is_logging_out()) {
+        tglq_query_delete(from_dc->logout_query_id());
+        from_dc->set_logout_query_id(0);
+    }
+
+    if (!success) {
+        return;
+    }
+
+    for (const auto& dc: tgl_state::instance()->dcs()) {
+        if (!dc) {
+            continue;
+        }
+        if (dc->session) {
+            dc->session->clear();
+            dc->session = nullptr;
+        }
+        if (dc->is_logging_out()) {
+            tglq_query_delete(dc->logout_query_id());
+            dc->set_logout_query_id(0);
+        }
+        dc->set_logged_in(false);
+    }
+    tgl_state::instance()->clear_all_locks();
 }
 
 class query_bind_temp_auth_key: public query

@@ -183,12 +183,17 @@ struct tgl_dc: public std::enable_shared_from_this<tgl_dc> {
     const std::shared_ptr<tgl_rsa_key>& rsa_key() const { return m_rsa_key; }
     void set_rsa_key(const std::shared_ptr<tgl_rsa_key>& rsa_key) { m_rsa_key = rsa_key; }
 
+    int64_t logout_query_id() const { return m_logout_query_id; }
+    void set_logout_query_id(int64_t id) { m_logout_query_id = id; }
+    bool is_logging_out() const { return m_logout_query_id != 0; }
+
 private:
     void reset_temp_authorization();
     void cleanup_timer_expired();
 
 private:
     size_t m_active_queries;
+    int64_t m_logout_query_id;
     bool m_authorized;
     bool m_logged_in;
     bool m_configured;

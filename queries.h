@@ -40,7 +40,7 @@ class tgl_timer;
 class query: public std::enable_shared_from_this<query>
 {
 public:
-    enum class execution_option { UNKNOWN, NORMAL, LOGIN, FORCE };
+    enum class execution_option { UNKNOWN, NORMAL, LOGIN, LOGOUT, FORCE };
 
     query(const std::string& name, const paramed_type& type, int64_t msg_id_override = 0)
         : m_msg_id(0)
@@ -142,8 +142,10 @@ protected:
 private:
     bool is_force() const { return m_exec_option == execution_option::FORCE; }
     bool is_login() const { return m_exec_option == execution_option::LOGIN; }
+    bool is_logout() const { return m_exec_option == execution_option::LOGOUT; }
     void timeout_alarm();
     bool check_connectivity();
+    bool check_logging_out();
 
 private:
     int64_t m_msg_id;
@@ -201,6 +203,7 @@ void tgl_do_get_channel_difference(int32_t id, const std::function<void(bool suc
 void tgl_do_lookup_state();
 void tgl_do_help_get_config_dc(const std::shared_ptr<tgl_dc>& dc);
 void tgl_do_set_dc_configured(const std::shared_ptr<tgl_dc>& dc, bool success);
+void tgl_do_set_dc_logged_out(const std::shared_ptr<tgl_dc>& dc, bool success);
 
 void tglq_regen_query(int64_t id);
 void tglq_query_delete(int64_t id);
