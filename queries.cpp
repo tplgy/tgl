@@ -699,11 +699,9 @@ void tgl_do_help_get_config(const std::function<void(bool)>& callback)
     q->execute(tgl_state::instance()->working_dc());
 }
 
-static void set_dc_configured(const std::shared_ptr<tgl_dc>& dc, bool success);
-
 void tgl_do_help_get_config_dc(const std::shared_ptr<tgl_dc>& dc)
 {
-    auto q = std::make_shared<query_help_get_config>(std::bind(set_dc_configured, dc, std::placeholders::_1));
+    auto q = std::make_shared<query_help_get_config>(std::bind(tgl_do_set_dc_configured, dc, std::placeholders::_1));
     q->out_header();
     q->out_i32(CODE_help_get_config);
     q->execute(dc, query::execution_option::FORCE);
@@ -4351,13 +4349,13 @@ void tgl_do_upgrade_group(const tgl_peer_id_t& id, const std::function<void(bool
 }
 
 
-static void set_dc_configured(const std::shared_ptr<tgl_dc>& dc, bool success)
+void tgl_do_set_dc_configured(const std::shared_ptr<tgl_dc>& dc, bool success)
 {
+    dc->set_configured(success);
+
     if (!success) {
         return;
     }
-
-    dc->set_configured();
 
     TGL_DEBUG("DC " << dc->id << " is now configured");
 

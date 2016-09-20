@@ -670,6 +670,9 @@ static mtproto_client::execute_result process_auth_complete(const std::shared_pt
             DC->set_bound();
             if (!DC->is_configured()) {
                 tgl_do_help_get_config_dc(DC);
+            } else {
+                // To trigger sending pending queries if any.
+                tgl_do_set_dc_configured(DC, true);
             }
         }
     }
@@ -1353,6 +1356,9 @@ static int tc_becomes_ready(const std::shared_ptr<tgl_connection>& c)
         } else if (!DC->is_configured()) {
             TGL_DEBUG("DC " << DC->id << " is not configured");
             tgl_do_help_get_config_dc(DC);
+        } else {
+            // To trigger sending pending queries if any.
+            tgl_do_set_dc_configured(DC, true);
         }
         break;
     default:
