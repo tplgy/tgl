@@ -662,14 +662,14 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
     q->out_string(reinterpret_cast<const char*>(u->key.data()), u->key.size());
     q->out_string(reinterpret_cast<const char*>(u->init_iv.data()), u->init_iv.size());
 
-    tgl_in_buffer in = { q->serializer()->mutable_i32_data() + start, q->serializer()->mutable_i32_data() + q->serializer()->i32_size() };
+    tgl_in_buffer in = { q->serializer()->i32_data() + start, q->serializer()->i32_data() + q->serializer()->i32_size() };
 
     struct paramed_type decrypted_message_media = TYPE_TO_PARAM(decrypted_message_media);
     auto result = skip_type_any(&in, &decrypted_message_media);
     TGL_ASSERT_UNUSED(result, result >= 0);
     assert(in.ptr == in.end);
 
-    in = { q->serializer()->mutable_i32_data() + start, q->serializer()->mutable_i32_data() + q->serializer()->i32_size() };
+    in = { q->serializer()->i32_data() + start, q->serializer()->i32_data() + q->serializer()->i32_size() };
     tl_ds_decrypted_message_media* DS_DMM = fetch_ds_type_decrypted_message_media(&in, &decrypted_message_media);
     assert(in.ptr == in.end);
 

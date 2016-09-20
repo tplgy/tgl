@@ -33,7 +33,7 @@
 
 #include <zlib.h>
 
-int tgl_inflate(void* input, int ilen, void* output, int olen)
+int tgl_inflate(const void* input, int ilen, void* output, int olen)
 {
     z_stream strm;
     memset(&strm, 0, sizeof(strm));

@@ -32,7 +32,7 @@
 #include <limits>
 #include <random>
 
-int tgl_inflate(void* input, int ilen, void* output, int olen);
+int tgl_inflate(const void* input, int ilen, void* output, int olen);
 
 static inline void check_crypto_result(int r)
 {

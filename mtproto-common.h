@@ -241,21 +241,18 @@ public:
     const char* char_data() const { return reinterpret_cast<const char*>(m_data.data()); }
     size_t char_size() const { return m_data.size() * 4; }
 
-    int32_t* mutable_i32_data() { return m_data.data(); }
-    char* mutable_char_data() { return reinterpret_cast<char*>(m_data.data()); }
-
 private:
     std::vector<int32_t> m_data;
 };
 
 struct tgl_in_buffer {
-    int32_t* ptr;
-    int32_t* end;
+    const int32_t* ptr;
+    const int32_t* end;
 
     std::string print_buffer()
     {
         std::stringstream ss;
-        for (int32_t* i = ptr; i < end; ++i) {
+        for (const int32_t* i = ptr; i < end; ++i) {
             ss << std::hex << "0x" << *i << " ";
         }
         return ss.str();
@@ -279,14 +276,14 @@ static inline ssize_t prefetch_strlen(struct tgl_in_buffer* in)
     }
 }
 
-static inline char* fetch_str(struct tgl_in_buffer* in, size_t len)
+static inline const char* fetch_str(struct tgl_in_buffer* in, size_t len)
 {
     if (len < 254) {
-        char* str = reinterpret_cast<char*>(in->ptr) + 1;
+        const char* str = reinterpret_cast<const char*>(in->ptr) + 1;
         in->ptr += 1 + (len >> 2);
         return str;
     } else {
-        char* str = reinterpret_cast<char*>(in->ptr) + 4;
+        const char* str = reinterpret_cast<const char*>(in->ptr) + 4;
         in->ptr += (len + 7) >> 2;
         return str;
     }

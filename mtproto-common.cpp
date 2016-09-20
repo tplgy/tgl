@@ -220,8 +220,8 @@ ssize_t tgl_fetch_bignum(tgl_in_buffer* in, TGLC_bn* x)
     if (l < 0) {
         return l;
     }
-    char* str = fetch_str(in, l);
-    auto result = TGLC_bn_bin2bn(reinterpret_cast<unsigned char*>(str), l, x);
+    const char* str = fetch_str(in, l);
+    auto result = TGLC_bn_bin2bn(reinterpret_cast<const unsigned char*>(str), l, x);
     TGL_ASSERT_UNUSED(result, result == x);
     return l;
 }
@@ -245,7 +245,7 @@ int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC
     assert(x);
     assert(y);
     for (int i = 0; i < chunks; i++) {
-        TGLC_bn_bin2bn(reinterpret_cast<unsigned char*>(const_cast<char*>(from)), 255, x.get());
+        TGLC_bn_bin2bn(reinterpret_cast<const unsigned char*>(from), 255, x.get());
         result = TGLC_bn_mod_exp(y.get(), x.get(), E, N, tgl_state::instance()->bn_ctx());
         TGL_ASSERT_UNUSED(result, result == 1);
         unsigned l = 256 - TGLC_bn_num_bytes(y.get());
@@ -272,7 +272,7 @@ int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC
     assert(x.get());
     assert(y.get());
     for (int i = 0; i < chunks; i++) {
-        TGLC_bn_bin2bn(reinterpret_cast<unsigned char*>(const_cast<char*>(from)), 256, x.get());
+        TGLC_bn_bin2bn(reinterpret_cast<const unsigned char*>(from), 256, x.get());
         auto result = TGLC_bn_mod_exp(y.get(), x.get(), D, N, tgl_state::instance()->bn_ctx());
         TGL_ASSERT_UNUSED(result, result == 1);
         int l = TGLC_bn_num_bytes(y.get());

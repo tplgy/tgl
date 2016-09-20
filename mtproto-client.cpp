@@ -489,7 +489,11 @@ static mtproto_client::execute_result process_dh_answer(const std::shared_ptr<tg
     }
 
     std::unique_ptr<int[]> decrypted_buffer(new int[(decrypted_buffer_size + 3) / 4]);
-    l = tgl_pad_aes_decrypt(&aes_key, aes_iv, (unsigned char *)fetch_str(&in, l), l, reinterpret_cast<unsigned char*>(decrypted_buffer.get()), decrypted_buffer_size);
+    l = tgl_pad_aes_decrypt(&aes_key,
+            aes_iv,
+            reinterpret_cast<const unsigned char *>(fetch_str(&in, l)),
+            l,
+            reinterpret_cast<unsigned char*>(decrypted_buffer.get()), decrypted_buffer_size);
     assert(in.ptr == in.end);
 
     tgl_in_buffer skip = { decrypted_buffer.get() + 5, decrypted_buffer.get() + (decrypted_buffer_size >> 2) };
@@ -895,7 +899,7 @@ static int work_container(const std::shared_ptr<tgl_connection>& c, tgl_in_buffe
             tgln_insert_msg_id(S, id);
         }
         int32_t bytes = fetch_i32(in);
-        int32_t* t = in->end;
+        const int32_t* t = in->end;
         in->end = in->ptr + (bytes / 4);
         int r = rpc_execute_answer(c, in, id);
         if (r < 0) {
@@ -975,7 +979,7 @@ static int work_packed(const std::shared_ptr<tgl_connection>& c, tgl_in_buffer* 
     std::unique_ptr<int32_t[]> unzipped_buffer(new int32_t[MAX_PACKED_SIZE >> 2]);
 
     ssize_t l = prefetch_strlen(in);
-    char* s = fetch_str(in, l);
+    const char* s = fetch_str(in, l);
 
     int total_out = tgl_inflate(s, l, unzipped_buffer.get(), MAX_PACKED_SIZE);
     tgl_in_buffer new_in = { unzipped_buffer.get(), unzipped_buffer.get() + total_out / 4 };
@@ -1163,7 +1167,11 @@ static mtproto_client::execute_result process_rpc_message(const std::shared_ptr<
         tgl_init_aes_auth(&aes_key, aes_iv, DC->auth_key + 8, enc->msg_key, AES_DECRYPT);
     }
 
-    int l = tgl_pad_aes_decrypt(&aes_key, aes_iv, (unsigned char *)&enc->server_salt, len - UNENCSZ, (unsigned char *)&enc->server_salt, len - UNENCSZ);
+    int l = tgl_pad_aes_decrypt(&aes_key,
+            aes_iv,
+            reinterpret_cast<const unsigned char*>(&enc->server_salt),
+            len - UNENCSZ,
+            reinterpret_cast<unsigned char*>(&enc->server_salt), len - UNENCSZ);
     TGL_ASSERT_UNUSED(l, l == len - UNENCSZ);
 
     if (!(!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12)) {

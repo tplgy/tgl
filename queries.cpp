@@ -368,7 +368,7 @@ void query::ack()
     if (is_logout()) {
         mtprotocol_serializer s;
         s.out_i32(CODE_bool_true);
-        tgl_in_buffer in = { s.mutable_i32_data(), s.mutable_i32_data() + s.i32_size() };
+        tgl_in_buffer in = { s.i32_data(), s.i32_data() + s.i32_size() };
         handle_result(&in);
     }
 }
@@ -617,7 +617,7 @@ int query::handle_result(tgl_in_buffer* in)
     if (op == CODE_gzip_packed) {
         fetch_i32(in);
         int l = prefetch_strlen(in);
-        char* s = fetch_str(in, l);
+        const char* s = fetch_str(in, l);
 
         constexpr size_t MAX_PACKED_SIZE = 1 << 24;
         packed_buffer.reset(new int32_t[MAX_PACKED_SIZE / 4]);
