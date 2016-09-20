@@ -357,8 +357,19 @@ void tglq_query_ack(int64_t id)
 
 void query::ack()
 {
-    if (!m_ack_received) {
-        m_ack_received = true;
+    if (m_ack_received) {
+        return;
+    }
+
+    m_ack_received = true;
+
+    // FIXME: This a workaround to the weird server behavour. The server
+    // replies a logout query with ack and then closes the connection.
+    if (is_logout()) {
+        mtprotocol_serializer s;
+        s.out_i32(CODE_bool_true);
+        tgl_in_buffer in = { s.mutable_i32_data(), s.mutable_i32_data() + s.i32_size() };
+        handle_result(&in);
     }
 }
 
