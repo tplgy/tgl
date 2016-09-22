@@ -791,7 +791,6 @@ static int aes_encrypt_message(unsigned char* key, struct encrypted_message* enc
     int enc_len = (MINSZ - UNENCSZ) + enc->msg_len;
     assert(enc->msg_len >= 0 && enc->msg_len <= MAX_MESSAGE_INTS * 4 - 16 && !(enc->msg_len & 3));
     TGLC_sha1((unsigned char *) &enc->server_salt, enc_len, sha1_buffer);
-    TGL_DEBUG("sending message with sha1 " << std::hex << *(int *)sha1_buffer);
     memcpy(enc->msg_key, sha1_buffer + 4, 16);
     TGLC_aes_key aes_key;
     unsigned char aes_iv[32];
