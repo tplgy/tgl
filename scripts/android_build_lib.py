@@ -2,6 +2,7 @@
 #    Copyright Topology LP 2016
 #
 
+import glob
 import os
 import platform
 import shutil
@@ -12,20 +13,27 @@ import time
 import build_lib
 
 def get_ndk_dir():
-    if "ANDROID_NDK_ROOT" in os.environ:
-        ndk_dir = os.environ["ANDROID_NDK_ROOT"]
-        if os.path.exists(ndk_dir):
-            return ndk_dir
-
-    return get_default_ndk_dir()
-
-def get_default_ndk_dir():
     if "ANDROID_HOME" in os.environ:
         ndk_dir = os.path.join(os.environ["ANDROID_HOME"], "ndk-bundle")
         if os.path.exists(ndk_dir):
             return ndk_dir
 
+    if "ANDROID_NDK_ROOT" in os.environ:
+        ndk_dir = os.environ["ANDROID_NDK_ROOT"]
+        if os.path.exists(ndk_dir):
+            return ndk_dir
+
     return ""
+
+def cmake_path():
+    if "ANDROID_HOME" in os.environ:
+        cmake_dir = os.path.join(os.environ["ANDROID_HOME"], "cmake")
+        if os.path.exists(cmake_dir):
+            cmake_installs = sorted(glob.glob(os.path.join(cmake_dir, "*")))
+            if cmake_installs:
+                return os.path.join(cmake_installs[-1], "bin", "cmake")
+
+    return "cmake"
 
 def get_toolchain_dir(arch):
     return os.path.join(build_lib.get_dev_dir(), "android-toolchain-" + arch)
@@ -77,22 +85,3 @@ def get_cmake_toolchain():
 
 def get_platform(arch):
     return "android-21"
-
-def create_toolchain(arch):
-    ndk_dir = get_ndk_dir()
-    if not os.path.exists(ndk_dir):
-        print "\nAndroid NDK not found. Cannot continue.\n"
-        return 1
-
-    toolchain_dir = get_toolchain_dir(arch)
-
-    # Make the standalone toolchain if necessary
-    if not os.path.exists(toolchain_dir):
-        return build_lib.run_command(os.path.join(ndk_dir, "build", "tools", "make_standalone_toolchain.py") + " --arch " + arch + " --api 21 --stl gnustl --install-dir " + toolchain_dir)
-
-def run_gradle(args):
-    host_os = sys.platform
-    if host_os is "win32":
-        return subprocess.call(["./gradlew.bat"] + args)
-    else:
-        return subprocess.call(["./gradlew"] + args)

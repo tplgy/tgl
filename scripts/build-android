@@ -13,7 +13,7 @@ import build_lib
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--clean", help="force clean build", action="store_true")
-parser.add_argument("-v", "--verbose", help="produces additional output for dianostics", action="store_true")
+parser.add_argument("-v", "--verbose", help="produces additional output for diagnostics", action="store_true")
 parser.add_argument("-r", "--release", help="release build, default to debug", action="store_true")
 parser.add_argument("-j", "--jobs", help="Specify how many commands can run in parallel", type=int, default=build_lib.get_num_cores())
 parser.add_argument("-a", "--architecture", help="specify architecture",  choices=["arm", "arm64", "x86", "x86_64"], default="arm64")
@@ -44,16 +44,22 @@ INSTALL_PREFIX = android_build_lib.get_install_prefix(args.architecture, args.re
 if args.clean and os.path.exists(BUILD_DIR):
     shutil.rmtree(BUILD_DIR)
 
-ANDROID_TOOLCHAIN_ROOT = android_build_lib.get_toolchain_dir(args.architecture)
+ANDROID_NDK = android_build_lib.get_ndk_dir()
 ANDROID_ABI = android_build_lib.get_abi(args.architecture)
-os.environ["ANDROID_STANDALONE_TOOLCHAIN"] = ANDROID_TOOLCHAIN_ROOT
+ANDROID_PLATFORM = android_build_lib.get_platform(args.architecture)
 
 TOOLCHAIN_FILE = android_build_lib.get_cmake_toolchain()
-CMAKE_COMMAND = "cmake -G Ninja" + \
-    " -D CMAKE_TOOLCHAIN_FILE=" + TOOLCHAIN_FILE + \
-    " -D CMAKE_INSTALL_PREFIX=" + INSTALL_PREFIX + \
-    " -D ANDROID_ABI=" + ANDROID_ABI + \
-    " -D CMAKE_BUILD_TYPE=" + ("Release" if args.release else "Debug")
+CMAKE_COMMAND = android_build_lib.cmake_path() + " -G Ninja" + \
+    " -DCMAKE_FIND_ROOT_PATH=" + INSTALL_PREFIX + \
+    " -DCMAKE_TOOLCHAIN_FILE=" + TOOLCHAIN_FILE + \
+    " -DCMAKE_INSTALL_PREFIX=" + INSTALL_PREFIX + \
+    " -DANDROID_NDK=" + ANDROID_NDK + \
+    " -DANDROID_TOOLCHAIN=clang" + \
+    " -DANDROID_ABI=" + ANDROID_ABI + \
+    " -DANDROID_PLATFORM=" + ANDROID_PLATFORM + \
+    " -DANDROID_STL=c++_static" + \
+    " -DANDROID_CPP_FEATURES=exceptions\;rtti" + \
+    " -DCMAKE_BUILD_TYPE=" + ("Release" if args.release else "Debug")
 
 # build cmake repo
 def build_cmake_repo(repo_name, repo_extra_path, definitions):

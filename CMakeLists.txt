@@ -62,7 +62,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -Werror -Wno-deprecated-declarations -Wno-error=unused-variable ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Werror -Wno-deprecated-declarations -Wno-error=unused-variable")
 endif()
 
 add_definitions(-D_FILE_OFFSET_BITS=64)
