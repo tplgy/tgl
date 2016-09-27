@@ -67,7 +67,7 @@ endif()
 
 # Workaround Android x86 link issue
 if(ANDROID)
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-warn-shared-textrel")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-fatal-warnings")
 endif()
 
 add_definitions(-D_FILE_OFFSET_BITS=64)
