@@ -62,7 +62,12 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Werror -Wno-deprecated-declarations -Wno-error=unused-variable")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Werror -Wno-deprecated-declarations -Wno-error=unused-variable")
+endif()
+
+# Workaround Android x86 link issue
+if(ANDROID)
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-warn-shared-textrel")
 endif()
 
 add_definitions(-D_FILE_OFFSET_BITS=64)
@@ -179,13 +184,6 @@ set(GENERATE_DEPENDS
     auto/mtproto.tl
     auto/scheme.tl
 )
-
-if (ANDROID)
-    set(GENERATE_DEPENDS
-        scripts/android_build_lib.py
-        ${GENERATE_DEPENDS}
-    )
-endif()
 
 add_custom_command(
     OUTPUT ${GENERATED_TGL_HEADERS} ${GENERATED_TGL_SOURCES}
