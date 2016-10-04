@@ -206,7 +206,7 @@ void tgl_do_contact_search(const std::string& username, int limit,
 void tgl_do_contact_resolve_username(const std::string& name, const std::function<void(bool success)>& callback);
 
 // requests contact list
-void tgl_do_update_contact_list();
+void tgl_do_update_contact_list(const std::function<void(bool, const std::vector<std::shared_ptr<tgl_user>>&)>& callback);
 
 /* }}} */
 

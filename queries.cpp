@@ -1091,9 +1091,9 @@ private:
     std::function<void(bool, const std::vector<std::shared_ptr<tgl_user>>&)> m_callback;
 };
 
-void tgl_do_update_contact_list()
+void tgl_do_update_contact_list(const std::function<void(bool, const std::vector<std::shared_ptr<tgl_user>>&)>& callback)
 {
-    auto q = std::make_shared<query_get_contacts>(nullptr);
+    auto q = std::make_shared<query_get_contacts>(callback);
     q->out_i32(CODE_contacts_get_contacts);
     q->out_string("");
     q->execute(tgl_state::instance()->working_dc());
@@ -3086,7 +3086,6 @@ void tgl_do_get_difference(bool sync_from_start, const std::function<void(bool s
         if (tgl_state::instance()->pts() == 0) {
             tgl_state::instance()->set_pts(1, true);
         }
-        // if (tgl_state::instance()->qts() == 0) { tgl_state::instance()->set_qts(1, true); }
         if (tgl_state::instance()->date() == 0) {
             tgl_state::instance()->set_date(1, true);
         }
