@@ -85,7 +85,7 @@ def get_cmake_toolchain():
     if os.path.exists(cmake_toolchain):
         return cmake_toolchain
 
-    return os.path.join(build_lib.get_main_dir(), "cmake", "android.toolchain.cmake")
+    return os.path.join(build_lib.get_main_dir(), "scripts", "android", "android.toolchain.cmake")
 
 def get_platform(arch):
     return "android-21"
