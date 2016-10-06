@@ -51,24 +51,3 @@ def run_command_stdout_to_file(command, f):
 
 def run_command_stderr_to_file(command, f):
     return subprocess.call(command, shell=True, stderr=f)
-
-def link_all_files(olddir, newdir):
-    try:
-	names = os.listdir(olddir)
-    except os.error, msg:
-	print olddir + ': warning: cannot listdir:', msg
-	return
-    for name in names:
-	oldname = os.path.join(olddir, name)
-	newname = os.path.join(newdir, name)
-	if os.path.isdir(oldname) and not os.path.islink(oldname):
-	    try:
-		os.mkdir(newname, 0777)
-		ok = 1
-	    except os.error, msg:
-		print newname + ': warning: cannot mkdir:', msg
-		ok = 0
-	    if ok:
-		link_all_files(oldname, newname)
-        elif not os.path.exists(newname):
-	    os.symlink(oldname, newname)
