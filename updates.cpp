@@ -228,7 +228,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         if (DS_U->messages) {
             int count = DS_LVAL(DS_U->messages->cnt);
             for (int i = 0; i < count; ++i) {
-                tgl_state::instance()->callback()->message_deleted(*(*(DS_U->messages->data)+i));
+                tgl_state::instance()->callback()->message_deleted(**(DS_U->messages->data + i));
             }
         }
         break;
