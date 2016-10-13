@@ -24,7 +24,7 @@
 #include "auto/auto-skip.h"
 #include "tgl_transfer_manager.h"
 #include "queries.h"
-#include "tg-mime-types.h"
+#include "tgl_mime_type.h"
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_md5.h"
 #include "mtproto-common.h"
@@ -543,7 +543,7 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
             q->out_string("");
         }
 
-        q->out_string(tg_mime_by_filename(u->file_name.c_str()));
+        q->out_std_string(tgl_mime_type_by_filename(u->file_name));
 
         q->out_i32(CODE_vector);
         if (u->is_image()) {
@@ -646,16 +646,16 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
         q->out_i32(u->height);
     } else if (u->is_video()) {
         q->out_i32(u->duration);
-        q->out_string(tg_mime_by_filename(u->file_name.c_str()));
+        q->out_std_string(tgl_mime_type_by_filename(u->file_name));
         q->out_i32(u->width);
         q->out_i32(u->height);
     } else if (u->is_audio()) {
         q->out_i32(u->duration);
-        q->out_string(tg_mime_by_filename(u->file_name.c_str()));
+        q->out_std_string(tgl_mime_type_by_filename(u->file_name));
     } else { // document
         boost::filesystem::path path(u->file_name);
         q->out_std_string(path.filename().string());
-        q->out_string(tg_mime_by_filename(u->file_name.c_str()));
+        q->out_std_string(tgl_mime_type_by_filename(u->file_name));
     }
 
     q->out_i32(u->size);
@@ -983,16 +983,16 @@ void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id, int64_
 
     bool as_photo = false;
     if (option == tgl_upload_option::auto_detect_document_type) {
-        const char* mime_type = tg_mime_by_filename(document->file_name.c_str());
+        std::string mime_type = tgl_mime_type_by_filename(document->file_name);
         TGL_DEBUG("upload_document - detected mime_type: " << mime_type);
-        if (!memcmp(mime_type, "image/", 6)) {
+        if (!memcmp(mime_type.c_str(), "image/", 6)) {
             document->type = tgl_document_type::image;
-            if (!strcmp(mime_type, "image/gif")) {
+            if (!strcmp(mime_type.c_str(), "image/gif")) {
                 document->is_animated = true;
             }
-        } else if (!memcmp(mime_type, "video/", 6)) {
+        } else if (!memcmp(mime_type.c_str(), "video/", 6)) {
             document->type = tgl_document_type::video;
-        } else if (!memcmp(mime_type, "audio/", 6)) {
+        } else if (!memcmp(mime_type.c_str(), "audio/", 6)) {
             document->type = tgl_document_type::audio;
         } else {
             document->type = tgl_document_type::unknown;
@@ -1171,10 +1171,7 @@ int32_t tgl_transfer_manager::download_document(const std::shared_ptr<tgl_downlo
         const tgl_download_callback& callback)
 {
     if (!mime_type.empty()) {
-        const char* ext = tg_extension_by_mime(mime_type.c_str());
-        if (ext) {
-            d->ext = std::string(ext);
-        }
+        d->ext = tgl_extension_by_mime_type(mime_type);
     }
     begin_download(d);
     download_next_part(d, callback);

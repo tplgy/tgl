@@ -50,7 +50,6 @@
 #include "queries.h"
 #include "tgl.h"
 #include "tgl-log.h"
-#include "tg-mime-types.h"
 #include "tools.h"
 #include "types/tgl_update_callback.h"
 

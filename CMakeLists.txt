@@ -121,7 +121,6 @@ set(HEADERS
     queries.h
     queries-encrypted.h
     structures.h
-    tg-mime-types.h
     tgl.h
     tgl-dc.h
     tgl-log.h
@@ -130,6 +129,7 @@ set(HEADERS
     tgl-queries.h
     tgl-timer.h
     tgl-timer-asio.h
+    tgl_mime_type.h
     tgl_transfer_manager.h
     tools.h
     updates.h
@@ -150,11 +150,11 @@ set(SOURCES
     queries.cpp
     queries-encrypted.cpp
     structures.cpp
-    tg-mime-types.cpp
     tgl.cpp
     tgl-dc.cpp
     tgl-log.cpp
     tgl-net-asio.cpp
+    tgl_mime_type.cpp
     tgl_transfer_manager.cpp
     tools.cpp
     updates.cpp
@@ -178,6 +178,7 @@ set(GENERATE_DEPENDS
     auto/encrypted_scheme.tl
     auto/mtproto.tl
     auto/scheme.tl
+    auto/mime.types
 )
 
 add_custom_command(

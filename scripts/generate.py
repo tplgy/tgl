@@ -31,6 +31,36 @@ def transform(pattern):
         return "_"
     return "_" + pattern.group(0).lower()
 
+def generate_mime_data(mime_types_file_name):
+    mime_data_file = open(os.path.join("auto", "tgl_mime_data.cpp"), "w")
+    mime_types_file = open(mime_types_file_name, "r+")
+
+    mime_data_file.write("static std::map<std::string, std::string> s_mime_to_extension = {\n")
+    for raw_line in mime_types_file:
+        line = raw_line.strip().lower()
+        if (len(line) == 0 or line[0] == '#'):
+            continue
+        list = re.split('\s+', line)
+        if (len(list) < 2):
+            print("WARNING: skipping invalid line: " + raw_line)
+        mime_data_file.write("    { \"" + list[0] + "\", \"" + list[1] + "\" },\n")
+    mime_data_file.write("};\n\n")
+
+    mime_types_file.seek(0, os.SEEK_SET);
+
+    mime_data_file.write("static std::map<std::string, std::string> s_extension_to_mime = {\n")
+    for raw_line in mime_types_file:
+        line = raw_line.strip().lower()
+        if (len(line) == 0 or line[0] == '#'):
+            continue
+        list = re.split('\s+', line)
+        list_len = len(list)
+        if (list_len < 2):
+            print("WARNING: skipping invalid line: " + raw_line)
+        for i in range(1, list_len):
+            mime_data_file.write("    { \"" + list[i] + "\", \"" + list[0] + "\" },\n")
+    mime_data_file.write("};\n\n")
+
 def generate_constants_header():
     scheme_file = open(os.path.join("auto", "scheme2.tl"), "w+")
 
@@ -104,6 +134,7 @@ auto_srcs = [os.path.join(SRC_DIR, "auto", "scheme.tl"), \
 
 concatenate_small_files(auto_srcs, os.path.join("auto", "scheme.tl"))
 
+generate_mime_data(os.path.join(SRC_DIR, "auto", "mime.types"))
 generate_constants_header()
 
 r = build_lib.run_command(os.path.join(".", "tl-parser") + " -e " + os.path.join("auto", "scheme.tlo") + " " + os.path.join("auto", "scheme.tl"))

@@ -52,7 +52,6 @@
 #include "tgl-log.h"
 #include "tgl-timer.h"
 #include "tgl-queries.h"
-#include "tg-mime-types.h"
 #include "tools.h"
 #include "types/tgl_chat.h"
 #include "types/tgl_update_callback.h"
