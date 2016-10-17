@@ -33,7 +33,7 @@ std::string tgl_extension_by_mime_type(const std::string& mime_type)
 {
     std::string mime(mime_type.size(), 0);
     std::transform(mime_type.begin(), mime_type.end(), mime.begin(), static_cast<int (*)(int)>(std::tolower));
-    auto it = s_mime_to_extension.find(mime);
+    auto it = s_mime_to_extension.find(mime.c_str());
     if (it != s_mime_to_extension.end()) {
         return it->second;
     }
@@ -54,7 +54,7 @@ std::string tgl_mime_type_by_extension(const std::string& extension)
     std::string ext(extension.size(), 0);
     std::transform(extension.begin(), extension.end(), ext.begin(), static_cast<int (*)(int)>(std::tolower));
 
-    auto it = s_extension_to_mime.find(ext);
+    auto it = s_extension_to_mime.find(ext.c_str());
     if (it != s_extension_to_mime.end()) {
         return it->second;
     }

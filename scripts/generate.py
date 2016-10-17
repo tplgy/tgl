@@ -35,7 +35,17 @@ def generate_mime_data(mime_types_file_name):
     mime_data_file = open(os.path.join("auto", "tgl_mime_data.cpp"), "w")
     mime_types_file = open(mime_types_file_name, "r+")
 
-    mime_data_file.write("static std::map<std::string, std::string> s_mime_to_extension = {\n")
+    mime_data_file.write("""struct compare_c_string
+{
+    bool operator()(char const *a, char const *b) const
+    {
+        return std::strcmp(a, b) < 0;
+    }
+};
+
+""")
+
+    mime_data_file.write("static const std::map<const char*, const char*, compare_c_string> s_mime_to_extension = {\n")
     for raw_line in mime_types_file:
         line = raw_line.strip().lower()
         if (len(line) == 0 or line[0] == '#'):
@@ -48,7 +58,7 @@ def generate_mime_data(mime_types_file_name):
 
     mime_types_file.seek(0, os.SEEK_SET);
 
-    mime_data_file.write("static std::map<std::string, std::string> s_extension_to_mime = {\n")
+    mime_data_file.write("static const std::map<const char*, const char*, compare_c_string> s_extension_to_mime = {\n")
     for raw_line in mime_types_file:
         line = raw_line.strip().lower()
         if (len(line) == 0 or line[0] == '#'):
