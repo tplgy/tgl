@@ -21,8 +21,9 @@
 
 #include "tgl_mime_type.h"
 
-#include <cctype>
 #include <algorithm>
+#include <cctype>
+#include <cstring>
 #include <map>
 
 #include "auto/tgl_mime_data.cpp"
