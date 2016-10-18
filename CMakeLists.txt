@@ -36,7 +36,7 @@ if (ENABLE_VALGRIND_FIXES)
 endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=strict-aliasing -fdiagnostics-color=always")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
