@@ -26,7 +26,7 @@ option(ENABLE_UBSAN "UBSAN build" OFF)
 option(ENABLE_VALGRIND_FIXES "Workaround Valgrind bugs" OFF)
 
 if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Werror -Wno-error=unused-variable")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Werror -Wno-deprecated-declarations -Wno-error=unused-variable")
 endif()
 
 add_definitions(-D_FILE_OFFSET_BITS=64)
