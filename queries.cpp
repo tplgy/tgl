@@ -1111,20 +1111,11 @@ public:
     virtual void on_answer(void* D) override
     {
         tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
-#if 0
-        tgl_message_id_t id;
-        id.peer_type = TGL_PEER_RANDOM_ID;
-        id.id = old_msg_id->old_msg_id;
-        struct tgl_message* M = tgl_message_get(&id);
-        if (M && M->permanent_id.id == id.id) {
-            tglu_work_any_updates(DS_U, M);
-        } else {
-#endif
-        tglu_work_any_updates(DS_U, nullptr);
+        tglu_work_any_updates(DS_U, m_message);
         if (m_callback) {
             m_callback(true, m_message);
         }
-        tgl_state::instance()->callback()->message_sent(m_message, DS_LVAL(DS_U->id), DS_LVAL(DS_U->id));
+        //tgl_state::instance()->callback()->message_sent(m_message, DS_LVAL(DS_U->id), DS_LVAL(DS_U->id));
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override

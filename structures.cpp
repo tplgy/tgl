@@ -820,7 +820,7 @@ static std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_pag
     webpage->url = DS_STDSTR(DS_W->url);
     webpage->display_url = DS_STDSTR(DS_W->display_url);
     webpage->type = DS_STDSTR(DS_W->type);
-    webpage->title = DS_STDSTR(DS_W->title);
+    webpage->title = DS_W->title ? DS_STDSTR(DS_W->title) : (DS_W->site_name ? DS_STDSTR(DS_W->site_name) : "");
     webpage->photo = tglf_fetch_alloc_photo(DS_W->photo);
     webpage->description = DS_STDSTR(DS_W->description);
     webpage->embed_url = DS_STDSTR(DS_W->embed_url);
@@ -910,8 +910,8 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short(const tl_ds_updates*
     int64_t message_id = DS_LVAL(DS_U->id);
     int32_t flags = DS_LVAL(DS_U->flags);
 
-    struct tl_ds_message_media A;
-    A.magic = CODE_message_media_empty;
+//    struct tl_ds_message_media A;
+//    A.magic = CODE_message_media_empty;
 
     tgl_peer_id_t our_id = tgl_state::instance()->our_id();
 
@@ -931,12 +931,11 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short(const tl_ds_updates*
             &fwd_date,
             &date,
             DS_STDSTR(DS_U->message),
-            &A,
+            DS_U->media,
             nullptr,
             DS_LVAL(DS_U->reply_to_msg_id),
             nullptr);
     msg->set_unread(flags&1).set_outgoing(flags&2).set_mention(flags&16);
-    tgl_state::instance()->callback()->new_messages({msg});
     return msg;
 }
 

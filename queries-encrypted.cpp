@@ -252,7 +252,7 @@ public:
 
     virtual void on_answer(void*) override
     {
-        tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id, m_secret_chat->out_seq_no);
+        tgl_state::instance()->callback()->message_id_update(m_message->permanent_id, m_message->permanent_id, m_secret_chat->out_seq_no, m_message->to_id);
         if (m_callback) {
             m_callback(true, m_message);
         }

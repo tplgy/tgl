@@ -182,7 +182,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_message_id:
         if (auto message = std::static_pointer_cast<tgl_message>(extra)) {
-            tgl_state::instance()->callback()->message_sent(message, DS_LVAL(DS_U->id), DS_LVAL(DS_U->id));
+            tgl_state::instance()->callback()->message_id_update(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), DS_LVAL(DS_U->id), message->to_id);
         }
         break;
     case CODE_update_user_typing:
@@ -527,7 +527,8 @@ void tglu_work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mode m
         return;
     }
 
-    tglf_fetch_alloc_message_short(DS_U);
+    auto message = tglf_fetch_alloc_message_short(DS_U);
+    tgl_state::instance()->callback()->new_messages({message});
 
     if (tgl_state::instance()->is_diff_locked()) {
         return;
@@ -610,9 +611,13 @@ static void tglu_work_update_short_sent_message(const tl_ds_updates* DS_U,
     }
 
     if (std::shared_ptr<tgl_message> message = std::static_pointer_cast<tgl_message>(extra)) {
-        int32_t flags = DS_LVAL(DS_U->flags);
-        message->set_unread(flags&1).set_outgoing(flags&2).set_mention(flags&16);
-        tgl_state::instance()->callback()->new_messages({message});
+        auto new_message = tglf_fetch_alloc_message_short(DS_U);
+        new_message->to_id = message->to_id;
+        new_message->message = message->message;
+        tgl_state::instance()->callback()->message_id_update(message->permanent_id,  new_message->permanent_id, new_message->seq_no, message->to_id);
+        if (new_message->media) {
+            tgl_state::instance()->callback()->new_messages({new_message});
+        }
     }
 
     if (mode != tgl_update_mode::check_and_update_consistency) {

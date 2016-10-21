@@ -393,7 +393,7 @@ public:
             m_callback(true, m_message);
         }
 
-        tgl_state::instance()->callback()->message_sent(m_message, m_message->permanent_id, m_secret_chat->out_seq_no);
+        tgl_state::instance()->callback()->message_id_update(m_message->permanent_id, m_message->permanent_id, m_secret_chat->out_seq_no, m_message->to_id);
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
