@@ -26,14 +26,13 @@
 #include <fcntl.h>
 #include <memory.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #ifndef WIN32
 #include <sys/utsname.h>
 #endif
-#include <boost/lexical_cast.hpp>
 
 #include "auto/auto.h"
 #include "auto/auto-fetch-ds.h"
@@ -416,8 +415,7 @@ static bool get_int_from_prefixed_string(int& number, const std::string& prefixe
 
     if (number_string.size()) {
         try {
-            // FIXME: Switch to std::stoi when Android has support.
-            number = boost::lexical_cast<int>(number_string);
+            number = std::stoi(number_string);
             return true;
         } catch (...) {
             return false;

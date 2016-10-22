@@ -35,7 +35,6 @@
 
 #include <algorithm>
 #include <array>
-#include <boost/filesystem.hpp>
 
 #include "auto/auto.h"
 #include "auto/auto-fetch-ds.h"
