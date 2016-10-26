@@ -23,6 +23,7 @@
 #define __TGL_QUERIES_H__
 
 #include "tgl.h"
+#include "types/tgl_channel.h"
 #include "types/tgl_chat.h"
 #include "types/tgl_user.h"
 #include "types/tgl_typing_status.h"
@@ -116,6 +117,11 @@ void tgl_do_rename_chat(int32_t id, const std::string& new_title,
 
 // requests full info about chat *id*.
 void tgl_do_get_chat_info(int32_t id, const std::function<void(bool success, const std::shared_ptr<tgl_chat>& C)>& callback);
+
+void tgl_do_get_channel_info(const tgl_input_peer_t& id, const std::function<void(bool success, const std::shared_ptr<tgl_channel>& C)>& callback);
+
+void tgl_do_get_channel_members(const tgl_input_peer_t& channel_id, int limit, int offset, tgl_channel_participant_type type,
+        const std::function<void(bool success, const std::vector<tgl_peer_id_t>& peers)>& callback);
 
 // adds user *id* to chat *chat_id*
 // sends *limit* last messages from this chat to user

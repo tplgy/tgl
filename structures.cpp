@@ -624,6 +624,13 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(const tl_ds_messages_
     );
 #endif
 
+    if (DS_CF->chat_photo && DS_CF->chat_photo->sizes && *DS_CF->chat_photo->sizes->cnt > 1) {
+        channel->photo_big = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[1]->location);
+    }
+    if (DS_CF->chat_photo && DS_CF->chat_photo->sizes && *DS_CF->chat_photo->sizes->cnt > 0) {
+        channel->photo_small = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[0]->location);
+    }
+
     return channel;
 }
 

@@ -2289,12 +2289,12 @@ void tgl_do_channel_set_admin(const tgl_input_peer_t& channel_id, const tgl_inpu
 struct channel_get_members_state {
     tgl_input_peer_t channel_id;
     std::vector<tgl_peer_id_t> peers;
-    int type = 0;
+    tgl_channel_participant_type type = tgl_channel_participant_type::recent;
     int offset = 0;
     int limit = -1;
 };
 
-static void tgl_do_channel_get_members(const std::shared_ptr<struct channel_get_members_state>& state,
+static void tgl_do_get_channel_members(const std::shared_ptr<struct channel_get_members_state>& state,
         const std::function<void(bool, const std::vector<tgl_peer_id_t>&)>& callback);
 
 class query_channels_get_members: public query
@@ -2316,14 +2316,28 @@ public:
         }
 
         for (int i = 0; i < count; i++) {
+            bool admin = false;
+            bool creator = false;
+            if (DS_CP->participants->data[i]->magic == CODE_chat_participant_admin) {
+                admin = true;
+            } else if (DS_CP->participants->data[i]->magic == CODE_chat_participant_creator) {
+                creator = true;
+                admin = true;
+            }
             m_state->peers.push_back(tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_CP->participants->data[i]->user_id)));
+            tgl_state::instance()->callback()->channel_add_user(m_state->channel_id.peer_id,
+                    DS_LVAL(DS_CP->participants->data[i]->user_id),
+                    DS_LVAL(DS_CP->participants->data[i]->inviter_id),
+                    DS_LVAL(DS_CP->participants->data[i]->date),
+                    admin,
+                    creator);
         }
         m_state->offset += count;
 
         if (!count || static_cast<int>(m_state->peers.size()) == m_state->limit) {
             m_callback(true, m_state->peers);
         } else {
-            tgl_do_channel_get_members(m_state, m_callback);
+            tgl_do_get_channel_members(m_state, m_callback);
         }
     }
 
@@ -2341,7 +2355,7 @@ private:
     std::function<void(bool, const std::vector<tgl_peer_id_t>&)> m_callback;
 };
 
-static void tgl_do_channel_get_members(const std::shared_ptr<struct channel_get_members_state>& state,
+static void tgl_do_get_channel_members(const std::shared_ptr<struct channel_get_members_state>& state,
         const std::function<void(bool, const std::vector<tgl_peer_id_t>&)>& callback)
 {
     auto q = std::make_shared<query_channels_get_members>(state, callback);
@@ -2352,23 +2366,25 @@ static void tgl_do_channel_get_members(const std::shared_ptr<struct channel_get_
     q->out_i64(state->channel_id.access_hash);
 
     switch (state->type) {
-    case 1:
-    case 2:
-      q->out_i32(CODE_channel_participants_admins);
-      break;
-    case 3:
-      q->out_i32(CODE_channel_participants_kicked);
-      break;
-    default:
-      q->out_i32(CODE_channel_participants_recent);
-      break;
+    case tgl_channel_participant_type::admins:
+        q->out_i32(CODE_channel_participants_admins);
+        break;
+    case tgl_channel_participant_type::kicked:
+        q->out_i32(CODE_channel_participants_kicked);
+        break;
+    case tgl_channel_participant_type::recent:
+        q->out_i32(CODE_channel_participants_recent);
+        break;
+    case tgl_channel_participant_type::bots:
+        q->out_i32(CODE_channel_participants_bots);
+        break;
     }
     q->out_i32(state->offset);
     q->out_i32(state->limit);
     q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_channel_get_members(const tgl_input_peer_t& channel_id, int limit, int offset, int type,
+void tgl_do_get_channel_members(const tgl_input_peer_t& channel_id, int limit, int offset, tgl_channel_participant_type type,
         const std::function<void(bool success, const std::vector<tgl_peer_id_t>& peers)>& callback)
 {
     std::shared_ptr<channel_get_members_state> state = std::make_shared<channel_get_members_state>();
@@ -2376,7 +2392,7 @@ void tgl_do_channel_get_members(const tgl_input_peer_t& channel_id, int limit, i
     state->channel_id = channel_id;
     state->limit = limit;
     state->offset = offset;
-    tgl_do_channel_get_members(state, callback);
+    tgl_do_get_channel_members(state, callback);
 }
 /* }}} */
 
@@ -2449,26 +2465,9 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_channel>&)> m_callback;
 };
 
-void tgl_do_get_channel_info(const tgl_input_peer_t& id, int offline_mode,
+void tgl_do_get_channel_info(const tgl_input_peer_t& id,
         const std::function<void(bool success, const std::shared_ptr<tgl_channel>& C)>& callback)
 {
-    if (offline_mode) {
-#if 0
-        tgl_peer_t* C = tgl_peer_get(id);
-        if (!C) {
-            TGL_ERROR("unknown chat id");
-            if (callback) {
-                callback(false, nullptr);
-            }
-        } else {
-            if (callback) {
-                callback(true, &C->channel);
-            }
-        }
-#endif
-        return;
-    }
-
     auto q = std::make_shared<query_channel_info>(callback);
     q->out_i32(CODE_channels_get_full_channel);
     assert(id.peer_type == tgl_peer_type::channel);

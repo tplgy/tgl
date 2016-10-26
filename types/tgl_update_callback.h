@@ -62,6 +62,7 @@ public:
     virtual void chat_update(const std::shared_ptr<tgl_chat>& chat) = 0;
     virtual void chat_add_user(int32_t chat_id, int32_t user, int32_t inviter, int64_t date, bool admin, bool creator) = 0;
     virtual void chat_delete_user(int32_t chat_id, int user) = 0;
+    virtual void channel_add_user(int32_t channel_id, int32_t user, int32_t inviter, int64_t date, bool admin, bool creator) = 0;
     virtual void secret_chat_update(const std::shared_ptr<tgl_secret_chat>& secret_chat, tgl_secret_chat_state old_state) = 0;
     virtual void channel_update(const std::shared_ptr<tgl_channel>& channel) = 0;
     virtual void our_id(int32_t id) = 0;

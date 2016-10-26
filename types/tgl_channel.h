@@ -28,6 +28,14 @@
 #include "types/tgl_chat.h"
 #include "types/tgl_file_location.h"
 
+enum class tgl_channel_participant_type
+{
+    admins,
+    recent,
+    kicked,
+    bots,
+};
+
 struct tgl_channel: public tgl_chat {
     int32_t admins_count;
     int32_t kicked_count;
