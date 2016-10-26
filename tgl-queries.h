@@ -163,6 +163,9 @@ void tgl_do_block_user(int32_t user_id, int64_t access_hash, const std::function
 
 // unblocks blocked user
 void tgl_do_unblock_user(int32_t user_id, int64_t access_hash, const std::function<void(bool success)>& callback);
+
+// query blocked users
+void tgl_get_blocked_users(const std::function<void(std::vector<int32_t>)>& callback);
 /* }}} */
 
 /* {{{ WORKING WITH SECRET CHATS */

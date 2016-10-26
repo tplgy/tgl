@@ -4272,6 +4272,53 @@ void tgl_do_unblock_user(const tgl_input_peer_t& id, const std::function<void(bo
     q->out_i64(id.access_hash);
     q->execute(tgl_state::instance()->working_dc());
 }
+
+class query_blocked_users: public query
+{
+public:
+    explicit query_blocked_users(const std::function<void(std::vector<int32_t>)>& callback)
+        : query("get blocked users", TYPE_TO_PARAM(contacts_blocked))
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void* D) override
+    {
+        std::vector<int32_t> blocked_contacts;
+        tl_ds_contacts_blocked* DS_T = static_cast<tl_ds_contacts_blocked*>(D);
+        if (DS_T->blocked && DS_T->users) {
+            for (int i=0; i<DS_LVAL(DS_T->blocked->cnt); ++i) {
+                blocked_contacts.push_back(DS_LVAL(DS_T->blocked->data[i]->user_id));
+                auto user = tglf_fetch_alloc_user(DS_T->users->data[i], false);
+                user->set_blocked(true);
+                tgl_state::instance()->callback()->new_user(user);
+            }
+        }
+        if (m_callback) {
+            m_callback(blocked_contacts);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback({});
+        }
+        return 0;
+    }
+
+private:
+    std::function<void(std::vector<int32_t>)> m_callback;
+};
+
+void tgl_get_blocked_users(const std::function<void(std::vector<int32_t>)>& callback) {
+    auto q = std::make_shared<query_blocked_users>(callback);
+    q->out_i32(CODE_contacts_get_blocked);
+    q->out_i32(0);
+    q->out_i32(0);
+    q->execute(tgl_state::instance()->working_dc());
+}
+
 /* }}} */
 
 /* {{{ get terms of service */
