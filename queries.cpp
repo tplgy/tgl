@@ -2508,30 +2508,13 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_user>&)> m_callback;
 };
 
-void tgl_do_get_user_info(const tgl_input_peer_t& id, int offline_mode,
-        const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback)
+void tgl_do_get_user_info(const tgl_input_peer_t& id, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback)
 {
     if (id.peer_type != tgl_peer_type::user) {
         TGL_ERROR("id should be user id");
         if (callback) {
             callback(false, nullptr);
         }
-        return;
-    }
-    if (offline_mode) {
-#if 0
-        tgl_peer_t* C = tgl_peer_get(id);
-        if (!C) {
-            TGL_ERROR("unknown user id");
-            if (callback) {
-                callback(false, nullptr);
-            }
-        } else {
-            if (callback) {
-                callback(true, C->user);
-            }
-        }
-#endif
         return;
     }
 

@@ -144,7 +144,7 @@ void tgl_do_import_chat_link(const std::string& link, const std::function<void(b
 
 // requests full info about user *id*.
 // if *offline_mode* is set no actual query is sent
-void tgl_do_get_user_info(const tgl_peer_id_t& id, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback);
+void tgl_do_get_user_info(const tgl_input_peer_t& id, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback);
 
 // adds contact to contact list by phone number
 // user will be named  *first_name* *last_name* in contact list
@@ -159,10 +159,10 @@ void tgl_do_delete_contact(const tgl_input_peer_t& id, const std::function<void(
 void tgl_do_import_card(int size, int* card, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback);
 
 // blocks user
-void tgl_do_block_user(int32_t user_id, int64_t access_hash, const std::function<void(bool success)>& callback);
+void tgl_do_block_user(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback);
 
 // unblocks blocked user
-void tgl_do_unblock_user(int32_t user_id, int64_t access_hash, const std::function<void(bool success)>& callback);
+void tgl_do_unblock_user(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback);
 
 // query blocked users
 void tgl_get_blocked_users(const std::function<void(std::vector<int32_t>)>& callback);

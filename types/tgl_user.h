@@ -58,6 +58,7 @@ struct tgl_user {
         : m_contact(false)
         , m_mutual_contact(false)
         , m_blocked(false)
+        , m_blocked_confirmed(false)
         , m_self(false)
         , m_bot(false)
         , m_deleted(false)
@@ -67,6 +68,7 @@ struct tgl_user {
     bool is_contact() const { return m_contact; }
     bool is_mutual_contact() const { return m_mutual_contact; }
     bool is_blocked() const { return m_blocked; }
+    bool is_blocked_confirmed() const { return m_blocked_confirmed; }
     bool is_self() const { return m_self; }
     bool is_bot() const { return m_bot; }
     bool is_deleted() const { return m_deleted; }
@@ -74,7 +76,7 @@ struct tgl_user {
 
     tgl_user& set_contact(bool b) { m_contact = b; return *this; }
     tgl_user& set_mutual_contact(bool b) { m_mutual_contact = b; return *this; }
-    tgl_user& set_blocked(bool b) { m_blocked = b; return *this; }
+    tgl_user& set_blocked(bool b) { m_blocked = b; m_blocked_confirmed = true; return *this; }
     tgl_user& set_self(bool b) { m_self = b; return *this; }
     tgl_user& set_bot(bool b) { m_bot = b; return *this; }
     tgl_user& set_deleted(bool b) { m_deleted = b; return *this; }
@@ -84,6 +86,7 @@ private:
     bool m_contact;
     bool m_mutual_contact;
     bool m_blocked;
+    bool m_blocked_confirmed;
     bool m_self;
     bool m_bot;
     bool m_deleted;

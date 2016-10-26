@@ -330,7 +330,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_user_blocked:
         {
-            int blocked = DS_BVAL(DS_U->blocked);
+            bool blocked = DS_BVAL(DS_U->blocked);
             tgl_peer_id_t peer_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
 
             std::map<tgl_user_update_type, std::string> updates;
