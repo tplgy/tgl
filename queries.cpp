@@ -55,6 +55,7 @@
 #include "types/tgl_chat.h"
 #include "types/tgl_update_callback.h"
 #include "types/tgl_peer_id.h"
+#include "types/tgl_privacy_rule.h"
 #include "updates.h"
 
 constexpr int32_t TGL_SCHEME_LAYER = 45;
@@ -4906,5 +4907,79 @@ void tgl_do_set_phone_number(const std::string& phonenumber, const std::function
     q->out_header();
     q->out_i32(CODE_account_send_change_phone_code);
     q->out_std_string(state->phone);
+    q->execute(tgl_state::instance()->working_dc());
+}
+
+class query_privacy : public query
+{
+public:
+    explicit query_privacy(const std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)>& callback)
+        : query("set phone", TYPE_TO_PARAM(account_privacy_rules))
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void* D) override
+    {
+        tl_ds_account_privacy_rules* rules = static_cast<tl_ds_account_privacy_rules*>(D);
+        std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>> privacy_rules;
+        if (rules->rules) {
+            for (size_t i=0; i<DS_LVAL(rules->rules->cnt); ++i) {
+                uint32_t rule = rules->rules->data[i]->magic;
+                std::vector<int32_t> users;
+                tgl_privacy_rule tgl_rule;
+                switch (rule) {
+                case(CODE_privacy_value_allow_contacts): tgl_rule = tgl_privacy_rule::allow_contacts; break;
+                case(CODE_privacy_value_allow_all): tgl_rule = tgl_privacy_rule::allow_all; break;
+                case(CODE_privacy_value_allow_users): {
+                    tgl_rule = tgl_privacy_rule::allow_users;
+                    if (rules->rules->data[i]->users) {
+                        for (size_t i=0; i<DS_LVAL(rules->rules->data[i]->users->cnt); ++i) {
+                            users.push_back(DS_LVAL(rules->rules->data[i]->users->data[i]));
+                        }
+                    }
+                    break;
+                }
+                case(CODE_privacy_value_disallow_contacts): tgl_rule = tgl_privacy_rule::disallow_contacts; break;
+                case(CODE_privacy_value_disallow_all): tgl_rule = tgl_privacy_rule::disallow_all; break;
+                case(CODE_privacy_value_disallow_users): {
+                    tgl_rule = tgl_privacy_rule::disallow_users;
+                    if (rules->rules->data[i]->users) {
+                        for (size_t j=0; j<DS_LVAL(rules->rules->data[i]->users->cnt); ++j) {
+                            users.push_back(DS_LVAL(rules->rules->data[i]->users->data[j]));
+                        }
+                    }
+                    break;
+                }
+                default:    tgl_rule = tgl_privacy_rule::unknown;
+                }
+
+                privacy_rules.push_back(std::make_pair(tgl_rule, users));
+            }
+        }
+        //std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user(static_cast<tl_ds_user*>(D));
+        if (m_callback) {
+            m_callback(true, privacy_rules);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false, {});
+        }
+        return 0;
+    }
+
+private:
+    std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)> m_callback;
+};
+
+
+void tgl_do_get_privacy(std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)> callback)
+{
+    auto q = std::make_shared<query_privacy>(callback);
+    q->out_i32(CODE_account_get_privacy);
+    q->out_i32(CODE_input_privacy_key_status_timestamp);
     q->execute(tgl_state::instance()->working_dc());
 }

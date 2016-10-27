@@ -95,6 +95,7 @@ set(TYPES_HEADERS
     types/tgl_secret_chat.h
     types/tgl_typing_status.h
     types/tgl_online_status.h
+    types/tgl_privacy_rule.h
     types/tgl_connection_status.h
     types/tgl_chat.h
     types/tgl_user.h
