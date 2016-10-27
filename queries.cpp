@@ -2318,9 +2318,10 @@ public:
         for (int i = 0; i < count; i++) {
             bool admin = false;
             bool creator = false;
-            if (DS_CP->participants->data[i]->magic == CODE_chat_participant_admin) {
+            auto magic = DS_CP->participants->data[i]->magic;
+            if (magic == CODE_channel_participant_moderator || magic == CODE_channel_participant_editor) {
                 admin = true;
-            } else if (DS_CP->participants->data[i]->magic == CODE_chat_participant_creator) {
+            } else if (magic == CODE_channel_participant_creator) {
                 creator = true;
                 admin = true;
             }

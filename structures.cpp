@@ -360,6 +360,30 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
     return secret_chat;
 }
 
+static void update_chat_flags(const std::shared_ptr<tgl_chat>& chat, int32_t flags)
+{
+    chat->creator = flags & 1;
+    chat->kicked = flags & 2;
+    chat->left = flags & 4;
+    chat->admins_enabled = flags & 8;
+    chat->admin = flags & 16;
+    chat->deactivated = flags & 32;
+}
+
+static void update_channel_flags(const std::shared_ptr<tgl_channel>& channel, int32_t flags)
+{
+    channel->creator = flags & 1;
+    channel->kicked = flags & 2;
+    channel->left = flags & 4;
+    channel->verified = flags & 7;
+    channel->editor = flags & 8;
+    channel->restricted = flags & 9;
+    channel->moderator = flags & 16;
+    channel->broadcast = flags & 32;
+    channel->official = flags & 128;
+    channel->megagroup = flags & 256;
+}
+
 std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(const tl_ds_chat* DS_C, bool invoke_callback)
 {
     if (!DS_C) {
@@ -379,30 +403,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(const tl_ds_chat* DS_C, bool inv
     std::shared_ptr<tgl_chat> chat = std::make_shared<tgl_chat>();
     chat->id = chat_id;
 
-    int32_t flags = DS_LVAL(DS_C->flags);
-    if (flags & 1) {
-        chat->creator = true;
-    }
-
-    if (flags & 2) {
-        chat->kicked = true;
-    }
-
-    if (flags & 4) {
-        chat->left = true;
-    }
-
-    if (flags & 8) {
-        chat->admins_enabled = true;
-    }
-
-    if (flags & 16) {
-        chat->admin = true;
-    }
-
-    if (flags & 32) {
-        chat->deactivated = true;
-    }
+    update_chat_flags(chat, DS_LVAL(DS_C->flags));
 
     chat->editor = DS_BOOL(DS_C->editor);
     chat->moderator = DS_BOOL(DS_C->moderator);
@@ -521,46 +522,7 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel(const tl_ds_chat* DS_C, bo
     std::shared_ptr<tgl_channel> channel = std::make_shared<tgl_channel>();
     channel->id = chat_id;
 
-    int32_t flags = DS_LVAL(DS_C->flags);
-    if (flags & 1) {
-        channel->creator = true;
-    }
-
-    if (flags & 2) {
-        channel->kicked = true;
-    }
-
-    if (flags & 4) {
-        channel->left = true;
-    }
-
-    if (flags & 7) {
-        channel->verified = true;
-    }
-
-    if (flags & 8) {
-        channel->editor = true;
-    }
-
-    if (flags & 9) {
-        channel->restricted = true;
-    }
-
-    if (flags & 16) {
-        channel->moderator = true;
-    }
-
-    if (flags & 32) {
-        channel->broadcast = true;
-    }
-
-    if (flags & 128) {
-        channel->official = true;
-    }
-
-    if (flags & 256) {
-        channel->megagroup = true;
-    }
+    update_channel_flags(channel, DS_LVAL(DS_C->flags));
 
     if (DS_C->photo) {
         channel->photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
@@ -600,29 +562,11 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(const tl_ds_messages_
 
     const tl_ds_chat_full* DS_CF = DS_MCF->full_chat;
 
-    tgl_input_peer_t chat_id(tgl_peer_type::channel, DS_LVAL(DS_CF->id), 0); // FIXME: what about access_hash?
+    tgl_input_peer_t channel_id(tgl_peer_type::channel, DS_LVAL(DS_CF->id), 0); // FIXME: what about access_hash?
 
     std::shared_ptr<tgl_channel> channel = std::make_shared<tgl_channel>();
-    channel->id = chat_id;
+    channel->id = channel_id;
     channel->about = DS_STDSTR(DS_CF->about);
-
-#if 0
-    bl_do_channel(tgl_get_peer_id(channel->id),
-      NULL,
-      NULL,
-      NULL, 0,
-      NULL, 0,
-      NULL,
-      DS_CF->chat_photo,
-      NULL,
-      DS_STR(DS_CF->about),
-      DS_CF->participants_count,
-      DS_CF->admins_count,
-      DS_CF->kicked_count,
-      DS_CF->read_inbox_max_id,
-      TGL_FLAGS_UNCHANGED
-    );
-#endif
 
     if (DS_CF->chat_photo && DS_CF->chat_photo->sizes && *DS_CF->chat_photo->sizes->cnt > 1) {
         channel->photo_big = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[1]->location);
@@ -630,6 +574,8 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(const tl_ds_messages_
     if (DS_CF->chat_photo && DS_CF->chat_photo->sizes && *DS_CF->chat_photo->sizes->cnt > 0) {
         channel->photo_small = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[0]->location);
     }
+
+    tgl_state::instance()->callback()->channel_update_description(channel->id.peer_id, channel->about);
 
     return channel;
 }
