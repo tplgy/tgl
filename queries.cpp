@@ -4923,7 +4923,7 @@ public:
         tl_ds_account_privacy_rules* rules = static_cast<tl_ds_account_privacy_rules*>(D);
         std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>> privacy_rules;
         if (rules->rules) {
-            for (size_t i=0; i<DS_LVAL(rules->rules->cnt); ++i) {
+            for (int32_t i=0; i<DS_LVAL(rules->rules->cnt); ++i) {
                 uint32_t rule = rules->rules->data[i]->magic;
                 std::vector<int32_t> users;
                 tgl_privacy_rule tgl_rule;
@@ -4933,7 +4933,7 @@ public:
                 case(CODE_privacy_value_allow_users): {
                     tgl_rule = tgl_privacy_rule::allow_users;
                     if (rules->rules->data[i]->users) {
-                        for (size_t i=0; i<DS_LVAL(rules->rules->data[i]->users->cnt); ++i) {
+                        for (int32_t i=0; i<DS_LVAL(rules->rules->data[i]->users->cnt); ++i) {
                             users.push_back(DS_LVAL(rules->rules->data[i]->users->data[i]));
                         }
                     }
@@ -4944,7 +4944,7 @@ public:
                 case(CODE_privacy_value_disallow_users): {
                     tgl_rule = tgl_privacy_rule::disallow_users;
                     if (rules->rules->data[i]->users) {
-                        for (size_t j=0; j<DS_LVAL(rules->rules->data[i]->users->cnt); ++j) {
+                        for (int32_t j=0; j<DS_LVAL(rules->rules->data[i]->users->cnt); ++j) {
                             users.push_back(DS_LVAL(rules->rules->data[i]->users->data[j]));
                         }
                     }
