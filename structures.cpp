@@ -489,8 +489,8 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full(const tl_ds_messages_chat_f
         chat->photo_small = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[0]->location);
     }
 
-    //tgl_state::instance()->callback()->chat_update(tgl_get_peer_id(chat->id), *DS_CF->participants->participants->cnt, DS_CF->);
     if (DS_CF->participants && DS_CF->participants->participants) {
+        std::vector<std::shared_ptr<tgl_chat_participant>> participants;
         for (int i = 0; i < DS_LVAL(DS_CF->participants->participants->cnt); ++i) {
             bool admin = false;
             bool creator = false;
@@ -500,10 +500,16 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full(const tl_ds_messages_chat_f
                 creator = true;
                 admin = true;
             }
-            tgl_state::instance()->callback()->chat_add_user(chat->id.peer_id, *DS_CF->participants->participants->data[i]->user_id,
-                    DS_CF->participants->participants->data[i]->inviter_id ? *DS_CF->participants->participants->data[i]->inviter_id : 0,
-                    DS_CF->participants->participants->data[i]->date ? *DS_CF->participants->participants->data[i]->date : 0,
-                    admin, creator);
+            auto participant = std::make_shared<tgl_chat_participant>();
+            participant->user_id = DS_LVAL(DS_CF->participants->participants->data[i]->user_id);
+            participant->inviter_id = DS_LVAL(DS_CF->participants->participants->data[i]->inviter_id);
+            participant->date = DS_LVAL(DS_CF->participants->participants->data[i]->date);
+            participant->is_admin = admin;
+            participant->is_creator = creator;
+            participants.push_back(participant);
+        }
+        if (participants.size()) {
+            tgl_state::instance()->callback()->chat_update_participants(chat_id.peer_id, participants);
         }
     }
     //TODO update users

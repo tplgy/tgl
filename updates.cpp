@@ -236,6 +236,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         if (DS_U->participants->magic == CODE_chat_participants) {
             tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL(DS_U->chat_id));
             int count = DS_LVAL(DS_U->participants->participants->cnt);
+            std::vector<std::shared_ptr<tgl_chat_participant>> participants;
             for (int i = 0; i < count; ++i) {
                 bool admin = false;
                 bool creator = false;
@@ -245,10 +246,16 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
                     creator = true;
                     admin = true;
                 }
-                tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, *DS_U->participants->participants->data[i]->user_id,
-                      DS_U->participants->participants->data[i]->inviter_id ? *DS_U->participants->participants->data[i]->inviter_id : 0,
-                      DS_U->participants->participants->data[i]->date ? *DS_U->participants->participants->data[i]->date : 0,
-                      admin, creator);
+                auto participant = std::make_shared<tgl_chat_participant>();
+                participant->user_id = DS_LVAL(DS_U->participants->participants->data[i]->user_id);
+                participant->inviter_id = DS_LVAL(DS_U->participants->participants->data[i]->inviter_id);
+                participant->date = DS_LVAL(DS_U->participants->participants->data[i]->date);
+                participant->is_admin = admin;
+                participant->is_creator = creator;
+                participants.push_back(participant);
+            }
+            if (participants.size()) {
+                tgl_state::instance()->callback()->chat_update_participants(chat_id.peer_id, participants);
             }
         }
         break;
@@ -307,7 +314,11 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             tgl_peer_id_t inviter_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->inviter_id));
             //int version = DS_LVAL(DS_U->version);
 
-            tgl_state::instance()->callback()->chat_add_user(chat_id.peer_id, user_id.peer_id, inviter_id.peer_id, tgl_get_system_time(), false, false);
+            auto participant = std::make_shared<tgl_chat_participant>();
+            participant->user_id = user_id.peer_id;
+            participant->inviter_id = inviter_id.peer_id;
+            participant->date = tgl_get_system_time();
+            tgl_state::instance()->callback()->chat_update_participants(chat_id.peer_id, { participant });
         }
         break;
     case CODE_update_chat_participant_delete:

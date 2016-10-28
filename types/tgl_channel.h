@@ -36,6 +36,10 @@ enum class tgl_channel_participant_type
     bots,
 };
 
+struct tgl_channel_participant: public tgl_chat_participant
+{
+};
+
 struct tgl_channel: public tgl_chat {
     int32_t admins_count;
     int32_t kicked_count;

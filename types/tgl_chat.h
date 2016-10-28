@@ -32,8 +32,23 @@
 struct tgl_chat_user {
     int32_t user_id;
     int32_t inviter_id;
-    int32_t date;
+    int64_t date;
     tgl_chat_user(): user_id(0), inviter_id(0), date(0) { }
+};
+
+struct tgl_chat_participant{
+    int32_t user_id;
+    int32_t inviter_id;
+    int64_t date;
+    bool is_admin;
+    bool is_creator;
+    tgl_chat_participant()
+        : user_id(0)
+        , inviter_id(0)
+        , date(0)
+        , is_admin(false)
+        , is_creator(false)
+    { }
 };
 
 struct tgl_chat {
