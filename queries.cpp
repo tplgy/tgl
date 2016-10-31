@@ -1301,19 +1301,26 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
     }
 }
 
-/* {{{ Mark read */
 class query_mark_read: public query
 {
 public:
     query_mark_read(const tgl_input_peer_t& id, int max_id,
             const std::function<void(bool)>& callback)
-        : query("mark read", TYPE_TO_PARAM(messages_affected_messages))
+        : query("mark read", id.peer_type == tgl_peer_type::channel ? TYPE_TO_PARAM(bool) : TYPE_TO_PARAM(messages_affected_messages))
         , m_id(id)
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
+        if (m_id.peer_type == tgl_peer_type::channel) {
+            if (m_callback) {
+                m_callback(true);
+            }
+            // FIXME: should we call messages_mark_read_in() callback? What should we pass for msg_id?
+            return;
+        }
+
         tl_ds_messages_affected_messages* DS_MAM = static_cast<tl_ds_messages_affected_messages*>(D);
 
         if (tgl_check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count))) {
@@ -1385,7 +1392,6 @@ void tgl_do_mark_read(const tgl_input_peer_t& id, const std::function<void(bool 
     }
     tgl_do_messages_mark_read_encr(secret_chat, nullptr);
 }
-/* }}} */
 
 /* {{{ Get history */
 class query_get_history: public query
