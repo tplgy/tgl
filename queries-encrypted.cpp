@@ -553,7 +553,7 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
 };
 
-void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secret_chat, int32_t max_time,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
 {
     auto q = std::make_shared<query_mark_read_encr>(secret_chat, callback);
@@ -561,7 +561,7 @@ void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secr
     q->out_i32(CODE_input_encrypted_chat);
     q->out_i32(secret_chat->id.peer_id);
     q->out_i64(secret_chat->access_hash);
-    q->out_i32(time(0) - 10); // FIXME
+    q->out_i32(max_time); // FIXME
     q->execute(tgl_state::instance()->working_dc());
 }
 

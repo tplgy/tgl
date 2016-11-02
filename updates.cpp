@@ -290,22 +290,10 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         }
         break;
     case CODE_update_encrypted_messages_read:
-#if 0
         {
-          tgl_peer_id_t id = tgl_peer_id_enc_chat(DS_LVAL(DS_U->chat_id));
-          tgl_peer_t* P = tgl_peer_get(id);
-
-          if (P && P->last) {
-            struct tgl_message* M = P->last;
-            while (M && (!(M->flags & TGLMF_OUT) || (M->flags & TGLMF_UNREAD))) {
-              if (M->flags & TGLMF_OUT) {
-                bl_do_edit_message_encr(tgl_state::instance(), &M->permanent_id, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, M->flags & ~TGLMF_UNREAD);
-              }
-              M = M->next;
-            }
-          }
+            tgl_peer_id_t id(tgl_peer_type::enc_chat, DS_LVAL(DS_U->chat_id));
+            tgl_state::instance()->callback()->messages_mark_read_out(id, DS_LVAL(DS_U->max_date));
         }
-#endif
         break;
     case CODE_update_chat_participant_add:
         {

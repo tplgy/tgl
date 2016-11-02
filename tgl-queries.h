@@ -69,7 +69,7 @@ void tgl_do_forward_message(const tgl_input_peer_t& from_id, const tgl_input_pee
 void tgl_do_forward_messages(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id, const std::vector<int64_t>& message_ids, bool post_as_channel_message,
         const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback);
 
-void tgl_do_mark_read(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback);
+void tgl_do_mark_read(const tgl_input_peer_t& id, int32_t max_id_or_time, const std::function<void(bool success)>& callback);
 
 // sends contact to another user.
 // This contact may be or may not be telegram user

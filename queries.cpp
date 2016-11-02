@@ -1348,37 +1348,9 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_messages_mark_read(const tgl_input_peer_t& id, int max_id, int offset,
-        const std::function<void(bool)>& callback)
-{
-    //if (tgl_state::instance()->is_bot) { return; }
-    if (id.peer_type == tgl_peer_type::enc_chat) {
-        //tgl_do_mark_read(id, callback, callback_extra);
-        return;
-    }
-
-    if (id.peer_type != tgl_peer_type::channel) {
-        auto q = std::make_shared<query_mark_read>(id, max_id, callback);
-        q->out_i32(CODE_messages_read_history);
-        q->out_input_peer(id);
-        q->out_i32(max_id);
-        //q->out_i32(offset);
-        q->execute(tgl_state::instance()->working_dc());
-    } else {
-        auto q = std::make_shared<query_mark_read>(id, max_id, callback);
-        q->out_i32(CODE_channels_read_history);
-        q->out_i32(CODE_input_channel);
-        q->out_i32(id.peer_id);
-        q->out_i64(id.access_hash);
-        q->out_i32(max_id);
-        q->execute(tgl_state::instance()->working_dc());
-    }
-}
-
-void tgl_do_mark_read(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback)
+void tgl_do_message_mark_read_encrypted(const tgl_input_peer_t& id, int32_t max_time, const std::function<void(bool success)>& callback)
 {
     if (id.peer_type == tgl_peer_type::user || id.peer_type == tgl_peer_type::chat || id.peer_type == tgl_peer_type::channel) {
-        tgl_do_messages_mark_read(id, 0, 0, callback);
         return;
     }
     assert(id.peer_type == tgl_peer_type::enc_chat);
@@ -1390,7 +1362,34 @@ void tgl_do_mark_read(const tgl_input_peer_t& id, const std::function<void(bool 
         }
         return;
     }
-    tgl_do_messages_mark_read_encr(secret_chat, nullptr);
+    tgl_do_messages_mark_read_encr(secret_chat, max_time, nullptr);
+}
+
+void tgl_do_mark_read(const tgl_input_peer_t& id, int max_id_or_time,
+        const std::function<void(bool)>& callback)
+{
+    //if (tgl_state::instance()->is_bot) { return; }
+    if (id.peer_type == tgl_peer_type::enc_chat) {
+        tgl_do_message_mark_read_encrypted(id, max_id_or_time, callback);
+        return;
+    }
+
+    if (id.peer_type != tgl_peer_type::channel) {
+        auto q = std::make_shared<query_mark_read>(id, max_id_or_time, callback);
+        q->out_i32(CODE_messages_read_history);
+        q->out_input_peer(id);
+        q->out_i32(max_id_or_time);
+        //q->out_i32(offset);
+        q->execute(tgl_state::instance()->working_dc());
+    } else {
+        auto q = std::make_shared<query_mark_read>(id, max_id_or_time, callback);
+        q->out_i32(CODE_channels_read_history);
+        q->out_i32(CODE_input_channel);
+        q->out_i32(id.peer_id);
+        q->out_i64(id.access_hash);
+        q->out_i32(max_id_or_time);
+        q->execute(tgl_state::instance()->working_dc());
+    }
 }
 
 /* {{{ Get history */
