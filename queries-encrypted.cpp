@@ -520,16 +520,20 @@ void tgl_do_messages_delete_encr(const std::shared_ptr<tgl_secret_chat>& secret_
 class query_mark_read_encr: public query
 {
 public:
-    query_mark_read_encr(
+    query_mark_read_encr(int32_t max_time,
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
         : query("read encrypted", TYPE_TO_PARAM(bool))
+        , m_max_time(max_time)
         , m_secret_chat(secret_chat)
         , m_callback(callback)
     { }
 
     virtual void on_answer(void*) override
     {
+        if (tgl_state::instance()->callback()) {
+            tgl_state::instance()->callback()->messages_mark_read_in(tgl_peer_id_t::from_input_peer(m_secret_chat->id), m_max_time);
+        }
         if (m_callback) {
             m_callback(true, nullptr);
         }
@@ -549,6 +553,7 @@ public:
     }
 
 private:
+    int32_t m_max_time;
     std::shared_ptr<tgl_secret_chat> m_secret_chat;
     std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
 };
@@ -556,7 +561,7 @@ private:
 void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secret_chat, int32_t max_time,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
 {
-    auto q = std::make_shared<query_mark_read_encr>(secret_chat, callback);
+    auto q = std::make_shared<query_mark_read_encr>(max_time, secret_chat, callback);
     q->out_i32(CODE_messages_read_encrypted_history);
     q->out_i32(CODE_input_encrypted_chat);
     q->out_i32(secret_chat->id.peer_id);

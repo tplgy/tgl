@@ -1597,6 +1597,7 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
         }
     }
 
+    message->set_unread(true);
     tgl_update_secret_chat(secret_chat, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, ttl_ptr, &layer, our_in_seq_no_ptr);
     if (action_type == tgl_message_action_type::none) {
         tgl_state::instance()->callback()->new_messages({message});
