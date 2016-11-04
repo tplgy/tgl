@@ -184,6 +184,8 @@ public:
 
     void cancel_upload(int64_t message_id);
 
+    bool is_uploading_file(int64_t message_id) const;
+
 private:
     friend class query_download;
     friend class query_upload_part;

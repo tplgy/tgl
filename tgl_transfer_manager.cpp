@@ -1215,3 +1215,8 @@ void tgl_transfer_manager::cancel_upload(int64_t message_id)
     it->second->cancelled = true;
     TGL_DEBUG("upload " << message_id << " has been cancelled");
 }
+
+bool tgl_transfer_manager::is_uploading_file(int64_t message_id) const
+{
+    return m_uploads.count(message_id);
+}
