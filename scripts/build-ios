@@ -47,7 +47,6 @@ INSTALL_PREFIX = os.path.join(DEV_DIR, "staging-ios", "release" if args.release 
 if args.clean and os.path.exists(BUILD_DIR):
     shutil.rmtree(BUILD_DIR)
 
-MIN_IOS_SDK_VERSION = "10.0"
 if args.architecture == "x86_64" or args.architecture == "i386":
     IS_SIMULATOR = True
 else:
