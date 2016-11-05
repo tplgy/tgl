@@ -43,9 +43,6 @@ DEV_DIR = build_lib.get_dev_dir()
 MAIN_DIR = build_lib.get_main_dir()
 BUILD_DIR = os.path.join(MAIN_DIR, "build-ios", "release" if args.release else "debug", args.architecture)
 INSTALL_PREFIX = os.path.join(DEV_DIR, "staging-ios", "release" if args.release else "debug", args.architecture)
-DJINNI_MODULE_PATH = os.path.join(DEV_DIR, "djinni_modules")
-if not os.path.exists(DJINNI_MODULE_PATH):
-    os.makedirs(DJINNI_MODULE_PATH)
 
 if args.clean and os.path.exists(BUILD_DIR):
     shutil.rmtree(BUILD_DIR)
@@ -61,44 +58,19 @@ if IS_SIMULATOR:
     SDK = subprocess.check_output("xcrun --sdk iphonesimulator --show-sdk-path", shell=True).rstrip()
     if args.architecture == "i386":
         COMPILER_ARCH = "i386"
-        CFLAGS = "-arch i386"
-        LDFLAGS="-arch i386"
     else:
         COMPILER_ARCH = "x86_64"
-        CFLAGS = "-arch x86_64"
-        LDFLAGS = "-arch x86_64"
-    if args.release:
-        CFLAGS += " -O2"
-    else:
-        CFLAGS += " -O0"
-    CFLAGS += " -isysroot " + SDK + " -mios-simulator-version-min=" + MIN_IOS_SDK_VERSION
-    LDFLAGS += " -isysroot " + SDK + " -mios-simulator-version-min=" + MIN_IOS_SDK_VERSION
 else:
     BASEDIR = os.path.join(subprocess.check_output("xcrun --sdk iphoneos --show-sdk-platform-path", shell=True).rstrip(), "Developer")
     SDK = subprocess.check_output("xcrun --sdk iphoneos --show-sdk-path", shell=True).rstrip()
     if args.architecture == "armv7":
         COMPILER_ARCH = "armv7"
-        CFLAGS = "-mthumb -arch armv7"
-        LDFLAGS = "-mthumb -arch armv7"
     else:
         COMPILER_ARCH = "arm64"
-        CFLAGS = "-arch arm64"
-        LDFLAGS = "-arch arm64"
-    if args.release:
-        CFLAGS += " -Oz"
-    else:
-        CFLAGS += " -O0"
-    CFLAGS += " -isysroot " + SDK + " -mios-version-min=" + MIN_IOS_SDK_VERSION
-    LDFLAGS += " -isysroot " + SDK + " -mios-version-min=" + MIN_IOS_SDK_VERSION
-
-ENV_VARS = "PATH=" + os.path.join(BASEDIR, "/usr/bin") + ":" + os.path.join(BASEDIR, "/usr/sbin") + ":" + os.environ["PATH"] + \
-        " CFLAGS=\"" + CFLAGS + "\" CXXFLAGS=\"" + CFLAGS + "\" LDFLAGS=\"" + LDFLAGS + "\""
 
 os.environ["CMAKE_PREFIX_PATH"] = INSTALL_PREFIX + os.pathsep + os.getenv("CMAKE_PREFIX_PATH", "")
 
-CMAKE_COMMAND = ENV_VARS
-CMAKE_COMMAND += " PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR=" + os.path.join(INSTALL_PREFIX, "lib", "pkgconfig")
-CMAKE_COMMAND += " cmake -G Ninja"
+CMAKE_COMMAND = "cmake -G Ninja"
 CMAKE_COMMAND += " -D CMAKE_C_COMPILER_WORKS=ON"
 CMAKE_COMMAND += " -D CMAKE_CXX_COMPILER_WORKS=ON"
 CMAKE_COMMAND += " -D CMAKE_OSX_SYSROOT=" + SDK
