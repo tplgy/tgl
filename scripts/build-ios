@@ -47,10 +47,13 @@ INSTALL_PREFIX = os.path.join(DEV_DIR, "staging-ios", "release" if args.release 
 if args.clean and os.path.exists(BUILD_DIR):
     shutil.rmtree(BUILD_DIR)
 
+MIN_IOS_SDK_VERSION = "10.0"
 if args.architecture == "x86_64" or args.architecture == "i386":
     IS_SIMULATOR = True
+    VERSION_FLAGS = "-mios-simulator-version-min=" + MIN_IOS_SDK_VERSION
 else:
     IS_SIMULATOR = False
+    VERSION_FLAGS = "-mios-version-min=" + MIN_IOS_SDK_VERSION
 
 if IS_SIMULATOR:
     BASEDIR = os.path.join(subprocess.check_output("xcrun --sdk iphonesimulator --show-sdk-platform-path", shell=True).rstrip(), "Developer")
@@ -69,16 +72,18 @@ else:
 
 os.environ["CMAKE_PREFIX_PATH"] = INSTALL_PREFIX + os.pathsep + os.getenv("CMAKE_PREFIX_PATH", "")
 
-CMAKE_COMMAND = "cmake -G Ninja"
-CMAKE_COMMAND += " -D CMAKE_C_COMPILER_WORKS=ON"
-CMAKE_COMMAND += " -D CMAKE_CXX_COMPILER_WORKS=ON"
-CMAKE_COMMAND += " -D CMAKE_OSX_SYSROOT=" + SDK
-CMAKE_COMMAND += " -D CMAKE_LIBRARY_PATH=" + os.path.join(SDK, "usr", "lib")
-CMAKE_COMMAND += " -D CMAKE_OSX_ARCHITECTURES=" + COMPILER_ARCH
-CMAKE_COMMAND += " -D CMAKE_INSTALL_PREFIX=" + INSTALL_PREFIX
-CMAKE_COMMAND += " -D ENABLE_ASAN=" + ("1" if args.asan else "0")
-CMAKE_COMMAND += " -D ENABLE_TSAN=" + ("1" if args.tsan else "0")
-CMAKE_COMMAND += " -D CMAKE_BUILD_TYPE=" + ("RelWithDebInfo" if args.release else "Debug")
+CMAKE_COMMAND = "cmake -GNinja"
+CMAKE_COMMAND += " -DCMAKE_C_COMPILER_WORKS=ON"
+CMAKE_COMMAND += " -DCMAKE_CXX_COMPILER_WORKS=ON"
+CMAKE_COMMAND += " -DCMAKE_OSX_SYSROOT=" + SDK
+CMAKE_COMMAND += " -DCMAKE_LIBRARY_PATH=" + os.path.join(SDK, "usr", "lib")
+CMAKE_COMMAND += " -DCMAKE_OSX_ARCHITECTURES=" + COMPILER_ARCH
+CMAKE_COMMAND += " -DCMAKE_INSTALL_PREFIX=" + INSTALL_PREFIX
+CMAKE_COMMAND += " -DCMAKE_C_FLAGS=" + VERSION_FLAGS
+CMAKE_COMMAND += " -DCMAKE_CXX_FLAGS=" + VERSION_FLAGS
+CMAKE_COMMAND += " -DENABLE_ASAN=" + ("1" if args.asan else "0")
+CMAKE_COMMAND += " -DENABLE_TSAN=" + ("1" if args.tsan else "0")
+CMAKE_COMMAND += " -DCMAKE_BUILD_TYPE=" + ("RelWithDebInfo" if args.release else "Debug")
 
 def exit_if_failed(return_code = 1, msg = "Forget to build dependencies?"):
     if return_code != 0:
