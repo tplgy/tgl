@@ -1683,6 +1683,46 @@ void tgl_do_set_username(const std::string& username, const std::function<void(b
     q->out_string(username.c_str(), username.length());
     q->execute(tgl_state::instance()->working_dc());
 }
+
+class query_check_username: public query
+{
+public:
+    explicit query_check_username(const std::function<void(int)>& callback)
+        : query("check username", TYPE_TO_PARAM(bool))
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void* D) override
+    {
+        auto value = static_cast<tl_ds_bool*>(D);
+        if (m_callback) {
+            // 0: user name valid and available
+            // 1: user name is already taken
+            m_callback(value->magic == CODE_bool_true ? 0 : 1);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_code);
+        if (m_callback) {
+            // 2: user name invalid
+            m_callback(2);
+        }
+        return 0;
+    }
+
+private:
+    std::function<void(int)> m_callback;
+};
+
+void tgl_do_check_username(const std::string& username, const std::function<void(int result)>& callback)
+{
+    auto q = std::make_shared<query_check_username>(callback);
+    q->out_i32(CODE_account_check_username);
+    q->out_string(username.c_str(), username.length());
+    q->execute(tgl_state::instance()->working_dc());
+}
 /* }}} */
 
 /* {{{ Contacts search */

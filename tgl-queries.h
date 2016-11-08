@@ -99,6 +99,9 @@ void tgl_do_send_broadcast(int num, tgl_peer_id_t peer_id[], const std::string& 
 void tgl_do_set_profile_name(const std::string& first_name, const std::string& last_name,
         const std::function<void(bool success)>& callback);
 
+// check if username is valid
+void tgl_do_check_username(const std::string& username, const std::function<void(int result)>& callback);
+
 // sets self username
 void tgl_do_set_username(const std::string& username, const std::function<void(bool success)>& callback);
 
