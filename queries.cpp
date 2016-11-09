@@ -1704,10 +1704,15 @@ public:
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_code);
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
         if (m_callback) {
-            // 2: user name invalid
-            m_callback(2);
+            if (error_code == 400) {
+                // user name invalid
+                m_callback(2);
+            } else if (error_code == 600) {
+                // not connected
+                m_callback(3);
+            }
         }
         return 0;
     }
