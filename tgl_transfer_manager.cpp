@@ -964,7 +964,13 @@ void tgl_transfer_manager::upload_profile_photo(const std::string& file_name, in
             document,
             [=](tgl_upload_status status, const std::shared_ptr<tgl_message>&, float) {
                 if (callback) {
-                    callback(status == tgl_upload_status::succeeded);
+                    if (status == tgl_upload_status::succeeded) {
+                        callback(true);
+                    } else if (status == tgl_upload_status::failed) {
+                        callback(false);
+                    } else if (status == tgl_upload_status::uploading) {
+                        // ignore uploading status
+                    }
                 }
             },
             read_callback,
