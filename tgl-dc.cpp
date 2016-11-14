@@ -24,8 +24,8 @@
 
 #include "mtproto-client.h"
 #include "queries.h"
-#include "tgl-net.h"
-#include "tgl-timer.h"
+#include "types/tgl_net.h"
+#include "types/tgl_timer.h"
 
 static const float SESSION_CLEANUP_TIMEOUT = 5.0;
 

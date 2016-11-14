@@ -49,13 +49,13 @@
 #include "structures.h"
 #include "tgl.h"
 #include "tgl-log.h"
-#include "tgl-timer.h"
 #include "tgl-queries.h"
 #include "tools.h"
 #include "types/tgl_chat.h"
 #include "types/tgl_update_callback.h"
 #include "types/tgl_peer_id.h"
 #include "types/tgl_privacy_rule.h"
+#include "types/tgl_timer.h"
 #include "updates.h"
 
 constexpr int32_t TGL_SCHEME_LAYER = 45;

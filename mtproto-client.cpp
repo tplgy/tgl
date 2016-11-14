@@ -47,10 +47,10 @@
 #include "structures.h"
 #include "tgl.h"
 #include "tgl-log.h"
-#include "tgl-net.h"
-#include "tgl-timer.h"
 #include "tools.h"
+#include "types/tgl_net.h"
 #include "types/tgl_rsa_key.h"
+#include "types/tgl_timer.h"
 #include "updates.h"
 
 #include <memory>
@@ -87,9 +87,51 @@ int mtproto_client::ready(const std::shared_ptr<tgl_connection>& c)
     return rpc_becomes_ready(c);
 }
 
-mtproto_client::execute_result mtproto_client::execute(const std::shared_ptr<tgl_connection>& c, int op, int len)
+mtproto_client::execute_result mtproto_client::try_rpc_execute(const std::shared_ptr<tgl_connection>& c)
 {
-    return rpc_execute(c, op, len);
+    while (true) {
+        if (c->in_bytes() < 1) {
+            return execute_result::ok;
+        }
+        unsigned len = 0;
+        ssize_t result = c->read_in_lookup(&len, 1);
+        TGL_ASSERT_UNUSED(result, result == 1);
+        if (len >= 1 && len <= 0x7e) {
+            if (c->in_bytes() < 1 + 4 * len) {
+                return execute_result::ok;
+            }
+        } else {
+            if (c->in_bytes() < 4) {
+                return execute_result::ok;
+            }
+            result = c->read_in_lookup(&len, 4);
+            TGL_ASSERT_UNUSED(result, result == 4);
+            len = (len >> 8);
+            if (c->in_bytes() < 4 + 4 * len) {
+                return execute_result::ok;
+            }
+            len = 0x7f;
+        }
+
+        if (len >= 1 && len <= 0x7e) {
+            unsigned t = 0;
+            result = c->read(&t, 1);
+            TGL_ASSERT_UNUSED(result, result == 1);
+            TGL_ASSERT(t == len);
+            TGL_ASSERT(len >= 1);
+        } else {
+            TGL_ASSERT(len == 0x7f);
+            result = c->read(&len, 4);
+            TGL_ASSERT_UNUSED(result, result == 4);
+            len = (len >> 8);
+            TGL_ASSERT(len >= 1);
+        }
+        len *= 4;
+        int op;
+        result = c->read_in_lookup(&op, 4);
+        TGL_ASSERT_UNUSED(result, result == 4);
+        return rpc_execute(c, op, len);
+    }
 }
 
 #define MAX_RESPONSE_SIZE        (1L << 24)

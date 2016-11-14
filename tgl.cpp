@@ -27,13 +27,13 @@
 #include "mtproto-client.h"
 #include "structures.h"
 #include "tgl_transfer_manager.h"
-#include "tgl-timer.h"
 #include "tgl-queries.h"
 #include "tools.h"
 #include "types/tgl_online_status_observer.h"
 #include "types/tgl_update_callback.h"
 #include "types/tgl_rsa_key.h"
 #include "types/tgl_secret_chat.h"
+#include "types/tgl_timer.h"
 #include "queries.h"
 
 #include <assert.h>

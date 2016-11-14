@@ -32,6 +32,8 @@ public:
     virtual void close() = 0;
     virtual ssize_t write(const void* data, size_t len) = 0;
     virtual ssize_t read(void* data, size_t len) = 0;
+    virtual ssize_t read_in_lookup(void* data, size_t len) = 0;
+    virtual size_t in_bytes() = 0;
     virtual void flush() = 0;
     virtual const std::weak_ptr<tgl_dc>& get_dc() const = 0;
     virtual const std::weak_ptr<tgl_session>& get_session() const = 0;
@@ -39,14 +41,14 @@ public:
     virtual ~tgl_connection() { }
 };
 
-class mtproto_client;
+class tgl_mtproto_client;
 
 class tgl_connection_factory {
 public:
     virtual std::shared_ptr<tgl_connection> create_connection(
             const std::weak_ptr<tgl_session>& session,
             const std::weak_ptr<tgl_dc>& dc,
-            const std::shared_ptr<mtproto_client>& client) = 0;
+            const std::shared_ptr<tgl_mtproto_client>& client) = 0;
 
     virtual ~tgl_connection_factory() { }
 };

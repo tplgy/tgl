@@ -19,10 +19,8 @@
               Vitaly Valtman 2013-2015
     Copyright Topology LP 2016
 */
-#ifndef __MTPROTO_CLIENT_H__
-#define __MTPROTO_CLIENT_H__
-
-#include "types/tgl_mtproto_client.h"
+#ifndef __TGL_MTPROTO_CLIENT_H__
+#define __TGL_MTPROTO_CLIENT_H__
 
 #include <memory>
 
@@ -30,21 +28,20 @@ class tgl_connection;
 struct tgl_dc;
 struct tgl_session;
 
-class mtproto_client: public tgl_mtproto_client
+class tgl_mtproto_client
 {
 public:
-    virtual int ready(const std::shared_ptr<tgl_connection>& c) override;
-    virtual execute_result try_rpc_execute(const std::shared_ptr<tgl_connection>& c) override;
+    enum class execute_result {
+        ok,
+        bad_connection,
+        bad_session,
+        bad_dc,
+    };
+
+    virtual int ready(const std::shared_ptr<tgl_connection>& c) = 0;
+    virtual execute_result try_rpc_execute(const std::shared_ptr<tgl_connection>& c) = 0;
+
+    virtual ~tgl_mtproto_client() { }
 };
-
-int64_t tglmp_encrypt_send_message(const std::shared_ptr<tgl_connection>& c,
-        const int32_t* msg, int msg_ints,
-        int64_t msg_id_override = 0, bool force_send = false, bool useful = false);
-void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& dc);
-void tglmp_regenerate_temp_auth_key(const std::shared_ptr<tgl_dc>& dc);
-
-void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& s, int64_t id);
-int tglmp_on_start();
-void tgls_free_pubkey();
 
 #endif

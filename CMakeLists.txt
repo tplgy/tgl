@@ -92,6 +92,7 @@ set(TYPES_HEADERS
     types/tgl_message_entity.h
     types/tgl_message_media.h
     types/tgl_message_action.h
+    types/tgl_mtproto_client.h
     types/tgl_secret_chat.h
     types/tgl_typing_status.h
     types/tgl_online_status.h
@@ -102,6 +103,8 @@ set(TYPES_HEADERS
     types/tgl_bot.h
     types/tgl_online_status_observer.h
     types/tgl_channel.h
+    types/tgl_net.h
+    types/tgl_timer.h
 )
 
 set(CRYPTO_HEADERS
@@ -124,11 +127,7 @@ set(HEADERS
     tgl.h
     tgl-dc.h
     tgl-log.h
-    tgl-net.h
-    tgl-net-asio.h
     tgl-queries.h
-    tgl-timer.h
-    tgl-timer-asio.h
     tgl_mime_type.h
     tgl_transfer_manager.h
     tools.h
@@ -153,7 +152,6 @@ set(SOURCES
     tgl.cpp
     tgl-dc.cpp
     tgl-log.cpp
-    tgl-net-asio.cpp
     tgl_mime_type.cpp
     tgl_transfer_manager.cpp
     tools.cpp

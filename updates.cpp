@@ -29,7 +29,6 @@
 #include "queries-encrypted.h"
 #include "structures.h"
 #include "tgl-log.h"
-#include "tgl-timer-asio.h"
 #include "types/tgl_update_callback.h"
 #include "types/tgl_secret_chat.h"
 

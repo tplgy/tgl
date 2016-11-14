@@ -25,10 +25,11 @@
 #include "tgl.h"
 #include "types/tgl_channel.h"
 #include "types/tgl_chat.h"
-#include "types/tgl_user.h"
-#include "types/tgl_typing_status.h"
-#include "types/tgl_privacy_rule.h"
 #include "types/tgl_message.h"
+#include "types/tgl_net.h"
+#include "types/tgl_privacy_rule.h"
+#include "types/tgl_typing_status.h"
+#include "types/tgl_user.h"
 
 #include <string>
 #include <vector>
@@ -263,5 +264,7 @@ void tgl_do_start_bot(const tgl_peer_id_t& bot, const tgl_peer_id_t& chat, const
 void tgl_do_logout(const std::function<void(bool success)>& callback);
 
 void tgl_do_get_privacy(std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)> callback);
+
+void tgl_do_send_ping(const std::shared_ptr<tgl_connection>& c);
 
 #endif
