@@ -25,8 +25,6 @@
 #include <memory>
 
 class tgl_connection;
-struct tgl_dc;
-struct tgl_session;
 
 class tgl_mtproto_client
 {
