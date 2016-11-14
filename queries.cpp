@@ -77,7 +77,7 @@ void query::clear_timers()
 
 void query::alarm()
 {
-    TGL_DEBUG("alarm query #" << m_msg_id << " (type '" << m_name << "')");
+    TGL_DEBUG("alarm query #" << msg_id() << " (type '" << m_name << "')");
     clear_timers();
 
     if (!check_connectivity()) {
@@ -101,7 +101,7 @@ void query::alarm()
         mtprotocol_serializer s;
         s.out_i32(CODE_msg_container);
         s.out_i32(1);
-        s.out_i64(m_msg_id);
+        s.out_i64(msg_id());
         s.out_i32(m_seq_no);
         s.out_i32(m_serializer->char_size());
         s.out_i32s(m_serializer->i32_data(), m_serializer->i32_size());
@@ -112,18 +112,18 @@ void query::alarm()
         timeout_within(timeout_interval());
     } else if (!pending && m_dc->session) {
         m_ack_received = false;
-        if (m_msg_id) {
+        if (msg_id()) {
             tgl_state::instance()->remove_query(shared_from_this());
         }
         m_session = m_dc->session;
-        int64_t old_id = m_msg_id;
+        int64_t old_id = msg_id();
         m_msg_id = tglmp_encrypt_send_message(m_session->c, m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
         if (m_msg_id == -1) {
             m_msg_id = 0;
             handle_error(400, "client failed to send message");
             return;
         }
-        TGL_NOTICE("resent query #" << old_id << " as #" << m_msg_id << " of size " << m_serializer->char_size() << " to DC " << m_dc->id);
+        TGL_NOTICE("resent query #" << old_id << " as #" << msg_id() << " of size " << m_serializer->char_size() << " to DC " << m_dc->id);
         tgl_state::instance()->add_query(shared_from_this());
         m_session_id = m_session->session_id;
         auto dc = m_session->dc.lock();
@@ -249,7 +249,7 @@ void query::execute(const std::shared_ptr<tgl_dc>& dc, execution_option option)
         tgl_state::instance()->add_query(shared_from_this());
         timeout_within(timeout_interval());
 
-        TGL_DEBUG("sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << ": #" << m_msg_id);
+        TGL_DEBUG("sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_dc->id << ": #" << msg_id());
     }
 }
 
@@ -308,7 +308,7 @@ bool query::execute_after_pending()
         m_session_id = 0;
     }
 
-    TGL_DEBUG("sent pending query \"" << m_name << "\" (" << m_msg_id << ") of size " << m_serializer->char_size() << " to DC " << m_dc->id);
+    TGL_DEBUG("sent pending query \"" << m_name << "\" (" << msg_id() << ") of size " << m_serializer->char_size() << " to DC " << m_dc->id);
 
     timeout_within(timeout_interval());
 
@@ -446,7 +446,7 @@ static int get_dc_from_migration(const std::string& migration_error_string)
 
 int query::handle_error(int error_code, const std::string& error_string)
 {
-    if (m_msg_id) {
+    if (msg_id()) {
         tgl_state::instance()->remove_query(shared_from_this());
     }
     clear_timers();
@@ -540,7 +540,7 @@ int query::handle_error(int error_code, const std::string& error_string)
     }
 
     if (error_handled) {
-        TGL_NOTICE("error for query #" << m_msg_id << " error:" << error_code << " " << error_string << " (HANDLED)");
+        TGL_NOTICE("error for query #" << msg_id() << " error:" << error_code << " " << error_string << " (HANDLED)");
         return 0;
     }
 
@@ -627,7 +627,7 @@ int query::handle_result(tgl_in_buffer* in)
         in->end = in->ptr + total_out / 4;
     }
 
-    TGL_DEBUG("result for query #" << m_msg_id << ". Size " << (long)4 * (in->end - in->ptr) << " bytes");
+    TGL_DEBUG("result for query #" << msg_id() << ". Size " << (long)4 * (in->end - in->ptr) << " bytes");
 
     tgl_in_buffer skip_in = *in;
     if (skip_type_any(&skip_in, &m_type) < 0) {

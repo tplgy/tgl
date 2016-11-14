@@ -99,7 +99,6 @@ void tgl_dc::reset_temp_authorization()
 
 void tgl_dc::send_pending_queries()
 {
-    TGL_NOTICE("sending pending queries for DC " << id);
     std::list<std::shared_ptr<query>> queries = m_pending_queries; // make a copy since queries can get re-enqueued
     for (std::shared_ptr<query> q : queries) {
         if (q->execute_after_pending()) {
