@@ -361,6 +361,7 @@ void query::ack()
     }
 
     m_ack_received = true;
+    timeout_within(timeout_interval());
 
     // FIXME: This a workaround to the weird server behavour. The server
     // replies a logout query with ack and then closes the connection.
@@ -597,7 +598,6 @@ int tglq_query_result(tgl_in_buffer* in, int64_t id)
 {
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (!q) {
-        TGL_DEBUG("result for unknown query #" << id);
         in->ptr = in->end;
         return 0;
     }
@@ -1341,6 +1341,11 @@ public:
             m_callback(false);
         }
         return 0;
+    }
+
+    virtual double timeout_interval() const override
+    {
+        return 120;
     }
 
 private:
@@ -3615,6 +3620,11 @@ public:
             m_callback(false);
         }
         return 0;
+    }
+
+    virtual double timeout_interval() const override
+    {
+        return 120;
     }
 
 private:

@@ -129,11 +129,13 @@ public:
     virtual void on_timeout() { }
     virtual void on_disconnected();
 
-    virtual double timeout_interval() const { return 6.0; }
+    virtual double timeout_interval() const { return m_ack_received ? 120.0 : 12.0; }
     virtual bool should_retry_on_timeout() { return true; }
     virtual bool should_retry_after_recover_from_error() { return true; }
 
     virtual void will_be_pending() { }
+
+    bool ack_received() const { return m_ack_received; }
 
 protected:
     void timeout_within(double seconds);
