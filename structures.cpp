@@ -402,6 +402,7 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(const tl_ds_chat* DS_C, bool inv
 
     std::shared_ptr<tgl_chat> chat = std::make_shared<tgl_chat>();
     chat->id = chat_id;
+    chat->forbidden = DS_C->magic == CODE_chat_forbidden;
 
     update_chat_flags(chat, DS_LVAL(DS_C->flags));
 
@@ -527,6 +528,7 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel(const tl_ds_chat* DS_C, bo
 
     std::shared_ptr<tgl_channel> channel = std::make_shared<tgl_channel>();
     channel->id = chat_id;
+    channel->forbidden = DS_C->magic == CODE_channel_forbidden;
 
     update_channel_flags(channel, DS_LVAL(DS_C->flags));
 

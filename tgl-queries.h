@@ -267,4 +267,8 @@ void tgl_do_get_privacy(std::function<void(bool, const std::vector<std::pair<tgl
 
 void tgl_do_send_ping(const std::shared_ptr<tgl_connection>& c);
 
+void tgl_do_leave_channel(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback);
+
+void tgl_do_delete_channel(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback);
+
 #endif

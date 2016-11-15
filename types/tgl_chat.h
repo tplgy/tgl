@@ -66,6 +66,7 @@ struct tgl_chat {
     bool verified;
     bool megagroup;
     bool restricted;
+    bool forbidden;
     std::string username;
     tgl_file_location photo_big;
     tgl_file_location photo_small;
@@ -84,6 +85,7 @@ struct tgl_chat {
         , verified(false)
         , megagroup(false)
         , restricted(false)
+        , forbidden(false)
     { }
 };
 

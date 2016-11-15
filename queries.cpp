@@ -2224,8 +2224,6 @@ void tgl_do_rename_channel(const tgl_input_peer_t& id, const char* name, int nam
 }
 /* }}} */
 
- /* {{{ Join channel */
-
 void tgl_do_join_channel(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_send_msgs>(callback);
@@ -2236,9 +2234,6 @@ void tgl_do_join_channel(const tgl_input_peer_t& id, const std::function<void(bo
     q->out_i64(id.access_hash);
     q->execute(tgl_state::instance()->working_dc());
 }
-/* }}} */
-
-/* {{{ Leave channel */
 
 void tgl_do_leave_channel(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback)
 {
@@ -2250,9 +2245,24 @@ void tgl_do_leave_channel(const tgl_input_peer_t& id, const std::function<void(b
     q->out_i64(id.access_hash);
     q->execute(tgl_state::instance()->working_dc());
 }
-/* }}} */
 
-/* {{{ channel change about */
+void tgl_do_delete_channel(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback)
+{
+    std::shared_ptr<messages_send_extra> extra = std::make_shared<messages_send_extra>();
+    extra->multi = true;
+    auto q = std::make_shared<query_send_msgs>(extra, [=](bool success, const std::vector<std::shared_ptr<tgl_message>>&) {
+        if (callback) {
+            callback(success);
+        }
+    });
+    q->out_i32(CODE_channels_delete_channel);
+    assert(channel_id.peer_type == tgl_peer_type::channel);
+    q->out_i32(CODE_input_channel);
+    q->out_i32(channel_id.peer_id);
+    q->out_i64(channel_id.access_hash);
+    q->execute(tgl_state::instance()->working_dc());
+}
+
 class query_channels_set_about: public query
 {
 public:
@@ -3194,7 +3204,7 @@ public:
                     m_callback(true);
                 }
             } else {
-                tgl_do_get_channel_difference(m_channel->id.peer_id, m_callback);
+                tgl_do_get_channel_difference(m_channel->id, m_callback);
             }
         }
     }
@@ -3213,10 +3223,10 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-void tgl_do_get_channel_difference(int32_t id, const std::function<void(bool success)>& callback)
+void tgl_do_get_channel_difference(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback)
 {
     std::shared_ptr<struct tgl_channel> channel = std::make_shared<struct tgl_channel>();
-    channel->id = tgl_input_peer_t(tgl_peer_type::channel, id, 0); // FIXME: get access_hash correct.
+    channel->id = channel_id;
 
     if (!channel->pts) {
         if (callback) {
@@ -3227,7 +3237,7 @@ void tgl_do_get_channel_difference(int32_t id, const std::function<void(bool suc
     //get_difference_active = 1;
     //difference_got = 0;
     if (channel->diff_locked) {
-        TGL_WARNING("channel " << id << " diff locked");
+        TGL_WARNING("channel " << channel->id.peer_id << " diff locked");
         if (callback) {
             callback(false);
         }

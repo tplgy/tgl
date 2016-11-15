@@ -381,9 +381,10 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
     case CODE_update_read_messages_contents:
         break;
     case CODE_update_channel_too_long:
-        tgl_do_get_channel_difference(DS_LVAL(DS_U->channel_id), nullptr);
+        tgl_do_get_channel_difference(tgl_input_peer_t(tgl_peer_type::channel, DS_LVAL(DS_U->channel_id), 0), nullptr);
         break;
     case CODE_update_channel:
+        tgl_do_get_channel_difference(tgl_input_peer_t(tgl_peer_type::channel, DS_LVAL(DS_U->channel_id), 0), nullptr);
         break;
     case CODE_update_channel_group:
         break;

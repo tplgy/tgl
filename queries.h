@@ -167,7 +167,7 @@ private:
 
 struct messages_send_extra {
     bool multi = false;
-    int64_t id;
+    int64_t id = 0;
     int count = 0;
     std::vector<int64_t> message_ids;
 };
@@ -201,7 +201,7 @@ double get_double_time(void);
 
 void tgl_do_bind_temp_key(const std::shared_ptr<tgl_dc>& dc, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id);
 void tgl_do_get_difference(bool sync_from_start, const std::function<void(bool success)>& callback);
-void tgl_do_get_channel_difference(int32_t id, const std::function<void(bool success)>& callback);
+void tgl_do_get_channel_difference(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback);
 void tgl_do_lookup_state();
 void tgl_do_help_get_config_dc(const std::shared_ptr<tgl_dc>& dc);
 void tgl_do_set_dc_configured(const std::shared_ptr<tgl_dc>& dc, bool success);
