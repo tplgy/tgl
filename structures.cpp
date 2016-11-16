@@ -539,7 +539,6 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel(const tl_ds_chat* DS_C, bo
 
     channel->title = DS_STDSTR(DS_C->title);
     channel->username = DS_STDSTR(DS_C->username);
-    channel->participants_count = DS_LVAL(DS_C->participants_count);
     channel->date = DS_LVAL(DS_C->date);
 
     if (invoke_callback) {
@@ -575,6 +574,7 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(const tl_ds_messages_
     std::shared_ptr<tgl_channel> channel = std::make_shared<tgl_channel>();
     channel->id = channel_id;
     channel->about = DS_STDSTR(DS_CF->about);
+    channel->participants_count = DS_LVAL(DS_CF->participants_count);
 
     if (DS_CF->chat_photo && DS_CF->chat_photo->sizes && *DS_CF->chat_photo->sizes->cnt > 1) {
         channel->photo_big = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[1]->location);
@@ -583,7 +583,7 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(const tl_ds_messages_
         channel->photo_small = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[0]->location);
     }
 
-    tgl_state::instance()->callback()->channel_update_description(channel->id.peer_id, channel->about);
+    tgl_state::instance()->callback()->channel_update_info(channel->id.peer_id, channel->about, channel->participants_count);
 
     return channel;
 }
