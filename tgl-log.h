@@ -39,26 +39,39 @@ using tgl_log_function = std::function<void(const std::string& log, tgl_log_leve
 void tgl_init_log(const tgl_log_function& log_function, tgl_log_level level);
 void tgl_log(const std::string& str, tgl_log_level level);
 
+constexpr int32_t basename_index(const char* const path, const int32_t index = 0, const int32_t slash_index = -1) {
+    return path[index]
+        ? (path[index] == '/' ? basename_index(path, index + 1, index) : basename_index(path, index + 1, slash_index))
+        : (slash_index + 1);
+}
+
+#define STRINGIZE_DETAIL(x) #x
+#define STRINGIZE(x) STRINGIZE_DETAIL(x)
+
+#define __FILELINE__ ({ static const int32_t basename_idx = basename_index(__FILE__); \
+        static_assert (basename_idx >= 0, "compile-time basename"); \
+        __FILE__ ":" STRINGIZE(__LINE__) + basename_idx; })
+
 #define TGL_CRASH() do { *reinterpret_cast<int*>(0xbadbeef) = 0; abort(); } while (false)
 
 #ifndef NDEBUG
 #define TGL_DEBUG(X) do { std::ostringstream str_stream; \
-                    str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
+                    str_stream << "[" << __FILELINE__ << "] [" << __FUNCTION__ << "]" << X ; \
                     tgl_log(str_stream.str(), tgl_log_level::level_debug);} while (false)
 #else
 #define TGL_DEBUG(X)
 #endif
 
 #define TGL_NOTICE(X) do { std::ostringstream str_stream; \
-                    str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
+                    str_stream << "[" << __FILELINE__ << "] [" << __FUNCTION__ << "]" << X ; \
                     tgl_log(str_stream.str(), tgl_log_level::level_notice);} while (false)
 
 #define TGL_WARNING(X) do { std::ostringstream str_stream; \
-                    str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
+                    str_stream << "[" << __FILELINE__ << "] [" << __FUNCTION__ << "]" << X ; \
                     tgl_log(str_stream.str(), tgl_log_level::level_warning);} while (false)
 
 #define TGL_ERROR(X) do { std::ostringstream str_stream; \
-                    str_stream << "[" << __FILE__ << ":" << __LINE__ << "] [" << __FUNCTION__ << "]" << X ; \
+                    str_stream << "[" << __FILELINE__ << "] [" << __FUNCTION__ << "]" << X ; \
                     tgl_log(str_stream.str(), tgl_log_level::level_error);} while (false)
 
 
