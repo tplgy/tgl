@@ -130,7 +130,10 @@ mtproto_client::execute_result mtproto_client::try_rpc_execute(const std::shared
         int op;
         result = c->read_in_lookup(&op, 4);
         TGL_ASSERT_UNUSED(result, result == 4);
-        return rpc_execute(c, op, len);
+        auto exec_result = rpc_execute(c, op, len);
+        if (exec_result != mtproto_client::execute_result::ok) {
+            return exec_result;
+        }
     }
 }
 
