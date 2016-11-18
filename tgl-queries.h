@@ -273,4 +273,7 @@ void tgl_do_leave_channel(const tgl_input_peer_t& channel_id, const std::functio
 
 void tgl_do_delete_channel(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback);
 
+void tgl_do_channel_invite_user(const tgl_input_peer_t& channel_id, const std::vector<tgl_input_peer_t>& user_ids,
+        const std::function<void(bool success)>& callback);
+
 #endif
