@@ -263,6 +263,8 @@ void tgl_do_start_bot(const tgl_peer_id_t& bot, const tgl_peer_id_t& chat, const
 
 void tgl_do_logout(const std::function<void(bool success)>& callback);
 
+void tgl_do_set_phone_number(const std::string& phonenumber, const std::function<void(bool success)>& callback);
+
 void tgl_do_get_privacy(std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)> callback);
 
 void tgl_do_send_ping(const std::shared_ptr<tgl_connection>& c);
