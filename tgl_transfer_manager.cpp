@@ -254,6 +254,16 @@ public:
         return 0;
     }
 
+    virtual double timeout_interval() const override
+    {
+        // We upload part of size 512KB. If the user has 512Kbps upload
+        // speed that would be at least 8 seconds. Considering not everyone gets
+        // full claimed speed we double the time needed for the speeed of 512Kbps.
+        // It turns out the time is 16 seconds. And then we add a little bit of
+        // offset of 4 seconds.
+        return 20;
+    }
+
     const tgl_upload_callback& callback() const
     {
         return m_callback;
