@@ -513,7 +513,7 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
     if (u->as_photo) {
         q->out_i32(CODE_input_media_uploaded_photo);
     } else {
-        if (u->thumb_id > 0) {
+        if (u->thumb_id != 0) {
             q->out_i32(CODE_input_media_uploaded_thumb_document);
         } else {
             q->out_i32(CODE_input_media_uploaded_document);
@@ -535,7 +535,7 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
     }
 
     if (!u->as_photo) {
-        if (u->thumb_id > 0) {
+        if (u->thumb_id != 0) {
             q->out_i32(CODE_input_file);
             q->out_i64(u->thumb_id);
             q->out_i32(1);
@@ -853,7 +853,9 @@ void tgl_transfer_manager::upload_thumb(const std::shared_ptr<tgl_upload>& u,
     }
 
     auto q = std::make_shared<query_upload_part>(this, u, callback, read_callback, done_callback);
-    u->thumb_id = tgl_random<int64_t>();
+    while (u->thumb_id == 0) {
+        u->thumb_id = tgl_random<int64_t>();
+    }
     q->out_i32(CODE_upload_save_file_part);
     q->out_i64(u->thumb_id);
     q->out_i32(0);
