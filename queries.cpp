@@ -3289,7 +3289,7 @@ void tgl_do_add_user_to_chat(const tgl_peer_id_t& chat_id, const tgl_input_peer_
     q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_del_user_from_chat(int32_t chat_id, const tgl_input_peer_t& user_id,
+void tgl_do_delete_user_from_chat(int32_t chat_id, const tgl_input_peer_t& user_id,
         const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_send_msgs>(callback);
@@ -3338,7 +3338,7 @@ void tgl_do_channel_invite_user(const tgl_input_peer_t& channel_id, const std::v
     q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_channel_kick_user(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& id,
+void tgl_do_channel_delete_user(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id,
     const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_send_msgs>(callback);
@@ -3348,8 +3348,8 @@ void tgl_do_channel_kick_user(const tgl_input_peer_t& channel_id, const tgl_inpu
     q->out_i64(channel_id.access_hash);
 
     q->out_i32(CODE_input_user);
-    q->out_i32(id.peer_id);
-    q->out_i64(id.access_hash);
+    q->out_i32(user_id.peer_id);
+    q->out_i64(user_id.access_hash);
 
     q->out_i32(CODE_bool_true);
 
