@@ -177,6 +177,14 @@ void tgl_do_unblock_user(const tgl_input_peer_t& id, const std::function<void(bo
 
 // query blocked users
 void tgl_get_blocked_users(const std::function<void(std::vector<int32_t>)>& callback);
+
+// update peer notification settings.
+void tgl_do_update_notify_settings(const tgl_input_peer_t& peer_id,
+        int32_t mute_until, const std::function<void(bool)>& callback);
+
+// query peer notification settings.
+void tgl_get_notify_settings(const tgl_input_peer_t& peer_id,
+        const std::function<void(bool, int32_t mute_until)>& callback);
 /* }}} */
 
 /* {{{ WORKING WITH SECRET CHATS */

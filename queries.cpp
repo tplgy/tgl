@@ -52,10 +52,10 @@
 #include "tgl-queries.h"
 #include "tools.h"
 #include "types/tgl_chat.h"
-#include "types/tgl_update_callback.h"
 #include "types/tgl_peer_id.h"
 #include "types/tgl_privacy_rule.h"
 #include "types/tgl_timer.h"
+#include "types/tgl_update_callback.h"
 #include "updates.h"
 
 constexpr int32_t TGL_SCHEME_LAYER = 45;
@@ -4404,6 +4404,99 @@ void tgl_get_blocked_users(const std::function<void(std::vector<int32_t>)>& call
     q->execute(tgl_state::instance()->working_dc());
 }
 
+/* }}} */
+
+/* {{{ set notify settings */
+class query_update_notify_settings: public query
+{
+public:
+    explicit query_update_notify_settings(const std::function<void(bool)>& callback)
+        : query("update notify settings", TYPE_TO_PARAM(bool))
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void* D) override
+    {
+        if (m_callback) {
+            m_callback(true);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false);
+        }
+        return 0;
+    }
+
+private:
+    std::function<void(bool)> m_callback;
+};
+
+void tgl_do_update_notify_settings(
+            const tgl_input_peer_t& peer_id,
+            int32_t mute_until,
+            const std::function<void(bool)>& callback)
+{
+    auto q = std::make_shared<query_update_notify_settings>(callback);
+    q->out_i32(CODE_account_update_notify_settings);
+    q->out_i32(CODE_input_notify_peer);
+    q->out_input_peer(peer_id);
+    q->out_i32(CODE_input_peer_notify_settings);
+    q->out_i32(mute_until);
+    q->out_std_string(std::string(""));
+    q->out_i32(CODE_bool_true);
+    q->out_i32(CODE_input_peer_notify_events_all);
+
+    q->execute(tgl_state::instance()->working_dc());
+}
+/* }}} */
+
+/* {{{ get notify settings */
+class query_get_notify_settings: public query
+{
+public:
+    explicit query_get_notify_settings(
+            const std::function<void(bool, int32_t)>& callback)
+        : query("get notify settings", TYPE_TO_PARAM(peer_notify_settings))
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void* D) override
+    {
+        tl_ds_peer_notify_settings* DS_CC = static_cast<tl_ds_peer_notify_settings*>(D);
+        int mute_until = DS_LVAL(DS_CC->mute_until);
+
+        if (m_callback) {
+            m_callback(true, mute_until);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false, 0);
+        }
+        return 0;
+    }
+
+private:
+    std::function<void(bool, int32_t)> m_callback;
+};
+
+void tgl_get_notify_settings(
+            const tgl_input_peer_t &peer_id,
+            const std::function<void(bool, int32_t mute_until)>& callback)
+{
+    auto q = std::make_shared<query_get_notify_settings>(callback);
+    q->out_i32(CODE_account_get_notify_settings);
+    q->out_i32(CODE_input_notify_peer);
+    q->out_input_peer(peer_id);
+    q->execute(tgl_state::instance()->working_dc());
+}
 /* }}} */
 
 /* {{{ get terms of service */

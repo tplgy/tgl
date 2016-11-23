@@ -337,7 +337,30 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         }
         break;
     case CODE_update_notify_settings:
+        {
+            tl_ds_notify_peer* DS_NP = static_cast<tl_ds_notify_peer*>(DS_U->notify_peer);
+            tl_ds_peer_notify_settings* DS_NS = static_cast<tl_ds_peer_notify_settings*>(DS_U->notify_settings);
 
+            std::map<tgl_user_update_type, std::string> updates;
+            int32_t mute_until = DS_LVAL(DS_NS->mute_until);
+            switch (DS_NP->peer->magic) {
+                case CODE_peer_user:
+                    TGL_NOTICE("update_notify_settings, user_id " << DS_LVAL(DS_NP->peer->user_id) << ", settings " << mute_until);
+                    updates.emplace(tgl_user_update_type::mute_until, std::to_string(mute_until));
+                    tgl_state::instance()->callback()->user_update(DS_LVAL(DS_NP->peer->user_id) , updates);
+                    break;
+                case CODE_peer_chat: // group
+                    TGL_NOTICE("update_notify_settings, chat_id " << DS_LVAL(DS_NP->peer->chat_id) << ", settings " << mute_until);
+                    tgl_state::instance()->callback()->chat_update_notify_settings(DS_LVAL(DS_NP->peer->chat_id), mute_until);
+                    break;
+                case CODE_peer_channel:
+                    TGL_NOTICE("update_notify_settings, channel_id " << DS_LVAL(DS_NP->peer->channel_id) << ", settings " << mute_until);
+                    tgl_state::instance()->callback()->channel_update_notify_settings(DS_LVAL(DS_NP->peer->channel_id), mute_until);
+                    break;
+                default:
+                    break;
+            }
+        }
         break;
     case CODE_update_service_notification:
         TGL_NOTICE("notification " << DS_STDSTR(DS_U->type) << ":" << DS_STDSTR(DS_U->message_text));
