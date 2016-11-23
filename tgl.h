@@ -209,7 +209,7 @@ struct tgl_state {
 
 private:
     tgl_state();
-    void state_lookup_timeout();
+    static void state_lookup_timeout();
 
 private:
     tgl_online_status m_online_status;

@@ -243,7 +243,7 @@ int tgl_state::init(const std::string& download_dir, int app_id, const std::stri
         m_app_hash = TG_APP_HASH;
     }
 
-    m_state_lookup_timer = m_timer_factory->create_timer(std::bind(&tgl_state::state_lookup_timeout, this));
+    m_state_lookup_timer = m_timer_factory->create_timer(std::bind(&tgl_state::state_lookup_timeout));
     m_state_lookup_timer->start(3600);
     return 0;
 }
@@ -386,8 +386,8 @@ std::shared_ptr<tgl_dc> tgl_state::allocate_dc(int id)
 void tgl_state::state_lookup_timeout()
 {
     tgl_do_lookup_state();
-    if (m_state_lookup_timer) {
-        m_state_lookup_timer->start(3600);
+    if (auto timer = tgl_state::instance()->m_state_lookup_timer) {
+        timer->start(3600);
     }
 }
 
