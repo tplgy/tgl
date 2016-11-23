@@ -143,8 +143,8 @@ struct tgl_upload_document
     { }
 };
 
-using tgl_download_callback = std::function<void(tgl_download_status status, const std::string& file_name, float progress)>;
-using tgl_upload_callback = std::function<void(tgl_upload_status status, const std::shared_ptr<tgl_message>& message, float progress)>;
+using tgl_download_callback = std::function<void(tgl_download_status status, const std::string& file_name, int64_t downloaded_bytes)>;
+using tgl_upload_callback = std::function<void(tgl_upload_status status, const std::shared_ptr<tgl_message>& message, int64_t downloaded_bytes)>;
 using tgl_read_callback = std::function<std::shared_ptr<std::vector<uint8_t>>(uint32_t chunk_size)>;
 using tgl_upload_part_done_callback = std::function<void()>;
 
