@@ -105,6 +105,7 @@ struct tgl_document {
     std::shared_ptr<tgl_photo_size> thumb;
     std::string caption;
     std::string mime_type;
+    std::string file_name;
 
     tgl_document()
         : id(0)

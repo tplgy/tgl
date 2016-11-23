@@ -717,6 +717,7 @@ void tglf_fetch_document_attribute(const std::shared_ptr<tgl_document>& document
         return;
     case CODE_document_attribute_sticker:
         document->type = tgl_document_type::sticker;
+        document->caption = DS_STDSTR(DS_DA->alt);
         return;
     case CODE_document_attribute_video:
         document->type = tgl_document_type::video;
@@ -729,7 +730,7 @@ void tglf_fetch_document_attribute(const std::shared_ptr<tgl_document>& document
         document->duration = DS_LVAL(DS_DA->duration);
         return;
     case CODE_document_attribute_filename:
-        document->caption = DS_STDSTR(DS_DA->file_name);
+        document->file_name = DS_STDSTR(DS_DA->file_name);
         return;
     default:
         assert(false);
