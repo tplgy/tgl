@@ -208,12 +208,12 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_user_name:
         {
-            tgl_peer_id_t user_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
+            uint32_t user_id = DS_LVAL(DS_U->user_id);
             std::map<tgl_user_update_type, std::string> updates;
             updates.emplace(tgl_user_update_type::username, DS_STDSTR(DS_U->username));
             updates.emplace(tgl_user_update_type::firstname, DS_STDSTR(DS_U->first_name));
             updates.emplace(tgl_user_update_type::lastname, DS_STDSTR(DS_U->last_name));
-            tgl_state::instance()->callback()->user_update(user_id.peer_id, updates);
+            tgl_state::instance()->callback()->user_update(user_id, updates);
         }
         break;
     case CODE_update_user_photo:
@@ -329,14 +329,15 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
     case CODE_update_user_blocked:
         {
             bool blocked = DS_BVAL(DS_U->blocked);
-            tgl_peer_id_t peer_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
+            int32_t peer_id = DS_LVAL(DS_U->user_id);
 
             std::map<tgl_user_update_type, std::string> updates;
             updates.emplace(tgl_user_update_type::blocked, blocked ? "Yes" : "No");
-            tgl_state::instance()->callback()->user_update(peer_id.peer_id, updates);
+            tgl_state::instance()->callback()->user_update(peer_id, updates);
         }
         break;
     case CODE_update_notify_settings:
+
         break;
     case CODE_update_service_notification:
         TGL_NOTICE("notification " << DS_STDSTR(DS_U->type) << ":" << DS_STDSTR(DS_U->message_text));
@@ -347,10 +348,10 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_user_phone:
         {
-            tgl_peer_id_t user_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
+            int32_t peer_id = DS_LVAL(DS_U->user_id);
             std::map<tgl_user_update_type, std::string> updates;
             updates.emplace(tgl_user_update_type::phone, DS_STDSTR(DS_U->phone));
-            tgl_state::instance()->callback()->user_update(user_id.peer_id, updates);
+            tgl_state::instance()->callback()->user_update(peer_id, updates);
         }
         break;
     case CODE_update_read_history_inbox:
