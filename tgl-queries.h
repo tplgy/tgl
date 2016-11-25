@@ -279,4 +279,8 @@ void tgl_do_channel_invite_user(const tgl_input_peer_t& channel_id, const std::v
 void tgl_do_channel_delete_user(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id,
         const std::function<void(bool success)>& callback);
 
+void tgl_do_create_channel(const std::string& topic, const std::string& about,
+        bool broadcast, bool mega_group,
+        const std::function<void(bool success)>& callback);
+
 #endif

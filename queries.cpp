@@ -3379,38 +3379,25 @@ void tgl_do_create_group_chat(const std::vector<tgl_input_peer_t>& user_ids, con
 }
 /* }}} */
 
-/* {{{ Create channel */
-
-void tgl_do_create_channel(int users_num, tgl_input_peer_t ids[],
-        const char* chat_topic, int chat_topic_len,
-        const char* about, int about_len,
-        unsigned long long flags,
+void tgl_do_create_channel(const std::string& topic, const std::string& about,
+        bool broadcast, bool mega_group,
         const std::function<void(bool success)>& callback)
 {
+    int32_t flags = 0;
+    if (broadcast) {
+        flags |= 1;
+    }
+    if (mega_group) {
+        flags |= 2;
+    }
     auto q = std::make_shared<query_send_msgs>(callback);
     q->out_i32(CODE_channels_create_channel);
-    q->out_i32(flags); // looks like 2 is disable non-admin messages
-    q->out_string(chat_topic, chat_topic_len);
-    q->out_string(about, about_len);
-    //q->out_i32(CODE_vector);
-    //q->out_i32(users_num);
-    for (int i = 0; i < users_num; i++) {
-        auto id = ids[i];
-        if (id.peer_type != tgl_peer_type::user) {
-            TGL_ERROR("can not create chat with unknown user");
-            if (callback) {
-                callback(false);
-            }
-            return;
-        }
-        q->out_i32(CODE_input_user);
-        q->out_i32(id.peer_id);
-        q->out_i64(id.access_hash);
-    }
+    q->out_i32(flags);
+    q->out_std_string(topic);
+    q->out_std_string(about);
 
     q->execute(tgl_state::instance()->working_dc());
 }
-/* }}} */
 
 /* {{{ Delete msg */
 class query_delete_msg: public query
