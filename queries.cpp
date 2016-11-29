@@ -3366,7 +3366,7 @@ public:
         tglu_work_any_updates(DS_U, nullptr);
 
         int32_t chat_id = 0;
-        if (DS_U->magic == 0x74ae4240 && DS_U->chats && DS_U->chats->cnt && *DS_U->chats->cnt == 1) {
+        if (DS_U->magic == CODE_updates && DS_U->chats && DS_U->chats->cnt && *DS_U->chats->cnt == 1) {
             chat_id = DS_LVAL(DS_U->chats->data[0]->id);
         }
 
