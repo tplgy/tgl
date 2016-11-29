@@ -161,7 +161,6 @@ static bool create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 
 void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 {
-     tgl_secret_chat_state state = tgl_secret_chat_state::deleted;
      tgl_update_secret_chat(secret_chat,
          nullptr,
          nullptr,
@@ -169,10 +168,11 @@ void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat
          nullptr,
          nullptr,
          nullptr,
-         &state,
+         tgl_secret_chat_state::deleted,
          nullptr,
          nullptr,
          nullptr);
+    tgl_state::instance()->callback()->secret_chat_update(secret_chat);
 }
 
 void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
@@ -182,7 +182,7 @@ void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const int32_t* user_id,
         const unsigned char* key,
         const unsigned char* g_key,
-        const tgl_secret_chat_state* state,
+        const tgl_secret_chat_state& state,
         const int32_t* ttl,
         const int32_t* layer,
         const int32_t* in_seq_no)
@@ -219,20 +219,15 @@ void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         secret_chat->set_key(key);
     }
 
-    auto old_state = secret_chat->state;
-    if (state) {
-        if (secret_chat->state == tgl_secret_chat_state::waiting && *state == tgl_secret_chat_state::ok) {
-            if (create_keys_end(secret_chat)) {
-                secret_chat->state = *state;
-            } else {
-                secret_chat->state = tgl_secret_chat_state::deleted;
-            }
+    if (secret_chat->state == tgl_secret_chat_state::waiting && state == tgl_secret_chat_state::ok) {
+        if (create_keys_end(secret_chat)) {
+            secret_chat->state = state;
         } else {
-            secret_chat->state = *state;
+            secret_chat->state = tgl_secret_chat_state::deleted;
         }
+    } else {
+        secret_chat->state = state;
     }
-
-    tgl_state::instance()->callback()->secret_chat_update(secret_chat, old_state);
 }
 
 /* }}} */
@@ -626,6 +621,7 @@ public:
 
         if (secret_chat && secret_chat->state == tgl_secret_chat_state::ok) {
             tgl_do_send_encr_chat_layer(secret_chat);
+            tgl_state::instance()->callback()->secret_chat_update(secret_chat);
         }
 
         if (secret_chat) {
@@ -667,6 +663,7 @@ public:
     {
         std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat(
                 static_cast<tl_ds_encrypted_chat*>(D));
+        tgl_state::instance()->callback()->secret_chat_update(secret_chat);
 
         if (m_callback) {
             m_callback(secret_chat && secret_chat->state != tgl_secret_chat_state::deleted, secret_chat);
@@ -731,7 +728,6 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     memset(buffer, 0, sizeof(buffer));
     TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
 
-    tgl_secret_chat_state state = tgl_secret_chat_state::ok;
     tgl_update_secret_chat(secret_chat,
             nullptr,
             nullptr,
@@ -739,7 +735,7 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
             nullptr,
             buffer,
             nullptr,
-            &state,
+            tgl_secret_chat_state::ok,
             nullptr,
             nullptr,
             nullptr);
@@ -816,7 +812,6 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
 
     TGLC_bn_bn2bin(r.get(), reinterpret_cast<unsigned char*>(g_a + (256 - TGLC_bn_num_bytes(r.get()))));
 
-    tgl_secret_chat_state state = tgl_secret_chat_state::waiting;
     int our_id = tgl_state::instance()->our_id().peer_id;
     tgl_update_secret_chat(secret_chat,
           nullptr,
@@ -825,10 +820,11 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
           nullptr,
           random.data(),
           nullptr,
-          &state,
+          tgl_secret_chat_state::waiting,
           nullptr,
           nullptr,
           nullptr);
+    tgl_state::instance()->callback()->secret_chat_update(secret_chat);
 
     auto q = std::make_shared<query_send_encr_request>(callback);
     q->out_i32(CODE_messages_request_encryption);

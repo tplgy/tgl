@@ -277,6 +277,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_encryption:
         if (auto secret_chat = tglf_fetch_alloc_encrypted_chat(DS_U->encr_chat)) {
+            tgl_state::instance()->callback()->secret_chat_update(secret_chat);
             if (secret_chat->state == tgl_secret_chat_state::ok) {
                 tgl_do_send_encr_chat_layer(secret_chat);
             }

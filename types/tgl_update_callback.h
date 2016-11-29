@@ -66,7 +66,7 @@ public:
     virtual void chat_update_notify_settings(int32_t chat_id, int32_t mute_until) = 0;
     virtual void chat_delete_user(int32_t chat_id, int user) = 0;
     virtual void channel_update_participants(int32_t channel_id, const std::vector<std::shared_ptr<tgl_channel_participant>>& participants) = 0;
-    virtual void secret_chat_update(const std::shared_ptr<tgl_secret_chat>& secret_chat, tgl_secret_chat_state old_state) = 0;
+    virtual void secret_chat_update(const std::shared_ptr<tgl_secret_chat>& secret_chat) = 0;
     virtual void channel_update(const std::shared_ptr<tgl_channel>& channel) = 0;
     virtual void channel_update_info(int32_t channel_id, const std::string& description, int32_t participants_count) = 0;
     virtual void channel_update_notify_settings(int32_t channel_id, int32_t mute_until) = 0;

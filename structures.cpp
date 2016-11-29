@@ -320,7 +320,6 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
         str_to_256(g_key, DS_STR(DS_EC->g_a));
 
         int user_id = DS_LVAL(DS_EC->participant_id) + DS_LVAL(DS_EC->admin_id) - tgl_state::instance()->our_id().peer_id;
-        tgl_secret_chat_state state = tgl_secret_chat_state::request;
         tgl_update_secret_chat(secret_chat,
                 DS_EC->access_hash,
                 DS_EC->date,
@@ -328,7 +327,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
                 &user_id,
                 nullptr,
                 g_key,
-                &state,
+                tgl_secret_chat_state::request,
                 nullptr,
                 nullptr,
                 nullptr);
@@ -351,7 +350,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
                 nullptr,
                 nullptr,
                 g_key_ptr,
-                &state,
+                state,
                 nullptr,
                 nullptr,
                 nullptr);
@@ -1601,7 +1600,8 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
     }
 
     message->set_unread(true);
-    tgl_update_secret_chat(secret_chat, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, ttl_ptr, &layer, our_in_seq_no_ptr);
+    tgl_update_secret_chat(secret_chat, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, secret_chat->state, ttl_ptr, &layer, our_in_seq_no_ptr);
+    tgl_state::instance()->callback()->secret_chat_update(secret_chat);
     if (action_type == tgl_message_action_type::none) {
         tgl_state::instance()->callback()->new_messages({message});
     }
