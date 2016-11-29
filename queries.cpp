@@ -3352,12 +3352,50 @@ void tgl_do_channel_delete_user(const tgl_input_peer_t& channel_id, const tgl_in
     q->execute(tgl_state::instance()->working_dc());
 }
 
-/* {{{ Create group chat */
+class query_create_chat: public query
+{
+public:
+    explicit query_create_chat(const std::function<void(int32_t chat_id)>& callback, bool is_channel = false)
+        : query(is_channel ? "create channel" : "create chat", TYPE_TO_PARAM(updates))
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void* D) override
+    {
+        tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
+        tglu_work_any_updates(DS_U, nullptr);
+
+        int32_t chat_id = 0;
+        if (DS_U->magic == 0x74ae4240 && DS_U->chats && DS_U->chats->cnt && *DS_U->chats->cnt == 1) {
+            chat_id = DS_LVAL(DS_U->chats->data[0]->id);
+        }
+
+        if (!chat_id) {
+            assert(false);
+        }
+
+        if (m_callback) {
+            m_callback(chat_id);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(0);
+        }
+        return 0;
+    }
+
+private:
+    std::function<void(int32_t)> m_callback;
+};
 
 void tgl_do_create_group_chat(const std::vector<tgl_input_peer_t>& user_ids, const std::string& chat_topic,
-        const std::function<void(bool success)>& callback)
+        const std::function<void(int32_t chat_id)>& callback)
 {
-    auto q = std::make_shared<query_send_msgs>(callback);
+    auto q = std::make_shared<query_create_chat>(callback);
     q->out_i32(CODE_messages_create_chat);
     q->out_i32(CODE_vector);
     q->out_i32(user_ids.size()); // Number of users, currently we support only 1 user.
@@ -3373,15 +3411,14 @@ void tgl_do_create_group_chat(const std::vector<tgl_input_peer_t>& user_ids, con
         q->out_i32(id.peer_id);
         q->out_i64(id.access_hash);
     }
-    TGL_NOTICE("sending out chat creat request users number: " << user_ids.size());
+    TGL_DEBUG("sending out chat creat request users number: " << user_ids.size());
     q->out_string(chat_topic.c_str(), chat_topic.length());
     q->execute(tgl_state::instance()->working_dc());
 }
-/* }}} */
 
 void tgl_do_create_channel(const std::string& topic, const std::string& about,
         bool broadcast, bool mega_group,
-        const std::function<void(bool success)>& callback)
+        const std::function<void(int32_t channel_id)>& callback)
 {
     int32_t flags = 0;
     if (broadcast) {
@@ -3390,7 +3427,7 @@ void tgl_do_create_channel(const std::string& topic, const std::string& about,
     if (mega_group) {
         flags |= 2;
     }
-    auto q = std::make_shared<query_send_msgs>(callback);
+    auto q = std::make_shared<query_create_chat>(callback, true);
     q->out_i32(CODE_channels_create_channel);
     q->out_i32(flags);
     q->out_std_string(topic);

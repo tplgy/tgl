@@ -139,7 +139,7 @@ void tgl_do_delete_user_from_chat(int32_t chat_id, const tgl_input_peer_t& user_
 // creates group chat with users ids
 // there should be at least one user other then you in chat
 void tgl_do_create_group_chat(const std::vector<tgl_input_peer_t>& user_ids, const std::string& chat_topic,
-        const std::function<void(bool success)>& callback);
+        const std::function<void(int32_t chat_id)>& callback);
 
 // receives invitation link to this chat
 // only chat admin can create one
@@ -281,6 +281,6 @@ void tgl_do_channel_delete_user(const tgl_input_peer_t& channel_id, const tgl_in
 
 void tgl_do_create_channel(const std::string& topic, const std::string& about,
         bool broadcast, bool mega_group,
-        const std::function<void(bool success)>& callback);
+        const std::function<void(int32_t channel_id)>& callback);
 
 #endif
