@@ -53,7 +53,6 @@ struct tgl_user {
     std::string firstname;
     std::string lastname;
     std::string phone;
-    int32_t mute_until;
 
     tgl_user()
         : m_contact(false)

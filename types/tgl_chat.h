@@ -55,7 +55,6 @@ struct tgl_chat {
     tgl_input_peer_t id;
     int64_t date;
     int32_t participants_count;
-    int32_t mute_until;
     bool creator;
     bool kicked;
     bool left;
@@ -75,7 +74,6 @@ struct tgl_chat {
     tgl_chat()
         : date(0)
         , participants_count(0)
-        , mute_until(0)
         , creator(false)
         , kicked(false)
         , left(false)

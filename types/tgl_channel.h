@@ -44,7 +44,6 @@ struct tgl_channel: public tgl_chat {
     int32_t admins_count;
     int32_t kicked_count;
     int32_t pts;
-    int32_t mute_until;
     bool official;
     bool broadcast;
     bool diff_locked;
@@ -54,7 +53,6 @@ struct tgl_channel: public tgl_chat {
         : admins_count(0)
         , kicked_count(0)
         , pts(0)
-        , mute_until(0)
         , official(false)
         , broadcast(false)
         , diff_locked(false)
