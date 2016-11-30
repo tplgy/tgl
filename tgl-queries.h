@@ -264,10 +264,8 @@ void tgl_do_get_message(int64_t message_id, const std::function<void(bool succes
 
 /* }}} */
 
-/* {{{ BOT */
 void tgl_do_start_bot(const tgl_peer_id_t& bot, const tgl_peer_id_t& chat, const char* str, int str_len,
         const std::function<void(bool success)>& callback);
-/* }}} */
 
 void tgl_do_logout(const std::function<void(bool success)>& callback);
 
@@ -290,5 +288,11 @@ void tgl_do_channel_delete_user(const tgl_input_peer_t& channel_id, const tgl_in
 void tgl_do_create_channel(const std::string& topic, const std::string& about,
         bool broadcast, bool mega_group,
         const std::function<void(int32_t channel_id)>& callback);
+
+// Only support getting back one inline text message if any responded by the bot.
+// If the bot returns anything else than a inline text message the value of response
+// in the callback will be empty.
+void tgl_do_send_inline_query_to_bot(const tgl_input_peer_t& bot, const std::string& query,
+        const std::function<void(bool success, const std::string& response)>& callback);
 
 #endif

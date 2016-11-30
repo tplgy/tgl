@@ -5177,3 +5177,51 @@ void tgl_do_get_privacy(std::function<void(bool, const std::vector<std::pair<tgl
     q->out_i32(CODE_input_privacy_key_status_timestamp);
     q->execute(tgl_state::instance()->working_dc());
 }
+
+class query_send_inline_query_to_bot: public query
+{
+public:
+    explicit query_send_inline_query_to_bot(const std::function<void(bool, const std::string&)>& callback)
+        : query("send inline query to bot", TYPE_TO_PARAM(messages_bot_results))
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void* D) override
+    {
+        if (m_callback) {
+            std::string response;
+            tl_ds_messages_bot_results* bot_results = static_cast<tl_ds_messages_bot_results*>(D);
+            if (bot_results->results && DS_LVAL(bot_results->results->cnt) == 1
+                    && bot_results->results->data[0]->magic == CODE_bot_inline_result) {
+                tl_ds_bot_inline_message* inline_message = bot_results->results->data[0]->send_message;
+                if (inline_message->magic == CODE_bot_inline_message_text) {
+                    response = DS_STDSTR(inline_message->message);
+                }
+            }
+            m_callback(true, response);
+        }
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false, std::string());
+        }
+        return 0;
+    }
+
+private:
+    std::function<void(bool, const std::string&)> m_callback;
+};
+
+void tgl_do_send_inline_query_to_bot(const tgl_input_peer_t& bot, const std::string& query,
+        const std::function<void(bool success, const std::string& response)>& callback)
+{
+    auto q = std::make_shared<query_send_inline_query_to_bot>(callback);
+    q->out_i32(CODE_messages_get_inline_bot_results);
+    q->out_input_peer(bot);
+    q->out_std_string(query);
+    q->out_std_string(std::string());
+    q->execute(tgl_state::instance()->working_dc());
+}
