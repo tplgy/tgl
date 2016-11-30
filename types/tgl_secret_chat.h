@@ -123,6 +123,7 @@ struct tgl_secret_chat {
     int32_t encr_param_version;
     tgl_secret_chat_state state;
     tgl_secret_chat_exchange_state exchange_state;
+    int32_t device_id;
 
     std::vector<unsigned char> g_key;
 
@@ -181,6 +182,7 @@ struct tgl_secret_chat {
         , encr_param_version(0)
         , state(tgl_secret_chat_state::none)
         , exchange_state(tgl_secret_chat_exchange_state::none)
+        , device_id(0)
         , g_key()
         , m_encr_prime()
         , m_encr_prime_bn(nullptr)
