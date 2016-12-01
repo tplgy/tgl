@@ -2713,10 +2713,10 @@ static void tgl_do_transfer_auth(const std::shared_ptr<tgl_dc>& dc, const std::f
 /* }}} */
 
 /* {{{ Add contact */
-class query_add_contact: public query
+class query_add_contacts: public query
 {
 public:
-    explicit query_add_contact(const std::function<void(bool, const std::vector<int>&)>& callback)
+    explicit query_add_contacts(const std::function<void(bool, const std::vector<int>&)>& callback)
         : query("add contact", TYPE_TO_PARAM(contacts_imported_contacts))
         , m_callback(callback)
     { }
@@ -2748,20 +2748,28 @@ private:
     std::function<void(bool, const std::vector<int>&)> m_callback;
 };
 
-void tgl_do_add_contact(const std::string& phone, const std::string& first_name, const std::string& last_name, bool replace,
+void tgl_do_add_contacts(const std::vector<std::tuple<std::string, std::string, std::string>>& contacts, bool replace,
         const std::function<void(bool success, const std::vector<int>& user_ids)>& callback)
 {
-    auto q = std::make_shared<query_add_contact>(callback);
+    auto q = std::make_shared<query_add_contacts>(callback);
     q->out_i32(CODE_contacts_import_contacts);
     q->out_i32(CODE_vector);
-    q->out_i32(1); // TODO allow adding multiple contacts
-    q->out_i32(CODE_input_phone_contact);
+    q->out_i32(contacts.size());
     int64_t r;
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&r), 8);
-    q->out_i64(r);
-    q->out_string(phone.c_str(), phone.length());
-    q->out_string(first_name.c_str(), first_name.length());
-    q->out_string(last_name.c_str(), last_name.length());
+
+    for (const auto& contact : contacts) {
+        auto phone = std::get<0>(contact);
+        auto first_name = std::get<1>(contact);
+        auto last_name = std::get<2>(contact);
+
+        q->out_i32(CODE_input_phone_contact);
+        tglt_secure_random(reinterpret_cast<unsigned char*>(&r), 8);
+        q->out_i64(r);
+        q->out_string(phone.c_str(), phone.length());
+        q->out_string(first_name.c_str(), first_name.length());
+        q->out_string(last_name.c_str(), last_name.length());
+    }
+
     q->out_i32(replace ? CODE_bool_true : CODE_bool_false);
     q->execute(tgl_state::instance()->working_dc());
 }
