@@ -1661,53 +1661,47 @@ std::shared_ptr<tgl_message_reply_markup> tglf_fetch_alloc_reply_markup(const tl
 
 /* Messages {{{ */
 
-static std::shared_ptr<tgl_message> tglm_alloc_message(int64_t message_id)
-{
-    auto message = std::make_shared<tgl_message>();
-    message->permanent_id = message_id;
-    return message;
-}
-
 std::shared_ptr<tgl_message> tglm_create_message(int64_t message_id, const tgl_peer_id_t& from_id,
         const tgl_input_peer_t& to_id, const tgl_peer_id_t* fwd_from_id, const int64_t* fwd_date,
         const int64_t* date, const std::string& message,
         const tl_ds_message_media* media, const tl_ds_message_action* action,
         int32_t reply_id, const tl_ds_reply_markup* reply_markup)
 {
-    std::shared_ptr<tgl_message> M = tglm_alloc_message(message_id);
-    M->seq_no = message_id;
+    auto m = std::make_shared<tgl_message>();
 
-    M->from_id = from_id;
-    M->to_id = to_id;
+    m->permanent_id = message_id;
+    m->seq_no = message_id;
+    m->from_id = from_id;
+    m->to_id = to_id;
     assert(to_id.peer_type != tgl_peer_type::enc_chat);
 
     if (date) {
-        M->date = *date;
+        m->date = *date;
     }
 
     if (fwd_from_id) {
-        M->fwd_from_id = *fwd_from_id;
-        M->fwd_date = *fwd_date;
+        m->fwd_from_id = *fwd_from_id;
+        m->fwd_date = *fwd_date;
     }
 
     if (action) {
-        M->action = tglf_fetch_message_action(action);
-        M->set_service(true);
+        m->action = tglf_fetch_message_action(action);
+        m->set_service(true);
     }
 
-    M->message = message;
+    m->message = message;
 
     if (media) {
-        M->media = tglf_fetch_message_media(media);
-        assert(!M->is_service());
+        m->media = tglf_fetch_message_media(media);
+        assert(!m->is_service());
     }
 
-    M->reply_id = reply_id;
+    m->reply_id = reply_id;
 
     if (reply_markup) {
-        M->reply_markup = tglf_fetch_alloc_reply_markup(reply_markup);
+        m->reply_markup = tglf_fetch_alloc_reply_markup(reply_markup);
     }
-    return M;
+    return m;
 }
 
 std::shared_ptr<tgl_message> tglm_create_encr_message(
@@ -1722,44 +1716,45 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(
         const tl_ds_encrypted_file* file,
         bool is_outgoing)
 {
-    std::shared_ptr<tgl_message> M = tglm_alloc_message(message_id);
+    auto m = std::make_shared<tgl_message>();
 
-    M->from_id = from_id;
-    M->to_id = to_id;
+    m->permanent_id = message_id;
+    m->from_id = from_id;
+    m->to_id = to_id;
 
     if (date) {
-        M->date = *date;
+        m->date = *date;
     }
 
     assert(secret_chat);
 
     if (action) {
-        M->action = tglf_fetch_message_action_encrypted(action);
-        M->set_service(true);
+        m->action = tglf_fetch_message_action_encrypted(action);
+        m->set_service(true);
     }
 
-    M->message = message;
+    m->message = message;
 
     if (media) {
-        M->media = tglf_fetch_message_media_encrypted(media);
-        assert(!M->is_service());
+        m->media = tglf_fetch_message_media_encrypted(media);
+        assert(!m->is_service());
     }
 
     if (file) {
-        tglf_fetch_encrypted_message_file(M->media, file);
+        tglf_fetch_encrypted_message_file(m->media, file);
     }
 
-    M->set_outgoing(is_outgoing);
+    m->set_outgoing(is_outgoing);
 
-    if (action && !M->is_outgoing() && M->action && M->action->type() == tgl_message_action_type::notify_layer) {
-        secret_chat->layer = std::static_pointer_cast<tgl_message_action_notify_layer>(M->action)->layer;
+    if (action && !m->is_outgoing() && m->action && m->action->type() == tgl_message_action_type::notify_layer) {
+        secret_chat->layer = std::static_pointer_cast<tgl_message_action_notify_layer>(m->action)->layer;
     }
 
-    if (M->is_outgoing()) {
+    if (m->is_outgoing()) {
         secret_chat->out_seq_no++;
     }
 
-    return M;
+    return m;
 }
 
 /* }}} */
