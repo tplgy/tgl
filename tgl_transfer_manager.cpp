@@ -351,6 +351,11 @@ public:
         return m_download_manager->download_on_error(shared_from_this(), error_code, error_string);
     }
 
+    virtual double timeout_interval() const override
+    {
+        return 20.0;
+    }
+
     const tgl_download_callback& callback() const
     {
         return m_callback;
@@ -1065,7 +1070,7 @@ int tgl_transfer_manager::download_on_answer(const std::shared_ptr<query_downloa
         }
     }
 
-    int len = DS_UF->bytes->len;
+    int32_t len = DS_UF->bytes->len;
 
     if (!d->iv.empty()) {
         assert(!(len & 15));

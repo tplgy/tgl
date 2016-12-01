@@ -77,7 +77,7 @@ void query::clear_timers()
 
 void query::alarm()
 {
-    TGL_DEBUG("alarm query #" << msg_id() << " (type '" << m_name << "')");
+    TGL_DEBUG("alarm query #" << msg_id() << " (type '" << m_name << "') to DC " << m_dc->id);
     clear_timers();
 
     if (!check_connectivity()) {
@@ -109,6 +109,7 @@ void query::alarm()
             handle_error(400, "client failed to send message");
             return;
         }
+        TGL_NOTICE("resent query #" << msg_id() << " of size " << m_serializer->char_size() << " to DC " << m_dc->id);
         timeout_within(timeout_interval());
     } else if (!pending && m_dc->session) {
         m_ack_received = false;
