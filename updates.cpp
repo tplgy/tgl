@@ -342,6 +342,10 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             tl_ds_notify_peer* DS_NP = static_cast<tl_ds_notify_peer*>(DS_U->notify_peer);
             tl_ds_peer_notify_settings* DS_NS = static_cast<tl_ds_peer_notify_settings*>(DS_U->notify_settings);
 
+            if (DS_NP->peer == nullptr) {
+                break;
+            }
+
             std::map<tgl_user_update_type, std::string> updates;
             int32_t mute_until = DS_LVAL(DS_NS->mute_until);
             switch (DS_NP->peer->magic) {
