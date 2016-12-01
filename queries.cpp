@@ -5194,7 +5194,7 @@ public:
             if (bot_results->results && DS_LVAL(bot_results->results->cnt) == 1
                     && bot_results->results->data[0]->magic == CODE_bot_inline_result) {
                 tl_ds_bot_inline_message* inline_message = bot_results->results->data[0]->send_message;
-                if (inline_message->magic == CODE_bot_inline_message_text) {
+                if (inline_message && inline_message->magic == CODE_bot_inline_message_text) {
                     response = DS_STDSTR(inline_message->message);
                 }
             }
