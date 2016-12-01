@@ -160,7 +160,7 @@ void tgl_do_get_user_info(const tgl_input_peer_t& id, const std::function<void(b
 // adds contacts to contact list by phone number
 // user will be named  *first_name* *last_name* in contact list
 // force should be set to 0
-void tgl_do_add_contacts(const std::vector<std::tuple<std::string, std::string, std::string>>& contacts, bool replace, const std::function<void(bool success, const std::vector<int>& user_ids)>& callback);
+void tgl_do_add_contacts(const std::vector<std::tuple<std::string, std::string, std::string>>& contacts, bool replace, const std::function<void(bool success, const std::vector<int32_t>& user_ids)>& callback);
 
 // deletes user *id* from contact list
 void tgl_do_delete_contact(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback);

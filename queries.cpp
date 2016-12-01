@@ -2716,8 +2716,8 @@ static void tgl_do_transfer_auth(const std::shared_ptr<tgl_dc>& dc, const std::f
 class query_add_contacts: public query
 {
 public:
-    explicit query_add_contacts(const std::function<void(bool, const std::vector<int>&)>& callback)
-        : query("add contact", TYPE_TO_PARAM(contacts_imported_contacts))
+    explicit query_add_contacts(const std::function<void(bool, const std::vector<int32_t>&)>& callback)
+        : query("add contacts", TYPE_TO_PARAM(contacts_imported_contacts))
         , m_callback(callback)
     { }
 
@@ -2749,7 +2749,7 @@ private:
 };
 
 void tgl_do_add_contacts(const std::vector<std::tuple<std::string, std::string, std::string>>& contacts, bool replace,
-        const std::function<void(bool success, const std::vector<int>& user_ids)>& callback)
+        const std::function<void(bool success, const std::vector<int32_t>& user_ids)>& callback)
 {
     auto q = std::make_shared<query_add_contacts>(callback);
     q->out_i32(CODE_contacts_import_contacts);
@@ -2758,16 +2758,16 @@ void tgl_do_add_contacts(const std::vector<std::tuple<std::string, std::string, 
     int64_t r;
 
     for (const auto& contact : contacts) {
-        auto phone = std::get<0>(contact);
-        auto first_name = std::get<1>(contact);
-        auto last_name = std::get<2>(contact);
+        const auto& phone = std::get<0>(contact);
+        const auto& first_name = std::get<1>(contact);
+        const auto& last_name = std::get<2>(contact);
 
         q->out_i32(CODE_input_phone_contact);
         tglt_secure_random(reinterpret_cast<unsigned char*>(&r), 8);
         q->out_i64(r);
-        q->out_string(phone.c_str(), phone.length());
-        q->out_string(first_name.c_str(), first_name.length());
-        q->out_string(last_name.c_str(), last_name.length());
+        q->out_std_string(phone);
+        q->out_std_string(first_name);
+        q->out_std_string(last_name);
     }
 
     q->out_i32(replace ? CODE_bool_true : CODE_bool_false);
