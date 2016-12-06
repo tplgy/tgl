@@ -13,7 +13,8 @@ find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_BINARY_DIR}
     ${Boost_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
@@ -78,60 +79,54 @@ set(GENERATED_TGL_HEADERS
     ${CMAKE_BINARY_DIR}/auto/constants.h
 )
 
-set(AUTO_HEADERS
+set(PUBLIC_HEADERS
+    include/tgl/tgl.h
+    include/tgl/tgl_crypto_aes.h
+    include/tgl/tgl_crypto_bn.h
+    include/tgl/tgl_crypto_err.h
+    include/tgl/tgl_crypto_md5.h
+    include/tgl/tgl_crypto_rsa_pem.h
+    include/tgl/tgl_crypto_sha.h
+    include/tgl/tgl_crypto_rand.h
+    include/tgl/tgl_dc.h
+    include/tgl/tgl_file_location.h
+    include/tgl/tgl_log.h
+    include/tgl/tgl_peer_id.h
+    include/tgl/tgl_update_callback.h
+    include/tgl/tgl_message.h
+    include/tgl/tgl_message_entity.h
+    include/tgl/tgl_message_media.h
+    include/tgl/tgl_message_action.h
+    include/tgl/tgl_mime_type.h
+    include/tgl/tgl_mtproto_client.h
+    include/tgl/tgl_secret_chat.h
+    include/tgl/tgl_typing_status.h
+    include/tgl/tgl_online_status.h
+    include/tgl/tgl_privacy_rule.h
+    include/tgl/tgl_queries.h
+    include/tgl/tgl_connection_status.h
+    include/tgl/tgl_chat.h
+    include/tgl/tgl_user.h
+    include/tgl/tgl_bot.h
+    include/tgl/tgl_online_status_observer.h
+    include/tgl/tgl_channel.h
+    include/tgl/tgl_net.h
+    include/tgl/tgl_timer.h
+    include/tgl/tgl_transfer_manager.h
+)
+
+set(PRIVATE_HEADERS
     ${GENERATED_TGL_HEADERS}
-    auto/auto.h
-)
-
-set(TYPES_HEADERS
-    types/tgl_file_location.h
-    types/tgl_peer_id.h
-    types/tgl_rsa_key.h
-    types/tgl_update_callback.h
-    types/tgl_message.h
-    types/tgl_message_entity.h
-    types/tgl_message_media.h
-    types/tgl_message_action.h
-    types/tgl_mtproto_client.h
-    types/tgl_secret_chat.h
-    types/tgl_typing_status.h
-    types/tgl_online_status.h
-    types/tgl_privacy_rule.h
-    types/tgl_connection_status.h
-    types/tgl_chat.h
-    types/tgl_user.h
-    types/tgl_bot.h
-    types/tgl_online_status_observer.h
-    types/tgl_channel.h
-    types/tgl_net.h
-    types/tgl_timer.h
-)
-
-set(CRYPTO_HEADERS
-    crypto/tgl_crypto_aes.h
-    crypto/tgl_crypto_bn.h
-    crypto/tgl_crypto_err.h
-    crypto/tgl_crypto_md5.h
-    crypto/tgl_crypto_rsa_pem.h
-    crypto/tgl_crypto_sha.h
-    crypto/tgl_crypto_rand.h
-)
-
-set(HEADERS
-    mtproto-client.h
-    mtproto-common.h
-    mtproto-utils.h
-    queries.h
-    queries-encrypted.h
-    structures.h
-    tgl.h
-    tgl-dc.h
-    tgl-log.h
-    tgl-queries.h
-    tgl_mime_type.h
-    tgl_transfer_manager.h
-    tools.h
-    updates.h
+    src/auto/auto.h
+    src/mtproto-client.h
+    src/mtproto-common.h
+    src/mtproto-utils.h
+    src/queries.h
+    src/queries-encrypted.h
+    src/structures.h
+    src/tgl_rsa_key.h
+    src/tools.h
+    src/updates.h
 )
 
 set(GENERATED_TGL_SOURCES
@@ -143,22 +138,22 @@ set(GENERATED_TGL_SOURCES
 
 set(SOURCES
     ${GENERATED_TGL_SOURCES}
-    mtproto-client.cpp
-    mtproto-common.cpp
-    mtproto-utils.cpp
-    queries.cpp
-    queries-encrypted.cpp
-    structures.cpp
-    tgl.cpp
-    tgl-dc.cpp
-    tgl-log.cpp
-    tgl_mime_type.cpp
-    tgl_transfer_manager.cpp
-    tools.cpp
-    updates.cpp
+    src/mtproto-client.cpp
+    src/mtproto-common.cpp
+    src/mtproto-utils.cpp
+    src/queries.cpp
+    src/queries-encrypted.cpp
+    src/structures.cpp
+    src/tgl.cpp
+    src/tgl_dc.cpp
+    src/tgl_log.cpp
+    src/tgl_mime_type.cpp
+    src/tgl_transfer_manager.cpp
+    src/tools.cpp
+    src/updates.cpp
 )
 
-add_library(${PROJECT_NAME} SHARED ${SOURCES} ${AUTO_HEADERS} ${CRYPTO_HEADERS} ${TYPES_HEADERS} ${HEADERS})
+add_library(${PROJECT_NAME} SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
 
 target_link_libraries(${PROJECT_NAME}
     ${Boost_LIBRARIES}
@@ -167,16 +162,16 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 set(GENERATE_DEPENDS
-    generate/generate.c
-    generate/generate.h
-    generate/tree.h
+    generator/generate.c
+    generator/generate.h
+    generator/tree.h
     scripts/generate.py
     scripts/build_lib.py
-    auto/append.tl
-    auto/encrypted_scheme.tl
-    auto/mtproto.tl
-    auto/scheme.tl
-    auto/mime.types
+    src/auto/append.tl
+    src/auto/encrypted_scheme.tl
+    src/auto/mtproto.tl
+    src/auto/scheme.tl
+    src/auto/mime.types
 )
 
 add_custom_command(
@@ -186,8 +181,5 @@ add_custom_command(
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate.py ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}
 )
 
-install(FILES ${HEADERS} DESTINATION include/tgl)
-install(FILES ${AUTO_HEADERS} DESTINATION include/tgl/auto)
-install(FILES ${CRYPTO_HEADERS} DESTINATION include/tgl/crypto)
-install(FILES ${TYPES_HEADERS} DESTINATION include/tgl/types)
+install(FILES ${PUBLIC_HEADERS} DESTINATION include/tgl)
 install(TARGETS tplgy_tgl DESTINATION lib)

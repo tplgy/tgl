@@ -114,7 +114,7 @@ if not (len(sys.argv) == 3 or len(sys.argv) == 4):
     print("wrong arguemnts")
     sys.exit(1)
 
-SRC_DIR = sys.argv[1]
+ROOT_DIR = sys.argv[1]
 BUILD_DIR = sys.argv[2]
 CC = "cc"
 if len(sys.argv) == 4:
@@ -129,22 +129,24 @@ os.chdir(BUILD_DIR)
 if not os.path.exists(os.path.join(BUILD_DIR, "auto")):
     os.mkdir(os.path.join(BUILD_DIR, "auto"))
 
-r = build_lib.run_command(CC + " " + os.path.join(SRC_DIR, "generate", "generate.c") + " -o generate")
+r = build_lib.run_command(CC + " " + os.path.join(ROOT_DIR, "generator", "generate.c") + " -o generate")
 if r != 0:
     sys.exit(r)
 
-r = build_lib.run_command(CC + " " + os.path.join(SRC_DIR, "tl-parser", "tl-parser.c") + " " + os.path.join(SRC_DIR, "tl-parser", "tlc.c") + " -lz -o tl-parser")
+r = build_lib.run_command(CC + " " + os.path.join(ROOT_DIR, "tl-parser", "tl-parser.c") + " " + os.path.join(ROOT_DIR, "tl-parser", "tlc.c") + " -lz -o tl-parser")
 if r != 0:
     sys.exit(r)
 
-auto_srcs = [os.path.join(SRC_DIR, "auto", "scheme.tl"), \
-             os.path.join(SRC_DIR, "auto", "encrypted_scheme.tl"), \
-             os.path.join(SRC_DIR, "auto", "mtproto.tl"), \
-             os.path.join(SRC_DIR, "auto", "append.tl")]
+AUTO_DIR = os.path.join(ROOT_DIR, "src", "auto")
+
+auto_srcs = [os.path.join(AUTO_DIR, "scheme.tl"), \
+             os.path.join(AUTO_DIR, "encrypted_scheme.tl"), \
+             os.path.join(AUTO_DIR, "mtproto.tl"), \
+             os.path.join(AUTO_DIR, "append.tl")]
 
 concatenate_small_files(auto_srcs, os.path.join("auto", "scheme.tl"))
 
-generate_mime_data(os.path.join(SRC_DIR, "auto", "mime.types"))
+generate_mime_data(os.path.join(AUTO_DIR, "mime.types"))
 generate_constants_header()
 
 r = build_lib.run_command(os.path.join(".", "tl-parser") + " -e " + os.path.join("auto", "scheme.tlo") + " " + os.path.join("auto", "scheme.tl"))
