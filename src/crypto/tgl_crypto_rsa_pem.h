@@ -27,6 +27,7 @@
 #include <openssl/pem.h>
 
 #include <cstdio> /* FILE */
+#include <cstring>
 
 typedef RSA TGLC_rsa;
 
