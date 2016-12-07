@@ -20,6 +20,15 @@
     Copyright Topology LP 2016
 */
 
+#include "mtproto-common.h"
+
+#include "auto/auto.h"
+#include "crypto/tgl_crypto_rand.h"
+#include "crypto/tgl_crypto_sha.h"
+#include "tgl/tgl.h"
+#include "tgl/tgl_log.h"
+#include "tools.h"
+
 #include <assert.h>
 #include <memory>
 #include <string.h>
@@ -34,15 +43,6 @@
 #include <netdb.h>
 #endif
 
-#include "mtproto-common.h"
-#include "tools.h"
-
-#include "auto/auto.h"
-#include "tgl/tgl.h"
-#include "tgl/tgl_crypto_rand.h"
-#include "tgl/tgl_crypto_sha.h"
-#include "tgl/tgl_log.h"
-
 #ifdef __MACH__
 #include <mach/clock.h>
 #include <mach/mach.h>
@@ -53,8 +53,6 @@
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
-
-//int verbosity;
 
 #ifndef WIN32
 static int get_random_bytes(unsigned char* buf, int n)
@@ -246,7 +244,7 @@ int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC
     assert(y);
     for (int i = 0; i < chunks; i++) {
         TGLC_bn_bin2bn(reinterpret_cast<const unsigned char*>(from), 255, x.get());
-        result = TGLC_bn_mod_exp(y.get(), x.get(), E, N, tgl_state::instance()->bn_ctx());
+        result = TGLC_bn_mod_exp(y.get(), x.get(), E, N, tgl_state::instance()->bn_ctx()->ctx);
         TGL_ASSERT_UNUSED(result, result == 1);
         unsigned l = 256 - TGLC_bn_num_bytes(y.get());
         assert(l <= 256);
@@ -273,7 +271,7 @@ int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC
     assert(y.get());
     for (int i = 0; i < chunks; i++) {
         TGLC_bn_bin2bn(reinterpret_cast<const unsigned char*>(from), 256, x.get());
-        auto result = TGLC_bn_mod_exp(y.get(), x.get(), D, N, tgl_state::instance()->bn_ctx());
+        auto result = TGLC_bn_mod_exp(y.get(), x.get(), D, N, tgl_state::instance()->bn_ctx()->ctx);
         TGL_ASSERT_UNUSED(result, result == 1);
         int l = TGLC_bn_num_bytes(y.get());
         if (l > 255) {

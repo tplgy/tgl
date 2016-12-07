@@ -24,8 +24,9 @@
 
 #include "tools.h"
 
-#include "tgl/tgl_crypto_rand.h"
+#include "crypto/tgl_crypto_rand.h"
 #include "tgl/tgl_log.h"
+#include "tgl/tgl_secure_random.h"
 
 #ifdef VALGRIND_FIXES
 #include "valgrind/memcheck.h"
@@ -56,7 +57,7 @@ int tgl_inflate(const void* input, int ilen, void* output, int olen)
     return total_out;
 }
 
-void tglt_secure_random(unsigned char* s, int l)
+void tgl_secure_random(unsigned char* s, int l)
 {
     if (TGLC_rand_bytes(s, l) <= 0) {
         /*if (allow_weak_random) {

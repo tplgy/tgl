@@ -22,20 +22,21 @@
 #ifndef __MTPROTO_COMMON_H__
 #define __MTPROTO_COMMON_H__
 
+#include "crypto/tgl_crypto_aes.h"
+#include "crypto/tgl_crypto_bn.h"
+#include "crypto/tgl_crypto_rand.h"
+#include "crypto/tgl_crypto_rsa_pem.h"
+#include "tgl/tgl_secure_random.h"
+
+#include <cassert>
 #include <cstdint>
-#include <string.h>
-#include "tgl/tgl_crypto_aes.h"
-#include "tgl/tgl_crypto_bn.h"
-#include "tgl/tgl_crypto_rand.h"
-#include "tgl/tgl_crypto_rsa_pem.h"
+#include <memory>
+#include <stdexcept>
 #include <stdio.h>
-#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
-
-#include <stdexcept>
-#include <memory>
 #include <string>
+#include <string.h>
 #include <vector>
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -214,7 +215,7 @@ public:
     void out_random(int length)
     {
         std::unique_ptr<unsigned char[]> buffer(new unsigned char[length]);
-        tglt_secure_random(buffer.get(), length);
+        tgl_secure_random(buffer.get(), length);
         out_string(reinterpret_cast<const char*>(buffer.get()), length);
     }
 

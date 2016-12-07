@@ -15,17 +15,12 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-    Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Ben Wiederhake 2015
 */
 
-#ifndef __MTPROTO_UTILS_H__
-#define __MTPROTO_UTILS_H__
+#ifndef __TGL_SECURE_RANDOM_H__
+#define __TGL_SECURE_RANDOM_H__
 
-#include "crypto/tgl_crypto_bn.h"
-
-int tglmp_check_DH_params(TGLC_bn* p, int g);
-int tglmp_check_g_a(TGLC_bn* p, TGLC_bn* g_a);
-int bn_factorize(TGLC_bn* pq, TGLC_bn* p, TGLC_bn* q);
+void tgl_secure_random(unsigned char* result, int length);
 
 #endif

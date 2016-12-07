@@ -39,6 +39,9 @@
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
+#include "crypto/tgl_crypto_md5.h"
+#include "crypto/tgl_crypto_rand.h"
+#include "crypto/tgl_crypto_sha.h"
 #include "mtproto-client.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
@@ -47,13 +50,11 @@
 #include "tools.h"
 #include "tgl/tgl.h"
 #include "tgl/tgl_chat.h"
-#include "tgl/tgl_crypto_md5.h"
-#include "tgl/tgl_crypto_rand.h"
-#include "tgl/tgl_crypto_sha.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_peer_id.h"
 #include "tgl/tgl_privacy_rule.h"
 #include "tgl/tgl_queries.h"
+#include "tgl/tgl_secure_random.h"
 #include "tgl/tgl_timer.h"
 #include "tgl/tgl_update_callback.h"
 #include "updates.h"
@@ -1268,7 +1269,7 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
     int64_t date = tgl_get_system_time();
 
     int64_t message_id;
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
+    tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
 
     std::shared_ptr<tgl_message> message;
 
@@ -1964,7 +1965,7 @@ void tgl_do_forward_messages(const tgl_input_peer_t& from_id, const tgl_input_pe
     q->out_i32(message_ids.size());
     for (size_t i = 0; i < message_ids.size(); i++) {
         int64_t new_message_id;
-        tglt_secure_random(reinterpret_cast<unsigned char*>(&new_message_id), 8);
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&new_message_id), 8);
         E->message_ids.push_back(new_message_id);
         q->out_i64(new_message_id);
     }
@@ -1998,7 +1999,7 @@ void tgl_do_forward_message(const tgl_input_peer_t& from_id, const tgl_input_pee
     }
 
     std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
+    tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
     auto q = std::make_shared<query_send_msgs>(E, callback);
     q->out_i32(CODE_messages_forward_message);
     q->out_input_peer(from_id);
@@ -2022,7 +2023,7 @@ void tgl_do_send_contact(const tgl_input_peer_t& id,
     }
 
     std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
+    tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
 
     auto q = std::make_shared<query_send_msgs>(E, callback);
     q->out_i32(CODE_messages_send_media);
@@ -2096,7 +2097,7 @@ void tgl_do_forward_media(const tgl_input_peer_t& to_id, int64_t message_id, boo
     }
 #endif
     std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
+    tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
 
     auto q = std::make_shared<query_send_msgs>(E, callback);
     q->out_i32(CODE_messages_send_media);
@@ -2145,7 +2146,7 @@ void tgl_do_send_location(const tgl_input_peer_t& peer_id, double latitude, doub
         tgl_do_send_location_encr(peer_id, latitude, longitude, callback);
     } else {
         std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-        tglt_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
 
         auto q = std::make_shared<query_send_msgs>(E, callback);
         q->out_i32(CODE_messages_send_media);
@@ -2763,7 +2764,7 @@ void tgl_do_add_contacts(const std::vector<std::tuple<std::string, std::string, 
         const auto& last_name = std::get<2>(contact);
 
         q->out_i32(CODE_input_phone_contact);
-        tglt_secure_random(reinterpret_cast<unsigned char*>(&r), 8);
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&r), 8);
         q->out_i64(r);
         q->out_std_string(phone);
         q->out_std_string(first_name);
@@ -3634,7 +3635,7 @@ void tgl_do_start_bot(const tgl_input_peer_t& bot, const tgl_peer_id_t& chat,
     q->out_i64(bot.access_hash);
     q->out_i32(chat.peer_id);
     int64_t m;
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&m), 8);
+    tgl_secure_random(reinterpret_cast<unsigned char*>(&m), 8);
     q->out_i64(m);
     q->out_string(str, str_len);
 
@@ -4004,7 +4005,7 @@ static void tgl_do_act_set_password(const std::string& current_password,
         memcpy(d, new_salt.data(), new_salt.size());
 
         int l = new_salt.size();
-        tglt_secure_random((unsigned char*)d + l, 16);
+        tgl_secure_random((unsigned char*)d + l, 16);
         l += 16;
         memcpy(s, d, l);
 
@@ -4263,7 +4264,7 @@ void tgl_do_send_broadcast(int num, tgl_input_peer_t peer_id[], const std::strin
         assert(peer_id[i].peer_type == tgl_peer_type::user);
 
         int64_t message_id;
-        tglt_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
         E->message_ids.push_back(message_id);
 
         tgl_peer_id_t from_id = tgl_state::instance()->our_id();

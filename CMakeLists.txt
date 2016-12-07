@@ -81,43 +81,44 @@ set(GENERATED_TGL_HEADERS
 
 set(PUBLIC_HEADERS
     include/tgl/tgl.h
-    include/tgl/tgl_crypto_aes.h
-    include/tgl/tgl_crypto_bn.h
-    include/tgl/tgl_crypto_err.h
-    include/tgl/tgl_crypto_md5.h
-    include/tgl/tgl_crypto_rsa_pem.h
-    include/tgl/tgl_crypto_sha.h
-    include/tgl/tgl_crypto_rand.h
+    include/tgl/tgl_bot.h
+    include/tgl/tgl_channel.h
+    include/tgl/tgl_chat.h
+    include/tgl/tgl_connection_status.h
     include/tgl/tgl_dc.h
     include/tgl/tgl_file_location.h
     include/tgl/tgl_log.h
-    include/tgl/tgl_peer_id.h
-    include/tgl/tgl_update_callback.h
     include/tgl/tgl_message.h
+    include/tgl/tgl_message_action.h
     include/tgl/tgl_message_entity.h
     include/tgl/tgl_message_media.h
-    include/tgl/tgl_message_action.h
     include/tgl/tgl_mime_type.h
     include/tgl/tgl_mtproto_client.h
-    include/tgl/tgl_secret_chat.h
-    include/tgl/tgl_typing_status.h
+    include/tgl/tgl_net.h
     include/tgl/tgl_online_status.h
+    include/tgl/tgl_online_status_observer.h
+    include/tgl/tgl_peer_id.h
     include/tgl/tgl_privacy_rule.h
     include/tgl/tgl_queries.h
-    include/tgl/tgl_connection_status.h
-    include/tgl/tgl_chat.h
-    include/tgl/tgl_user.h
-    include/tgl/tgl_bot.h
-    include/tgl/tgl_online_status_observer.h
-    include/tgl/tgl_channel.h
-    include/tgl/tgl_net.h
+    include/tgl/tgl_secret_chat.h
+    include/tgl/tgl_secure_random.h
     include/tgl/tgl_timer.h
     include/tgl/tgl_transfer_manager.h
+    include/tgl/tgl_typing_status.h
+    include/tgl/tgl_update_callback.h
+    include/tgl/tgl_user.h
 )
 
 set(PRIVATE_HEADERS
     ${GENERATED_TGL_HEADERS}
     src/auto/auto.h
+    src/crypto/tgl_crypto_aes.h
+    src/crypto/tgl_crypto_bn.h
+    src/crypto/tgl_crypto_err.h
+    src/crypto/tgl_crypto_md5.h
+    src/crypto/tgl_crypto_rsa_pem.h
+    src/crypto/tgl_crypto_sha.h
+    src/crypto/tgl_crypto_rand.h
     src/mtproto-client.h
     src/mtproto-common.h
     src/mtproto-utils.h
@@ -148,6 +149,7 @@ set(SOURCES
     src/tgl_dc.cpp
     src/tgl_log.cpp
     src/tgl_mime_type.cpp
+    src/tgl_secret_chat.cpp
     src/tgl_transfer_manager.cpp
     src/tools.cpp
     src/updates.cpp

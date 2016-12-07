@@ -21,7 +21,6 @@
 #ifndef __TGL_H__
 #define __TGL_H__
 
-#include "tgl/tgl_crypto_bn.h"
 #include "tgl/tgl_online_status.h"
 #include "tgl/tgl_peer_id.h"
 
@@ -108,6 +107,7 @@ class tgl_timer_factory;
 class tgl_update_callback;
 struct tgl_message;
 struct tgl_secret_chat;
+struct tgl_bn_context;
 
 struct tgl_state {
     static tgl_state* instance();
@@ -127,7 +127,7 @@ struct tgl_state {
     void login();
     void logout();
 
-    TGLC_bn_ctx* bn_ctx() { return m_bn_ctx.get(); }
+    const tgl_bn_context* bn_ctx() const { return m_bn_ctx.get(); }
 
     void set_auth_key(int num, const char* buf);
     void set_our_id(int id);
@@ -247,7 +247,7 @@ private:
     std::shared_ptr<tgl_connection_factory> m_connection_factory;
     std::shared_ptr<tgl_update_callback> m_callback;
 
-    std::unique_ptr<TGLC_bn_ctx, TGLC_bn_ctx_deleter> m_bn_ctx;
+    std::unique_ptr<tgl_bn_context> m_bn_ctx;
 
     std::vector<std::shared_ptr<tgl_dc>> m_dcs;
     std::shared_ptr<tgl_dc> m_working_dc;

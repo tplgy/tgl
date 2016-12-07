@@ -26,8 +26,9 @@
 #include "structures.h"
 #include "tgl_rsa_key.h"
 #include "tools.h"
-#include "tgl/tgl_crypto_rsa_pem.h"
-#include "tgl/tgl_crypto_sha.h"
+#include "crypto/tgl_crypto_bn.h"
+#include "crypto/tgl_crypto_rsa_pem.h"
+#include "crypto/tgl_crypto_sha.h"
 #include "tgl/tgl_online_status_observer.h"
 #include "tgl/tgl_queries.h"
 #include "tgl/tgl_update_callback.h"
@@ -62,7 +63,7 @@ tgl_state::tgl_state()
     , m_password_locked(false)
     , m_phone_number_input_locked(false)
     , m_our_id()
-    , m_bn_ctx(TGLC_bn_ctx_new())
+    , m_bn_ctx(new tgl_bn_context(TGLC_bn_ctx_new()))
     , m_online_status_observers()
 {
 }

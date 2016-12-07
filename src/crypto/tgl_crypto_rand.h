@@ -38,6 +38,4 @@ inline static int TGLC_rand_pseudo_bytes(unsigned char* buf, int num)
     return RAND_pseudo_bytes(buf, num);
 }
 
-void tglt_secure_random(unsigned char* s, int l);
-
 #endif

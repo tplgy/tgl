@@ -21,36 +21,38 @@
 
 #include "queries-encrypted.h"
 
-#include <errno.h>
-#include <string.h>
-#include <memory.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#ifndef WIN32
-#include <sys/utsname.h>
-#endif
-
-#include <algorithm>
-#include <array>
-
 #include "auto/auto.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "auto/auto-types.h"
 #include "auto/constants.h"
+#include "crypto/tgl_crypto_aes.h"
+#include "crypto/tgl_crypto_bn.h"
+#include "crypto/tgl_crypto_md5.h"
+#include "crypto/tgl_crypto_sha.h"
 #include "mtproto-client.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "queries.h"
 #include "tools.h"
 #include "tgl/tgl.h"
-#include "tgl/tgl_crypto_aes.h"
-#include "tgl/tgl_crypto_md5.h"
 #include "tgl/tgl_log.h"
+#include "tgl/tgl_secure_random.h"
 #include "tgl/tgl_update_callback.h"
+
+#include <algorithm>
+#include <array>
+#include <errno.h>
+#include <fcntl.h>
+#include <memory.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#ifndef WIN32
+#include <sys/utsname.h>
+#endif
 
 struct secret_msg_callback_extra
 {
@@ -76,7 +78,7 @@ void secret_chat_encryptor::end()
     size_t length = m_serializer->i32_size() - (m_encr_base + 8);
     while ((m_serializer->i32_size() - m_encr_base - 3) & 3) {
         int32_t i;
-        tglt_secure_random(reinterpret_cast<unsigned char*>(&i), 4);
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&i), 4);
         m_serializer->out_i32(i);
     }
 
@@ -153,7 +155,7 @@ static void do_set_dh_params(const std::shared_ptr<tgl_secret_chat>& secret_chat
     secret_chat->set_encr_prime(prime, 256);
     secret_chat->encr_param_version = version;
 
-    auto res = tglmp_check_DH_params(secret_chat->encr_prime_bn(), secret_chat->encr_root);
+    auto res = tglmp_check_DH_params(secret_chat->encr_prime_bn()->bn, secret_chat->encr_root);
     TGL_ASSERT_UNUSED(res, res >= 0);
 }
 
@@ -443,7 +445,7 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
     int64_t date = tgl_get_system_time();
 
     int64_t message_id;
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
+    tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
 
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
     std::shared_ptr<tgl_message> M = tglm_create_encr_message(secret_chat,
@@ -584,7 +586,7 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, d
     assert(secret_chat);
 
     int64_t message_id;
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
+    tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
     std::shared_ptr<tgl_message> M = tglm_create_encr_message(secret_chat,
           message_id,
           from_id,
@@ -705,15 +707,15 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     }
 
     assert(!secret_chat->g_key.empty());
-    assert(tgl_state::instance()->bn_ctx());
+    assert(tgl_state::instance()->bn_ctx()->ctx);
     unsigned char random_here[256];
-    tglt_secure_random(random_here, 256);
+    tgl_secure_random(random_here, 256);
     for (int i = 0; i < 256; i++) {
         random[i] ^= random_here[i];
     }
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> b(TGLC_bn_bin2bn(random.data(), 256, 0));
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_a(TGLC_bn_bin2bn(secret_chat->g_key.data(), 256, 0));
-    if (tglmp_check_g_a(secret_chat->encr_prime_bn(), g_a.get()) < 0) {
+    if (tglmp_check_g_a(secret_chat->encr_prime_bn()->bn, g_a.get()) < 0) {
         if (callback) {
             callback(false, secret_chat);
         }
@@ -721,9 +723,9 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
         return;
     }
 
-    TGLC_bn* p = secret_chat->encr_prime_bn();
+    TGLC_bn* p = secret_chat->encr_prime_bn()->bn;
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
-    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()));
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()->ctx));
     unsigned char buffer[256];
     memset(buffer, 0, sizeof(buffer));
     TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
@@ -742,7 +744,7 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
 
     memset(buffer, 0, sizeof(buffer));
     check_crypto_result(TGLC_bn_set_word(g_a.get(), secret_chat->encr_root));
-    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()));
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()->ctx));
     TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
 
     auto q = std::make_shared<query_send_encr_accept>(secret_chat, callback);
@@ -763,14 +765,14 @@ static bool create_keys_end(const std::shared_ptr<tgl_secret_chat>& secret_chat)
     }
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_b(TGLC_bn_bin2bn(secret_chat->g_key.data(), 256, 0));
-    if (tglmp_check_g_a(secret_chat->encr_prime_bn(), g_b.get()) < 0) {
+    if (tglmp_check_g_a(secret_chat->encr_prime_bn()->bn, g_b.get()) < 0) {
         return false;
     }
 
-    TGLC_bn* p = secret_chat->encr_prime_bn();
+    TGLC_bn* p = secret_chat->encr_prime_bn()->bn;
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(secret_chat->key(), tgl_secret_chat::key_size(), 0));
-    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_b.get(), a.get(), p, tgl_state::instance()->bn_ctx()));
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_b.get(), a.get(), p, tgl_state::instance()->bn_ctx()->ctx));
 
     std::vector<unsigned char> key(tgl_secret_chat::key_size(), 0);
 
@@ -792,20 +794,20 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
         std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> callback)
 {
     unsigned char random_here[256];
-    tglt_secure_random(random_here, 256);
+    tgl_secure_random(random_here, 256);
     for (int i = 0; i < 256; i++) {
         random[i] ^= random_here[i];
     }
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(random.data(), 256, 0));
-    TGLC_bn* p = secret_chat->encr_prime_bn();
+    TGLC_bn* p = secret_chat->encr_prime_bn()->bn;
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g(TGLC_bn_new());
     check_crypto_result(TGLC_bn_set_word(g.get(), secret_chat->encr_root));
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
 
-    check_crypto_result(TGLC_bn_mod_exp(r.get(), g.get(), a.get(), p, tgl_state::instance()->bn_ctx()));
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g.get(), a.get(), p, tgl_state::instance()->bn_ctx()->ctx));
 
     char g_a[256];
     memset(g_a, 0, sizeof(g_a));

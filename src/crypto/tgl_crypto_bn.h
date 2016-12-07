@@ -145,4 +145,35 @@ struct TGLC_bn_ctx_deleter {
     }
 };
 
+
+// tgl_bn and tgl_bn_context are wrappers
+// so that we can make forward declarations
+// to avoid expose this file as public API.
+
+struct tgl_bn {
+    tgl_bn(): bn(nullptr) { }
+    explicit tgl_bn(TGLC_bn* bn): bn(bn) { }
+    ~tgl_bn()
+    {
+        if (bn) {
+            TGLC_bn_free(bn);
+            bn = nullptr;
+        }
+    }
+    TGLC_bn* bn;
+};
+
+struct tgl_bn_context {
+    tgl_bn_context(): ctx(nullptr) { }
+    explicit tgl_bn_context(TGLC_bn_ctx* ctx): ctx(ctx) { }
+    ~tgl_bn_context()
+    {
+        if (ctx) {
+            TGLC_bn_ctx_free(ctx);
+            ctx = nullptr;
+        }
+    }
+    TGLC_bn_ctx* ctx;
+};
+
 #endif

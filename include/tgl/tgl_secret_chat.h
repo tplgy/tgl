@@ -22,15 +22,13 @@
 #ifndef __TGL_SECRET_CHAT_H__
 #define __TGL_SECRET_CHAT_H__
 
-#include "tgl_crypto_bn.h"
-#include "tgl_crypto_sha.h"
 #include "tgl_file_location.h"
 #include "tgl_peer_id.h"
 
 #include <algorithm>
 #include <cassert>
 #include <memory>
-#include <string.h>
+#include <string>
 #include <vector>
 
 static constexpr int32_t TGL_ENCRYPTED_LAYER = 17;
@@ -104,6 +102,8 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_secret_chat_exchang
     return os;
 }
 
+struct tgl_bn;
+
 struct tgl_secret_chat {
     tgl_input_peer_t id;
     int64_t access_hash;
@@ -127,30 +127,19 @@ struct tgl_secret_chat {
 
     std::vector<unsigned char> g_key;
 
-    TGLC_bn* encr_prime_bn()
-    {
-        return m_encr_prime_bn.get();
-    }
+    tgl_secret_chat();
+    ~tgl_secret_chat();
+
+    const tgl_bn* encr_prime_bn() const { return m_encr_prime_bn.get(); }
 
     const std::vector<unsigned char>& encr_prime() const
     {
         return m_encr_prime;
     }
 
-    void set_encr_prime(const unsigned char* prime, size_t length)
-    {
-        m_encr_prime.resize(length);
-        m_encr_prime_bn.reset(TGLC_bn_new());
-        std::copy(prime, prime + length, m_encr_prime.begin());
-        TGLC_bn_bin2bn(m_encr_prime.data(), length, m_encr_prime_bn.get());
-    }
+    void set_encr_prime(const unsigned char* prime, size_t length);
 
-    void set_key(const unsigned char* key)
-    {
-        TGLC_sha1(key, key_size(), m_key_sha);
-        memcpy(m_key, key, key_size());
-    }
-
+    void set_key(const unsigned char* key);
     const unsigned char* key() const { return m_key; }
     const unsigned char* key_sha() const { return m_key_sha; }
     int64_t key_fingerprint() const
@@ -164,37 +153,9 @@ struct tgl_secret_chat {
     static size_t key_size() { return 256; }
     static size_t key_sha_size() { return 20; }
 
-    tgl_secret_chat()
-        : id()
-        , access_hash(0)
-        , temp_key_fingerprint(0)
-        , exchange_id(0)
-        , exchange_key_fingerprint(0)
-        , user_id(0)
-        , admin_id(0)
-        , date(0)
-        , ttl(0)
-        , layer(0)
-        , in_seq_no(0)
-        , out_seq_no(0)
-        , last_in_seq_no(0)
-        , encr_root(0)
-        , encr_param_version(0)
-        , state(tgl_secret_chat_state::none)
-        , exchange_state(tgl_secret_chat_exchange_state::none)
-        , device_id(0)
-        , g_key()
-        , m_encr_prime()
-        , m_encr_prime_bn(nullptr)
-    {
-        memset(m_key, 0, sizeof(m_key));
-        memset(m_key_sha, 0, sizeof(m_key_sha));
-        memset(exchange_key, 0, sizeof(exchange_key));
-    }
-
 private:
     std::vector<unsigned char> m_encr_prime;
-    std::unique_ptr<TGLC_bn, TGLC_bn_deleter> m_encr_prime_bn;
+    std::unique_ptr<tgl_bn> m_encr_prime_bn;
     unsigned char m_key[256];
     unsigned char m_key_sha[20];
 };

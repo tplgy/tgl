@@ -22,16 +22,17 @@
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"
-#include "queries.h"
+#include "crypto/tgl_crypto_aes.h"
+#include "crypto/tgl_crypto_md5.h"
 #include "mtproto-common.h"
+#include "queries.h"
+#include "queries-encrypted.h"
 #include "tools.h"
-#include "tgl/tgl_crypto_aes.h"
-#include "tgl/tgl_crypto_md5.h"
 #include "tgl/tgl_mime_type.h"
 #include "tgl/tgl_transfer_manager.h"
 #include "tgl/tgl_secret_chat.h"
+#include "tgl/tgl_secure_random.h"
 #include "tgl/tgl_update_callback.h"
-#include "queries-encrypted.h"
 
 #include <fcntl.h>
 #include <boost/filesystem.hpp>
@@ -626,7 +627,7 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
     q->out_i32(u->to_id.peer_id);
     q->out_i64(secret_chat->access_hash);
     int64_t r;
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&r), 8);
+    tgl_secure_random(reinterpret_cast<unsigned char*>(&r), 8);
     q->out_i64(r);
     encryptor.start();
     q->out_i32(CODE_decrypted_message_layer);
@@ -825,7 +826,7 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
         if (u->is_encrypted()) {
             if (read_size & 15) {
                 assert(u->offset == u->size);
-                tglt_secure_random(reinterpret_cast<unsigned char*>(sending_buffer->data()) + read_size, (-read_size) & 15);
+                tgl_secure_random(reinterpret_cast<unsigned char*>(sending_buffer->data()) + read_size, (-read_size) & 15);
                 read_size = (read_size + 15) & ~15;
             }
 
@@ -904,7 +905,7 @@ void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id,
         return;
     }
 
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&u->id), 8);
+    tgl_secure_random(reinterpret_cast<unsigned char*>(&u->id), 8);
     u->avatar = avatar;
     u->message_id = message_id;
     u->reply = reply;
@@ -919,9 +920,9 @@ void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id,
     u->caption = std::move(document->caption);
 
     if (u->is_encrypted()) {
-        tglt_secure_random(u->iv.data(), u->iv.size());
+        tgl_secure_random(u->iv.data(), u->iv.size());
         memcpy(u->init_iv.data(), u->iv.data(), u->iv.size());
-        tglt_secure_random(u->key.data(), u->key.size());
+        tgl_secure_random(u->key.data(), u->key.size());
     }
 
     auto thumb_size = document->thumb_data.size();

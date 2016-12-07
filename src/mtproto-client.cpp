@@ -22,20 +22,14 @@
 
 #include "mtproto-client.h"
 
-#include <algorithm>
-#include <assert.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 #include "auto/auto.h"
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
+#include "crypto/tgl_crypto_aes.h"
+#include "crypto/tgl_crypto_bn.h"
+#include "crypto/tgl_crypto_rand.h"
+#include "crypto/tgl_crypto_rsa_pem.h"
+#include "crypto/tgl_crypto_sha.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "queries.h"
@@ -43,18 +37,23 @@
 #include "tgl_rsa_key.h"
 #include "tools.h"
 #include "tgl/tgl.h"
-#include "tgl/tgl_crypto_aes.h"
-#include "tgl/tgl_crypto_bn.h"
-#include "tgl/tgl_crypto_rand.h"
-#include "tgl/tgl_crypto_rsa_pem.h"
-#include "tgl/tgl_crypto_sha.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_net.h"
 #include "tgl/tgl_timer.h"
 #include "tgl/tgl_queries.h"
 #include "updates.h"
 
+#include <algorithm>
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <memory>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 constexpr int MAX_MESSAGE_INTS = 1048576;
 constexpr int ACK_TIMEOUT = 1;
@@ -245,7 +244,7 @@ static int send_req_pq_packet(const std::shared_ptr<tgl_connection>& c)
 
     assert(DC->state == tgl_dc_state::init);
 
-    tglt_secure_random(DC->nonce, 16);
+    tgl_secure_random(DC->nonce, 16);
     mtprotocol_serializer s;
     s.out_i32(CODE_req_pq);
     s.out_i32s((int *)DC->nonce, 4);
@@ -266,7 +265,7 @@ static int send_req_pq_temp_packet(const std::shared_ptr<tgl_connection>& c)
 
     assert(DC->state == tgl_dc_state::authorized);
 
-    tglt_secure_random(DC->nonce, 16);
+    tgl_secure_random(DC->nonce, 16);
     mtprotocol_serializer s;
     s.out_i32(CODE_req_pq);
     s.out_i32s((int *)DC->nonce, 4);
@@ -304,7 +303,7 @@ static void send_req_dh_packet(const std::shared_ptr<tgl_connection>& c, TGLC_bn
 
     s.out_i32s((int *)DC->nonce, 4);
     s.out_i32s((int *)DC->server_nonce, 4);
-    tglt_secure_random(DC->new_nonce, 32);
+    tgl_secure_random(DC->new_nonce, 32);
     s.out_i32s((int *)DC->new_nonce, 8);
     if (temp_key) {
         TGL_DEBUG("creating temp auth key expiring in " << tgl_state::instance()->temp_key_expire_time() << " seconds for DC " << DC->id);
@@ -360,15 +359,15 @@ static void send_dh_params(const std::shared_ptr<tgl_connection>& c, TGLC_bn* dh
     check_crypto_result(TGLC_bn_set_word(dh_g.get(), g));
 
     unsigned char s_power[256];
-    tglt_secure_random(s_power, 256);
+    tgl_secure_random(s_power, 256);
     std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_power(TGLC_bn_bin2bn((unsigned char *)s_power, 256, 0));
 
     std::unique_ptr<TGLC_bn, TGLC_bn_deleter> y(TGLC_bn_new());
-    check_crypto_result(TGLC_bn_mod_exp(y.get(), dh_g.get(), dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx()));
+    check_crypto_result(TGLC_bn_mod_exp(y.get(), dh_g.get(), dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx()->ctx));
     s.out_bignum(y.get());
 
     std::unique_ptr<TGLC_bn, TGLC_bn_deleter> auth_key_num(TGLC_bn_new());
-    check_crypto_result(TGLC_bn_mod_exp(auth_key_num.get(), g_a, dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx()));
+    check_crypto_result(TGLC_bn_mod_exp(auth_key_num.get(), g_a, dh_power.get(), dh_prime, tgl_state::instance()->bn_ctx()->ctx));
     int l = TGLC_bn_num_bytes(auth_key_num.get());
     assert(l >= 250 && l <= 256);
     auto result = TGLC_bn_bn2bin(auth_key_num.get(), (unsigned char *)(temp_key ? DC->temp_auth_key : DC->auth_key));
@@ -747,13 +746,13 @@ static void bind_temp_auth_key(const std::shared_ptr<tgl_connection>& c)
     mtprotocol_serializer s;
     s.out_i32(CODE_bind_auth_key_inner);
     int64_t rand;
-    tglt_secure_random(reinterpret_cast<unsigned char*>(&rand), 8);
+    tgl_secure_random(reinterpret_cast<unsigned char*>(&rand), 8);
     s.out_i64(rand);
     s.out_i64(DC->temp_auth_key_id);
     s.out_i64(DC->auth_key_id);
 
     if (!S->session_id) {
-        tglt_secure_random((unsigned char*)&S->session_id, 8);
+        tgl_secure_random((unsigned char*)&S->session_id, 8);
     }
     s.out_i64(S->session_id);
     int expires = tgl_get_system_time() + DC->server_time_delta + tgl_state::instance()->temp_key_expire_time();
@@ -804,7 +803,7 @@ static void init_enc_msg(encrypted_message& enc_msg, std::shared_ptr<tgl_session
     enc_msg.auth_key_id = DC->temp_auth_key_id;
     enc_msg.server_salt = DC->server_salt;
     if (!S->session_id) {
-        tglt_secure_random((unsigned char*)&S->session_id, 8);
+        tgl_secure_random((unsigned char*)&S->session_id, 8);
     }
     enc_msg.session_id = S->session_id;
     if (!enc_msg.msg_id) {
@@ -820,8 +819,8 @@ static void init_enc_msg(encrypted_message& enc_msg, std::shared_ptr<tgl_session
 static void init_enc_msg_inner_temp(encrypted_message& enc_msg, const std::shared_ptr<tgl_dc>& DC, int64_t msg_id)
 {
     enc_msg.auth_key_id = DC->auth_key_id;
-    tglt_secure_random((unsigned char*)&enc_msg.server_salt, 8);
-    tglt_secure_random((unsigned char*)&enc_msg.session_id, 8);
+    tgl_secure_random((unsigned char*)&enc_msg.server_salt, 8);
+    tgl_secure_random((unsigned char*)&enc_msg.session_id, 8);
     enc_msg.msg_id = msg_id;
     enc_msg.seq_no = 0;
 };
@@ -1495,7 +1494,7 @@ void tgln_insert_msg_id(const std::shared_ptr<tgl_session>& s, int64_t id)
 void tglmp_dc_create_session(const std::shared_ptr<tgl_dc>& dc)
 {
     std::shared_ptr<tgl_session> S = std::make_shared<tgl_session>();
-    tglt_secure_random((unsigned char *)&S->session_id, 8);
+    tgl_secure_random((unsigned char *)&S->session_id, 8);
     S->dc = dc;
 
     create_connection(S);
