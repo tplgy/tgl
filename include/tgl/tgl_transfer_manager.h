@@ -22,10 +22,10 @@
 #ifndef TGL_TRANSFER_MANAGER_H
 #define TGL_TRANSFER_MANAGER_H
 
-#include "tgl/tgl_file_location.h"
-#include "tgl/tgl_peer_id.h"
-#include "tgl/tgl_message.h"
-#include "tgl/tgl_message_media.h"
+#include "tgl_file_location.h"
+#include "tgl_peer_id.h"
+#include "tgl_message.h"
+#include "tgl_message_media.h"
 
 #include <array>
 #include <cassert>

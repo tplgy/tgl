@@ -23,10 +23,10 @@
 #define __TGL_UPDATE_CALLBACK__
 
 #include "tgl.h"
-#include "tgl/tgl_connection_status.h"
-#include "tgl/tgl_message.h"
-#include "tgl/tgl_secret_chat.h"
-#include "tgl/tgl_typing_status.h"
+#include "tgl_connection_status.h"
+#include "tgl_message.h"
+#include "tgl_secret_chat.h"
+#include "tgl_typing_status.h"
 
 #include <map>
 #include <memory>

@@ -45,17 +45,12 @@ void tgl_do_register_device(int token_type, const std::string& token,
         const std::string& lang_code,
         const std::function<void(bool success)>& callback);
 
-/* {{{ WORK WITH ACCOUNT */
 // sets account password
 // user will be requested to type his current password and new password (twice)
 void tgl_do_set_password(const std::string& hint, const std::function<void(bool success)>& callback);
-/* }}} */
-
-/* {{{ SENDING MESSAGES */
 
 struct tl_ds_reply_markup;
 
-// send plain text message to peer id
 void tgl_do_send_message(const tgl_input_peer_t& peer_id, const std::string& text,
         int32_t reply_id = 0, bool disable_preview = false, bool post_as_channel_message = false, const std::shared_ptr<tl_ds_reply_markup>& reply_markup = nullptr,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback = nullptr);
@@ -92,9 +87,6 @@ void tgl_do_send_location(const tgl_input_peer_t& id, double latitude, double lo
 // sends broadcast (i.e. message to several users at once)
 void tgl_do_send_broadcast(int num, tgl_peer_id_t peer_id[], const std::string& text,
         const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& ML)>& callback);
-/* }}} */
-
-/* {{{ EDITING SELF PROFILE */
 
 // rename self account
 void tgl_do_set_profile_name(const std::string& first_name, const std::string& last_name,
@@ -111,9 +103,6 @@ void tgl_do_update_status(bool online, const std::function<void(bool success)>& 
 
 // exports card. This card can be later be used by another user to add you to dialog list.
 void tgl_do_export_card(const std::function<void(bool success, const std::vector<int>& card)>& callback);
-/* }}} */
-
-/* {{{ WORKING WITH GROUP CHATS */
 
 // sets chat title
 void tgl_do_rename_chat(int32_t id, const std::string& new_title,
@@ -149,10 +138,6 @@ void tgl_do_export_chat_link(const tgl_peer_id_t& id, const std::function<void(b
 // joins to secret chat by link (or hash of this link)
 void tgl_do_import_chat_link(const std::string& link, const std::function<void(bool success)>& callback);
 
-/* }}} */
-
-/* {{{ WORKING WITH USERS */
-
 // requests full info about user *id*.
 // if *offline_mode* is set no actual query is sent
 void tgl_do_get_user_info(const tgl_input_peer_t& id, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback);
@@ -184,9 +169,6 @@ void tgl_do_update_notify_settings(const tgl_input_peer_t& peer_id,
 // query peer notification settings.
 void tgl_get_notify_settings(const tgl_input_peer_t& peer_id,
         const std::function<void(bool, int32_t mute_until)>& callback);
-/* }}} */
-
-/* {{{ WORKING WITH SECRET CHATS */
 
 // accepts secret chat request
 // method can fail if another device will be first to accept it
@@ -205,9 +187,6 @@ void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_c
 // requests creation of secret chat with user id
 void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id, int32_t new_secret_chat_id,
         const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>& callback);
-/* }}} */
-
-/* {{{ WORKING WITH DIALOG LIST */
 
 // receives all dialogs(except secret chats) from offset=*offset* with limit=*limit*
 // dialogs are sorted by last message received
@@ -229,10 +208,6 @@ void tgl_do_contact_resolve_username(const std::string& name, const std::functio
 // requests contact list
 void tgl_do_update_contact_list(const std::function<void(bool, const std::vector<std::shared_ptr<tgl_user>>&)>& callback);
 
-/* }}} */
-
-/* {{{ WORKING WITH ONE DIALOG */
-
 // requests last *limit* from offset *offset* (offset = 0 means most recent) messages from dialog with peer id
 // if offline_mode=1 then no actual query is sent
 // only locally cached messages returned
@@ -245,10 +220,6 @@ void tgl_do_get_history(const tgl_input_peer_t& id, int offset, int limit,
 void tgl_do_send_typing(const tgl_input_peer_t& id, enum tgl_typing_status status,
         const std::function<void(bool success)>& callback);
 
-/* }}} */
-
-
-/* {{{ ANOTHER MESSAGES FUNCTIONS */
 // search messages with ids *from* .. *to* in dialog id
 // id type of id is UNKNOWN uses global search (in all dialogs) instead
 // if *from* or *to* is means *from*=0 and *to*=+INF
@@ -260,8 +231,6 @@ void tgl_do_delete_msg(const tgl_input_peer_t& chat, int64_t message_id, const s
 
 // gets message by *id*
 void tgl_do_get_message(int64_t message_id, const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
-
-/* }}} */
 
 void tgl_do_start_bot(const tgl_peer_id_t& bot, const tgl_peer_id_t& chat, const char* str, int str_len,
         const std::function<void(bool success)>& callback);

@@ -21,8 +21,8 @@
 #ifndef __TGL_H__
 #define __TGL_H__
 
-#include "tgl/tgl_online_status.h"
-#include "tgl/tgl_peer_id.h"
+#include "tgl_online_status.h"
+#include "tgl_peer_id.h"
 
 #include <cassert>
 #include <cstdint>
