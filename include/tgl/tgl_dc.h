@@ -33,7 +33,7 @@
 #include "tgl_peer_id.h"
 
 static const char* TG_SERVER_1 = "149.154.175.50";
-static const char* TG_SERVER_2 = "149.154.167.50";
+static const char* TG_SERVER_2 = "149.154.167.51";
 static const char* TG_SERVER_3 = "149.154.175.100";
 static const char* TG_SERVER_4 = "149.154.167.91";
 static const char* TG_SERVER_5 = "149.154.171.5";
@@ -44,7 +44,7 @@ static const char* TG_SERVER_IPV6_4 = "2001:67c:4e8:f004::a";
 static const char* TG_SERVER_IPV6_5 = "2001:b28:f23f:f005::a";
 static constexpr int TG_SERVER_DEFAULT = 2;
 
-static const char* TG_SERVER_TEST_1 = "149.154.175.10";
+static const char* TG_SERVER_TEST_1 = "149.154.175.40";
 static const char* TG_SERVER_TEST_2 = "149.154.167.40";
 static const char* TG_SERVER_TEST_3 = "149.154.175.117";
 static const char* TG_SERVER_TEST_IPV6_1 = "2001:b28:f23d:f001::e";
