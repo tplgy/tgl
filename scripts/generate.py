@@ -74,7 +74,7 @@ def generate_mime_data(mime_types_file_name):
 def generate_constants_header():
     scheme_file = open(os.path.join("auto", "scheme2.tl"), "w+")
 
-    r = build_lib.run_command_stderr_to_file(os.path.join(".", "tl-parser") + " -E " + os.path.join("auto", "scheme.tl"), scheme_file)
+    r = build_lib.run_command_stderr_to_file(os.path.join(".", "tl-parser", "bin", "tl-parser") + " -E " + os.path.join("auto", "scheme.tl"), scheme_file)
     if r != 0:
         sys.exit(r)
 
@@ -133,9 +133,18 @@ r = build_lib.run_command(CC + " " + os.path.join(ROOT_DIR, "generator", "genera
 if r != 0:
     sys.exit(r)
 
-r = build_lib.run_command(CC + " " + os.path.join(ROOT_DIR, "tl-parser", "tl-parser.c") + " " + os.path.join(ROOT_DIR, "tl-parser", "tlc.c") + " -lz -o tl-parser")
+os.mkdir(os.path.join(BUILD_DIR, "tl-parser"))
+os.chdir(os.path.join(BUILD_DIR, "tl-parser"))
+if not os.path.exists("Makefile"):
+    r = build_lib.run_command("CC=" + CC + " " + os.path.join(ROOT_DIR, "tl-parser", "configure"))
+    if r != 0:
+        sys.exit(r)
+
+r = build_lib.run_command("make")
 if r != 0:
     sys.exit(r)
+
+os.chdir(BUILD_DIR)
 
 AUTO_DIR = os.path.join(ROOT_DIR, "src", "auto")
 
@@ -149,7 +158,7 @@ concatenate_small_files(auto_srcs, os.path.join("auto", "scheme.tl"))
 generate_mime_data(os.path.join(AUTO_DIR, "mime.types"))
 generate_constants_header()
 
-r = build_lib.run_command(os.path.join(".", "tl-parser") + " -e " + os.path.join("auto", "scheme.tlo") + " " + os.path.join("auto", "scheme.tl"))
+r = build_lib.run_command(os.path.join(".", "tl-parser", "bin", "tl-parser") + " -e " + os.path.join("auto", "scheme.tlo") + " " + os.path.join("auto", "scheme.tl"))
 if r != 0:
     sys.exit(r)
 
