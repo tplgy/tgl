@@ -21,7 +21,7 @@ git clone --recursive  https://github.com/tplgy/tgl.git && cd tgl
 
 ### MacOS and Linux Dependencies
 
-It also requires a modern compiler with C++11/C++14 support like Clang or GCC, as well as CMake.
+It also requires a modern compiler with C++11/C++14 support like Clang or GCC, as well as CMake and Autotools.
 
 tgl depends on the following libraries being present:
 - openssl
