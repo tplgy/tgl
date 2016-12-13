@@ -133,7 +133,9 @@ r = build_lib.run_command(CC + " " + os.path.join(ROOT_DIR, "generator", "genera
 if r != 0:
     sys.exit(r)
 
-os.mkdir(os.path.join(BUILD_DIR, "tl-parser"))
+if not os.path.exists(os.path.join(BUILD_DIR, "tl-parser")):
+    os.mkdir(os.path.join(BUILD_DIR, "tl-parser"))
+
 os.chdir(os.path.join(BUILD_DIR, "tl-parser"))
 if not os.path.exists("Makefile"):
     r = build_lib.run_command("CC=" + CC + " " + os.path.join(ROOT_DIR, "tl-parser", "configure"))
