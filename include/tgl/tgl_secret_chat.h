@@ -154,6 +154,20 @@ struct tgl_secret_chat {
     static size_t key_size() { return 256; }
     static size_t key_sha_size() { return 20; }
 
+    // following should go in a pimpl
+    bool create_keys_end();
+    void do_set_dh_params(int root, unsigned char prime[], int version);
+    void update(const int64_t* access_hash,
+            const int32_t* date,
+            const int32_t* admin,
+            const int32_t* user_id,
+            const unsigned char* key,
+            const unsigned char* g_key,
+            const tgl_secret_chat_state& state,
+            const int32_t* ttl,
+            const int32_t* layer,
+            const int32_t* in_seq_no);
+
 private:
     std::vector<unsigned char> m_encr_prime;
     std::unique_ptr<tgl_bn> m_encr_prime_bn;

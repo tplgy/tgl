@@ -69,18 +69,6 @@ void tgl_do_commit_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat,
 void tgl_do_abort_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>& secret_chat, int32_t start_seq_no, int32_t end_seq_no);
 
-void tgl_update_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        const int64_t* access_hash,
-        const int32_t* date,
-        const int32_t* admin,
-        const int32_t* user_id,
-        const unsigned char* key,
-        const unsigned char* g_key,
-        const tgl_secret_chat_state& state,
-        const int32_t* ttl,
-        const int32_t* layer,
-        const int32_t* in_seq_no);
-
 void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 
 #endif

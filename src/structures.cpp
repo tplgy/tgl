@@ -320,8 +320,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
         str_to_256(g_key, DS_STR(DS_EC->g_a));
 
         int user_id = DS_LVAL(DS_EC->participant_id) + DS_LVAL(DS_EC->admin_id) - tgl_state::instance()->our_id().peer_id;
-        tgl_update_secret_chat(secret_chat,
-                DS_EC->access_hash,
+        secret_chat->update(DS_EC->access_hash,
                 DS_EC->date,
                 DS_EC->admin_id,
                 &user_id,
@@ -343,8 +342,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
             g_key_ptr = g_key;
             secret_chat->temp_key_fingerprint = DS_LVAL(DS_EC->key_fingerprint);
         }
-        tgl_update_secret_chat(secret_chat,
-                DS_EC->access_hash,
+        secret_chat->update(DS_EC->access_hash,
                 DS_EC->date,
                 nullptr,
                 nullptr,
@@ -1294,7 +1292,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(const tl_ds_message* DS_M)
     return M;
 }
 
-static int decrypt_encrypted_message(const tgl_secret_chat* secret_chat, int*& decr_ptr, int* decr_end)
+static int decrypt_encrypted_message(const std::shared_ptr<tgl_secret_chat>& secret_chat, int*& decr_ptr, int* decr_end)
 {
     int* msg_key = decr_ptr;
     decr_ptr += 4;
@@ -1395,7 +1393,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
 
     decr_ptr += 2;
 
-    if (decrypt_encrypted_message(secret_chat.get(), decr_ptr, decr_end) < 0) {
+    if (decrypt_encrypted_message(secret_chat, decr_ptr, decr_end) < 0) {
         TGL_WARNING("can not decrypt message");
         return nullptr;
     }
@@ -1519,7 +1517,7 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
             TGL_WARNING("secret message recived with out_seq_no less than the in_seq_no: out_seq_no = " << (out_seq_no / 2) << " in_seq_no = " << in_seq_no);
             return;
         } else if (out_seq_no / 2 > secret_chat->in_seq_no) {
-            TGL_WARNING("hole in seq in secret chat, expecting in_seq_no of " << secret_chat->in_seq_no << " but " << in_seq_no / 2 << " was received");
+            TGL_WARNING("hole in seq in secret chat, expecting in_seq_no of " << secret_chat->in_seq_no << " but " << out_seq_no / 2 << " was received");
             // FIXME: enable requesting resending messages from the remote peer to fill the hole, probaly only need to make test cases and then uncomment the following code.
 #if 0
            int start_seq_no = 2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_get_peer_id(tgl_state::instance()->our_id()));
@@ -1600,7 +1598,7 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
     }
 
     message->set_unread(true);
-    tgl_update_secret_chat(secret_chat, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, secret_chat->state, ttl_ptr, &layer, our_in_seq_no_ptr);
+    secret_chat->update(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, secret_chat->state, ttl_ptr, &layer, our_in_seq_no_ptr);
     tgl_state::instance()->callback()->secret_chat_update(secret_chat);
     if (action_type == tgl_message_action_type::none) {
         tgl_state::instance()->callback()->new_messages({message});
@@ -1752,6 +1750,7 @@ std::shared_ptr<tgl_message> tglm_create_encr_message(
 
     if (m->is_outgoing()) {
         secret_chat->out_seq_no++;
+        TGL_DEBUG("out seq number " << secret_chat->out_seq_no);
     }
 
     return m;

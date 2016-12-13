@@ -1298,8 +1298,8 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
         assert(secret_chat);
         message = tglm_create_encr_message(secret_chat, message_id, from_id, peer_id, &date, text, &TDSM, nullptr, nullptr, true);
         message->set_unread(true).set_pending(true);
-        tgl_state::instance()->callback()->new_messages({message});
         tgl_do_send_encr_msg(secret_chat, message, callback);
+        tgl_state::instance()->callback()->new_messages({message});
     }
 }
 
