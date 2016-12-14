@@ -38,6 +38,14 @@ struct tgl_message_reply_markup {
     tgl_message_reply_markup(): flags(0) { }
 };
 
+struct tgl_secret_chat;
+struct tl_ds_message_media;
+struct tl_ds_message_action;
+struct tl_ds_reply_markup;
+struct tl_ds_decrypted_message_media;
+struct tl_ds_decrypted_message_action;
+struct tl_ds_encrypted_file;
+
 struct tgl_message {
     int64_t server_id;
     int64_t random_id;
@@ -54,21 +62,28 @@ struct tgl_message {
     std::shared_ptr<tgl_message_action> action;
     std::shared_ptr<tgl_message_media> media;
     std::string message;
-    tgl_message()
-        : server_id(0)
-        , random_id(0)
-        , fwd_date(0)
-        , date(0)
-        , permanent_id(0)
-        , reply_id(0)
-        , seq_no(0)
-        , fwd_from_id()
-        , from_id()
-        , to_id()
-        , action(std::make_shared<tgl_message_action_none>())
-        , media(std::make_shared<tgl_message_media_none>())
-        , m_flags()
-    { }
+    tgl_message();
+
+    tgl_message(int64_t message_id,
+            const tgl_peer_id_t& from_id,
+            const tgl_input_peer_t& to_id,
+            const tgl_peer_id_t* fwd_from_id,
+            const int64_t* fwd_date,
+            const int64_t* date,
+            const std::string& message,
+            const tl_ds_message_media* media,
+            const tl_ds_message_action* action,
+            int32_t reply_id,
+            const tl_ds_reply_markup* reply_markup);
+
+    tgl_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            int64_t message_id,
+            const tgl_peer_id_t& from_id,
+            const int64_t* date,
+            const std::string& message,
+            const tl_ds_decrypted_message_media* media,
+            const tl_ds_decrypted_message_action* action,
+            const tl_ds_encrypted_file* file);
 
     bool is_unread() const { return m_flags[index_unread]; }
     bool is_outgoing() const { return m_flags[index_outgoing]; }

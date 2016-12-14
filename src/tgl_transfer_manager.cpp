@@ -408,12 +408,12 @@ public:
             m_callback(true, m_message);
         }
 
-        tgl_state::instance()->callback()->message_id_update(m_message->permanent_id, m_message->permanent_id, m_secret_chat->out_seq_no, m_message->to_id);
+        tgl_state::instance()->callback()->message_id_update(m_message->permanent_id, m_message->permanent_id, m_secret_chat->out_seq_no(), m_message->to_id);
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-        if (m_secret_chat && m_secret_chat->state != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
+        if (m_secret_chat && m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
             tgl_secret_chat_deleted(m_secret_chat);
         }
 
@@ -625,7 +625,7 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
     q->out_i32(CODE_messages_send_encrypted_file);
     q->out_i32(CODE_input_encrypted_chat);
     q->out_i32(u->to_id.peer_id);
-    q->out_i64(secret_chat->access_hash);
+    q->out_i64(secret_chat->id().access_hash);
     int64_t r;
     tgl_secure_random(reinterpret_cast<unsigned char*>(&r), 8);
     q->out_i64(r);
@@ -633,11 +633,11 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
     q->out_i32(CODE_decrypted_message_layer);
     q->out_random(15 + 4 * (tgl_random<int>() % 3));
     q->out_i32(TGL_ENCRYPTED_LAYER);
-    q->out_i32(2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_state::instance()->our_id().peer_id));
-    q->out_i32(2 * secret_chat->out_seq_no + (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id));
+    q->out_i32(2 * secret_chat->in_seq_no() + (secret_chat->admin_id() != tgl_state::instance()->our_id().peer_id));
+    q->out_i32(2 * secret_chat->out_seq_no() + (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id));
     q->out_i32(CODE_decrypted_message);
     q->out_i64(r);
-    q->out_i32(secret_chat->ttl);
+    q->out_i32(secret_chat->ttl());
     q->out_string("");
 
     size_t start = q->serializer()->i32_size();
@@ -713,16 +713,14 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 
     int64_t date = tgl_get_system_time();
-    std::shared_ptr<tgl_message> message = tglm_create_encr_message(secret_chat,
+    std::shared_ptr<tgl_message> message = std::make_shared<tgl_message>(secret_chat,
             u->message_id,
             from_id,
-            u->to_id,
             &date,
             std::string(),
             DS_DMM,
             nullptr,
-            nullptr,
-            true);
+            nullptr);
     message->set_pending(true).set_unread(true);
     free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
 
