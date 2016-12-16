@@ -51,7 +51,8 @@ void tgl_do_set_password(const std::string& hint, const std::function<void(bool 
 
 struct tl_ds_reply_markup;
 
-void tgl_do_send_message(const tgl_input_peer_t& peer_id, const std::string& text,
+// Return the message id used to send the message. It can be changed by Telegram server except for secret chats.
+int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id, const std::string& text,
         int32_t reply_id = 0, bool disable_preview = false, bool post_as_channel_message = false, const std::shared_ptr<tl_ds_reply_markup>& reply_markup = nullptr,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback = nullptr);
 

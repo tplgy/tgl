@@ -1239,7 +1239,7 @@ static void send_message(const std::shared_ptr<tgl_message>& M, bool disable_pre
     q->execute(tgl_state::instance()->working_dc());
 }
 
-void tgl_do_send_message(const tgl_input_peer_t& peer_id,
+int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
         const std::string& text,
         int32_t reply_id,
         bool disable_preview,
@@ -1255,21 +1255,23 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
             if (callback) {
                 callback(false, nullptr);
             }
-            return;
+            return 0;
         }
         if (secret_chat->state != tgl_secret_chat_state::ok) {
             TGL_ERROR("secret chat not in ok state");
             if (callback) {
                 callback(false, nullptr);
             }
-            return;
+            return 0;
         }
     }
 
     int64_t date = tgl_get_system_time();
 
     int64_t message_id;
-    tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
+    do {
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
+    } while (!message_id);
 
     std::shared_ptr<tgl_message> message;
 
@@ -1301,6 +1303,8 @@ void tgl_do_send_message(const tgl_input_peer_t& peer_id,
         tgl_do_send_encr_msg(secret_chat, message, callback);
         tgl_state::instance()->callback()->new_messages({message});
     }
+
+    return message_id;
 }
 
 class query_mark_read: public query
