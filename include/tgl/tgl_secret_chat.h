@@ -124,7 +124,6 @@ struct tgl_secret_chat {
     int32_t encr_param_version();
     tgl_secret_chat_state state();
     tgl_secret_chat_exchange_state exchange_state();
-    int32_t device_id();
 
     std::vector<unsigned char> g_key;
 
@@ -132,7 +131,7 @@ struct tgl_secret_chat {
     tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id);
     tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id, int32_t admin, int32_t date, int32_t ttl, int32_t layer, int32_t in_seq_no, int32_t last_in_seq,
                     int32_t out_seq_no, int32_t encr_root, int32_t encr_param_version, tgl_secret_chat_state state, tgl_secret_chat_exchange_state exchange_state,
-                    int64_t exchange_id, int32_t device_id);
+                    int64_t exchange_id);
     ~tgl_secret_chat();
 
     const tgl_bn* encr_prime_bn() const { return m_encr_prime_bn.get(); }
@@ -195,7 +194,6 @@ private:
     int32_t m_encr_param_version;
     tgl_secret_chat_state m_state;
     tgl_secret_chat_exchange_state m_exchange_state;
-    int32_t m_device_id;
 
     std::vector<unsigned char> m_encr_prime;
     std::unique_ptr<tgl_bn> m_encr_prime_bn;
