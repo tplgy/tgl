@@ -79,6 +79,10 @@ void query::clear_timers()
 void query::alarm()
 {
     TGL_DEBUG("alarm query #" << msg_id() << " (type '" << m_name << "') to DC " << m_dc->id);
+
+    // The query could be referred by the timer only. In this case clear_timers
+    // will led to the destruction of the query. So we need to prevent this.
+    auto protect = shared_from_this();
     clear_timers();
 
     if (!check_connectivity()) {
@@ -176,6 +180,7 @@ void tglq_query_restart(int64_t id)
 
 void query::timeout_alarm()
 {
+    auto protect = shared_from_this();
     clear_timers();
     on_timeout();
     if (!should_retry_on_timeout()) {
@@ -452,6 +457,7 @@ int query::handle_error(int error_code, const std::string& error_string)
     if (msg_id()) {
         tgl_state::instance()->remove_query(shared_from_this());
     }
+    auto protect = shared_from_this();
     clear_timers();
 
     int retry_within_seconds = 0;
@@ -649,6 +655,7 @@ int query::handle_result(tgl_in_buffer* in)
 
     assert(in->ptr == in->end);
 
+    auto protect = shared_from_this();
     clear_timers();
     tgl_state::instance()->remove_query(shared_from_this());
 

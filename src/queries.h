@@ -68,7 +68,6 @@ public:
     void regen();
     void ack();
     void alarm();
-    void clear_timers();
     int handle_error(int error_code, const std::string& error_string);
     int handle_result(tgl_in_buffer* in);
     const std::shared_ptr<mtprotocol_serializer>& serializer() const { return m_serializer; }
@@ -142,12 +141,14 @@ protected:
     void retry_within(double seconds);
 
 private:
+    friend void tglq_query_delete(int64_t id);
     bool is_force() const { return m_exec_option == execution_option::FORCE; }
     bool is_login() const { return m_exec_option == execution_option::LOGIN; }
     bool is_logout() const { return m_exec_option == execution_option::LOGOUT; }
     void timeout_alarm();
     bool check_connectivity();
     bool check_logging_out();
+    void clear_timers();
 
 private:
     int64_t m_msg_id;
