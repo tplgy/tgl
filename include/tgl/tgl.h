@@ -185,8 +185,8 @@ struct tgl_state {
         return secret_chat_for_id(id.peer_id);
     }
     int32_t create_secret_chat_id();
-    //std::shared_ptr<tgl_secret_chat> create_secret_chat(int32_t new_chat_id);
-    std::shared_ptr<tgl_secret_chat> create_secret_chat(const tgl_input_peer_t& chat_id, int32_t user_id);
+    std::shared_ptr<tgl_secret_chat> create_secret_chat(int32_t new_chat_id);
+    std::shared_ptr<tgl_secret_chat> create_secret_chat(const tgl_input_peer_t& chat_id);
     std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int chat_id) const;
     void add_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 

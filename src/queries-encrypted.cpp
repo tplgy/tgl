@@ -172,7 +172,7 @@ public:
 
     virtual void on_answer(void*) override
     {
-        tgl_state::instance()->callback()->message_id_update(m_message->permanent_id, m_message->permanent_id, m_secret_chat->out_seq_no(), m_message->to_id);
+        tgl_state::instance()->callback()->message_id_update(m_message->permanent_id, m_message->permanent_id, m_secret_chat->out_seq_no, m_message->to_id);
         if (m_callback) {
             m_callback(true, m_message);
         }
@@ -180,7 +180,7 @@ public:
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-        if (m_secret_chat && m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
+        if (m_secret_chat && m_secret_chat->state != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
             tgl_secret_chat_deleted(m_secret_chat);
         }
 
@@ -203,10 +203,10 @@ private:
 };
 
 static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        const std::shared_ptr<tgl_message>& msg,
+        const std::shared_ptr<tgl_message>& M,
         const std::function<void(bool, const std::shared_ptr<tgl_message>& M)>& callback)
 {
-    if (!secret_chat || secret_chat->state() != tgl_secret_chat_state::ok) {
+    if (!secret_chat || secret_chat->state != tgl_secret_chat_state::ok) {
         TGL_WARNING("unknown encrypted chat");
         if (callback) {
             callback(false, nullptr);
@@ -214,36 +214,36 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
         return;
     }
 
-    assert(msg->action);
+    assert(M->action);
 
-    auto q = std::make_shared<query_msg_send_encr>(secret_chat, msg, callback);
+    auto q = std::make_shared<query_msg_send_encr>(secret_chat, M, callback);
     secret_chat_encryptor encryptor(secret_chat, q->serializer());
     q->out_i32(CODE_messages_send_encrypted_service);
     q->out_i32(CODE_input_encrypted_chat);
-    q->out_i32(secret_chat->id().peer_id);
-    q->out_i64(secret_chat->id().access_hash);
-    q->out_i64(msg->permanent_id);
+    q->out_i32(secret_chat->id.peer_id);
+    q->out_i64(secret_chat->id.access_hash);
+    q->out_i64(M->permanent_id);
     encryptor.start();
     q->out_i32(CODE_decrypted_message_layer);
     q->out_random(15 + 4 * (tgl_random<int>() % 3));
     q->out_i32(TGL_ENCRYPTED_LAYER);
-    q->out_i32(2 * secret_chat->in_seq_no() + (secret_chat->admin_id() != tgl_state::instance()->our_id().peer_id));
-    q->out_i32(2 * secret_chat->out_seq_no() + (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id) - 2);
+    q->out_i32(2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_state::instance()->our_id().peer_id));
+    q->out_i32(2 * secret_chat->out_seq_no + (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id) - 2);
     q->out_i32(CODE_decrypted_message_service);
-    q->out_i64(msg->permanent_id);
+    q->out_i64(M->permanent_id);
 
-    switch (msg->action->type()) {
+    switch (M->action->type()) {
     case tgl_message_action_type::notify_layer:
         q->out_i32(CODE_decrypted_message_action_notify_layer);
-        q->out_i32(std::static_pointer_cast<tgl_message_action_notify_layer>(msg->action)->layer);
+        q->out_i32(std::static_pointer_cast<tgl_message_action_notify_layer>(M->action)->layer);
         break;
     case tgl_message_action_type::set_message_ttl:
         q->out_i32(CODE_decrypted_message_action_set_message_ttl);
-        q->out_i32(std::static_pointer_cast<tgl_message_action_set_message_ttl>(msg->action)->ttl);
+        q->out_i32(std::static_pointer_cast<tgl_message_action_set_message_ttl>(M->action)->ttl);
         break;
     case tgl_message_action_type::request_key:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_request_key>(msg->action);
+        auto action = std::static_pointer_cast<tgl_message_action_request_key>(M->action);
         q->out_i32(CODE_decrypted_message_action_request_key);
         q->out_i64(action->exchange_id);
         q->out_string(reinterpret_cast<char*>(action->g_a.data()), 256);
@@ -251,7 +251,7 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
     }
     case tgl_message_action_type::accept_key:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_accept_key>(msg->action);
+        auto action = std::static_pointer_cast<tgl_message_action_accept_key>(M->action);
         q->out_i32(CODE_decrypted_message_action_accept_key);
         q->out_i64(action->exchange_id);
         q->out_string(reinterpret_cast<char*>(action->g_a.data()), 256);
@@ -260,7 +260,7 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
     }
     case tgl_message_action_type::commit_key:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_commit_key>(msg->action);
+        auto action = std::static_pointer_cast<tgl_message_action_commit_key>(M->action);
         q->out_i32(CODE_decrypted_message_action_commit_key);
         q->out_i64(action->exchange_id);
         q->out_i64(action->key_fingerprint);
@@ -268,7 +268,7 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
     }
     case tgl_message_action_type::abort_key:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_abort_key>(msg->action);
+        auto action = std::static_pointer_cast<tgl_message_action_abort_key>(M->action);
         q->out_i32(CODE_decrypted_message_action_abort_key);
         q->out_i64(action->exchange_id);
         break;
@@ -278,7 +278,7 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
         break;
     case tgl_message_action_type::resend:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_resend>(msg->action);
+        auto action = std::static_pointer_cast<tgl_message_action_resend>(M->action);
         q->out_i32(CODE_decrypted_message_action_resend);
         q->out_i32(action->start_seq_no);
         q->out_i32(action->end_seq_no);
@@ -286,7 +286,7 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
     }
     case tgl_message_action_type::delete_messages:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(msg->action);
+        auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(M->action);
         q->out_i32 (CODE_decrypted_message_action_delete_messages);
         q->out_i32(CODE_vector);
         q->out_i32(action->msg_ids.size());
@@ -314,7 +314,7 @@ void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         return;
     }
 
-    if (!secret_chat || secret_chat->state() != tgl_secret_chat_state::ok) {
+    if (!secret_chat || secret_chat->state != tgl_secret_chat_state::ok) {
         TGL_WARNING("unknown encrypted chat");
         if (callback) {
             callback(false, msg);
@@ -326,18 +326,18 @@ void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
     secret_chat_encryptor encryptor(secret_chat, q->serializer());
     q->out_i32(CODE_messages_send_encrypted);
     q->out_i32(CODE_input_encrypted_chat);
-    q->out_i32(secret_chat->id().peer_id);
-    q->out_i64(secret_chat->id().access_hash);
+    q->out_i32(secret_chat->id.peer_id);
+    q->out_i64(secret_chat->access_hash);
     q->out_i64(msg->permanent_id);
     encryptor.start();
     q->out_i32(CODE_decrypted_message_layer);
     q->out_random(15 + 4 * (tgl_random<int>() % 3));
     q->out_i32(TGL_ENCRYPTED_LAYER);
-    q->out_i32(2 * secret_chat->in_seq_no() + (secret_chat->admin_id() != tgl_state::instance()->our_id().peer_id));
-    q->out_i32(2 * secret_chat->out_seq_no() + (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id) - 2);
+    q->out_i32(2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_state::instance()->our_id().peer_id));
+    q->out_i32(2 * secret_chat->out_seq_no + (secret_chat->admin_id == tgl_state::instance()->our_id().peer_id) - 2);
     q->out_i32(CODE_decrypted_message);
     q->out_i64(msg->permanent_id);
-    q->out_i32(secret_chat->ttl());
+    q->out_i32(secret_chat->ttl);
     q->out_string(msg->message.c_str(), msg->message.size());
 
     assert(msg->media);
@@ -370,14 +370,17 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
     int64_t message_id;
     tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
 
-    auto msg = std::make_shared<tgl_message>(secret_chat,
+    tgl_peer_id_t from_id = tgl_state::instance()->our_id();
+    std::shared_ptr<tgl_message> msg = tglm_create_encr_message(secret_chat,
             message_id,
-            tgl_state::instance()->our_id(),    // from
+            from_id,
+            secret_chat->id,
             &date,
             std::string(),
             nullptr,
             &action,
-            nullptr);
+            nullptr,
+            true);
     msg->set_pending(true).set_unread(true);
     tgl_state::instance()->callback()->new_messages({msg});
     tgl_do_send_encr_msg(secret_chat, msg, callback);
@@ -450,7 +453,7 @@ public:
     virtual void on_answer(void*) override
     {
         if (tgl_state::instance()->callback()) {
-            tgl_state::instance()->callback()->messages_mark_read_in(tgl_peer_id_t::from_input_peer(m_secret_chat->id()), m_max_time);
+            tgl_state::instance()->callback()->messages_mark_read_in(tgl_peer_id_t::from_input_peer(m_secret_chat->id), m_max_time);
         }
         if (m_callback) {
             m_callback(true, nullptr);
@@ -459,9 +462,7 @@ public:
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-
-        TGL_ERROR("mark read failed " << error_string << "max time: " << m_max_time);
-        if (m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
+        if (m_secret_chat->state != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
             tgl_secret_chat_deleted(m_secret_chat);
         }
 
@@ -484,8 +485,8 @@ void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secr
     auto q = std::make_shared<query_mark_read_encr>(max_time, secret_chat, callback);
     q->out_i32(CODE_messages_read_encrypted_history);
     q->out_i32(CODE_input_encrypted_chat);
-    q->out_i32(secret_chat->id().peer_id);
-    q->out_i64(secret_chat->id().access_hash);
+    q->out_i32(secret_chat->id.peer_id);
+    q->out_i64(secret_chat->access_hash);
     q->out_i32(max_time); // FIXME
     q->execute(tgl_state::instance()->working_dc());
 }
@@ -510,21 +511,23 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, d
 
     int64_t message_id;
     tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
-    auto msg = std::make_shared<tgl_message>(secret_chat,
+    std::shared_ptr<tgl_message> M = tglm_create_encr_message(secret_chat,
           message_id,
           from_id,
+          to_id,
           &date,
           std::string(),
           &TDSM,
           nullptr,
-          nullptr);
-    msg->set_unread(true).set_pending(true);
+          nullptr,
+          true);
+    M->set_unread(true).set_pending(true);
 
     free(TDSM.latitude);
     free(TDSM.longitude);
 
-    tgl_state::instance()->callback()->new_messages({msg});
-    tgl_do_send_encr_msg(secret_chat, msg, callback);
+    tgl_state::instance()->callback()->new_messages({M});
+    tgl_do_send_encr_msg(secret_chat, M, callback);
 }
 
 class query_send_encr_accept: public query
@@ -542,7 +545,7 @@ public:
         std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat(
                 static_cast<tl_ds_encrypted_chat*>(D));
 
-        if (secret_chat && secret_chat->state() == tgl_secret_chat_state::ok) {
+        if (secret_chat && secret_chat->state == tgl_secret_chat_state::ok) {
             tgl_do_send_encr_chat_layer(secret_chat);
         }
 
@@ -551,13 +554,13 @@ public:
         }
 
         if (m_callback) {
-            m_callback(secret_chat && secret_chat->state() == tgl_secret_chat_state::ok, secret_chat);
+            m_callback(secret_chat && secret_chat->state == tgl_secret_chat_state::ok, secret_chat);
         }
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-        if (m_secret_chat && m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
+        if (m_secret_chat && m_secret_chat->state != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
             tgl_secret_chat_deleted(m_secret_chat);
         }
 
@@ -588,7 +591,7 @@ public:
         tgl_state::instance()->callback()->secret_chat_update(secret_chat);
 
         if (m_callback) {
-            m_callback(secret_chat && secret_chat->state() != tgl_secret_chat_state::deleted, secret_chat);
+            m_callback(secret_chat && secret_chat->state != tgl_secret_chat_state::deleted, secret_chat);
         }
     }
 
@@ -662,15 +665,15 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
             nullptr);
 
     memset(buffer, 0, sizeof(buffer));
-    check_crypto_result(TGLC_bn_set_word(g_a.get(), secret_chat->encr_root()));
+    check_crypto_result(TGLC_bn_set_word(g_a.get(), secret_chat->encr_root));
     check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()->ctx));
     TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
 
     auto q = std::make_shared<query_send_encr_accept>(secret_chat, callback);
     q->out_i32(CODE_messages_accept_encryption);
     q->out_i32(CODE_input_encrypted_chat);
-    q->out_i32(secret_chat->id().peer_id);
-    q->out_i64(secret_chat->id().access_hash);
+    q->out_i32(secret_chat->id.peer_id);
+    q->out_i64(secret_chat->access_hash);
     q->out_string(reinterpret_cast<const char*>(buffer), 256);
     q->out_i64(secret_chat->key_fingerprint());
     q->execute(tgl_state::instance()->working_dc());
@@ -690,7 +693,7 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     TGLC_bn* p = secret_chat->encr_prime_bn()->bn;
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g(TGLC_bn_new());
-    check_crypto_result(TGLC_bn_set_word(g.get(), secret_chat->encr_root()));
+    check_crypto_result(TGLC_bn_set_word(g.get(), secret_chat->encr_root));
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
 
@@ -717,9 +720,9 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     auto q = std::make_shared<query_send_encr_request>(callback);
     q->out_i32(CODE_messages_request_encryption);
     q->out_i32(CODE_input_user);
-    q->out_i32(secret_chat->user_id());
-    q->out_i64(secret_chat->id().access_hash);
-    q->out_i32(secret_chat->id().peer_id);
+    q->out_i32(secret_chat->user_id);
+    q->out_i64(secret_chat->access_hash);
+    q->out_i32(secret_chat->id.peer_id);
     q->out_string(g_a, sizeof(g_a));
     q->execute(tgl_state::instance()->working_dc());
 }
@@ -761,7 +764,7 @@ void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_c
 {
     assert(secret_chat);
 
-    if (secret_chat->state() == tgl_secret_chat_state::deleted || secret_chat->state() == tgl_secret_chat_state::none) {
+    if (secret_chat->state == tgl_secret_chat_state::deleted || secret_chat->state == tgl_secret_chat_state::none) {
         if (callback) {
             callback(false, secret_chat);
         }
@@ -770,7 +773,7 @@ void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_c
 
     auto q = std::make_shared<query_send_encr_discard>(secret_chat, callback);
     q->out_i32(CODE_messages_discard_encryption);
-    q->out_i32(secret_chat->id().peer_id);
+    q->out_i32(secret_chat->id.peer_id);
 
     q->execute(tgl_state::instance()->working_dc());
 }
@@ -804,7 +807,7 @@ public:
             }
         } else if (DS_MDC->magic == CODE_messages_dh_config_not_modified) {
             TGL_NOTICE("secret chat dh config version not modified");
-            if (m_secret_chat->encr_param_version() != DS_LVAL(DS_MDC->version)) {
+            if (m_secret_chat->encr_param_version != DS_LVAL(DS_MDC->version)) {
                 TGL_WARNING("encryption parameter versions mismatch");
                 fail = true;
             }
@@ -853,17 +856,17 @@ private:
 void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
 {
-    if (secret_chat->state() != tgl_secret_chat_state::request) {
+    if (secret_chat->state != tgl_secret_chat_state::request) {
         if (callback) {
             callback(false, secret_chat);
         }
         return;
     }
-    assert(secret_chat->state() == tgl_secret_chat_state::request);
+    assert(secret_chat->state == tgl_secret_chat_state::request);
 
     auto q = std::make_shared<query_get_dh_config>(secret_chat, tgl_do_send_accept_encr_chat, callback);
     q->out_i32(CODE_messages_get_dh_config);
-    q->out_i32(secret_chat->encr_param_version());
+    q->out_i32(secret_chat->encr_param_version);
     q->out_i32(256);
     q->execute(tgl_state::instance()->working_dc());
 }
@@ -873,7 +876,10 @@ void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& sec
 void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id, int32_t new_secret_chat_id,
         const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>& callback)
 {
-    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->create_secret_chat(tgl_input_peer_t(tgl_peer_type::enc_chat, new_secret_chat_id, 0), user_id.peer_id);
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->create_secret_chat(new_secret_chat_id);
+    secret_chat->user_id = user_id.peer_id;
+    secret_chat->access_hash = user_id.access_hash;
+    secret_chat->id.access_hash = user_id.access_hash;
 
     auto q = std::make_shared<query_get_dh_config>(secret_chat, tgl_do_send_create_encr_chat, callback);
     q->out_i32(CODE_messages_get_dh_config);

@@ -149,7 +149,6 @@ set(SOURCES
     src/tgl_dc.cpp
     src/tgl_log.cpp
     src/tgl_mime_type.cpp
-    src/tgl_message.cpp
     src/tgl_secret_chat.cpp
     src/tgl_transfer_manager.cpp
     src/tools.cpp

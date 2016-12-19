@@ -1264,7 +1264,7 @@ int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
             }
             return 0;
         }
-        if (secret_chat->state() != tgl_secret_chat_state::ok) {
+        if (secret_chat->state != tgl_secret_chat_state::ok) {
             TGL_ERROR("secret chat not in ok state");
             if (callback) {
                 callback(false, nullptr);
@@ -1293,7 +1293,7 @@ int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
             from_id = tgl_state::instance()->our_id();
         }
 
-        message = std::make_shared<tgl_message>(message_id, from_id, peer_id, nullptr, nullptr, &date, text, &TDSM, nullptr, reply_id, reply_markup.get());
+        message = tglm_create_message(message_id, from_id, peer_id, nullptr, nullptr, &date, text, &TDSM, nullptr, reply_id, reply_markup.get());
         message->set_unread(true).set_outgoing(true).set_pending(true);
         tgl_state::instance()->callback()->new_messages({message});
 
@@ -1305,7 +1305,7 @@ int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
         tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 
         assert(secret_chat);
-        message = std::make_shared<tgl_message>(secret_chat, message_id, from_id, &date, text, &TDSM, nullptr, nullptr);
+        message = tglm_create_encr_message(secret_chat, message_id, from_id, peer_id, &date, text, &TDSM, nullptr, nullptr, true);
         message->set_unread(true).set_pending(true);
         tgl_do_send_encr_msg(secret_chat, message, callback);
         tgl_state::instance()->callback()->new_messages({message});
@@ -4284,7 +4284,7 @@ void tgl_do_send_broadcast(int num, tgl_input_peer_t peer_id[], const std::strin
         struct tl_ds_message_media TDSM;
         TDSM.magic = CODE_message_media_empty;
 
-        auto msg = std::make_shared<tgl_message>(message_id, from_id, peer_id[i], nullptr, nullptr, &date, text, &TDSM, nullptr, 0, nullptr);
+        auto msg = tglm_create_message(message_id, from_id, peer_id[i], nullptr, nullptr, &date, text, &TDSM, nullptr, 0, nullptr);
         msg->set_unread(true).set_outgoing(true).set_pending(true);
         tgl_state::instance()->callback()->new_messages({msg});
     }

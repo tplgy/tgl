@@ -106,33 +106,29 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_secret_chat_exchang
 struct tgl_bn;
 
 struct tgl_secret_chat {
+    tgl_input_peer_t id;
+    int64_t access_hash;
     int64_t temp_key_fingerprint;
+    int64_t exchange_id;
+    int64_t exchange_key_fingerprint;
     int32_t exchange_key[64];
-
-    tgl_input_peer_t id();
-    int64_t exchange_id();
-    int64_t exchange_key_fingerprint();
-    int32_t user_id();
-    int32_t admin_id(); // creator
-    int32_t date();
-    int32_t ttl();
-    int32_t layer();
-    int32_t in_seq_no();
-    int32_t out_seq_no();
-    int32_t last_in_seq_no();
-    int32_t encr_root();
-    int32_t encr_param_version();
-    tgl_secret_chat_state state();
-    tgl_secret_chat_exchange_state exchange_state();
-    int32_t device_id();
+    int32_t user_id;
+    int32_t admin_id;
+    int32_t date;
+    int32_t ttl;
+    int32_t layer;
+    int32_t in_seq_no;
+    int32_t out_seq_no;
+    int32_t last_in_seq_no;
+    int32_t encr_root;
+    int32_t encr_param_version;
+    tgl_secret_chat_state state;
+    tgl_secret_chat_exchange_state exchange_state;
+    int32_t device_id;
 
     std::vector<unsigned char> g_key;
 
     tgl_secret_chat();
-    tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id);
-    tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id, int32_t admin, int32_t date, int32_t ttl, int32_t layer, int32_t in_seq_no, int32_t last_in_seq,
-                    int32_t out_seq_no, int32_t encr_root, int32_t encr_param_version, tgl_secret_chat_state state, tgl_secret_chat_exchange_state exchange_state,
-                    int64_t exchange_id, int32_t device_id);
     ~tgl_secret_chat();
 
     const tgl_bn* encr_prime_bn() const { return m_encr_prime_bn.get(); }
@@ -172,38 +168,11 @@ struct tgl_secret_chat {
             const int32_t* layer,
             const int32_t* in_seq_no);
 
-    void set_state();
-
-    int64_t last_msg_id();
-
-    void message_sent(int64_t msg_id);
-    void message_ack(int64_t msg_id);
-    void update_layer(int32_t layer);
-
 private:
-    tgl_input_peer_t m_id;
-    int64_t m_exchange_id;
-    int64_t m_exchange_key_fingerprint;
-    int32_t m_user_id;
-    int32_t m_admin_id; // creator
-    int32_t m_date;
-    int32_t m_ttl;
-    int32_t m_layer;
-    int32_t m_in_seq_no;
-    int32_t m_last_in_seq_no;
-    int32_t m_encr_root;
-    int32_t m_encr_param_version;
-    tgl_secret_chat_state m_state;
-    tgl_secret_chat_exchange_state m_exchange_state;
-    int32_t m_device_id;
-
     std::vector<unsigned char> m_encr_prime;
     std::unique_ptr<tgl_bn> m_encr_prime_bn;
     unsigned char m_key[256];
     unsigned char m_key_sha[20];
-    int32_t m_out_seq_no;
-    std::vector<int64_t> m_pending_messages;
-
 };
 
 #endif
