@@ -566,7 +566,7 @@ public:
         }
 
         if (m_callback) {
-            m_callback(false, nullptr);
+            m_callback(false, m_secret_chat);
         }
         return 0;
     }
@@ -579,9 +579,10 @@ private:
 class query_send_encr_request: public query
 {
 public:
-    explicit query_send_encr_request(
+    query_send_encr_request(const std::shared_ptr<tgl_secret_chat>& secret_chat,
             const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
         : query("send encrypted (chat request)", TYPE_TO_PARAM(encrypted_chat))
+        , m_secret_chat(secret_chat)
         , m_callback(callback)
     { }
 
@@ -600,13 +601,14 @@ public:
     {
         TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
         if (m_callback) {
-            m_callback(false, nullptr);
+            m_callback(false, m_secret_chat);
         }
 
         return 0;
     }
 
 private:
+    std::shared_ptr<tgl_secret_chat> m_secret_chat;
     std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_callback;
 };
 
@@ -718,7 +720,7 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
           nullptr);
     tgl_state::instance()->callback()->secret_chat_update(secret_chat);
 
-    auto q = std::make_shared<query_send_encr_request>(callback);
+    auto q = std::make_shared<query_send_encr_request>(secret_chat, callback);
     q->out_i32(CODE_messages_request_encryption);
     q->out_i32(CODE_input_user);
     q->out_i32(secret_chat->user_id());
