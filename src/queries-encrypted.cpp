@@ -324,6 +324,10 @@ void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
 
     auto q = std::make_shared<query_msg_send_encr>(secret_chat, msg, callback);
     secret_chat_encryptor encryptor(secret_chat, q->serializer());
+    if (secret_chat->last_msg_id()) {
+        q->out_i32(CODE_invoke_after_msg);
+        q->out_i64(secret_chat->last_msg_id());
+    }
     q->out_i32(CODE_messages_send_encrypted);
     q->out_i32(CODE_input_encrypted_chat);
     q->out_i32(secret_chat->id().peer_id);
