@@ -94,7 +94,7 @@ mtproto_client::execute_result mtproto_client::try_rpc_execute(const std::shared
             return execute_result::ok;
         }
         unsigned len = 0;
-        ssize_t result = c->read_in_lookup(&len, 1);
+        ssize_t result = c->peek(&len, 1);
         TGL_ASSERT_UNUSED(result, result == 1);
         if (len >= 1 && len <= 0x7e) {
             if (c->in_bytes() < 1 + 4 * len) {
@@ -104,7 +104,7 @@ mtproto_client::execute_result mtproto_client::try_rpc_execute(const std::shared
             if (c->in_bytes() < 4) {
                 return execute_result::ok;
             }
-            result = c->read_in_lookup(&len, 4);
+            result = c->peek(&len, 4);
             TGL_ASSERT_UNUSED(result, result == 4);
             len = (len >> 8);
             if (c->in_bytes() < 4 + 4 * len) {
@@ -128,7 +128,7 @@ mtproto_client::execute_result mtproto_client::try_rpc_execute(const std::shared
         }
         len *= 4;
         int op;
-        result = c->read_in_lookup(&op, 4);
+        result = c->peek(&op, 4);
         TGL_ASSERT_UNUSED(result, result == 4);
         auto exec_result = rpc_execute(c, op, len);
         if (exec_result != mtproto_client::execute_result::ok) {

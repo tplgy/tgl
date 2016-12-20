@@ -32,7 +32,7 @@ public:
     virtual void close() = 0;
     virtual ssize_t write(const void* data, size_t len) = 0;
     virtual ssize_t read(void* data, size_t len) = 0;
-    virtual ssize_t read_in_lookup(void* data, size_t len) = 0;
+    virtual ssize_t peek(void* data, size_t len) = 0;
     virtual size_t in_bytes() = 0;
     virtual void flush() = 0;
     virtual const std::weak_ptr<tgl_dc>& get_dc() const = 0;
