@@ -682,7 +682,8 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     q->execute(tgl_state::instance()->working_dc());
 }
 
-static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+static void tgl_do_send_create_encr_chat(const tgl_input_peer_t& user_id,
+        const std::shared_ptr<tgl_secret_chat>& secret_chat,
         std::array<unsigned char, 256>& random,
         std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> callback)
 {
@@ -723,8 +724,8 @@ static void tgl_do_send_create_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     auto q = std::make_shared<query_send_encr_request>(secret_chat, callback);
     q->out_i32(CODE_messages_request_encryption);
     q->out_i32(CODE_input_user);
-    q->out_i32(secret_chat->user_id());
-    q->out_i64(secret_chat->id().access_hash);
+    q->out_i32(user_id.peer_id);
+    q->out_i64(user_id.access_hash);
     q->out_i32(secret_chat->id().peer_id);
     q->out_string(g_a, sizeof(g_a));
     q->execute(tgl_state::instance()->working_dc());
@@ -881,7 +882,8 @@ void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id, int32_t new_secr
 {
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->create_secret_chat(tgl_input_peer_t(tgl_peer_type::enc_chat, new_secret_chat_id, 0), user_id.peer_id);
 
-    auto q = std::make_shared<query_get_dh_config>(secret_chat, tgl_do_send_create_encr_chat, callback);
+    auto q = std::make_shared<query_get_dh_config>(secret_chat,
+            std::bind(&tgl_do_send_create_encr_chat, user_id, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), callback);
     q->out_i32(CODE_messages_get_dh_config);
     q->out_i32(0);
     q->out_i32(256);
