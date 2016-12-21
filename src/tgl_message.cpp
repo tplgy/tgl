@@ -3,7 +3,6 @@
 #include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl_secret_chat_private.h"
-#include "tgl_secret_chat_private.h"
 
 tgl_message::tgl_message()
     : server_id(0)
