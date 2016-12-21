@@ -1593,6 +1593,10 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
         for (int64_t id : action->msg_ids) {
             tgl_state::instance()->callback()->message_deleted(id);
         }
+    } else if (action_type == tgl_message_action_type::resend) {
+        //FIXME implement this
+        auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action);
+        TGL_WARNING("received request for message resend; start-seq: "<< action->start_seq_no << " end-seq: " << action->end_seq_no);
     }
 
     message->set_unread(true);
