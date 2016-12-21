@@ -36,8 +36,10 @@
 #include "tgl/tgl.h"
 #include "tgl/tgl_bot.h"
 #include "tgl/tgl_queries.h"
+#include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_update_callback.h"
 #include "tgl/tgl_user.h"
+#include "tgl_secret_chat_private.h"
 #include "updates.h"
 
 #include <algorithm>
@@ -320,7 +322,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
         str_to_256(g_key, DS_STR(DS_EC->g_a));
 
         int user_id = DS_LVAL(DS_EC->participant_id) + DS_LVAL(DS_EC->admin_id) - tgl_state::instance()->our_id().peer_id;
-        secret_chat->update(DS_EC->access_hash,
+        secret_chat->private_facet()->update(DS_EC->access_hash,
                 DS_EC->date,
                 DS_EC->admin_id,
                 &user_id,
@@ -340,9 +342,9 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
             state = tgl_secret_chat_state::ok;
             str_to_256(g_key, DS_STR(DS_EC->g_a_or_b));
             g_key_ptr = g_key;
-            secret_chat->temp_key_fingerprint = DS_LVAL(DS_EC->key_fingerprint);
+            secret_chat->private_facet()->set_temp_key_fingerprint(DS_LVAL(DS_EC->key_fingerprint));
         }
-        secret_chat->update(DS_EC->access_hash,
+        secret_chat->private_facet()->update(DS_EC->access_hash,
                 DS_EC->date,
                 nullptr,
                 nullptr,
@@ -1311,7 +1313,7 @@ static int decrypt_encrypted_message(const std::shared_ptr<tgl_secret_chat>& sec
     memset(buf, 0, sizeof(buf));
 
     const int* e_key = secret_chat->exchange_state() != tgl_secret_chat_exchange_state::committed
-        ? reinterpret_cast<const int*>(secret_chat->key()) : secret_chat->exchange_key;
+        ? reinterpret_cast<const int32_t*>(secret_chat->key()) : reinterpret_cast<const int32_t*>(secret_chat->exchange_key());
 
     memcpy(buf, msg_key, 16);
     memcpy(buf + 16, e_key, 32);
@@ -1601,7 +1603,7 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
 
     message->set_unread(true);
 
-    secret_chat->update(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, secret_chat->state(), ttl_ptr, &layer, our_in_seq_no_ptr);
+    secret_chat->private_facet()->update(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, secret_chat->state(), ttl_ptr, &layer, our_in_seq_no_ptr);
     tgl_state::instance()->callback()->secret_chat_update(secret_chat);
     if (action_type == tgl_message_action_type::none) {
         tgl_state::instance()->callback()->new_messages({message});

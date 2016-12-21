@@ -33,6 +33,7 @@
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_secure_random.h"
 #include "tgl/tgl_update_callback.h"
+#include "tgl_secret_chat_private.h"
 
 #include <fcntl.h>
 #include <boost/filesystem.hpp>

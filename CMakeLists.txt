@@ -126,6 +126,7 @@ set(PRIVATE_HEADERS
     src/queries-encrypted.h
     src/structures.h
     src/tgl_rsa_key.h
+    src/tgl_secret_chat_private.h
     src/tools.h
     src/updates.h
 )

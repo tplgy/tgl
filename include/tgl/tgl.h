@@ -105,8 +105,8 @@ class tgl_rsa_key;
 class tgl_timer;
 class tgl_timer_factory;
 class tgl_update_callback;
+class tgl_secret_chat;
 struct tgl_message;
-struct tgl_secret_chat;
 struct tgl_bn_context;
 
 struct tgl_state {

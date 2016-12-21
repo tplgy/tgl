@@ -38,7 +38,7 @@ struct tgl_message_reply_markup {
     tgl_message_reply_markup(): flags(0) { }
 };
 
-struct tgl_secret_chat;
+class tgl_secret_chat;
 struct tl_ds_message_media;
 struct tl_ds_message_action;
 struct tl_ds_reply_markup;

@@ -22,17 +22,13 @@
 #ifndef __TGL_SECRET_CHAT_H__
 #define __TGL_SECRET_CHAT_H__
 
-#include "tgl_file_location.h"
 #include "tgl_peer_id.h"
 
-#include <algorithm>
 #include <cassert>
-#include <cstring>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
-
-static constexpr int32_t TGL_ENCRYPTED_LAYER = 17;
 
 enum class tgl_secret_chat_state {
     none = 0,
@@ -103,105 +99,57 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_secret_chat_exchang
     return os;
 }
 
-struct tgl_bn;
+class tgl_secret_chat_private_facet;
+struct tgl_secret_chat_private;
 
-struct tgl_secret_chat {
-    int64_t temp_key_fingerprint;
-    int32_t exchange_key[64];
-
-    tgl_input_peer_t id();
-    int64_t exchange_id();
-    int64_t exchange_key_fingerprint();
-    int32_t user_id();
-    int32_t admin_id(); // creator
-    int32_t date();
-    int32_t ttl();
-    int32_t layer();
-    int32_t in_seq_no();
-    int32_t out_seq_no();
-    int32_t last_in_seq_no();
-    int32_t encr_root();
-    int32_t encr_param_version();
-    tgl_secret_chat_state state();
-    tgl_secret_chat_exchange_state exchange_state();
-
-    std::vector<unsigned char> g_key;
-
+class tgl_secret_chat {
+public:
     tgl_secret_chat();
     tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id);
-    tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id, int32_t admin, int32_t date, int32_t ttl, int32_t layer, int32_t in_seq_no, int32_t last_in_seq,
-                    int32_t out_seq_no, int32_t encr_root, int32_t encr_param_version, tgl_secret_chat_state state, tgl_secret_chat_exchange_state exchange_state,
-                    int64_t exchange_id);
+    tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id,
+                    int32_t admin, int32_t date, int32_t ttl, int32_t layer,
+                    int32_t in_seq_no, int32_t last_in_seq, int32_t out_seq_no,
+                    int32_t encr_root, int32_t encr_param_version,
+                    tgl_secret_chat_state state, tgl_secret_chat_exchange_state exchange_state,
+                    int64_t exchange_id,
+                    const unsigned char* key, size_t key_length,
+                    const unsigned char* encr_prime, size_t encr_prime_length,
+                    const unsigned char* g_key, size_t g_key_length,
+                    const unsigned char* exchange_key, size_t exchange_key_length);
     ~tgl_secret_chat();
 
-    const tgl_bn* encr_prime_bn() const { return m_encr_prime_bn.get(); }
+    const tgl_input_peer_t& id() const;
+    int64_t exchange_id() const;
+    int64_t exchange_key_fingerprint() const;
+    int32_t user_id() const;
+    int32_t admin_id() const; // creator
+    int32_t date() const;
+    int32_t ttl() const;
+    int32_t layer() const;
+    int32_t in_seq_no() const;
+    int32_t out_seq_no() const;
+    int32_t last_in_seq_no() const;
+    int32_t encr_root() const;
+    int32_t encr_param_version() const;
+    tgl_secret_chat_state state() const;
+    tgl_secret_chat_exchange_state exchange_state() const;
+    const std::vector<unsigned char>& encr_prime() const;
+    const std::vector<unsigned char>& g_key() const;
 
-    const std::vector<unsigned char>& encr_prime() const
-    {
-        return m_encr_prime;
-    }
-
-    void set_encr_prime(const unsigned char* prime, size_t length);
-
-    void set_key(const unsigned char* key);
-    const unsigned char* key() const { return m_key; }
-    const unsigned char* key_sha() const { return m_key_sha; }
-    int64_t key_fingerprint() const
-    {
-        int64_t fingerprint;
-        // Telegram secret chat key fingerprints are the last 64 bits of SHA1(key)
-        memcpy(&fingerprint, m_key_sha + 12, 8);
-        return fingerprint;
-    }
+    const unsigned char* exchange_key() const;
+    const unsigned char* key() const;
+    const unsigned char* key_sha() const;
+    int64_t key_fingerprint() const;
 
     static size_t key_size() { return 256; }
     static size_t key_sha_size() { return 20; }
+    static size_t exchange_key_size() { return 256; }
 
-    // following should go in a pimpl
-    bool create_keys_end();
-    void do_set_dh_params(int root, unsigned char prime[], int version);
-    void update(const int64_t* access_hash,
-            const int32_t* date,
-            const int32_t* admin,
-            const int32_t* user_id,
-            const unsigned char* key,
-            const unsigned char* g_key,
-            const tgl_secret_chat_state& state,
-            const int32_t* ttl,
-            const int32_t* layer,
-            const int32_t* in_seq_no);
-
-    void set_state();
-
-    int64_t last_msg_id();
-
-    void message_sent(int64_t msg_id);
-    void message_ack(int64_t msg_id);
-    void update_layer(int32_t layer);
+    tgl_secret_chat_private_facet* private_facet();
 
 private:
-    tgl_input_peer_t m_id;
-    int64_t m_exchange_id;
-    int64_t m_exchange_key_fingerprint;
-    int32_t m_user_id;
-    int32_t m_admin_id; // creator
-    int32_t m_date;
-    int32_t m_ttl;
-    int32_t m_layer;
-    int32_t m_in_seq_no;
-    int32_t m_last_in_seq_no;
-    int32_t m_encr_root;
-    int32_t m_encr_param_version;
-    tgl_secret_chat_state m_state;
-    tgl_secret_chat_exchange_state m_exchange_state;
-
-    std::vector<unsigned char> m_encr_prime;
-    std::unique_ptr<tgl_bn> m_encr_prime_bn;
-    unsigned char m_key[256];
-    unsigned char m_key_sha[20];
-    int32_t m_out_seq_no;
-    std::vector<int64_t> m_pending_messages;
-
+    friend class tgl_secret_chat_private_facet;
+    std::unique_ptr<tgl_secret_chat_private> d;
 };
 
 #endif

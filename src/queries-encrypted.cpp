@@ -34,11 +34,12 @@
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "queries.h"
-#include "tools.h"
+#include "tgl_secret_chat_private.h"
 #include "tgl/tgl.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_secure_random.h"
 #include "tgl/tgl_update_callback.h"
+#include "tools.h"
 
 #include <algorithm>
 #include <array>
@@ -151,7 +152,7 @@ void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& secret_ch
 
 void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 {
-    secret_chat->update(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, tgl_secret_chat_state::deleted, nullptr, nullptr, nullptr);
+    secret_chat->private_facet()->update(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, tgl_secret_chat_state::deleted, nullptr, nullptr, nullptr);
     tgl_state::instance()->callback()->secret_chat_update(secret_chat);
 }
 
@@ -324,9 +325,9 @@ void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
 
     auto q = std::make_shared<query_msg_send_encr>(secret_chat, msg, callback);
     secret_chat_encryptor encryptor(secret_chat, q->serializer());
-    if (secret_chat->last_msg_id()) {
+    if (secret_chat->private_facet()->last_msg_id()) {
         q->out_i32(CODE_invoke_after_msg);
-        q->out_i64(secret_chat->last_msg_id());
+        q->out_i64(secret_chat->private_facet()->last_msg_id());
     }
     q->out_i32(CODE_messages_send_encrypted);
     q->out_i32(CODE_input_encrypted_chat);
@@ -632,7 +633,7 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
         return;
     }
 
-    assert(!secret_chat->g_key.empty());
+    assert(!secret_chat->g_key().empty());
     assert(tgl_state::instance()->bn_ctx()->ctx);
     unsigned char random_here[256];
     tgl_secure_random(random_here, 256);
@@ -640,8 +641,8 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
         random[i] ^= random_here[i];
     }
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> b(TGLC_bn_bin2bn(random.data(), 256, 0));
-    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_a(TGLC_bn_bin2bn(secret_chat->g_key.data(), 256, 0));
-    if (tglmp_check_g_a(secret_chat->encr_prime_bn()->bn, g_a.get()) < 0) {
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_a(TGLC_bn_bin2bn(secret_chat->g_key().data(), 256, 0));
+    if (tglmp_check_g_a(secret_chat->private_facet()->encr_prime_bn()->bn, g_a.get()) < 0) {
         if (callback) {
             callback(false, secret_chat);
         }
@@ -649,14 +650,14 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
         return;
     }
 
-    TGLC_bn* p = secret_chat->encr_prime_bn()->bn;
+    TGLC_bn* p = secret_chat->private_facet()->encr_prime_bn()->bn;
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
     check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()->ctx));
     unsigned char buffer[256];
     memset(buffer, 0, sizeof(buffer));
     TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
 
-    secret_chat->update(nullptr,
+    secret_chat->private_facet()->update(nullptr,
             nullptr,
             nullptr,
             nullptr,
@@ -694,7 +695,7 @@ static void tgl_do_send_create_encr_chat(const tgl_input_peer_t& user_id,
     }
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(random.data(), 256, 0));
-    TGLC_bn* p = secret_chat->encr_prime_bn()->bn;
+    TGLC_bn* p = secret_chat->private_facet()->encr_prime_bn()->bn;
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g(TGLC_bn_new());
     check_crypto_result(TGLC_bn_set_word(g.get(), secret_chat->encr_root()));
@@ -709,7 +710,7 @@ static void tgl_do_send_create_encr_chat(const tgl_input_peer_t& user_id,
     TGLC_bn_bn2bin(r.get(), reinterpret_cast<unsigned char*>(g_a + (256 - TGLC_bn_num_bytes(r.get()))));
 
     int our_id = tgl_state::instance()->our_id().peer_id;
-    secret_chat->update(nullptr,
+    secret_chat->private_facet()->update(nullptr,
           nullptr,
           &our_id,
           nullptr,
@@ -803,7 +804,7 @@ public:
         bool fail = false;
         if (DS_MDC->magic == CODE_messages_dh_config) {
             if (DS_MDC->p->len == 256) {
-                m_secret_chat->do_set_dh_params(DS_LVAL(DS_MDC->g),
+                m_secret_chat->private_facet()->set_dh_params(DS_LVAL(DS_MDC->g),
                         reinterpret_cast<unsigned char*>(DS_MDC->p->data), DS_LVAL(DS_MDC->version));
             } else {
                 TGL_WARNING("the prime got from the server is not of size 256");

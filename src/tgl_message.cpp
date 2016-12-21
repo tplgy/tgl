@@ -2,6 +2,8 @@
 #include "tgl/tgl_secret_chat.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
+#include "tgl_secret_chat_private.h"
+#include "tgl_secret_chat_private.h"
 
 tgl_message::tgl_message()
     : server_id(0)
@@ -107,12 +109,12 @@ tgl_message::tgl_message(
 
     if (action && !this->is_outgoing() && this->action && this->action->type() == tgl_message_action_type::notify_layer) {
         // FIXME is following right?
-        secret_chat->update_layer(std::static_pointer_cast<tgl_message_action_notify_layer>(this->action)->layer);
+        secret_chat->private_facet()->update_layer(std::static_pointer_cast<tgl_message_action_notify_layer>(this->action)->layer);
     }
 
     if (this->is_outgoing()) {
         //secret_chat->out_seq_no++;
-        secret_chat->message_sent(message_id);
+        secret_chat->private_facet()->message_sent(message_id);
         TGL_DEBUG("out seq number " << secret_chat->out_seq_no());
     }
 }

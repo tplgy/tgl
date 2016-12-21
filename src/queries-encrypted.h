@@ -31,7 +31,7 @@
 #include <vector>
 
 struct tgl_message;
-struct tgl_secret_chat;
+class tgl_secret_chat;
 class mtprotocol_serializer;
 
 class secret_chat_encryptor
