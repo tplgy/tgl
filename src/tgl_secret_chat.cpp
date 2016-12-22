@@ -319,6 +319,16 @@ const unsigned char* tgl_secret_chat::exchange_key() const
     return reinterpret_cast<const unsigned char*>(d->m_exchange_key);
 }
 
+bool tgl_secret_chat::is_hole_detection_enabled() const
+{
+    return d->m_hole_detection_enabled;
+}
+
+void tgl_secret_chat::set_hole_detection_enabled(bool b)
+{
+    d->m_hole_detection_enabled = b;
+}
+
 void tgl_secret_chat_private_facet::set_g_key(const unsigned char* g_key, size_t length)
 {
     d->m_g_key.resize(length);

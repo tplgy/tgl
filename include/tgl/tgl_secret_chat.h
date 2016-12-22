@@ -141,6 +141,10 @@ public:
     const unsigned char* key_sha() const;
     int64_t key_fingerprint() const;
 
+    // HACK: remove these!
+    bool is_hole_detection_enabled() const;
+    void set_hole_detection_enabled(bool b);
+
     static size_t key_size() { return 256; }
     static size_t key_sha_size() { return 20; }
     static size_t exchange_key_size() { return 256; }

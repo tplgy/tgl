@@ -1513,38 +1513,40 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& 
     int layer = secret_message->layer;
 
     if (in_seq_no >= 0 && out_seq_no >= 0) {
-        if (out_seq_no / 2 < secret_chat->in_seq_no()) {
-            TGL_WARNING("secret message recived with out_seq_no less than the in_seq_no: out_seq_no = " << (out_seq_no / 2) << " in_seq_no = " << in_seq_no);
-            return;
-        } else if (out_seq_no / 2 > secret_chat->in_seq_no()) {
-            TGL_WARNING("hole in seq in secret chat, expecting in_seq_no of " << secret_chat->in_seq_no() << " but " << out_seq_no / 2 << " was received");
-            // FIXME: enable requesting resending messages from the remote peer to fill the hole, probaly only need to make test cases and then uncomment the following code.
-#if 0
-           int start_seq_no = 2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_get_peer_id(tgl_state::instance()->our_id()));
-           int end_seq_no = out_seq_no - 2;
-           if (end_seq_no >= start_seq_no) {
-               TGL_DEBUG("requesting resend message from " << start_seq_no << " to " << end_seq_no << " for secret chat " << secret_chat->id.peer_id);
-               tgl_do_send_encr_chat_request_resend(secret_chat, start_seq_no, end_seq_no);
-           }
-#else
-            tgl_do_discard_secret_chat(secret_chat, [=](bool success, const std::shared_ptr<tgl_secret_chat>& secret_chat) {
-                if (success) {
-                    tgl_secret_chat_deleted(secret_chat);
-                }
-            });
-#endif
-            return;
-        }
-
         if ((out_seq_no & 1)  != 1 - (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id) ||
             (in_seq_no & 1) != (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id)) {
             TGL_WARNING("bad msg admin");
             return;
         }
 
-        if (in_seq_no / 2 > secret_chat->out_seq_no()) {
-            TGL_WARNING("in_seq_no " << in_seq_no / 2 << " of remote client is bigger than our out_seq_no of " << secret_chat->out_seq_no() << ", dropping the message");
-            return;
+        if (secret_chat->is_hole_detection_enabled()) {
+            if (out_seq_no / 2 < secret_chat->in_seq_no()) {
+                TGL_WARNING("secret message recived with out_seq_no less than the in_seq_no: out_seq_no = " << (out_seq_no / 2) << " in_seq_no = " << in_seq_no);
+                return;
+            } else if (out_seq_no / 2 > secret_chat->in_seq_no()) {
+                TGL_WARNING("hole in seq in secret chat, expecting in_seq_no of " << secret_chat->in_seq_no() << " but " << out_seq_no / 2 << " was received");
+                // FIXME: enable requesting resending messages from the remote peer to fill the hole, probaly only need to make test cases and then uncomment the following code.
+#if 0
+               int start_seq_no = 2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_get_peer_id(tgl_state::instance()->our_id()));
+               int end_seq_no = out_seq_no - 2;
+               if (end_seq_no >= start_seq_no) {
+                   TGL_DEBUG("requesting resend message from " << start_seq_no << " to " << end_seq_no << " for secret chat " << secret_chat->id.peer_id);
+                   tgl_do_send_encr_chat_request_resend(secret_chat, start_seq_no, end_seq_no);
+               }
+#else
+                tgl_do_discard_secret_chat(secret_chat, [=](bool success, const std::shared_ptr<tgl_secret_chat>& secret_chat) {
+                    if (success) {
+                        tgl_secret_chat_deleted(secret_chat);
+                    }
+                });
+#endif
+                return;
+            }
+
+            if (in_seq_no / 2 > secret_chat->out_seq_no()) {
+                TGL_WARNING("in_seq_no " << in_seq_no / 2 << " of remote client is bigger than our out_seq_no of " << secret_chat->out_seq_no() << ", dropping the message");
+                return;
+            }
         }
 
         out_seq_no = out_seq_no / 2 + 1;

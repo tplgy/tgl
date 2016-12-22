@@ -59,6 +59,9 @@ struct tgl_secret_chat_private {
     int32_t m_out_seq_no;
     std::vector<int64_t> m_pending_messages;
 
+    // HACK: remove this!
+    bool m_hole_detection_enabled;
+
     tgl_secret_chat_private()
         : m_temp_key_fingerprint(0)
         , m_g_key()
@@ -79,6 +82,7 @@ struct tgl_secret_chat_private {
         , m_encr_prime()
         , m_encr_prime_bn(nullptr)
         , m_out_seq_no(0)
+        , m_hole_detection_enabled(true)
     {
         memset(m_key, 0, sizeof(m_key));
         memset(m_key_sha, 0, sizeof(m_key_sha));
