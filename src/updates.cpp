@@ -63,6 +63,10 @@ static bool tgl_check_qts_diff(int32_t qts, int32_t qts_count)
     TGL_NOTICE("qts = " << qts << ", qts_count = " << qts_count);
     if (qts < tgl_state::instance()->qts() + qts_count) {
         TGL_NOTICE("duplicate message (qts = " << qts << ", count = " << qts_count << ", cur_qts = " << tgl_state::instance()->qts() << ")");
+        // Better off getting difference to corret our qts. Our locally qts could be invalid if we
+        // got logged out and we didn't know about it. Even if it is a real dup we will ignore
+        // the duplicated message because secret chat itself have its own sequence number.
+        tgl_do_get_difference(false, nullptr);
         return false;
     }
 

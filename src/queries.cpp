@@ -4703,6 +4703,11 @@ void tgl_do_set_dc_logged_out(const std::shared_ptr<tgl_dc>& from_dc, bool succe
         dc->set_logged_in(false);
     }
     tgl_state::instance()->clear_all_locks();
+
+    // Upon de-authorization, the event queue of the
+    // corresponding device will be forcibly cleared,
+    // and the value of qts will become irrelevant.
+    tgl_state::instance()->set_qts(0, true);
 }
 
 class query_bind_temp_auth_key: public query
