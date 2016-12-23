@@ -24,6 +24,7 @@
 #include "auto/auto-skip.h"
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_md5.h"
+#include "mtproto-client.h"
 #include "mtproto-common.h"
 #include "queries.h"
 #include "queries-encrypted.h"
@@ -479,7 +480,7 @@ void tgl_transfer_manager::upload_avatar_end(const std::shared_ptr<tgl_upload>& 
         }
         q->out_i32(CODE_input_photo_crop_auto);
 
-        q->execute(tgl_state::instance()->working_dc());
+        q->execute(tgl_state::instance()->active_client());
     } else {
         auto q = std::make_shared<query_set_photo>(callback);
         q->out_i32(CODE_photos_upload_profile_photo);
@@ -499,7 +500,7 @@ void tgl_transfer_manager::upload_avatar_end(const std::shared_ptr<tgl_upload>& 
         q->out_i32(CODE_input_geo_point_empty);
         q->out_i32(CODE_input_photo_crop_auto);
 
-        q->execute(tgl_state::instance()->working_dc());
+        q->execute(tgl_state::instance()->active_client());
     }
 }
 
@@ -609,7 +610,7 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
 
     q->out_i64(extra->id);
 
-    q->execute(tgl_state::instance()->working_dc());
+    q->execute(tgl_state::instance()->active_client());
 }
 
 void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_upload>& u,
@@ -747,7 +748,7 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
     }
 
     q->set_message(message);
-    q->execute(tgl_state::instance()->working_dc());
+    q->execute(tgl_state::instance()->active_client());
 }
 
 void tgl_transfer_manager::upload_end(const std::shared_ptr<tgl_upload>& u,
@@ -842,7 +843,7 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
         } else {
             assert(u->part_size == read_size);
         }
-        q->execute(tgl_state::instance()->working_dc());
+        q->execute(tgl_state::instance()->active_client());
     } else {
         upload_end(u, callback);
     }
@@ -877,7 +878,7 @@ void tgl_transfer_manager::upload_thumb(const std::shared_ptr<tgl_upload>& u,
     q->out_i32(0);
     q->out_string(reinterpret_cast<char*>(u->thumb.data()), u->thumb.size());
 
-    q->execute(tgl_state::instance()->working_dc());
+    q->execute(tgl_state::instance()->active_client());
 }
 
 
@@ -1169,7 +1170,7 @@ void tgl_transfer_manager::download_next_part(const std::shared_ptr<tgl_download
     q->out_i32(d->offset);
     q->out_i32(MAX_PART_SIZE);
 
-    q->execute(tgl_state::instance()->dc_at(d->location.dc()));
+    q->execute(tgl_state::instance()->client_at(d->location.dc()));
 }
 
 int32_t tgl_transfer_manager::download_by_file_location(const tgl_file_location& file_location, const int32_t file_size,

@@ -30,6 +30,9 @@
 
 #include <map>
 #include <memory>
+#include <utility>
+
+class tgl_dc;
 
 struct tgl_chat;
 struct tgl_chat_participant;
@@ -73,8 +76,8 @@ public:
     virtual void our_id(int32_t id) = 0;
     virtual void notification(const std::string& type, const std::string& message) = 0;
     virtual void user_status_update(struct tgl_user* U) = 0;
-    virtual void dc_update(const std::shared_ptr<tgl_dc>& dc) = 0;
-    virtual void change_active_dc(int new_dc_id) = 0;
+    virtual void dc_updated(const std::shared_ptr<tgl_dc>& dc) = 0;
+    virtual void active_dc_changed(int32_t new_dc_id) = 0;
     virtual void on_failed_login() = 0;
     virtual void connection_status_changed(tgl_connection_status status) = 0;
     virtual ~tgl_update_callback() { }

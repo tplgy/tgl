@@ -23,9 +23,9 @@
 #define __QUERIES_H__
 
 #include "auto/auto.h"
+#include "mtproto-client.h"
 #include "mtproto-common.h"
 #include "structures.h"
-#include "tgl/tgl_dc.h"
 #include "tgl/tgl_message.h"
 
 #include <cstdint>
@@ -53,7 +53,7 @@ public:
         , m_type(type)
         , m_serializer(std::make_shared<mtprotocol_serializer>())
         , m_timer()
-        , m_dc()
+        , m_client()
         , m_session()
     {
     }
@@ -63,7 +63,7 @@ public:
         clear_timers();
     }
 
-    void execute(const std::shared_ptr<tgl_dc>& dc, execution_option = execution_option::NORMAL);
+    void execute(const std::shared_ptr<mtproto_client>& client, execution_option = execution_option::NORMAL);
     bool execute_after_pending();
     void regen();
     void ack();
@@ -121,7 +121,7 @@ public:
     int64_t session_id() const { return m_session_id; }
     int64_t msg_id() const { return m_msg_id_override ? m_msg_id_override : m_msg_id; }
     const std::shared_ptr<tgl_session>& session() const { return m_session; }
-    const std::shared_ptr<tgl_dc>& dc() const { return m_dc; }
+    const std::shared_ptr<mtproto_client>& client() const { return m_client; }
 
     virtual void on_answer(void* DS) = 0;
     virtual int on_error(int error_code, const std::string& error_string) = 0;
@@ -162,7 +162,7 @@ private:
     std::shared_ptr<mtprotocol_serializer> m_serializer;
     std::shared_ptr<tgl_timer> m_timer;
     std::shared_ptr<tgl_timer> m_retry_timer;
-    std::shared_ptr<tgl_dc> m_dc;
+    std::shared_ptr<mtproto_client> m_client;
     std::shared_ptr<tgl_session> m_session;
 };
 
@@ -200,12 +200,12 @@ void tglq_query_restart(int64_t id);
 
 double get_double_time(void);
 
-void tgl_do_bind_temp_key(const std::shared_ptr<tgl_dc>& dc, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id);
+void tgl_do_bind_temp_key(const std::shared_ptr<mtproto_client>& client, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id);
 void tgl_do_get_channel_difference(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback);
 void tgl_do_lookup_state();
-void tgl_do_help_get_config_dc(const std::shared_ptr<tgl_dc>& dc);
-void tgl_do_set_dc_configured(const std::shared_ptr<tgl_dc>& dc, bool success);
-void tgl_do_set_dc_logged_out(const std::shared_ptr<tgl_dc>& dc, bool success);
+void tgl_do_help_get_client_config(const std::shared_ptr<mtproto_client>& client);
+void tgl_do_set_client_configured(const std::shared_ptr<mtproto_client>& client, bool success);
+void tgl_do_set_client_logged_out(const std::shared_ptr<mtproto_client>& client, bool success);
 
 void tglq_regen_query(int64_t id);
 void tglq_query_delete(int64_t id);

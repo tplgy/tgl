@@ -35,6 +35,7 @@
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_transfer_manager.h"
 #include "tgl/tgl_timer.h"
+#include "tgl_session.h"
 #include "queries.h"
 
 #include <assert.h>
@@ -81,23 +82,19 @@ void tgl_state::reset()
     s_instance.reset();
 }
 
-void tgl_state::set_auth_key(int num, const char* buf)
+void tgl_state::set_dc_auth_key(int dc_id, const char* key, size_t key_length)
 {
-    assert(num > 0 && num <= MAX_DC_ID);
-    assert(m_dcs[num]);
+    assert(dc_id > 0 && dc_id <= MAX_DC_ID);
 
-    if (buf) {
-        memcpy(m_dcs[num]->auth_key, buf, 256);
+    assert(key);
+    assert(key_length == 256);
+    if (!key || key_length != 256) {
+        return;
     }
 
-    unsigned char sha1_buffer[20];
-    memset(sha1_buffer, 0, sizeof(sha1_buffer));
-    TGLC_sha1((unsigned char *)m_dcs[num]->auth_key, 256, sha1_buffer);
-    memcpy(&m_dcs[num]->auth_key_id, sha1_buffer + 12, 8);
-
-    m_dcs[num]->set_authorized();
-
-    m_callback->dc_update(m_dcs[num]);
+    auto client = m_clients[dc_id];
+    client->set_auth_key(reinterpret_cast<const unsigned char*>(key), key_length);
+    m_callback->dc_updated(client);
 }
 
 void tgl_state::set_our_id(int id)
@@ -117,42 +114,42 @@ void tgl_state::set_dc_option(bool is_v6, int id, const std::string& ip, int por
         return;
     }
 
-    if (static_cast<size_t>(id) >= m_dcs.size()) {
-        m_dcs.resize(id+1, nullptr);
+    if (static_cast<size_t>(id) >= m_clients.size()) {
+        m_clients.resize(id + 1, nullptr);
     }
 
-    if (!m_dcs[id]) {
-        m_dcs[id] = tgl_state::instance()->allocate_dc(id);
+    if (!m_clients[id]) {
+        m_clients[id] = allocate_client(id);
         if (tgl_state::instance()->pfs_enabled()) {
           //dc->ev = tgl_state::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
           //dc->ev->start(0);
         }
     }
     if (is_v6) {
-        m_dcs[id]->ipv6_options.option_list.push_back(std::make_pair(ip, port));
+        m_clients[id]->add_ipv6_option(ip, port);
     } else {
-        m_dcs[id]->ipv4_options.option_list.push_back(std::make_pair(ip, port));
+        m_clients[id]->add_ipv4_option(ip, port);
     }
 }
 
-void tgl_state::set_dc_logged_in(int num)
+void tgl_state::set_dc_logged_in(int dc_id)
 {
-    TGL_DEBUG("set signed " << num);
-    assert(num > 0 && num <= MAX_DC_ID);
-    assert(m_dcs[num]);
-    m_dcs[num]->set_logged_in();
-    m_callback->dc_update(m_dcs[num]);
+    TGL_DEBUG("set signed " << dc_id);
+    assert(dc_id > 0 && dc_id <= MAX_DC_ID);
+    auto client = m_clients[dc_id];
+    client->set_logged_in();
+    m_callback->dc_updated(client);
 }
 
-void tgl_state::set_working_dc(int num)
+void tgl_state::set_active_dc(int dc_id)
 {
-    if (m_working_dc && m_working_dc->id == num) {
+    if (m_active_client && m_active_client->id() == dc_id) {
         return;
     }
-    TGL_DEBUG("change working DC to " << num);
-    assert(num > 0 && num <= MAX_DC_ID);
-    m_working_dc = m_dcs[num];
-    m_callback->change_active_dc(num);
+    TGL_DEBUG("change active DC to " << dc_id);
+    assert(dc_id > 0 && dc_id <= MAX_DC_ID);
+    m_active_client = m_clients[dc_id];
+    m_callback->active_dc_changed(dc_id);
 }
 
 void tgl_state::set_qts(int32_t qts, bool force)
@@ -210,8 +207,15 @@ void tgl_state::set_seq(int32_t seq)
     m_seq = seq;
 }
 
-void tgl_state::reset_server_state()
+void tgl_state::reset_authorization()
 {
+    for (const auto& client: m_clients) {
+        if (client) {
+            client->reset_authorization();
+            client->set_logged_in(false);
+        }
+    }
+
     m_qts = 0;
     m_pts = 0;
     m_date = 0;
@@ -326,7 +330,7 @@ void tgl_state::add_query(const std::shared_ptr<query>& q)
     assert(id);
     auto inserted_iterator_pair = m_active_queries.emplace(id, q);
     if (inserted_iterator_pair.second) {
-        q->dc()->increase_active_queries();
+        q->client()->increase_active_queries();
     } else {
         inserted_iterator_pair.first->second = q;
     }
@@ -349,7 +353,7 @@ void tgl_state::remove_query(const std::shared_ptr<query>& q)
     auto it = m_active_queries.find(id);
     if (it != m_active_queries.end()) {
         m_active_queries.erase(it);
-        q->dc()->decrease_active_queries();
+        q->client()->decrease_active_queries();
     }
 }
 
@@ -358,28 +362,27 @@ void tgl_state::remove_all_queries()
     m_active_queries.clear();
 }
 
-std::shared_ptr<tgl_dc> tgl_state::dc_at(int id)
+std::shared_ptr<mtproto_client> tgl_state::client_at(int id) const
 {
-    if (static_cast<size_t>(id) >= m_dcs.size()) {
+    if (static_cast<size_t>(id) >= m_clients.size()) {
         return nullptr;
     }
 
-    return m_dcs[id];
+    return m_clients[id];
 }
 
-std::shared_ptr<tgl_dc> tgl_state::allocate_dc(int id)
+std::shared_ptr<mtproto_client> tgl_state::allocate_client(int id)
 {
-    if (static_cast<size_t>(id) >= m_dcs.size()) {
-        m_dcs.resize(id+1, nullptr);
+    if (static_cast<size_t>(id) >= m_clients.size()) {
+        m_clients.resize(id + 1, nullptr);
     }
 
-    assert(!m_dcs[id]);
+    assert(!m_clients[id]);
 
-    std::shared_ptr<tgl_dc> dc = std::make_shared<tgl_dc>();
-    dc->id = id;
-    m_dcs[id] = dc;
+    std::shared_ptr<mtproto_client> client = std::make_shared<mtproto_client>(id);
+    m_clients[id] = client;
 
-    return dc;
+    return client;
 }
 
 void tgl_state::state_lookup_timeout()
@@ -415,5 +418,13 @@ void tgl_state::set_online_status(tgl_online_status status)
 
     for (const auto& dead_weak_observer: dead_weak_observers) {
         m_online_status_observers.erase(dead_weak_observer);
+    }
+}
+
+void tgl_state::connection_status_changed(const std::shared_ptr<tgl_connection>& c, tgl_connection_status status)
+{
+    const auto& session = m_active_client->session();
+    if (session && session->c == c) {
+        m_callback->connection_status_changed(status);
     }
 }

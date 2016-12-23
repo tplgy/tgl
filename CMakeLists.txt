@@ -148,7 +148,6 @@ set(SOURCES
     src/queries-encrypted.cpp
     src/structures.cpp
     src/tgl.cpp
-    src/tgl_dc.cpp
     src/tgl_log.cpp
     src/tgl_mime_type.cpp
     src/tgl_message.cpp

@@ -28,10 +28,8 @@
 
 class tgl_connection;
 class tgl_timer;
-struct tgl_dc;
 
 struct tgl_session {
-    std::weak_ptr<tgl_dc> dc;
     int64_t session_id;
     int64_t last_msg_id;
     int32_t seq_no;
@@ -40,8 +38,7 @@ struct tgl_session {
     std::set<int64_t> ack_set;
     std::shared_ptr<tgl_timer> ev;
     tgl_session()
-        : dc()
-        , session_id(0)
+        : session_id(0)
         , last_msg_id(0)
         , seq_no(0)
         , received_messages(0)

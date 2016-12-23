@@ -22,9 +22,8 @@
 #define __TGL_NET_H__
 
 #include <memory>
-
-struct tgl_dc;
-struct tgl_session;
+#include <utility>
+#include <vector>
 
 class tgl_connection {
 public:
@@ -35,8 +34,6 @@ public:
     virtual ssize_t peek(void* data, size_t len) = 0;
     virtual size_t available_bytes_for_read() = 0;
     virtual void flush() = 0;
-    virtual const std::weak_ptr<tgl_dc>& get_dc() const = 0;
-    virtual const std::weak_ptr<tgl_session>& get_session() const = 0;
 
     virtual ~tgl_connection() { }
 };
@@ -46,9 +43,9 @@ class tgl_mtproto_client;
 class tgl_connection_factory {
 public:
     virtual std::shared_ptr<tgl_connection> create_connection(
-            const std::weak_ptr<tgl_session>& session,
-            const std::weak_ptr<tgl_dc>& dc,
-            const std::shared_ptr<tgl_mtproto_client>& client) = 0;
+            const std::vector<std::pair<std::string, int>>& ipv4_options,
+            const std::vector<std::pair<std::string, int>>& ipv6_options,
+            const std::weak_ptr<tgl_mtproto_client>& client) = 0;
 
     virtual ~tgl_connection_factory() { }
 };

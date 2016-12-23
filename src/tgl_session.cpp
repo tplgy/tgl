@@ -26,7 +26,6 @@
 
 void tgl_session::clear()
 {
-    dc.reset();
     session_id = 0;
     last_msg_id = 0;
     seq_no = 0;

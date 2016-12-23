@@ -21,6 +21,7 @@
 #ifndef __TGL_H__
 #define __TGL_H__
 
+#include "tgl_connection_status.h"
 #include "tgl_online_status.h"
 #include "tgl_peer_id.h"
 
@@ -34,11 +35,9 @@
 #include <string.h>
 #include <vector>
 
-
 class tgl_connection;
 class tgl_online_status_observer;
 struct tgl_session;
-struct tgl_dc;
 class query;
 struct tgl_user;
 struct tgl_state;
@@ -99,6 +98,8 @@ enum class tgl_user_status_type {
     last_month,
 };
 
+class mtproto_client;
+
 class tgl_transfer_manager;
 class tgl_connection_factory;
 class tgl_rsa_key;
@@ -117,10 +118,9 @@ struct tgl_state {
     bool is_started() const { return m_is_started; }
     void set_started(bool b) { m_is_started = b; }
 
-    const std::vector<std::shared_ptr<tgl_dc>>& dcs() { return m_dcs; }
-    std::shared_ptr<tgl_dc> working_dc() { return m_working_dc; }
-    std::shared_ptr<tgl_dc> allocate_dc(int id);
-    std::shared_ptr<tgl_dc> dc_at(int id);
+    const std::vector<std::shared_ptr<mtproto_client>>& clients() const { return m_clients; }
+    std::shared_ptr<mtproto_client> active_client() const { return m_active_client; }
+    std::shared_ptr<mtproto_client> client_at(int id) const;
     int temp_key_expire_time() const { return m_temp_key_expire_time; }
 
     int init(const std::string& download_dir, int app_id, const std::string& app_hash, const std::string& app_version);
@@ -129,16 +129,16 @@ struct tgl_state {
 
     const tgl_bn_context* bn_ctx() const { return m_bn_ctx.get(); }
 
-    void set_auth_key(int num, const char* buf);
+    void set_dc_auth_key(int dc_id, const char* key, size_t key_length);
     void set_our_id(int id);
     void set_dc_option(bool is_v6, int id, const std::string& ip, int port);
-    void set_dc_logged_in(int num);
-    void set_working_dc(int num);
+    void set_dc_logged_in(int dc_id);
+    void set_active_dc(int dc_id);
     void set_qts(int32_t qts, bool force = false);
     void set_pts(int32_t pts, bool force = false);
     void set_date(int64_t date, bool force = false);
     void set_seq(int32_t seq);
-    void reset_server_state();
+    void reset_authorization();
     void set_callback(const std::shared_ptr<tgl_update_callback>& cb) { m_callback = cb; }
     void add_rsa_key(const std::string& key);
     void set_enable_pfs(bool); // enable perfect forward secrecy (does not work properly right now)
@@ -208,9 +208,12 @@ struct tgl_state {
         m_phone_number_input_locked = false;
     }
 
+    void connection_status_changed(const std::shared_ptr<tgl_connection>& c, tgl_connection_status status);
+
 private:
     tgl_state();
     static void state_lookup_timeout();
+    std::shared_ptr<mtproto_client> allocate_client(int id);
 
 private:
     tgl_online_status m_online_status;
@@ -249,8 +252,8 @@ private:
 
     std::unique_ptr<tgl_bn_context> m_bn_ctx;
 
-    std::vector<std::shared_ptr<tgl_dc>> m_dcs;
-    std::shared_ptr<tgl_dc> m_working_dc;
+    std::vector<std::shared_ptr<mtproto_client>> m_clients;
+    std::shared_ptr<mtproto_client> m_active_client;
     std::shared_ptr<tgl_timer> m_state_lookup_timer;
     std::set<std::weak_ptr<tgl_online_status_observer>, std::owner_less<std::weak_ptr<tgl_online_status_observer>>> m_online_status_observers;
 
