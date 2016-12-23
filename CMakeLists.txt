@@ -127,6 +127,7 @@ set(PRIVATE_HEADERS
     src/structures.h
     src/tgl_rsa_key.h
     src/tgl_secret_chat_private.h
+    src/tgl_session.h
     src/tools.h
     src/updates.h
 )
@@ -152,6 +153,7 @@ set(SOURCES
     src/tgl_mime_type.cpp
     src/tgl_message.cpp
     src/tgl_secret_chat.cpp
+    src/tgl_session.cpp
     src/tgl_transfer_manager.cpp
     src/tools.cpp
     src/updates.cpp

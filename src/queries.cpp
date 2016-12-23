@@ -57,6 +57,7 @@
 #include "tgl/tgl_secure_random.h"
 #include "tgl/tgl_timer.h"
 #include "tgl/tgl_update_callback.h"
+#include "tgl_session.h"
 #include "updates.h"
 
 constexpr int32_t TGL_SCHEME_LAYER = 45;

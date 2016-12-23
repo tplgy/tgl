@@ -41,6 +41,7 @@
 #include "tgl/tgl_net.h"
 #include "tgl/tgl_timer.h"
 #include "tgl/tgl_queries.h"
+#include "tgl_session.h"
 #include "updates.h"
 
 #include <algorithm>

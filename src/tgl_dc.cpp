@@ -26,22 +26,9 @@
 #include "queries.h"
 #include "tgl/tgl_net.h"
 #include "tgl/tgl_timer.h"
+#include "tgl_session.h"
 
-static const float SESSION_CLEANUP_TIMEOUT = 5.0;
-
-void tgl_session::clear()
-{
-    dc.reset();
-    session_id = 0;
-    last_msg_id = 0;
-    seq_no = 0;
-    received_messages = 0;
-    c->close();
-    c = nullptr;
-    ack_set.clear();
-    ev->cancel();
-    ev = nullptr;
-}
+static constexpr float SESSION_CLEANUP_TIMEOUT = 5.0;
 
 tgl_dc::tgl_dc()
     : id(0)
@@ -67,6 +54,10 @@ tgl_dc::tgl_dc()
     memset(nonce, 0, sizeof(nonce));
     memset(new_nonce, 0, sizeof(new_nonce));
     memset(server_nonce, 0, sizeof(server_nonce));
+}
+
+tgl_dc::~tgl_dc()
+{
 }
 
 void tgl_dc::reset_authorization()

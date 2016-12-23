@@ -100,34 +100,11 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_dc_state state)
     return os;
 }
 
-struct tgl_dc;
+struct tgl_session;
 class tgl_connection;
 class tgl_rsa_key;
 class tgl_timer;
 class query;
-
-struct tgl_session {
-    std::weak_ptr<tgl_dc> dc;
-    int64_t session_id;
-    int64_t last_msg_id;
-    int32_t seq_no;
-    int32_t received_messages;
-    std::shared_ptr<tgl_connection> c;
-    std::set<int64_t> ack_set;
-    std::shared_ptr<tgl_timer> ev;
-    tgl_session()
-        : dc()
-        , session_id(0)
-        , last_msg_id(0)
-        , seq_no(0)
-        , received_messages(0)
-        , c()
-        , ack_set()
-        , ev()
-    { }
-
-    void clear();
-};
 
 struct tgl_dc_option {
     std::vector<std::pair<std::string, int>> option_list;
@@ -158,6 +135,8 @@ struct tgl_dc: public std::enable_shared_from_this<tgl_dc> {
     tgl_dc_option ipv4_options;
 
     tgl_dc();
+    ~tgl_dc();
+
     void reset_authorization();
     void restart_authorization();
     void restart_temp_authorization();
