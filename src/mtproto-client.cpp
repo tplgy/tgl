@@ -90,24 +90,24 @@ int mtproto_client::ready(const std::shared_ptr<tgl_connection>& c)
 mtproto_client::execute_result mtproto_client::try_rpc_execute(const std::shared_ptr<tgl_connection>& c)
 {
     while (true) {
-        if (c->in_bytes() < 1) {
+        if (c->available_bytes_for_read() < 1) {
             return execute_result::ok;
         }
         unsigned len = 0;
         ssize_t result = c->peek(&len, 1);
         TGL_ASSERT_UNUSED(result, result == 1);
         if (len >= 1 && len <= 0x7e) {
-            if (c->in_bytes() < 1 + 4 * len) {
+            if (c->available_bytes_for_read() < 1 + 4 * len) {
                 return execute_result::ok;
             }
         } else {
-            if (c->in_bytes() < 4) {
+            if (c->available_bytes_for_read() < 4) {
                 return execute_result::ok;
             }
             result = c->peek(&len, 4);
             TGL_ASSERT_UNUSED(result, result == 4);
             len = (len >> 8);
-            if (c->in_bytes() < 4 + 4 * len) {
+            if (c->available_bytes_for_read() < 4 + 4 * len) {
                 return execute_result::ok;
             }
             len = 0x7f;
