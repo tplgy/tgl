@@ -23,7 +23,7 @@
 #define __QUERIES_H__
 
 #include "auto/auto.h"
-#include "mtproto-client.h"
+#include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "structures.h"
 #include "tgl/tgl_message.h"

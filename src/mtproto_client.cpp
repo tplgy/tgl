@@ -20,7 +20,7 @@
     Copyright Topology LP 2016
 */
 
-#include "mtproto-client.h"
+#include "mtproto_client.h"
 
 #include "auto/auto.h"
 #include "auto/auto-skip.h"

@@ -22,7 +22,7 @@
 #include "tgl/tgl.h"
 
 #include "tools.h"
-#include "mtproto-client.h"
+#include "mtproto_client.h"
 #include "structures.h"
 #include "tgl_rsa_key.h"
 #include "tools.h"

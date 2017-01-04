@@ -119,7 +119,7 @@ set(PRIVATE_HEADERS
     src/crypto/tgl_crypto_rsa_pem.h
     src/crypto/tgl_crypto_sha.h
     src/crypto/tgl_crypto_rand.h
-    src/mtproto-client.h
+    src/mtproto_client.h
     src/mtproto-common.h
     src/mtproto-utils.h
     src/queries.h
@@ -141,7 +141,7 @@ set(GENERATED_TGL_SOURCES
 
 set(SOURCES
     ${GENERATED_TGL_SOURCES}
-    src/mtproto-client.cpp
+    src/mtproto_client.cpp
     src/mtproto-common.cpp
     src/mtproto-utils.cpp
     src/queries.cpp

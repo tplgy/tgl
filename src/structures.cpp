@@ -29,7 +29,7 @@
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_bn.h"
 #include "crypto/tgl_crypto_sha.h"
-#include "mtproto-client.h"
+#include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "queries.h"
 #include "queries-encrypted.h"
