@@ -69,7 +69,7 @@ public:
 
     // From tgl_mtproto_client
     virtual int ready(const std::shared_ptr<tgl_connection>& c) override;
-    virtual execute_result try_rpc_execute(const std::shared_ptr<tgl_connection>& c) override;
+    virtual bool try_rpc_execute(const std::shared_ptr<tgl_connection>& c) override;
     virtual void ping() override;
 
     // From tgl_dc
@@ -154,11 +154,11 @@ private:
     int work_bad_server_salt(tgl_in_buffer* in);
     void insert_msg_id(int64_t id);
     void calculate_auth_key_id(bool temp_key);
-    execute_result rpc_execute(int op, int len);
-    execute_result process_respq_answer(const char* packet, int len, bool temp_key);
-    execute_result process_dh_answer(const char* packet, int len, bool temp_key);
-    execute_result process_auth_complete(const char* packet, int len, bool temp_key);
-    execute_result process_rpc_message(encrypted_message* enc, int len);
+    bool rpc_execute(int op, int len);
+    bool process_respq_answer(const char* packet, int len, bool temp_key);
+    bool process_dh_answer(const char* packet, int len, bool temp_key);
+    bool process_auth_complete(const char* packet, int len, bool temp_key);
+    bool process_rpc_message(encrypted_message* enc, int len);
 
 private:
     int32_t m_id;

@@ -151,11 +151,11 @@ void mtproto_client::ping()
     send_message(buffer, 3);
 }
 
-mtproto_client::execute_result mtproto_client::try_rpc_execute(const std::shared_ptr<tgl_connection>& c)
+bool mtproto_client::try_rpc_execute(const std::shared_ptr<tgl_connection>& c)
 {
     if (!m_session) {
         restart_session();
-        return execute_result::bad_session;
+        return true;
     }
 
     assert(c);
@@ -163,24 +163,24 @@ mtproto_client::execute_result mtproto_client::try_rpc_execute(const std::shared
 
     while (true) {
         if (c->available_bytes_for_read() < 1) {
-            return execute_result::ok;
+            return true;
         }
         unsigned len = 0;
         ssize_t result = c->peek(&len, 1);
         TGL_ASSERT_UNUSED(result, result == 1);
         if (len >= 1 && len <= 0x7e) {
             if (c->available_bytes_for_read() < 1 + 4 * len) {
-                return execute_result::ok;
+                return true;
             }
         } else {
             if (c->available_bytes_for_read() < 4) {
-                return execute_result::ok;
+                return true;
             }
             result = c->peek(&len, 4);
             TGL_ASSERT_UNUSED(result, result == 4);
             len = (len >> 8);
             if (c->available_bytes_for_read() < 4 + 4 * len) {
-                return execute_result::ok;
+                return true;
             }
             len = 0x7f;
         }
@@ -202,9 +202,8 @@ mtproto_client::execute_result mtproto_client::try_rpc_execute(const std::shared
         int op;
         result = c->peek(&op, 4);
         TGL_ASSERT_UNUSED(result, result == 4);
-        auto exec_result = rpc_execute(op, len);
-        if (exec_result != mtproto_client::execute_result::ok) {
-            return exec_result;
+        if (!rpc_execute(op, len)) {
+            return false;
         }
     }
 }
@@ -452,21 +451,21 @@ void mtproto_client::send_dh_params(TGLC_bn* dh_prime, TGLC_bn* g_a, int g, bool
 
 /* {{{ RECV RESPQ */
 // resPQ#05162463 nonce:int128 server_nonce:int128 pq:string server_public_key_fingerprints:Vector long = ResPQ
-mtproto_client::execute_result mtproto_client::process_respq_answer(const char* packet, int len, bool temp_key)
+bool mtproto_client::process_respq_answer(const char* packet, int len, bool temp_key)
 {
     assert(!(len & 3));
     tgl_in_buffer in;
     in.ptr = reinterpret_cast<const int*>(packet);
     in.end = in.ptr + (len / 4);
     if (check_unauthorized_header(&in) < 0) {
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     tgl_in_buffer skip_in = in;
     struct paramed_type type = TYPE_TO_PARAM(res_p_q);
     if (skip_type_any(&skip_in, &type) < 0 || skip_in.ptr != skip_in.end) {
         TGL_ERROR("can not parse req_p_q answer");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     auto result = fetch_i32(&in);
@@ -476,7 +475,7 @@ mtproto_client::execute_result mtproto_client::process_respq_answer(const char* 
     fetch_i32s(&in, tmp, 4);
     if (memcmp(tmp, m_nonce.data(), 16)) {
         TGL_ERROR("nonce mismatch");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
     fetch_i32s(&in, reinterpret_cast<int32_t*>(m_server_nonce.data()), 4);
 
@@ -502,12 +501,12 @@ mtproto_client::execute_result mtproto_client::process_respq_answer(const char* 
     assert(in.ptr == in.end);
     if (!m_rsa_key) {
         TGL_ERROR("fatal: don't have any matching keys");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     send_req_dh_packet(pq.get(), temp_key);
 
-    return mtproto_client::execute_result::ok;
+    return true;
 }
 /* }}} */
 
@@ -515,21 +514,21 @@ mtproto_client::execute_result mtproto_client::process_respq_answer(const char* 
 // server_DH_params_fail#79cb045d nonce:int128 server_nonce:int128 new_nonce_hash:int128 = Server_DH_Params;
 // server_DH_params_ok#d0e8075c nonce:int128 server_nonce:int128 encrypted_answer:string = Server_DH_Params;
 // server_DH_inner_data#b5890dba nonce:int128 server_nonce:int128 g:int dh_prime:string g_a:string server_time:int = Server_DH_inner_data;
-mtproto_client::execute_result mtproto_client::process_dh_answer(const char* packet, int len, bool temp_key)
+bool mtproto_client::process_dh_answer(const char* packet, int len, bool temp_key)
 {
     assert(!(len & 3));
     tgl_in_buffer in;
     in.ptr = reinterpret_cast<const int*>(packet);
     in.end = in.ptr + (len / 4);
     if (check_unauthorized_header(&in) < 0) {
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     tgl_in_buffer skip_in = in;
     struct paramed_type type = TYPE_TO_PARAM(server_d_h_params);
     if (skip_type_any(&skip_in, &type) < 0 || skip_in.ptr != skip_in.end) {
         TGL_ERROR("can not parse server_DH_params answer");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     uint32_t op = fetch_i32(&in);
@@ -539,17 +538,17 @@ mtproto_client::execute_result mtproto_client::process_dh_answer(const char* pac
     fetch_i32s(&in, tmp, 4);
     if (memcmp(tmp, m_nonce.data(), 16)) {
         TGL_ERROR("nonce mismatch");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
     fetch_i32s(&in, tmp, 4);
     if (memcmp(tmp, m_server_nonce.data(), 16)) {
         TGL_ERROR("server nonce mismatch");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     if (op == CODE_server__dh_params_fail) {
         TGL_ERROR("DH params fail");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     TGLC_aes_key aes_key;
@@ -560,13 +559,13 @@ mtproto_client::execute_result mtproto_client::process_dh_answer(const char* pac
     assert(l > 0);
     if (l <= 0) {
         TGL_ERROR("non-empty encrypted part expected");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
     int decrypted_buffer_size = tgl_pad_aes_decrypt_dest_buffer_size(l);
     assert(decrypted_buffer_size > 0);
     if (decrypted_buffer_size <= 0) {
         TGL_ERROR("failed to get decrypted buffer size");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     std::unique_ptr<int[]> decrypted_buffer(new int[(decrypted_buffer_size + 3) / 4]);
@@ -581,7 +580,7 @@ mtproto_client::execute_result mtproto_client::process_dh_answer(const char* pac
     struct paramed_type type2 = TYPE_TO_PARAM(server_d_h_inner_data);
     if (skip_type_any(&skip, &type2) < 0) {
         TGL_ERROR("can not parse server_DH_inner_data answer");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
     in.ptr = decrypted_buffer.get() + 5;
     in.end = decrypted_buffer.get() + (decrypted_buffer_size >> 2);
@@ -591,12 +590,12 @@ mtproto_client::execute_result mtproto_client::process_dh_answer(const char* pac
     fetch_i32s(&in, tmp, 4);
     if (memcmp(tmp, m_nonce.data(), 16)) {
         TGL_ERROR("inner nonce mismatch");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
     fetch_i32s(&in, tmp, 4);
     if (memcmp(tmp, m_server_nonce.data(), 16)) {
         TGL_ERROR("inner server nonce mismatch");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
     int32_t g = fetch_i32(&in);
 
@@ -609,11 +608,11 @@ mtproto_client::execute_result mtproto_client::process_dh_answer(const char* pac
 
     if (tglmp_check_DH_params(dh_prime.get(), g) < 0) {
         TGL_ERROR("bad DH params");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
     if (tglmp_check_g_a(dh_prime.get(), g_a.get()) < 0) {
         TGL_ERROR("bad dh_prime");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     int32_t server_time = fetch_i32(&in);
@@ -624,11 +623,11 @@ mtproto_client::execute_result mtproto_client::process_dh_answer(const char* pac
     TGLC_sha1((unsigned char *) decrypted_buffer.get() + 20, (in.ptr - decrypted_buffer.get() - 5) * 4, (unsigned char *) sha1_buffer);
     if (memcmp(decrypted_buffer.get(), sha1_buffer, 20)) {
         TGL_ERROR("bad encrypted message SHA1");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
     if ((char *) in.end - (char *) in.ptr >= 16) {
         TGL_ERROR("too much padding");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     m_server_time_delta = server_time - tgl_get_system_time();
@@ -636,7 +635,7 @@ mtproto_client::execute_result mtproto_client::process_dh_answer(const char* pac
 
     send_dh_params(dh_prime.get(), g_a.get(), g, temp_key);
 
-    return mtproto_client::execute_result::ok;
+    return true;
 }
 /* }}} */
 
@@ -660,7 +659,7 @@ void mtproto_client::restart_authorization(bool temp_key)
 // dh_gen_ok#3bcbf734 nonce:int128 server_nonce:int128 new_nonce_hash1:int128 = Set_client_DH_params_answer;
 // dh_gen_retry#46dc1fb9 nonce:int128 server_nonce:int128 new_nonce_hash2:int128 = Set_client_DH_params_answer;
 // dh_gen_fail#a69dae02 nonce:int128 server_nonce:int128 new_nonce_hash3:int128 = Set_client_DH_params_answer;
-mtproto_client::execute_result mtproto_client::process_auth_complete(const char* packet, int len, bool temp_key)
+bool mtproto_client::process_auth_complete(const char* packet, int len, bool temp_key)
 {
     assert(!(len & 3));
     tgl_in_buffer in;
@@ -669,7 +668,7 @@ mtproto_client::execute_result mtproto_client::process_auth_complete(const char*
     if (check_unauthorized_header(&in) < 0) {
         TGL_ERROR("check header failed");
         restart_authorization(temp_key);
-        return mtproto_client::execute_result::ok;
+        return true;
     }
 
     tgl_in_buffer skip_in = in;
@@ -677,7 +676,7 @@ mtproto_client::execute_result mtproto_client::process_auth_complete(const char*
     if (skip_type_any(&skip_in, &type) < 0 || skip_in.ptr != skip_in.end) {
         TGL_ERROR("can not parse server_DH_params answer");
         restart_authorization(temp_key);
-        return mtproto_client::execute_result::ok;
+        return true;
     }
 
     uint32_t op = fetch_i32(&in);
@@ -688,18 +687,18 @@ mtproto_client::execute_result mtproto_client::process_auth_complete(const char*
     if (memcmp(m_nonce.data(), tmp, 16)) {
         TGL_ERROR("nonce mismatch");
         restart_authorization(temp_key);
-        return mtproto_client::execute_result::ok;
+        return true;
     }
     fetch_i32s(&in, tmp, 4);
     if (memcmp(m_server_nonce.data(), tmp, 16)) {
         TGL_ERROR("server nonce mismatch");
         restart_authorization(temp_key);
-        return mtproto_client::execute_result::ok;
+        return true;
     }
     if (op != CODE_dh_gen_ok) {
         TGL_DEBUG("DH failed for DC " << m_id << ", retrying");
         restart_authorization(temp_key);
-        return mtproto_client::execute_result::ok;
+        return true;
     }
 
     fetch_i32s(&in, tmp, 4);
@@ -719,7 +718,7 @@ mtproto_client::execute_result mtproto_client::process_auth_complete(const char*
     if (memcmp(tmp, sha1_buffer + 4, 16)) {
         TGL_ERROR("hash mismatch");
         restart_authorization(temp_key);
-        return mtproto_client::execute_result::ok;
+        return true;
     }
 
     calculate_auth_key_id(temp_key);
@@ -751,7 +750,7 @@ mtproto_client::execute_result mtproto_client::process_auth_complete(const char*
         }
     }
 
-    return mtproto_client::execute_result::ok;
+    return true;
 }
 /* }}} */
 
@@ -1155,21 +1154,21 @@ void mtproto_client::restart_session()
     create_session();
 }
 
-mtproto_client::execute_result mtproto_client::process_rpc_message(encrypted_message* enc, int len)
+bool mtproto_client::process_rpc_message(encrypted_message* enc, int len)
 {
     const int MINSZ = offsetof(struct encrypted_message, message);
     const int UNENCSZ = offsetof(struct encrypted_message, server_salt);
     TGL_DEBUG("process_rpc_message(), len=" << len);
     if (len < MINSZ || (len & 15) != (UNENCSZ & 15)) {
         TGL_WARNING("incorrect packet from server, closing connection");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
     assert(len >= MINSZ && (len & 15) == (UNENCSZ & 15));
 
     if (enc->auth_key_id != m_temp_auth_key_id && enc->auth_key_id != m_auth_key_id) {
         TGL_WARNING("received msg from DC " << m_id << " with auth_key_id " << enc->auth_key_id <<
                 " (perm_auth_key_id " << m_auth_key_id << " temp_auth_key_id "<< m_temp_auth_key_id << "), dropping");
-        return mtproto_client::execute_result::ok;
+        return true;
     }
 
     TGLC_aes_key aes_key;
@@ -1193,13 +1192,13 @@ mtproto_client::execute_result mtproto_client::process_rpc_message(encrypted_mes
 
     if (!(!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12)) {
         TGL_WARNING("incorrect packet from server, closing connection");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
     assert(!(enc->msg_len & 3) && enc->msg_len > 0 && enc->msg_len <= len - MINSZ && len - MINSZ - enc->msg_len <= 12);
 
     if (!m_session || m_session->session_id != enc->session_id) {
-        TGL_WARNING("message to bad session, dropping");
-        return mtproto_client::execute_result::ok;
+        TGL_WARNING("message to wrong session, dropping");
+        return true;
     }
 
     unsigned char sha1_buffer[20];
@@ -1207,7 +1206,7 @@ mtproto_client::execute_result mtproto_client::process_rpc_message(encrypted_mes
     TGLC_sha1((unsigned char *)&enc->server_salt, enc->msg_len + (MINSZ - UNENCSZ), sha1_buffer);
     if (memcmp(&enc->msg_key, sha1_buffer + 4, 16)) {
         TGL_WARNING("incorrect packet from server, closing connection");
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 
     int32_t this_server_time = enc->msg_id >> 32LL;
@@ -1227,7 +1226,7 @@ mtproto_client::execute_result mtproto_client::process_rpc_message(encrypted_mes
                 << ", server_time = " << server_time << ", time from msg_id = " << this_server_time
                 << ", now = " << static_cast<int64_t>(tgl_get_system_time()));
         restart_session();
-        return mtproto_client::execute_result::bad_session;
+        return true;
     }
     m_session->received_messages++;
 
@@ -1251,20 +1250,21 @@ mtproto_client::execute_result mtproto_client::process_rpc_message(encrypted_mes
 
     if (rpc_execute_answer(&in, enc->msg_id) < 0) {
         restart_session();
-        return mtproto_client::execute_result::bad_session;
+        return true;
     }
+
     assert(in.ptr == in.end);
-    return mtproto_client::execute_result::ok;
+    return true;
 }
 
-mtproto_client::execute_result mtproto_client::rpc_execute(int op, int len)
+bool mtproto_client::rpc_execute(int op, int len)
 {
     assert(m_session);
     assert(m_session->c);
 
     if (len >= MAX_RESPONSE_SIZE/* - 12*/ || len < 0/*12*/) {
         TGL_WARNING("answer too long, skipping. lengeth:" << len);
-        return mtproto_client::execute_result::ok;
+        return true;
     }
 
     std::unique_ptr<char[]> response(new char[len]);
@@ -1298,17 +1298,17 @@ mtproto_client::execute_result mtproto_client::rpc_execute(int op, int len)
                 TGL_DEBUG("bind temp auth key failed with -404 error for DC "
                         << m_id << ", which is not unusual, requesting a new temp auth key and trying again");
                 restart_temp_authorization();
-                return mtproto_client::execute_result::ok;
+                return true;
             } else {
                 TGL_WARNING("server error " << op << " from DC " << m_id);
-                return mtproto_client::execute_result::bad_connection;
+                return false;
             }
         } else {
             return process_rpc_message(reinterpret_cast<encrypted_message*>(response.get()/* + 8*/), len/* - 12*/);
         }
     default:
         TGL_ERROR("cannot receive answer in state " << m_state);
-        return mtproto_client::execute_result::bad_connection;
+        return false;
     }
 }
 

@@ -29,16 +29,9 @@ class tgl_connection;
 class tgl_mtproto_client
 {
 public:
-    enum class execute_result {
-        ok,
-        bad_connection,
-        bad_session,
-        bad_dc,
-    };
-
     virtual int32_t id() const = 0;
     virtual int ready(const std::shared_ptr<tgl_connection>& c) = 0;
-    virtual execute_result try_rpc_execute(const std::shared_ptr<tgl_connection>& c) = 0;
+    virtual bool try_rpc_execute(const std::shared_ptr<tgl_connection>& c) = 0;
     virtual void ping() = 0;
 
     virtual ~tgl_mtproto_client() { }
