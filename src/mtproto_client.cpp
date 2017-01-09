@@ -76,7 +76,7 @@ struct encrypted_message {
 };
 #pragma pack(pop)
 
-static_assert(!(sizeof(encrypted_message) & 3), "the encrypted_message has to be 4 bytes alligned");
+static_assert(!(sizeof(encrypted_message) & 3), "the encrypted_message has to be 4 bytes aligned");
 
 inline static std::string to_string(mtproto_client::state state)
 {

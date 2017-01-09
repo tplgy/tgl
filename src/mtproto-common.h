@@ -184,7 +184,7 @@ public:
 
         memcpy(dest, str, size);
         dest += size;
-        while (reinterpret_cast<intptr_t>(dest) & 3) {
+        while (dest < reinterpret_cast<char*>(m_data.data() + m_data.size())) {
             *dest++ = 0;
         }
     }
@@ -196,7 +196,7 @@ public:
 
     void out_std_string(const std::string& str)
     {
-        out_string(str.c_str(), str.size());
+        out_string(str.data(), str.size());
     }
 
     void out_bignum(const TGLC_bn* n)
