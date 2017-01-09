@@ -1365,7 +1365,7 @@ static int decrypt_encrypted_message(const std::shared_ptr<tgl_secret_chat>& sec
     return 0;
 }
 
-std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_encrypted_message* DS_EM)
+std::shared_ptr<tgl_message> tglf_fetch_encrypted_message(const tl_ds_encrypted_message* DS_EM)
 {
     if (!DS_EM) {
         return nullptr;
@@ -1405,7 +1405,7 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
     auto result = fetch_i32(&in);
     TGL_ASSERT_UNUSED(result, result == decrypted_data_length);
 
-    std::shared_ptr<tgl_secret_message> secret_message;
+    std::shared_ptr<tgl_message> message;
     if (*in.ptr == CODE_decrypted_message_layer) {
         struct paramed_type decrypted_message_layer = TYPE_TO_PARAM(decrypted_message_layer);
         tgl_in_buffer skip_in = in;
@@ -1427,16 +1427,15 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
         tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, secret_chat->user_id());
 
         int64_t date = DS_LVAL(DS_EM->date);
-        secret_message = std::make_shared<tgl_secret_message>(
-                std::make_shared<tgl_message>(secret_chat,
-                        message_id,
-                        from_id,
-                        &date,
-                        DS_STDSTR(DS_DM->message),
-                        DS_DM->media,
-                        DS_DM->action,
-                        DS_EM->file),
-               secret_chat->id(), DS_LVAL(DS_DML->layer), DS_LVAL(DS_DML->in_seq_no), DS_LVAL(DS_DML->out_seq_no));
+        message = std::make_shared<tgl_message>(secret_chat,
+                message_id,
+                from_id,
+                &date,
+                DS_STDSTR(DS_DM->message),
+                DS_DM->media,
+                DS_DM->action,
+                DS_EM->file,
+                DS_LVAL(DS_DML->layer), DS_LVAL(DS_DML->in_seq_no), DS_LVAL(DS_DML->out_seq_no));
 
         free_ds_type_decrypted_message_layer(DS_DML, &decrypted_message_layer);
     } else {
@@ -1459,19 +1458,18 @@ std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_enc
         tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, secret_chat->user_id());
 
         int64_t date = DS_LVAL(DS_EM->date);
-        secret_message = std::make_shared<tgl_secret_message>(
-                std::make_shared<tgl_message>(secret_chat,
-                        message_id,
-                        from_id,
-                        &date,
-                        DS_STDSTR(DS_DM->message),
-                        DS_DM->media,
-                        DS_DM->action,
-                        DS_EM->file),
-                secret_chat->id(), layer, -1, -1);
+        message = std::make_shared<tgl_message>(secret_chat,
+                message_id,
+                from_id,
+                &date,
+                DS_STDSTR(DS_DM->message),
+                DS_DM->media,
+                DS_DM->action,
+                DS_EM->file,
+                layer, -1, -1);
     }
 
-    return secret_message;
+    return message;
 }
 
 void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>& M, const tl_ds_encrypted_file* DS_EF)
@@ -1499,18 +1497,16 @@ void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>&
     }
 }
 
-void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& secret_message)
+void tglf_encrypted_message_received(const std::shared_ptr<tgl_message>& message)
 {
-    const auto& message = secret_message->message;
-
-    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(secret_message->chat_id);
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(message->to_id);
     assert(secret_chat);
 
     int* our_in_seq_no_ptr = nullptr;
     int* ttl_ptr = nullptr;
-    int in_seq_no = secret_message->in_seq_no;
-    int out_seq_no = secret_message->out_seq_no;
-    int layer = secret_message->layer;
+    int in_seq_no = message->secret_message_meta->in_seq_no;
+    int out_seq_no = message->secret_message_meta->out_seq_no;
+    int layer = message->secret_message_meta->layer;
 
     if (in_seq_no >= 0 && out_seq_no >= 0) {
         if ((out_seq_no & 1)  != 1 - (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id) ||

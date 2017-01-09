@@ -260,32 +260,6 @@ void tgl_secret_chat_private_facet::update(const int64_t* access_hash,
     }
 }
 
-int64_t tgl_secret_chat_private_facet::last_msg_id() const
-{
-    return d->m_pending_messages.size() > 0 ? d->m_pending_messages.back() : 0;
-}
-
-void tgl_secret_chat_private_facet::message_sent(int64_t msg_id)
-{
-    d->m_out_seq_no++;
-    d->m_pending_messages.push_back(msg_id);
-}
-
-void tgl_secret_chat_private_facet::message_ack(int64_t msg_id)
-{
-    for (auto it = d->m_pending_messages.begin(); it!= d->m_pending_messages.end(); ++it) {
-        if (*it == msg_id) {
-            d->m_pending_messages.erase(it);
-            return;
-        }
-    }
-}
-
-void tgl_secret_chat_private_facet::update_layer(int32_t layer)
-{
-    d->m_layer = layer;
-}
-
 const std::vector<unsigned char>& tgl_secret_chat::encr_prime() const
 {
     return d->m_encr_prime;

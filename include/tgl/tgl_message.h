@@ -38,6 +38,12 @@ struct tgl_message_reply_markup {
     tgl_message_reply_markup(): flags(0) { }
 };
 
+struct tgl_secret_message_meta {
+    int32_t layer;
+    int32_t in_seq_no;
+    int32_t out_seq_no;
+};
+
 class tgl_secret_chat;
 struct tl_ds_message_media;
 struct tl_ds_message_action;
@@ -61,7 +67,9 @@ struct tgl_message {
     std::shared_ptr<tgl_message_reply_markup> reply_markup;
     std::shared_ptr<tgl_message_action> action;
     std::shared_ptr<tgl_message_media> media;
+    std::shared_ptr<tgl_secret_message_meta> secret_message_meta;
     std::string message;
+
     tgl_message();
 
     tgl_message(int64_t message_id,
@@ -83,7 +91,8 @@ struct tgl_message {
             const std::string& message,
             const tl_ds_decrypted_message_media* media,
             const tl_ds_decrypted_message_action* action,
-            const tl_ds_encrypted_file* file);
+            const tl_ds_encrypted_file* file,
+            int32_t layer, int32_t in_seq_no, int32_t out_seq_no);
 
     bool is_unread() const { return m_flags[index_unread]; }
     bool is_outgoing() const { return m_flags[index_outgoing]; }
@@ -110,28 +119,6 @@ private:
     static constexpr size_t index_send_failed = 5;
     static constexpr size_t index_history = 6;
     std::bitset<32> m_flags;
-};
-
-struct tgl_secret_message {
-    std::shared_ptr<tgl_message> message;
-    tgl_input_peer_t chat_id;
-    int32_t layer;
-    int32_t in_seq_no;
-    int32_t out_seq_no;
-
-    tgl_secret_message()
-        : layer(-1)
-        , in_seq_no(-1)
-        , out_seq_no(-1)
-    { }
-
-    tgl_secret_message(const std::shared_ptr<tgl_message>& message, const tgl_input_peer_t& chat_id, int32_t layer, int32_t in_seq_no, int32_t out_seq_no)
-        : message(message)
-        , chat_id(chat_id)
-        , layer(layer)
-        , in_seq_no(in_seq_no)
-        , out_seq_no(out_seq_no)
-    { }
 };
 
 #endif

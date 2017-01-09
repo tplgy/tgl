@@ -186,7 +186,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_message_id:
         if (auto message = std::static_pointer_cast<tgl_message>(extra)) {
-            tgl_state::instance()->callback()->message_id_update(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), DS_LVAL(DS_U->id), message->to_id);
+            tgl_state::instance()->callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), message->to_id);
         }
         break;
     case CODE_update_user_typing:
@@ -647,7 +647,7 @@ static void tglu_work_update_short_sent_message(const tl_ds_updates* DS_U,
         auto new_message = tglf_fetch_alloc_message_short(DS_U);
         new_message->to_id = message->to_id;
         new_message->message = message->message;
-        tgl_state::instance()->callback()->message_id_update(message->permanent_id,  new_message->permanent_id, new_message->seq_no, message->to_id);
+        tgl_state::instance()->callback()->message_id_updated(message->permanent_id,  new_message->permanent_id, message->to_id);
         if (new_message->media) {
             tgl_state::instance()->callback()->new_messages({new_message});
         }

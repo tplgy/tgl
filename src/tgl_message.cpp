@@ -1,7 +1,8 @@
 #include "tgl/tgl_message.h"
-#include "tgl/tgl_secret_chat.h"
+
 #include "structures.h"
 #include "tgl/tgl_log.h"
+#include "tgl/tgl_secret_chat.h"
 #include "tgl_secret_chat_private.h"
 
 tgl_message::tgl_message()
@@ -37,7 +38,6 @@ tgl_message::tgl_message(int64_t message_id,
     this->seq_no = message_id;
     this->from_id = from_id;
     this->to_id = to_id;
-    assert(to_id.peer_type != tgl_peer_type::enc_chat);
 
     if (date) {
         this->date = *date;
@@ -67,33 +67,26 @@ tgl_message::tgl_message(int64_t message_id,
     }
 }
 
-tgl_message::tgl_message(
-        const std::shared_ptr<tgl_secret_chat>& secret_chat,
+tgl_message::tgl_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         int64_t message_id,
         const tgl_peer_id_t& from_id,
         const int64_t* date,
         const std::string& message,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
-        const tl_ds_encrypted_file* file)
-    : tgl_message()
+        const tl_ds_encrypted_file* file,
+        int32_t layer, int32_t in_seq_no, int32_t out_seq_no)
+    : tgl_message(message_id, from_id, secret_chat->id(), nullptr, nullptr, date, message, nullptr, nullptr, 0, nullptr)
 {
-    this->permanent_id = message_id;
-    this->from_id = from_id;
-    this->to_id = secret_chat->id();
-
-    if (date) {
-        this->date = *date;
-    }
-
-    assert(secret_chat);
+    secret_message_meta = std::make_shared<tgl_secret_message_meta>();
+    secret_message_meta->layer = layer;
+    secret_message_meta->in_seq_no = in_seq_no;
+    secret_message_meta->out_seq_no = out_seq_no;
 
     if (action) {
         this->action = tglf_fetch_message_action_encrypted(action);
         this->set_service(true);
     }
-
-    this->message = message;
 
     if (media) {
         this->media = tglf_fetch_message_media_encrypted(media);
@@ -108,12 +101,6 @@ tgl_message::tgl_message(
 
     if (action && !this->is_outgoing() && this->action && this->action->type() == tgl_message_action_type::notify_layer) {
         // FIXME is following right?
-        secret_chat->private_facet()->update_layer(std::static_pointer_cast<tgl_message_action_notify_layer>(this->action)->layer);
-    }
-
-    if (this->is_outgoing()) {
-        //secret_chat->out_seq_no++;
-        secret_chat->private_facet()->message_sent(message_id);
-        TGL_DEBUG("out seq number " << secret_chat->out_seq_no());
+        secret_chat->private_facet()->set_layer(std::static_pointer_cast<tgl_message_action_notify_layer>(this->action)->layer);
     }
 }

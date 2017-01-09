@@ -24,13 +24,13 @@
 
 #include "tgl/tgl_peer_id.h"
 #include "tgl/tgl_secret_chat.h"
+#include "tgl/tgl_message.h"
 
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <vector>
 
-struct tgl_message;
 class tgl_secret_chat;
 class mtprotocol_serializer;
 
@@ -53,14 +53,14 @@ private:
 };
 
 void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        const std::shared_ptr<tgl_message>& M,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>& M)>& callback);
+        const std::shared_ptr<tgl_message>& message,
+        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
 void tgl_do_messages_mark_read_encr(const std::shared_ptr<tgl_secret_chat>& secret_chat, int32_t max_time,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
 void tgl_do_messages_delete_encr(const std::shared_ptr<tgl_secret_chat>& secret_chat, int64_t msg_id,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
 void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, double longitude,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback);
+        const std::function<void(bool success, const std::shared_ptr<tgl_message>&)>& callback);
 
 
 void tgl_do_send_encr_chat_layer(const std::shared_ptr<tgl_secret_chat>& secret_chat);

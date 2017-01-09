@@ -136,6 +136,9 @@ public:
 
     bool ack_received() const { return m_ack_received; }
 
+    const std::shared_ptr<query>& depending_query() const { return m_depending_query; }
+    void set_depending_query(const std::shared_ptr<query>& q) { assert(q.get() != this); m_depending_query = q; }
+
 protected:
     void timeout_within(double seconds);
     void retry_within(double seconds);
@@ -149,6 +152,7 @@ private:
     bool check_connectivity();
     bool check_logging_out();
     void clear_timers();
+    void apply_depending_query();
 
 private:
     int64_t m_msg_id;
@@ -164,6 +168,7 @@ private:
     std::shared_ptr<tgl_timer> m_retry_timer;
     std::shared_ptr<mtproto_client> m_client;
     std::shared_ptr<tgl_session> m_session;
+    std::shared_ptr<query> m_depending_query;
 };
 
 struct messages_send_extra {

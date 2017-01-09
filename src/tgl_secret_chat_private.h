@@ -33,6 +33,8 @@
 
 static constexpr int32_t TGL_ENCRYPTED_LAYER = 17;
 
+class query;
+
 struct tgl_secret_chat_private {
     int64_t m_temp_key_fingerprint;
     int32_t m_exchange_key[64];
@@ -57,7 +59,7 @@ struct tgl_secret_chat_private {
     unsigned char m_key[256];
     unsigned char m_key_sha[20];
     int32_t m_out_seq_no;
-    std::vector<int64_t> m_pending_messages;
+    std::shared_ptr<query> m_last_depending_query;
 
     // HACK: remove this!
     bool m_hole_detection_enabled;
@@ -107,10 +109,10 @@ public:
             const int32_t* layer,
             const int32_t* in_seq_no);
 
-    int64_t last_msg_id() const;
-    void message_sent(int64_t msg_id);
-    void message_ack(int64_t msg_id);
-    void update_layer(int32_t layer);
+    const std::shared_ptr<query>& last_depending_query() const { return d->m_last_depending_query; }
+    void set_last_depending_query(const std::shared_ptr<query>& q) { d->m_last_depending_query = q; }
+    void set_layer(int32_t layer) { d->m_layer = layer; }
+    void set_out_seq_no(int32_t out_seq_no) { d->m_out_seq_no = out_seq_no; }
     const tgl_bn* encr_prime_bn() const { return d->m_encr_prime_bn.get(); }
     void set_encr_prime(const unsigned char* prime, size_t length);
     void set_key(const unsigned char* key);

@@ -34,9 +34,9 @@
 #include "tgl/tgl_message_media.h"
 
 
-void tglf_encrypted_message_received(const std::shared_ptr<tgl_secret_message>& secret_message);
+void tglf_encrypted_message_received(const std::shared_ptr<tgl_message>& message);
 
-std::shared_ptr<tgl_secret_message> tglf_fetch_encrypted_message(const tl_ds_encrypted_message*);
+std::shared_ptr<tgl_message> tglf_fetch_encrypted_message(const tl_ds_encrypted_message*);
 std::shared_ptr<tgl_user> tglf_fetch_alloc_user(const tl_ds_user* DS_U, bool invoke_callbacks = true);
 std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(const tl_ds_user_full* DS_U);
 std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(const tl_ds_chat* DS_C, bool invoke_callbacks = true);
@@ -45,7 +45,6 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel(const tl_ds_chat* DS_C, bo
 std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(const tl_ds_messages_chat_full* DS_MCF);
 std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_encrypted_chat* DS_EC);
 std::shared_ptr<tgl_message> tglf_fetch_alloc_message(const tl_ds_message* DS_M);
-std::shared_ptr<tgl_message> tglf_fetch_alloc_encrypted_message(const tl_ds_encrypted_message* DS_EM);
 tgl_peer_id_t tglf_fetch_peer_id(const tl_ds_peer* DS_P);
 
 std::shared_ptr<tgl_message_media> tglf_fetch_message_media(const tl_ds_message_media* DS_MM);
