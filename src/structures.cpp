@@ -1497,16 +1497,19 @@ void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>&
     }
 }
 
+static void process_encrypted_messages(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::vector<std::shared_ptr<tgl_message>>& messages);
+
 void tglf_encrypted_message_received(const std::shared_ptr<tgl_message>& message)
 {
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(message->to_id);
     assert(secret_chat);
 
-    int* our_in_seq_no_ptr = nullptr;
-    int* ttl_ptr = nullptr;
-    int in_seq_no = message->secret_message_meta->in_seq_no;
-    int out_seq_no = message->secret_message_meta->out_seq_no;
-    int layer = message->secret_message_meta->layer;
+    int32_t in_seq_no = message->secret_message_meta->in_seq_no;
+    int32_t out_seq_no = message->secret_message_meta->out_seq_no;
+    int32_t layer = message->secret_message_meta->layer;
+
+    TGL_DEBUG("secret message received: in_seq_no " << in_seq_no / 2 << " out seq_no " << out_seq_no / 2 << " layer " << layer);
 
     if (in_seq_no >= 0 && out_seq_no >= 0) {
         if ((out_seq_no & 1)  != 1 - (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id) ||
@@ -1515,96 +1518,92 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_message>& message
             return;
         }
 
-        if (secret_chat->is_hole_detection_enabled()) {
-            if (out_seq_no / 2 < secret_chat->in_seq_no()) {
-                TGL_WARNING("secret message recived with out_seq_no less than the in_seq_no: out_seq_no = " << (out_seq_no / 2) << " in_seq_no = " << in_seq_no);
-                return;
-            } else if (out_seq_no / 2 > secret_chat->in_seq_no()) {
-                TGL_WARNING("hole in seq in secret chat, expecting in_seq_no of " << secret_chat->in_seq_no() << " but " << out_seq_no / 2 << " was received");
-                // FIXME: enable requesting resending messages from the remote peer to fill the hole, probaly only need to make test cases and then uncomment the following code.
-#if 0
-               int start_seq_no = 2 * secret_chat->in_seq_no + (secret_chat->admin_id != tgl_get_peer_id(tgl_state::instance()->our_id()));
-               int end_seq_no = out_seq_no - 2;
-               if (end_seq_no >= start_seq_no) {
-                   TGL_DEBUG("requesting resend message from " << start_seq_no << " to " << end_seq_no << " for secret chat " << secret_chat->id.peer_id);
-                   tgl_do_send_encr_chat_request_resend(secret_chat, start_seq_no, end_seq_no);
-               }
-#else
-                tgl_do_discard_secret_chat(secret_chat, [=](bool success, const std::shared_ptr<tgl_secret_chat>& secret_chat) {
-                    if (success) {
-                        tgl_secret_chat_deleted(secret_chat);
-                    }
-                });
-#endif
-                return;
-            }
+        if (out_seq_no / 2 < secret_chat->in_seq_no()) {
+            TGL_WARNING("secret message recived with out_seq_no less than the in_seq_no: out_seq_no = " << (out_seq_no / 2) << " in_seq_no = " << in_seq_no);
+            return;
+        } else if (out_seq_no / 2 > secret_chat->in_seq_no()) {
+            TGL_WARNING("hole in seq in secret chat, expecting in_seq_no of " << secret_chat->in_seq_no() << " but " << out_seq_no / 2 << " was received");
 
-            if (in_seq_no / 2 > secret_chat->out_seq_no()) {
-                TGL_WARNING("in_seq_no " << in_seq_no / 2 << " of remote client is bigger than our out_seq_no of " << secret_chat->out_seq_no() << ", dropping the message");
-                return;
-            }
+            // FIXME: We may need to discard the secret chat if there are a lot of holes.
+            message->set_unread(true);
+            secret_chat->private_facet()->queue_pending_received_message(message);
+            return;
         }
 
+        if (in_seq_no / 2 > secret_chat->out_seq_no()) {
+            TGL_WARNING("in_seq_no " << in_seq_no / 2 << " of remote client is bigger than our out_seq_no of " << secret_chat->out_seq_no() << ", dropping the message");
+            return;
+        }
         out_seq_no = out_seq_no / 2 + 1;
-        our_in_seq_no_ptr = &out_seq_no;
-
-        if (message->from_id.peer_id != tgl_state::instance()->our_id().peer_id) {
-            message->seq_no = out_seq_no;
-        }
-    }
-
-    auto action_type = message->action ? message->action->type() : tgl_message_action_type::none;
-    if (action_type == tgl_message_action_type::request_key) {
-        auto action = std::static_pointer_cast<tgl_message_action_request_key>(message->action);
-        if (secret_chat->exchange_state() == tgl_secret_chat_exchange_state::none || (secret_chat->exchange_state() == tgl_secret_chat_exchange_state::requested && secret_chat->exchange_id() > action->exchange_id )) {
-            tgl_do_accept_exchange(secret_chat, action->exchange_id, action->g_a);
-        } else {
-            TGL_WARNING("secret_chat exchange: incorrect state (received request, state = " << secret_chat->exchange_state() << ")");
-        }
-    } else if (action_type == tgl_message_action_type::accept_key) {
-        auto action = std::static_pointer_cast<tgl_message_action_accept_key>(message->action);
-        if (secret_chat->exchange_state() == tgl_secret_chat_exchange_state::requested && secret_chat->exchange_id() == action->exchange_id) {
-            tgl_do_commit_exchange(secret_chat, action->g_a);
-        } else {
-            TGL_WARNING("secret_chat exchange: incorrect state (received accept, state = " << secret_chat->exchange_state() << ")");
-        }
-    } else if (action_type == tgl_message_action_type::commit_key) {
-        auto action = std::static_pointer_cast<tgl_message_action_commit_key>(message->action);
-        if (secret_chat->exchange_state() == tgl_secret_chat_exchange_state::accepted && secret_chat->exchange_id() == action->exchange_id) {
-            tgl_do_confirm_exchange(secret_chat, 1);
-        } else {
-            TGL_WARNING("secret_chat exchange: incorrect state (received commit, state = " << secret_chat->exchange_state() << ")");
-        }
-    } else if (action_type == tgl_message_action_type::abort_key) {
-        auto action = std::static_pointer_cast<tgl_message_action_abort_key>(message->action);
-        if (secret_chat->exchange_state() != tgl_secret_chat_exchange_state::none && secret_chat->exchange_id() == action->exchange_id) {
-            tgl_do_abort_exchange(secret_chat);
-        } else {
-            TGL_WARNING("secret_chat exchange: incorrect state (received abort, state = " << secret_chat->exchange_state() << ")");
-        }
-    } else if (action_type == tgl_message_action_type::notify_layer) {
-        auto action = std::static_pointer_cast<tgl_message_action_notify_layer>(message->action);
-        layer = action->layer;
-    } else if (action_type == tgl_message_action_type::set_message_ttl) {
-        auto action = std::static_pointer_cast<tgl_message_action_set_message_ttl>(message->action);
-        ttl_ptr = &(action->ttl);
-    } else if (action_type == tgl_message_action_type::delete_messages) {
-        auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(message->action);
-        for (int64_t id : action->msg_ids) {
-            tgl_state::instance()->callback()->message_deleted(id);
-        }
-    } else if (action_type == tgl_message_action_type::resend) {
-        //FIXME implement this
-        auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action);
-        TGL_WARNING("received request for message resend; start-seq: "<< action->start_seq_no << " end-seq: " << action->end_seq_no);
     }
 
     message->set_unread(true);
+    process_encrypted_messages(secret_chat, secret_chat->private_facet()->dequeue_pending_received_messages(message));
+}
 
-    secret_chat->private_facet()->update(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, secret_chat->state(), ttl_ptr, &layer, our_in_seq_no_ptr);
+static void process_encrypted_messages(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::vector<std::shared_ptr<tgl_message>>& messages)
+{
+    if (messages.empty()) {
+        return;
+    }
+
+    std::vector<std::shared_ptr<tgl_message>> none_action_messages;
+    for (const auto& message: messages) {
+        auto action_type = message->action ? message->action->type() : tgl_message_action_type::none;
+        if (action_type == tgl_message_action_type::none) {
+            none_action_messages.push_back(message);
+        } else if (action_type == tgl_message_action_type::request_key) {
+            auto action = std::static_pointer_cast<tgl_message_action_request_key>(message->action);
+            if (secret_chat->exchange_state() == tgl_secret_chat_exchange_state::none || (secret_chat->exchange_state() == tgl_secret_chat_exchange_state::requested && secret_chat->exchange_id() > action->exchange_id )) {
+                tgl_do_accept_exchange(secret_chat, action->exchange_id, action->g_a);
+            } else {
+                TGL_WARNING("secret_chat exchange: incorrect state (received request, state = " << secret_chat->exchange_state() << ")");
+            }
+        } else if (action_type == tgl_message_action_type::accept_key) {
+            auto action = std::static_pointer_cast<tgl_message_action_accept_key>(message->action);
+            if (secret_chat->exchange_state() == tgl_secret_chat_exchange_state::requested && secret_chat->exchange_id() == action->exchange_id) {
+                tgl_do_commit_exchange(secret_chat, action->g_a);
+            } else {
+                TGL_WARNING("secret_chat exchange: incorrect state (received accept, state = " << secret_chat->exchange_state() << ")");
+            }
+        } else if (action_type == tgl_message_action_type::commit_key) {
+            auto action = std::static_pointer_cast<tgl_message_action_commit_key>(message->action);
+            if (secret_chat->exchange_state() == tgl_secret_chat_exchange_state::accepted && secret_chat->exchange_id() == action->exchange_id) {
+                tgl_do_confirm_exchange(secret_chat, 1);
+            } else {
+                TGL_WARNING("secret_chat exchange: incorrect state (received commit, state = " << secret_chat->exchange_state() << ")");
+            }
+        } else if (action_type == tgl_message_action_type::abort_key) {
+            auto action = std::static_pointer_cast<tgl_message_action_abort_key>(message->action);
+            if (secret_chat->exchange_state() != tgl_secret_chat_exchange_state::none && secret_chat->exchange_id() == action->exchange_id) {
+                tgl_do_abort_exchange(secret_chat);
+            } else {
+                TGL_WARNING("secret_chat exchange: incorrect state (received abort, state = " << secret_chat->exchange_state() << ")");
+            }
+        } else if (action_type == tgl_message_action_type::notify_layer) {
+            auto action = std::static_pointer_cast<tgl_message_action_notify_layer>(message->action);
+            secret_chat->private_facet()->set_layer(action->layer);
+        } else if (action_type == tgl_message_action_type::set_message_ttl) {
+            auto action = std::static_pointer_cast<tgl_message_action_set_message_ttl>(message->action);
+            secret_chat->private_facet()->set_ttl(action->ttl);
+        } else if (action_type == tgl_message_action_type::delete_messages) {
+            auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(message->action);
+            for (int64_t id : action->msg_ids) {
+                tgl_state::instance()->callback()->message_deleted(id);
+            }
+        } else if (action_type == tgl_message_action_type::resend) {
+            //FIXME implement this
+            auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action);
+            TGL_WARNING("received request for message resend; start-seq: "<< action->start_seq_no << " end-seq: " << action->end_seq_no);
+        }
+    }
+
+    secret_chat->private_facet()->set_in_seq_no(messages.back()->secret_message_meta->out_seq_no / 2 + 1);
     tgl_state::instance()->callback()->secret_chat_update(secret_chat);
-    if (action_type == tgl_message_action_type::none) {
-        tgl_state::instance()->callback()->new_messages({message});
+
+    if (none_action_messages.size()) {
+        tgl_state::instance()->callback()->new_messages(none_action_messages);
     }
 }
 

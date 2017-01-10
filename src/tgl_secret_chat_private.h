@@ -22,6 +22,7 @@
 #ifndef __TGL_SECRET_CHAT_PRIVATE_H__
 #define __TGL_SECRET_CHAT_PRIVATE_H__
 
+#include "tgl/tgl_message.h"
 #include "tgl/tgl_secret_chat.h"
 
 #include "crypto/tgl_crypto_bn.h"
@@ -29,6 +30,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <map>
 #include <vector>
 
 static constexpr int32_t TGL_ENCRYPTED_LAYER = 17;
@@ -60,6 +62,7 @@ struct tgl_secret_chat_private {
     unsigned char m_key_sha[20];
     int32_t m_out_seq_no;
     std::shared_ptr<query> m_last_depending_query;
+    std::map<int32_t, std::shared_ptr<tgl_message>> m_pending_received_messages;
 
     // HACK: remove this!
     bool m_hole_detection_enabled;
@@ -112,7 +115,9 @@ public:
     const std::shared_ptr<query>& last_depending_query() const { return d->m_last_depending_query; }
     void set_last_depending_query(const std::shared_ptr<query>& q) { d->m_last_depending_query = q; }
     void set_layer(int32_t layer) { d->m_layer = layer; }
+    void set_ttl(int32_t ttl) { d->m_ttl = ttl; }
     void set_out_seq_no(int32_t out_seq_no) { d->m_out_seq_no = out_seq_no; }
+    void set_in_seq_no(int32_t in_seq_no) { d->m_in_seq_no = in_seq_no; }
     const tgl_bn* encr_prime_bn() const { return d->m_encr_prime_bn.get(); }
     void set_encr_prime(const unsigned char* prime, size_t length);
     void set_key(const unsigned char* key);
@@ -120,6 +125,8 @@ public:
     void set_exchange_key(const unsigned char* exchange_key, size_t length);
     int64_t temp_key_fingerprint() const { return d->m_temp_key_fingerprint; }
     void set_temp_key_fingerprint(int64_t fingerprint) { d->m_temp_key_fingerprint = fingerprint; }
+    void queue_pending_received_message(const std::shared_ptr<tgl_message>&);
+    std::vector<std::shared_ptr<tgl_message>> dequeue_pending_received_messages(const std::shared_ptr<tgl_message>& new_message);
 };
 
 inline tgl_secret_chat_private_facet* tgl_secret_chat::private_facet()

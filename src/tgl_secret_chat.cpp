@@ -293,16 +293,6 @@ const unsigned char* tgl_secret_chat::exchange_key() const
     return reinterpret_cast<const unsigned char*>(d->m_exchange_key);
 }
 
-bool tgl_secret_chat::is_hole_detection_enabled() const
-{
-    return d->m_hole_detection_enabled;
-}
-
-void tgl_secret_chat::set_hole_detection_enabled(bool b)
-{
-    d->m_hole_detection_enabled = b;
-}
-
 void tgl_secret_chat_private_facet::set_g_key(const unsigned char* g_key, size_t length)
 {
     d->m_g_key.resize(length);
@@ -313,4 +303,37 @@ void tgl_secret_chat_private_facet::set_exchange_key(const unsigned char* exchan
 {
     assert(length == sizeof(d->m_exchange_key));
     memcpy(d->m_exchange_key, exchange_key, sizeof(d->m_exchange_key));
+}
+
+void tgl_secret_chat_private_facet::queue_pending_received_message(const std::shared_ptr<tgl_message>& message)
+{
+    int32_t out_seq_no = message->secret_message_meta->out_seq_no / 2;
+    if (out_seq_no <= in_seq_no()) {
+        assert(false);
+        return;
+    }
+    d->m_pending_received_messages.emplace(out_seq_no, message);
+}
+
+std::vector<std::shared_ptr<tgl_message>>
+tgl_secret_chat_private_facet::dequeue_pending_received_messages(const std::shared_ptr<tgl_message>& new_message)
+{
+    std::vector<std::shared_ptr<tgl_message>> messages;
+    int32_t out_seq_no = new_message->secret_message_meta->out_seq_no / 2;
+    d->m_pending_received_messages.emplace(out_seq_no, new_message);
+    int32_t in_seq_no = this->in_seq_no();
+    auto it = d->m_pending_received_messages.begin();
+    while (it != d->m_pending_received_messages.end() && it->first == in_seq_no) {
+        in_seq_no++;
+        messages.push_back(it->second);
+        d->m_pending_received_messages.erase(it);
+        it = d->m_pending_received_messages.begin();
+    }
+
+    if (messages.size() > 1) {
+        TGL_DEBUG("after received a message with out_seq_no " << out_seq_no << " we dequeued " << messages.size() - 1 << " messages, "
+                << d->m_pending_received_messages.size() << " out of order messages left");
+    }
+
+    return messages;
 }
