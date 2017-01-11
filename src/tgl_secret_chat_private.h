@@ -22,6 +22,7 @@
 #ifndef __TGL_SECRET_CHAT_PRIVATE_H__
 #define __TGL_SECRET_CHAT_PRIVATE_H__
 
+#include "tgl/tgl.h"
 #include "tgl/tgl_message.h"
 #include "tgl/tgl_secret_chat.h"
 
@@ -127,6 +128,8 @@ public:
     void set_temp_key_fingerprint(int64_t fingerprint) { d->m_temp_key_fingerprint = fingerprint; }
     void queue_pending_received_message(const std::shared_ptr<tgl_message>&);
     std::vector<std::shared_ptr<tgl_message>> dequeue_pending_received_messages(const std::shared_ptr<tgl_message>& new_message);
+    int32_t raw_in_seq_no() const { return in_seq_no() * 2 + (admin_id() != tgl_state::instance()->our_id().peer_id); }
+    int32_t raw_out_seq_no() const { return out_seq_no() * 2 + (admin_id() == tgl_state::instance()->our_id().peer_id); }
 };
 
 inline tgl_secret_chat_private_facet* tgl_secret_chat::private_facet()

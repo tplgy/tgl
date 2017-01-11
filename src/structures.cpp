@@ -1505,40 +1505,46 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_message>& message
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(message->to_id);
     assert(secret_chat);
 
-    int32_t in_seq_no = message->secret_message_meta->in_seq_no;
-    int32_t out_seq_no = message->secret_message_meta->out_seq_no;
+    message->set_unread(true);
+
+    int32_t raw_in_seq_no = message->secret_message_meta->raw_in_seq_no;
+    int32_t raw_out_seq_no = message->secret_message_meta->raw_out_seq_no;
     int32_t layer = message->secret_message_meta->layer;
 
-    TGL_DEBUG("secret message received: in_seq_no " << in_seq_no / 2 << " out seq_no " << out_seq_no / 2 << " layer " << layer);
+    TGL_DEBUG("secret message received: in_seq_no = " << raw_in_seq_no / 2 << " out_seq_no = " << raw_out_seq_no / 2 << " layer = " << layer);
 
-    if (in_seq_no >= 0 && out_seq_no >= 0) {
-        if ((out_seq_no & 1)  != 1 - (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id) ||
-            (in_seq_no & 1) != (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id)) {
-            TGL_WARNING("bad msg admin");
+    if (raw_in_seq_no >= 0 && raw_out_seq_no >= 0) {
+        if ((raw_out_seq_no & 1) != 1 - (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id) ||
+            (raw_in_seq_no & 1) != (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id)) {
+            TGL_WARNING("bad secret message admin, dropping");
             return;
         }
 
-        if (out_seq_no / 2 < secret_chat->in_seq_no()) {
-            TGL_WARNING("secret message recived with out_seq_no less than the in_seq_no: out_seq_no = " << (out_seq_no / 2) << " in_seq_no = " << in_seq_no);
+        if (raw_in_seq_no / 2 > secret_chat->out_seq_no()) {
+            TGL_WARNING("in_seq_no " << raw_in_seq_no / 2 << " of remote client is bigger than our out_seq_no of "
+                    << secret_chat->out_seq_no() << ", dropping the message");
             return;
-        } else if (out_seq_no / 2 > secret_chat->in_seq_no()) {
-            TGL_WARNING("hole in seq in secret chat, expecting in_seq_no of " << secret_chat->in_seq_no() << " but " << out_seq_no / 2 << " was received");
+        }
+
+        if (raw_out_seq_no / 2 < secret_chat->in_seq_no()) {
+            TGL_WARNING("secret message recived with out_seq_no less than the in_seq_no: out_seq_no = "
+                    << raw_out_seq_no / 2 << " in_seq_no = " << secret_chat->in_seq_no());
+            return;
+        } else if (raw_out_seq_no / 2 > secret_chat->in_seq_no()) {
+            TGL_WARNING("hole in seq in secret chat, expecting in_seq_no of "
+                    << secret_chat->in_seq_no() << " but " << raw_out_seq_no / 2 << " was received");
 
             // FIXME: We may need to discard the secret chat if there are a lot of holes.
-            message->set_unread(true);
             secret_chat->private_facet()->queue_pending_received_message(message);
             return;
         }
 
-        if (in_seq_no / 2 > secret_chat->out_seq_no()) {
-            TGL_WARNING("in_seq_no " << in_seq_no / 2 << " of remote client is bigger than our out_seq_no of " << secret_chat->out_seq_no() << ", dropping the message");
-            return;
-        }
-        out_seq_no = out_seq_no / 2 + 1;
+        process_encrypted_messages(secret_chat, secret_chat->private_facet()->dequeue_pending_received_messages(message));
+    } else if (raw_in_seq_no < 0 && raw_out_seq_no < 0) { // Pre-layer 17 message
+        process_encrypted_messages(secret_chat, { message });
+    } else {
+        TGL_WARNING("the secret message sequence number is weird: raw_in_seq_no = " << raw_in_seq_no << " raw_out_seq_no = " << raw_out_seq_no);
     }
-
-    message->set_unread(true);
-    process_encrypted_messages(secret_chat, secret_chat->private_facet()->dequeue_pending_received_messages(message));
 }
 
 static void process_encrypted_messages(const std::shared_ptr<tgl_secret_chat>& secret_chat,
@@ -1550,6 +1556,9 @@ static void process_encrypted_messages(const std::shared_ptr<tgl_secret_chat>& s
 
     std::vector<std::shared_ptr<tgl_message>> none_action_messages;
     for (const auto& message: messages) {
+        if (message->secret_message_meta->raw_out_seq_no >= 0 && message->from_id.peer_id != tgl_state::instance()->our_id().peer_id) {
+            message->seq_no = message->secret_message_meta->raw_out_seq_no / 2;
+        }
         auto action_type = message->action ? message->action->type() : tgl_message_action_type::none;
         if (action_type == tgl_message_action_type::none) {
             none_action_messages.push_back(message);
@@ -1599,7 +1608,7 @@ static void process_encrypted_messages(const std::shared_ptr<tgl_secret_chat>& s
         }
     }
 
-    secret_chat->private_facet()->set_in_seq_no(messages.back()->secret_message_meta->out_seq_no / 2 + 1);
+    secret_chat->private_facet()->set_in_seq_no(messages.back()->secret_message_meta->raw_out_seq_no / 2 + 1);
     tgl_state::instance()->callback()->secret_chat_update(secret_chat);
 
     if (none_action_messages.size()) {

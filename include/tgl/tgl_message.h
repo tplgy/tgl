@@ -40,8 +40,9 @@ struct tgl_message_reply_markup {
 
 struct tgl_secret_message_meta {
     int32_t layer;
-    int32_t in_seq_no;
-    int32_t out_seq_no;
+    int32_t raw_in_seq_no;
+    int32_t raw_out_seq_no;
+    tgl_secret_message_meta(): layer(0), raw_in_seq_no(-1), raw_out_seq_no(-1) { }
 };
 
 class tgl_secret_chat;
@@ -92,7 +93,7 @@ struct tgl_message {
             const tl_ds_decrypted_message_media* media,
             const tl_ds_decrypted_message_action* action,
             const tl_ds_encrypted_file* file,
-            int32_t layer, int32_t in_seq_no, int32_t out_seq_no);
+            int32_t layer, int32_t raw_in_seq_no, int32_t raw_out_seq_no);
 
     bool is_unread() const { return m_flags[index_unread]; }
     bool is_outgoing() const { return m_flags[index_outgoing]; }

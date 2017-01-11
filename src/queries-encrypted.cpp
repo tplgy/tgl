@@ -218,8 +218,8 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
     q->out_i32(CODE_decrypted_message_layer);
     q->out_random(15 + 4 * (tgl_random<int>() % 3));
     q->out_i32(TGL_ENCRYPTED_LAYER);
-    q->out_i32(2 * msg->secret_message_meta->in_seq_no + (secret_chat->admin_id() != tgl_state::instance()->our_id().peer_id));
-    q->out_i32(2 * msg->secret_message_meta->out_seq_no + (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id));
+    q->out_i32(msg->secret_message_meta->raw_in_seq_no);
+    q->out_i32(msg->secret_message_meta->raw_out_seq_no);
     q->out_i32(CODE_decrypted_message_service);
     q->out_i64(msg->permanent_id);
 
@@ -331,8 +331,8 @@ void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
     q->out_i32(CODE_decrypted_message_layer);
     q->out_random(15 + 4 * (tgl_random<int>() % 3));
     q->out_i32(TGL_ENCRYPTED_LAYER);
-    q->out_i32(2 * msg->secret_message_meta->in_seq_no + (secret_chat->admin_id() != tgl_state::instance()->our_id().peer_id));
-    q->out_i32(2 * msg->secret_message_meta->out_seq_no + (secret_chat->admin_id() == tgl_state::instance()->our_id().peer_id));
+    q->out_i32(msg->secret_message_meta->raw_in_seq_no);
+    q->out_i32(msg->secret_message_meta->raw_out_seq_no);
     q->out_i32(CODE_decrypted_message);
     q->out_i64(msg->permanent_id);
     q->out_i32(secret_chat->ttl());
@@ -376,13 +376,13 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
 
     auto msg = std::make_shared<tgl_message>(secret_chat,
             message_id,
-            tgl_state::instance()->our_id(),    // from
+            tgl_state::instance()->our_id(),
             &date,
             std::string(),
             nullptr,
             &action,
             nullptr,
-            secret_chat->layer(), secret_chat->in_seq_no(), secret_chat->out_seq_no());
+            secret_chat->layer(), secret_chat->private_facet()->raw_in_seq_no(), secret_chat->private_facet()->raw_out_seq_no());
     msg->set_pending(true).set_unread(true);
     tgl_state::instance()->callback()->new_messages({msg});
     tgl_do_send_encr_msg(secret_chat, msg, callback);
@@ -523,7 +523,7 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, d
             &TDSM,
             nullptr,
             nullptr,
-            secret_chat->layer(), secret_chat->in_seq_no(), secret_chat->out_seq_no());
+            secret_chat->layer(), secret_chat->private_facet()->raw_in_seq_no(), secret_chat->private_facet()->raw_out_seq_no());
     msg->set_unread(true).set_pending(true);
 
     free(TDSM.latitude);

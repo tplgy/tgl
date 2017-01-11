@@ -57,6 +57,7 @@
 #include "tgl/tgl_secure_random.h"
 #include "tgl/tgl_timer.h"
 #include "tgl/tgl_update_callback.h"
+#include "tgl_secret_chat_private.h"
 #include "tgl_session.h"
 #include "updates.h"
 
@@ -1323,7 +1324,7 @@ int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
 
         assert(secret_chat);
         auto message = std::make_shared<tgl_message>(secret_chat, message_id, from_id, &date, text, &TDSM, nullptr, nullptr,
-                secret_chat->layer(), secret_chat->in_seq_no(), secret_chat->out_seq_no());
+                secret_chat->layer(), secret_chat->private_facet()->raw_in_seq_no(), secret_chat->private_facet()->raw_out_seq_no());
         message->set_unread(true).set_pending(true);
         tgl_do_send_encr_msg(secret_chat, message, callback);
         tgl_state::instance()->callback()->new_messages({message});
@@ -3087,23 +3088,9 @@ public:
             int encrypted_message_count = DS_LVAL(DS_UD->new_encrypted_messages->cnt);
             for (int i = 0; i < encrypted_message_count; i++) {
                 if (auto message = tglf_fetch_encrypted_message(DS_UD->new_encrypted_messages->data[i])) {
-                    TGL_DEBUG("received secret message, layer = " << message->secret_message_meta->layer
-                            << ", in_seq_no = " << message->secret_message_meta->in_seq_no
-                            << ", out_seq_no = " << message->secret_message_meta->out_seq_no);
-                    messages.push_back(message);
+                    tglf_encrypted_message_received(message);
                 }
             }
-            std::stable_sort(messages.begin(), messages.end(),
-                    [&](const std::shared_ptr<tgl_message>& a, const std::shared_ptr<tgl_message>& b) {
-                        return a->secret_message_meta->out_seq_no < b->secret_message_meta->out_seq_no;
-                    });
-            for (const auto& message: messages) {
-                    TGL_DEBUG("received secret message after sorting, layer = " << message->secret_message_meta->layer
-                            << ", in_seq_no = " << message->secret_message_meta->in_seq_no
-                            << ", out_seq_no = " << message->secret_message_meta->out_seq_no);
-                tglf_encrypted_message_received(message);
-            }
-            messages.clear();
 
             for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
                 tglu_work_update(DS_UD->other_updates->data[i], nullptr, tgl_update_mode::dont_check_and_update_consistency);

@@ -307,11 +307,12 @@ void tgl_secret_chat_private_facet::set_exchange_key(const unsigned char* exchan
 
 void tgl_secret_chat_private_facet::queue_pending_received_message(const std::shared_ptr<tgl_message>& message)
 {
-    int32_t out_seq_no = message->secret_message_meta->out_seq_no / 2;
-    if (out_seq_no <= in_seq_no()) {
+    int32_t out_seq_no = message->secret_message_meta->raw_out_seq_no / 2;
+    if (message->secret_message_meta->raw_out_seq_no < 0 || out_seq_no <= in_seq_no()) {
         assert(false);
         return;
     }
+
     d->m_pending_received_messages.emplace(out_seq_no, message);
 }
 
@@ -319,7 +320,12 @@ std::vector<std::shared_ptr<tgl_message>>
 tgl_secret_chat_private_facet::dequeue_pending_received_messages(const std::shared_ptr<tgl_message>& new_message)
 {
     std::vector<std::shared_ptr<tgl_message>> messages;
-    int32_t out_seq_no = new_message->secret_message_meta->out_seq_no / 2;
+    if(new_message->secret_message_meta->raw_in_seq_no < 0 || new_message->secret_message_meta->raw_out_seq_no < 0) {
+        assert(false);
+        return messages;
+    }
+
+    int32_t out_seq_no = new_message->secret_message_meta->raw_out_seq_no / 2;
     d->m_pending_received_messages.emplace(out_seq_no, new_message);
     int32_t in_seq_no = this->in_seq_no();
     auto it = d->m_pending_received_messages.begin();

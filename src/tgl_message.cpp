@@ -75,13 +75,13 @@ tgl_message::tgl_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
         const tl_ds_encrypted_file* file,
-        int32_t layer, int32_t in_seq_no, int32_t out_seq_no)
+        int32_t layer, int32_t raw_in_seq_no, int32_t raw_out_seq_no)
     : tgl_message(message_id, from_id, secret_chat->id(), nullptr, nullptr, date, message, nullptr, nullptr, 0, nullptr)
 {
     secret_message_meta = std::make_shared<tgl_secret_message_meta>();
     secret_message_meta->layer = layer;
-    secret_message_meta->in_seq_no = in_seq_no;
-    secret_message_meta->out_seq_no = out_seq_no;
+    secret_message_meta->raw_in_seq_no = raw_in_seq_no;
+    secret_message_meta->raw_out_seq_no = raw_out_seq_no;
 
     if (action) {
         this->action = tglf_fetch_message_action_encrypted(action);
