@@ -169,8 +169,6 @@ struct tgl_state {
     const std::shared_ptr<tgl_timer_factory>& timer_factory() const { return m_timer_factory; }
     const std::shared_ptr<tgl_update_callback>& callback() const { return m_callback; }
 
-    void set_error(const std::string& error, int error_code);
-
     int32_t pts() const { return m_pts; }
     int32_t qts() const { return m_qts; }
     int32_t seq() const { return m_seq; }
@@ -220,9 +218,6 @@ private:
 
     int32_t m_app_id;
     std::string m_app_hash;
-
-    std::string m_error;
-    int m_error_code;
 
     int m_temp_key_expire_time;
 

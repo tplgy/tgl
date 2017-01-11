@@ -22,6 +22,7 @@
 #include "tgl/tgl.h"
 
 #include "tools.h"
+#include "mtproto-common.h"
 #include "mtproto_client.h"
 #include "structures.h"
 #include "tgl_rsa_key.h"
@@ -50,7 +51,6 @@ std::unique_ptr<tgl_state> tgl_state::s_instance;
 tgl_state::tgl_state()
     : m_online_status(tgl_online_status::not_online)
     , m_app_id(0)
-    , m_error_code(0)
     , m_temp_key_expire_time(0)
     , m_pts(0)
     , m_qts(0)
@@ -239,7 +239,19 @@ int tgl_state::init(const std::string& download_dir, int app_id, const std::stri
         m_temp_key_expire_time = 7200; // seconds
     }
 
-    if (tglmp_on_start() < 0) {
+    tgl_prng_seed(nullptr, 0);
+
+    bool ok = false;
+    for (const auto& key: rsa_key_list()) {
+        if (key->load()) {
+            ok = true;
+        } else {
+            TGL_WARNING("can not load key " << key->public_key_string());
+        }
+    }
+
+    if (!ok) {
+        TGL_ERROR("no public keys found");
         return -1;
     }
 
@@ -268,12 +280,6 @@ void tgl_state::set_enable_ipv6(bool val)
     m_ipv6_enabled = val;
 }
 
-void tgl_state::set_error(const std::string& error, int error_code)
-{
-    m_error = error;
-    m_error_code = error_code;
-}
-
 int32_t tgl_state::create_secret_chat_id()
 {
     int chat_id = tgl_random<int>();
@@ -282,21 +288,6 @@ int32_t tgl_state::create_secret_chat_id()
     }
     return chat_id;
 }
-
-//std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat(int32_t id)
-//{
-//    int chat_id;
-//    if (id) {
-//        chat_id = id;
-//    } else {
-//        chat_id = create_secret_chat_id();
-//    }
-
-//    auto secret_chat = std::make_shared<tgl_secret_chat>(chat_id, 0);
-//    m_secret_chats[chat_id] = secret_chat;
-
-//    return secret_chat;
-//}
 
 std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat(const tgl_input_peer_t& chat_id, int32_t user_id)
 {

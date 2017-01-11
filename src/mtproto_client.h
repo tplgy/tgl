@@ -194,6 +194,4 @@ private:
     std::shared_ptr<tgl_rsa_key> m_rsa_key;
 };
 
-int tglmp_on_start();
-
 #endif

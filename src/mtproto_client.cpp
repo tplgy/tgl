@@ -1391,29 +1391,6 @@ int mtproto_client::ready(const std::shared_ptr<tgl_connection>& c)
     return 0;
 }
 
-#define RANDSEED_PASSWORD_FILENAME     NULL
-#define RANDSEED_PASSWORD_LENGTH       0
-int tglmp_on_start()
-{
-    tgl_prng_seed(RANDSEED_PASSWORD_FILENAME, RANDSEED_PASSWORD_LENGTH);
-
-    bool ok = false;
-    for (const auto& key: tgl_state::instance()->rsa_key_list()) {
-        if (key->load()) {
-            ok = true;
-        } else {
-            TGL_WARNING("can not load key " << key->public_key_string());
-        }
-    }
-
-    if (!ok) {
-        TGL_ERROR("no public keys found");
-        tgl_state::instance()->set_error("no public keys found", ENOTCONN);
-        return -1;
-    }
-    return 0;
-}
-
 void mtproto_client::send_all_acks()
 {
     if (!is_configured() || !m_session) {
