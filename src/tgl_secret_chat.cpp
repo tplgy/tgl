@@ -208,58 +208,6 @@ void tgl_secret_chat_private_facet::set_dh_params(int32_t root, unsigned char pr
     TGL_ASSERT_UNUSED(res, res >= 0);
 }
 
-void tgl_secret_chat_private_facet::update(const int64_t* access_hash,
-        const int32_t* date,
-        const int32_t* admin,
-        const int32_t* user_id,
-        const unsigned char* key,
-        const unsigned char* g_key,
-        const tgl_secret_chat_state& new_state,
-        const int32_t* ttl,
-        const int32_t* layer,
-        const int32_t* in_seq_no)
-{
-    if (access_hash && *access_hash != id().access_hash) {
-        d->m_id.access_hash = *access_hash;
-    }
-
-    if (date) {
-        d->m_date = *date;
-    }
-
-    if (admin) {
-        d->m_admin_id = *admin;
-    }
-
-    if (user_id) {
-        d->m_user_id = *user_id;
-    }
-
-    if (in_seq_no) {
-        d->m_in_seq_no = *in_seq_no;
-        TGL_DEBUG("in seq number " << *in_seq_no);
-    }
-
-    if (g_key) {
-        d->m_g_key.resize(256);
-        std::copy(g_key, g_key + 256, d->m_g_key.begin());
-    }
-
-    if (key) {
-        set_key(key);
-    }
-
-    if (d->m_state == tgl_secret_chat_state::waiting && new_state == tgl_secret_chat_state::ok) {
-        if (create_keys_end()) {
-            d->m_state = new_state;
-        } else {
-            d->m_state = tgl_secret_chat_state::deleted;
-        }
-    } else {
-        d->m_state = new_state;
-    }
-}
-
 const std::vector<unsigned char>& tgl_secret_chat::encr_prime() const
 {
     return d->m_encr_prime;
@@ -303,6 +251,19 @@ void tgl_secret_chat_private_facet::set_exchange_key(const unsigned char* exchan
 {
     assert(length == sizeof(d->m_exchange_key));
     memcpy(d->m_exchange_key, exchange_key, sizeof(d->m_exchange_key));
+}
+
+void tgl_secret_chat_private_facet::set_state(const tgl_secret_chat_state& new_state)
+{
+    if (d->m_state == tgl_secret_chat_state::waiting && new_state == tgl_secret_chat_state::ok) {
+        if (create_keys_end()) {
+            d->m_state = new_state;
+        } else {
+            d->m_state = tgl_secret_chat_state::deleted;
+        }
+    } else {
+        d->m_state = new_state;
+    }
 }
 
 void tgl_secret_chat_private_facet::queue_pending_received_message(const std::shared_ptr<tgl_message>& message)

@@ -321,17 +321,19 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
 
         str_to_256(g_key, DS_STR(DS_EC->g_a));
 
-        int user_id = DS_LVAL(DS_EC->participant_id) + DS_LVAL(DS_EC->admin_id) - tgl_state::instance()->our_id().peer_id;
-        secret_chat->private_facet()->update(DS_EC->access_hash,
-                DS_EC->date,
-                DS_EC->admin_id,
-                &user_id,
-                nullptr,
-                g_key,
-                tgl_secret_chat_state::request,
-                nullptr,
-                nullptr,
-                nullptr);
+        int32_t user_id = DS_LVAL(DS_EC->participant_id) + DS_LVAL(DS_EC->admin_id) - tgl_state::instance()->our_id().peer_id;
+        if (DS_EC->access_hash) {
+            secret_chat->private_facet()->set_access_hash(*(DS_EC->access_hash));
+        }
+        if (DS_EC->date) {
+            secret_chat->private_facet()->set_date(*(DS_EC->date));
+        }
+        if (DS_EC->admin_id) {
+            secret_chat->private_facet()->set_admin_id(*(DS_EC->admin_id));
+        }
+        secret_chat->private_facet()->set_user_id(user_id);
+        secret_chat->private_facet()->set_g_key(g_key, sizeof(g_key));
+        secret_chat->private_facet()->set_state(tgl_secret_chat_state::request);
     } else {
         TGL_DEBUG("updating existing secret chat " << chat_id.peer_id);
         const unsigned char* g_key_ptr = nullptr;
@@ -344,16 +346,14 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
             g_key_ptr = g_key;
             secret_chat->private_facet()->set_temp_key_fingerprint(DS_LVAL(DS_EC->key_fingerprint));
         }
-        secret_chat->private_facet()->update(DS_EC->access_hash,
-                DS_EC->date,
-                nullptr,
-                nullptr,
-                nullptr,
-                g_key_ptr,
-                state,
-                nullptr,
-                nullptr,
-                nullptr);
+        if (DS_EC->access_hash) {
+            secret_chat->private_facet()->set_access_hash(*(DS_EC->access_hash));
+        }
+        if (DS_EC->date) {
+            secret_chat->private_facet()->set_date(*(DS_EC->date));
+        }
+        secret_chat->private_facet()->set_g_key(g_key, sizeof(g_key));
+        secret_chat->private_facet()->set_state(state);
     }
 
     return secret_chat;

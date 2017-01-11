@@ -142,7 +142,7 @@ void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& secret_ch
 
 void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 {
-    secret_chat->private_facet()->update(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, tgl_secret_chat_state::deleted, nullptr, nullptr, nullptr);
+    secret_chat->private_facet()->set_state(tgl_secret_chat_state::deleted);
     tgl_state::instance()->callback()->secret_chat_update(secret_chat);
 }
 
@@ -658,16 +658,8 @@ static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>&
     memset(buffer, 0, sizeof(buffer));
     TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
 
-    secret_chat->private_facet()->update(nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            buffer,
-            nullptr,
-            tgl_secret_chat_state::ok,
-            nullptr,
-            nullptr,
-            nullptr);
+    secret_chat->private_facet()->set_key(buffer);
+    secret_chat->private_facet()->set_state(tgl_secret_chat_state::ok);
 
     memset(buffer, 0, sizeof(buffer));
     check_crypto_result(TGLC_bn_set_word(g_a.get(), secret_chat->encr_root()));
@@ -710,17 +702,9 @@ static void tgl_do_send_create_encr_chat(const tgl_input_peer_t& user_id,
 
     TGLC_bn_bn2bin(r.get(), reinterpret_cast<unsigned char*>(g_a + (256 - TGLC_bn_num_bytes(r.get()))));
 
-    int our_id = tgl_state::instance()->our_id().peer_id;
-    secret_chat->private_facet()->update(nullptr,
-          nullptr,
-          &our_id,
-          nullptr,
-          random.data(),
-          nullptr,
-          tgl_secret_chat_state::waiting,
-          nullptr,
-          nullptr,
-          nullptr);
+    secret_chat->private_facet()->set_admin_id(tgl_state::instance()->our_id().peer_id);
+    secret_chat->private_facet()->set_key(random.data());
+    secret_chat->private_facet()->set_state(tgl_secret_chat_state::waiting);
     tgl_state::instance()->callback()->secret_chat_update(secret_chat);
 
     auto q = std::make_shared<query_send_encr_request>(secret_chat, callback);

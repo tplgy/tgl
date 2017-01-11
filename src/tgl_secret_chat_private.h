@@ -65,9 +65,6 @@ struct tgl_secret_chat_private {
     std::shared_ptr<query> m_last_depending_query;
     std::map<int32_t, std::shared_ptr<tgl_message>> m_pending_received_messages;
 
-    // HACK: remove this!
-    bool m_hole_detection_enabled;
-
     tgl_secret_chat_private()
         : m_temp_key_fingerprint(0)
         , m_g_key()
@@ -88,7 +85,6 @@ struct tgl_secret_chat_private {
         , m_encr_prime()
         , m_encr_prime_bn(nullptr)
         , m_out_seq_no(0)
-        , m_hole_detection_enabled(true)
     {
         memset(m_key, 0, sizeof(m_key));
         memset(m_key_sha, 0, sizeof(m_key_sha));
@@ -102,17 +98,6 @@ class tgl_secret_chat_private_facet: public tgl_secret_chat {
 public:
     bool create_keys_end();
     void set_dh_params(int32_t root, unsigned char prime[], int32_t version);
-    void update(const int64_t* access_hash,
-            const int32_t* date,
-            const int32_t* admin,
-            const int32_t* user_id,
-            const unsigned char* key,
-            const unsigned char* g_key,
-            const tgl_secret_chat_state& state,
-            const int32_t* ttl,
-            const int32_t* layer,
-            const int32_t* in_seq_no);
-
     const std::shared_ptr<query>& last_depending_query() const { return d->m_last_depending_query; }
     void set_last_depending_query(const std::shared_ptr<query>& q) { d->m_last_depending_query = q; }
     void set_layer(int32_t layer) { d->m_layer = layer; }
@@ -124,6 +109,11 @@ public:
     void set_key(const unsigned char* key);
     void set_g_key(const unsigned char* g_key, size_t length);
     void set_exchange_key(const unsigned char* exchange_key, size_t length);
+    void set_access_hash(int64_t access_hash) { d->m_id.access_hash = access_hash; }
+    void set_date(int64_t date) { d->m_date = date; }
+    void set_admin_id(int32_t admin_id) { d->m_admin_id = admin_id; }
+    void set_user_id(int32_t user_id) { d->m_user_id = user_id; }
+    void set_state(const tgl_secret_chat_state& new_state);
     int64_t temp_key_fingerprint() const { return d->m_temp_key_fingerprint; }
     void set_temp_key_fingerprint(int64_t fingerprint) { d->m_temp_key_fingerprint = fingerprint; }
     void queue_pending_received_message(const std::shared_ptr<tgl_message>&);
