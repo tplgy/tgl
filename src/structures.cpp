@@ -336,14 +336,12 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
         secret_chat->private_facet()->set_state(tgl_secret_chat_state::request);
     } else {
         TGL_DEBUG("updating existing secret chat " << chat_id.peer_id);
-        const unsigned char* g_key_ptr = nullptr;
         tgl_secret_chat_state state;
         if (DS_EC->magic == CODE_encrypted_chat_waiting) {
             state = tgl_secret_chat_state::waiting;
         } else {
             state = tgl_secret_chat_state::ok;
             str_to_256(g_key, DS_STR(DS_EC->g_a_or_b));
-            g_key_ptr = g_key;
             secret_chat->private_facet()->set_temp_key_fingerprint(DS_LVAL(DS_EC->key_fingerprint));
         }
         if (DS_EC->access_hash) {
