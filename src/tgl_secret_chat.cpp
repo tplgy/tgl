@@ -266,7 +266,9 @@ void tgl_secret_chat_private_facet::set_state(const tgl_secret_chat_state& new_s
     }
 }
 
-void tgl_secret_chat_private_facet::queue_pending_received_message(const std::shared_ptr<tgl_message>& message)
+void tgl_secret_chat_private_facet::queue_pending_received_message(const std::shared_ptr<tgl_message>& message,
+        double heal_hole_after_seconds,
+        const std::function<void()>& heal_hole)
 {
     int32_t out_seq_no = message->secret_message_meta->raw_out_seq_no / 2;
     if (message->secret_message_meta->raw_out_seq_no < 0 || out_seq_no <= in_seq_no()) {
@@ -275,6 +277,8 @@ void tgl_secret_chat_private_facet::queue_pending_received_message(const std::sh
     }
 
     d->m_pending_received_messages.emplace(out_seq_no, message);
+    d->m_timer = tgl_state::instance()->timer_factory()->create_timer(heal_hole);
+    d->m_timer->start(heal_hole_after_seconds);
 }
 
 std::vector<std::shared_ptr<tgl_message>>
@@ -302,5 +306,29 @@ tgl_secret_chat_private_facet::dequeue_pending_received_messages(const std::shar
                 << d->m_pending_received_messages.size() << " out of order messages left");
     }
 
+    return messages;
+}
+
+std::vector<std::shared_ptr<tgl_message>>
+tgl_secret_chat_private_facet::heal_all_holes()
+{
+    // FIXME: we should implement request resend the missed message.
+    // For now we just skip the holes.
+
+    d->m_timer = nullptr;
+
+    std::vector<std::shared_ptr<tgl_message>> messages;
+    int32_t in_seq_no = this->in_seq_no();
+    if (!has_hole() || d->m_pending_received_messages.begin()->first <= in_seq_no) {
+        assert(false);
+        return messages;
+    }
+
+    for (const auto& it: d->m_pending_received_messages) {
+        messages.push_back(it.second);
+    }
+    d->m_pending_received_messages.clear();
+
+    TGL_DEBUG("healed all holes");
     return messages;
 }

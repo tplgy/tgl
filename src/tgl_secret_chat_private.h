@@ -23,14 +23,16 @@
 #define __TGL_SECRET_CHAT_PRIVATE_H__
 
 #include "tgl/tgl.h"
-#include "tgl/tgl_message.h"
-#include "tgl/tgl_secret_chat.h"
 
 #include "crypto/tgl_crypto_bn.h"
+#include "tgl/tgl_message.h"
+#include "tgl/tgl_secret_chat.h"
+#include "tgl/tgl_timer.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <functional>
 #include <map>
 #include <vector>
 
@@ -64,6 +66,7 @@ struct tgl_secret_chat_private {
     int32_t m_out_seq_no;
     std::shared_ptr<query> m_last_depending_query;
     std::map<int32_t, std::shared_ptr<tgl_message>> m_pending_received_messages;
+    std::shared_ptr<tgl_timer> m_timer;
 
     tgl_secret_chat_private()
         : m_temp_key_fingerprint(0)
@@ -116,8 +119,11 @@ public:
     void set_state(const tgl_secret_chat_state& new_state);
     int64_t temp_key_fingerprint() const { return d->m_temp_key_fingerprint; }
     void set_temp_key_fingerprint(int64_t fingerprint) { d->m_temp_key_fingerprint = fingerprint; }
-    void queue_pending_received_message(const std::shared_ptr<tgl_message>&);
+    void queue_pending_received_message(const std::shared_ptr<tgl_message>& message,
+            double heal_hole_after_seconds, const std::function<void()>& heal_hole);
     std::vector<std::shared_ptr<tgl_message>> dequeue_pending_received_messages(const std::shared_ptr<tgl_message>& new_message);
+    bool has_hole() const { return !d->m_pending_received_messages.empty(); }
+    std::vector<std::shared_ptr<tgl_message>> heal_all_holes();
     int32_t raw_in_seq_no() const { return in_seq_no() * 2 + (admin_id() != tgl_state::instance()->our_id().peer_id); }
     int32_t raw_out_seq_no() const { return out_seq_no() * 2 + (admin_id() == tgl_state::instance()->our_id().peer_id); }
 };

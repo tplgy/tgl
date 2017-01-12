@@ -1535,7 +1535,14 @@ void tglf_encrypted_message_received(const std::shared_ptr<tgl_message>& message
                     << secret_chat->in_seq_no() << " but " << raw_out_seq_no / 2 << " was received");
 
             // FIXME: We may need to discard the secret chat if there are a lot of holes.
-            secret_chat->private_facet()->queue_pending_received_message(message);
+
+            std::weak_ptr<tgl_secret_chat> weak_secret_chat(secret_chat);
+            secret_chat->private_facet()->queue_pending_received_message(message, 3.0, [=] {
+                auto chat = weak_secret_chat.lock();
+                if (chat && chat->private_facet()->has_hole()) {
+                    process_encrypted_messages(chat, chat->private_facet()->heal_all_holes());
+                }
+            });
             return;
         }
 
