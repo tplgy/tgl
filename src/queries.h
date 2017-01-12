@@ -137,7 +137,7 @@ public:
     bool ack_received() const { return m_ack_received; }
 
     const std::shared_ptr<query>& depending_query() const { return m_depending_query; }
-    void set_depending_query(const std::shared_ptr<query>& q) { assert(q.get() != this); m_depending_query = q; }
+    void set_depending_query(const std::shared_ptr<query>& q);
 
 protected:
     void timeout_within(double seconds);

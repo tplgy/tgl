@@ -401,6 +401,22 @@ void query::ack()
     }
 }
 
+void query::set_depending_query(const std::shared_ptr<query>& q)
+{
+    auto temp = m_depending_query;
+
+    m_depending_query = q;
+    auto p = q;
+    while (p && p.get() != this) {
+        p = p->m_depending_query;
+    }
+
+    if (p.get() == this) {
+        assert(false);
+        m_depending_query = temp;
+    }
+}
+
 void tglq_query_delete(int64_t id)
 {
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
