@@ -343,6 +343,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
             state = tgl_secret_chat_state::ok;
             str_to_256(g_key, DS_STR(DS_EC->g_a_or_b));
             secret_chat->private_facet()->set_temp_key_fingerprint(DS_LVAL(DS_EC->key_fingerprint));
+            secret_chat->private_facet()->set_g_key(g_key, sizeof(g_key));
         }
         if (DS_EC->access_hash) {
             secret_chat->private_facet()->set_access_hash(*(DS_EC->access_hash));
@@ -350,7 +351,6 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
         if (DS_EC->date) {
             secret_chat->private_facet()->set_date(*(DS_EC->date));
         }
-        secret_chat->private_facet()->set_g_key(g_key, sizeof(g_key));
         secret_chat->private_facet()->set_state(state);
     }
 
