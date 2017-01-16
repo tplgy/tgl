@@ -34,6 +34,8 @@
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "queries.h"
+#include "query_messages_send_encrypted_action.h"
+#include "query_messages_send_encrypted_message.h"
 #include "tgl_secret_chat_private.h"
 #include "tgl/tgl.h"
 #include "tgl/tgl_log.h"
@@ -55,143 +57,11 @@
 #include <sys/utsname.h>
 #endif
 
-static void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        const unsigned char msg_sha[20], const int32_t* encr_ptr, const int32_t* encr_end, char* encrypted_data);
-
-/* {{{ Encrypt decrypted */
-void secret_chat_encryptor::start()
-{
-    m_encr_base = m_serializer->reserve_i32s(1/*str len*/ + 2/*fingerprint*/ + 4/*msg_key*/ + 1/*len*/);
-}
-
-void secret_chat_encryptor::end()
-{
-    size_t length = m_serializer->i32_size() - (m_encr_base + 8);
-    while ((m_serializer->i32_size() - m_encr_base - 3) & 3) {
-        int32_t i;
-        tgl_secure_random(reinterpret_cast<unsigned char*>(&i), 4);
-        m_serializer->out_i32(i);
-    }
-
-    m_serializer->out_i32_at(m_encr_base, (m_serializer->i32_size() - m_encr_base - 1) * 4 * 256 + 0xfe); // str len
-    m_serializer->out_i64_at(m_encr_base + 1, m_secret_chat->key_fingerprint()); // fingerprint
-    m_serializer->out_i32_at(m_encr_base + 1 + 2 + 4, length * 4); // len
-
-    const int32_t* encr_ptr = m_serializer->i32_data() + m_encr_base + 1 + 2 + 4;
-    const int32_t* encr_end = m_serializer->i32_data() + m_serializer->i32_size();
-
-    unsigned char sha1_buffer[20];
-    memset(sha1_buffer, 0, sizeof(sha1_buffer));
-    TGLC_sha1(reinterpret_cast<const unsigned char*>(encr_ptr), (length + 1) * 4, sha1_buffer);
-    m_serializer->out_i32s_at(m_encr_base + 1 + 2, reinterpret_cast<int32_t*>(sha1_buffer + 4), 4); // msg_key
-
-    encrypt_decrypted_message(m_secret_chat, sha1_buffer, encr_ptr, encr_end, reinterpret_cast<char*>(const_cast<int32_t*>(encr_ptr)));
-}
-
-void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        const unsigned char msg_sha[20], const int32_t* encr_ptr, const int32_t* encr_end, char* encrypted_data) {
-    unsigned char sha1a_buffer[20];
-    unsigned char sha1b_buffer[20];
-    unsigned char sha1c_buffer[20];
-    unsigned char sha1d_buffer[20];
-    memset(sha1a_buffer, 0, sizeof(sha1a_buffer));
-    memset(sha1b_buffer, 0, sizeof(sha1b_buffer));
-    memset(sha1c_buffer, 0, sizeof(sha1c_buffer));
-    memset(sha1d_buffer, 0, sizeof(sha1d_buffer));
-
-    const unsigned char* msg_key = msg_sha + 4;
-
-    unsigned char buf[64];
-    memset(buf, 0, sizeof(buf));
-    const int* encryption_key = reinterpret_cast<const int*>(secret_chat->key());
-    memcpy(buf, msg_key, 16);
-    memcpy(buf + 16, encryption_key, 32);
-    TGLC_sha1(buf, 48, sha1a_buffer);
-
-    memcpy(buf, encryption_key + 8, 16);
-    memcpy(buf + 16, msg_key, 16);
-    memcpy(buf + 32, encryption_key + 12, 16);
-    TGLC_sha1(buf, 48, sha1b_buffer);
-
-    memcpy(buf, encryption_key + 16, 32);
-    memcpy(buf + 32, msg_key, 16);
-    TGLC_sha1(buf, 48, sha1c_buffer);
-
-    memcpy(buf, msg_key, 16);
-    memcpy(buf + 16, encryption_key + 24, 32);
-    TGLC_sha1(buf, 48, sha1d_buffer);
-
-    unsigned char key[32];
-    memset(key, 0, sizeof(key));
-    memcpy(key, sha1a_buffer + 0, 8);
-    memcpy(key + 8, sha1b_buffer + 8, 12);
-    memcpy(key + 20, sha1c_buffer + 4, 12);
-
-    unsigned char iv[32];
-    memset(iv, 0, sizeof(iv));
-    memcpy(iv, sha1a_buffer + 8, 12);
-    memcpy(iv + 12, sha1b_buffer + 0, 8);
-    memcpy(iv + 20, sha1c_buffer + 16, 4);
-    memcpy(iv + 24, sha1d_buffer + 0, 8);
-
-    TGLC_aes_key aes_key;
-    TGLC_aes_set_encrypt_key(key, 256, &aes_key);
-    TGLC_aes_ige_encrypt(reinterpret_cast<const unsigned char*>(encr_ptr), reinterpret_cast<unsigned char*>(encrypted_data), 4 * (encr_end - encr_ptr), &aes_key, iv, 1);
-    memset(&aes_key, 0, sizeof(aes_key));
-}
-
 void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat)
 {
     secret_chat->private_facet()->set_state(tgl_secret_chat_state::deleted);
     tgl_state::instance()->callback()->secret_chat_update(secret_chat);
 }
-
-/* }}} */
-
-class query_msg_send_encr: public query {
-public:
-    query_msg_send_encr(
-            const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
-        : query("send encrypted (message)", TYPE_TO_PARAM(messages_sent_encrypted_message))
-        , m_secret_chat(secret_chat)
-        , m_message(message)
-        , m_callback(callback)
-    {
-    }
-
-    virtual void on_answer(void*) override
-    {
-        tgl_state::instance()->callback()->message_id_updated(m_message->permanent_id, m_message->permanent_id, m_message->to_id);
-        if (m_callback) {
-            m_callback(true, m_message);
-        }
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        if (m_secret_chat && m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-            tgl_secret_chat_deleted(m_secret_chat);
-        }
-
-        if (m_callback) {
-            m_callback(false, m_message);
-        }
-
-        if (m_message) {
-            //bl_do_message_delete(&M->permanent_id);
-            // FIXME: is this correct?
-            tgl_state::instance()->callback()->message_deleted(m_message->permanent_id);
-        }
-        return 0;
-    }
-
-private:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
-    std::shared_ptr<tgl_message> m_message;
-    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
-};
 
 static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::shared_ptr<tgl_message>& msg,
@@ -207,96 +77,7 @@ static void tgl_do_send_encr_msg_action(const std::shared_ptr<tgl_secret_chat>& 
 
     assert(msg->action);
 
-    auto q = std::make_shared<query_msg_send_encr>(secret_chat, msg, callback);
-    secret_chat_encryptor encryptor(secret_chat, q->serializer());
-    q->out_i32(CODE_messages_send_encrypted_service);
-    q->out_i32(CODE_input_encrypted_chat);
-    q->out_i32(secret_chat->id().peer_id);
-    q->out_i64(secret_chat->id().access_hash);
-    q->out_i64(msg->permanent_id);
-    encryptor.start();
-    q->out_i32(CODE_decrypted_message_layer);
-    q->out_random(15 + 4 * (tgl_random<int>() % 3));
-    q->out_i32(TGL_ENCRYPTED_LAYER);
-    q->out_i32(msg->secret_message_meta->raw_in_seq_no);
-    q->out_i32(msg->secret_message_meta->raw_out_seq_no);
-    q->out_i32(CODE_decrypted_message_service);
-    q->out_i64(msg->permanent_id);
-
-    switch (msg->action->type()) {
-    case tgl_message_action_type::notify_layer:
-        q->out_i32(CODE_decrypted_message_action_notify_layer);
-        q->out_i32(std::static_pointer_cast<tgl_message_action_notify_layer>(msg->action)->layer);
-        break;
-    case tgl_message_action_type::set_message_ttl:
-        q->out_i32(CODE_decrypted_message_action_set_message_ttl);
-        q->out_i32(std::static_pointer_cast<tgl_message_action_set_message_ttl>(msg->action)->ttl);
-        break;
-    case tgl_message_action_type::request_key:
-    {
-        auto action = std::static_pointer_cast<tgl_message_action_request_key>(msg->action);
-        q->out_i32(CODE_decrypted_message_action_request_key);
-        q->out_i64(action->exchange_id);
-        q->out_string(reinterpret_cast<char*>(action->g_a.data()), 256);
-        break;
-    }
-    case tgl_message_action_type::accept_key:
-    {
-        auto action = std::static_pointer_cast<tgl_message_action_accept_key>(msg->action);
-        q->out_i32(CODE_decrypted_message_action_accept_key);
-        q->out_i64(action->exchange_id);
-        q->out_string(reinterpret_cast<char*>(action->g_a.data()), 256);
-        q->out_i64(action->key_fingerprint);
-        break;
-    }
-    case tgl_message_action_type::commit_key:
-    {
-        auto action = std::static_pointer_cast<tgl_message_action_commit_key>(msg->action);
-        q->out_i32(CODE_decrypted_message_action_commit_key);
-        q->out_i64(action->exchange_id);
-        q->out_i64(action->key_fingerprint);
-        break;
-    }
-    case tgl_message_action_type::abort_key:
-    {
-        auto action = std::static_pointer_cast<tgl_message_action_abort_key>(msg->action);
-        q->out_i32(CODE_decrypted_message_action_abort_key);
-        q->out_i64(action->exchange_id);
-        break;
-    }
-    case tgl_message_action_type::noop:
-        q->out_i32(CODE_decrypted_message_action_noop);
-        break;
-    case tgl_message_action_type::resend:
-    {
-        auto action = std::static_pointer_cast<tgl_message_action_resend>(msg->action);
-        q->out_i32(CODE_decrypted_message_action_resend);
-        q->out_i32(action->start_seq_no);
-        q->out_i32(action->end_seq_no);
-        break;
-    }
-    case tgl_message_action_type::delete_messages:
-    {
-        auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(msg->action);
-        q->out_i32 (CODE_decrypted_message_action_delete_messages);
-        q->out_i32(CODE_vector);
-        q->out_i32(action->msg_ids.size());
-        for (auto id : action->msg_ids) {
-            q->out_i64(id);
-        }
-        break;
-    }
-    default:
-        assert(false);
-    }
-    encryptor.end();
-
-    q->set_depending_query(secret_chat->private_facet()->last_depending_query());
-
-    secret_chat->private_facet()->set_out_seq_no(secret_chat->out_seq_no() + 1);
-    secret_chat->private_facet()->set_last_depending_query(q);
-    tgl_state::instance()->callback()->secret_chat_update(secret_chat);
-
+    auto q = std::make_shared<query_messages_send_encrypted_action>(secret_chat, msg, callback);
     q->execute(tgl_state::instance()->active_client());
 }
 
@@ -320,49 +101,7 @@ void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         return;
     }
 
-    auto q = std::make_shared<query_msg_send_encr>(secret_chat, msg, callback);
-    secret_chat_encryptor encryptor(secret_chat, q->serializer());
-    q->out_i32(CODE_messages_send_encrypted);
-    q->out_i32(CODE_input_encrypted_chat);
-    q->out_i32(secret_chat->id().peer_id);
-    q->out_i64(secret_chat->id().access_hash);
-    q->out_i64(msg->permanent_id);
-    encryptor.start();
-    q->out_i32(CODE_decrypted_message_layer);
-    q->out_random(15 + 4 * (tgl_random<int>() % 3));
-    q->out_i32(TGL_ENCRYPTED_LAYER);
-    q->out_i32(msg->secret_message_meta->raw_in_seq_no);
-    q->out_i32(msg->secret_message_meta->raw_out_seq_no);
-    q->out_i32(CODE_decrypted_message);
-    q->out_i64(msg->permanent_id);
-    q->out_i32(secret_chat->ttl());
-    q->out_string(msg->message.c_str(), msg->message.size());
-
-    assert(msg->media);
-
-    switch (msg->media->type()) {
-    case tgl_message_media_type::none:
-        q->out_i32(CODE_decrypted_message_media_empty);
-        break;
-    case tgl_message_media_type::geo:
-    {
-        auto media = std::static_pointer_cast<tgl_message_media_geo>(msg->media);
-        q->out_i32(CODE_decrypted_message_media_geo_point);
-        q->out_double(media->geo.latitude);
-        q->out_double(media->geo.longitude);
-        break;
-    }
-    default:
-        assert(false);
-    }
-    encryptor.end();
-
-    q->set_depending_query(secret_chat->private_facet()->last_depending_query());
-
-    secret_chat->private_facet()->set_out_seq_no(secret_chat->out_seq_no() + 1);
-    secret_chat->private_facet()->set_last_depending_query(q);
-    tgl_state::instance()->callback()->secret_chat_update(secret_chat);
-
+    auto q = std::make_shared<query_messages_send_encrypted_message>(secret_chat, msg, callback);
     q->execute(tgl_state::instance()->active_client());
 }
 

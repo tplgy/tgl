@@ -67,6 +67,7 @@ struct tgl_secret_chat_private {
     std::shared_ptr<query> m_last_depending_query;
     std::map<int32_t, std::shared_ptr<tgl_message>> m_pending_received_messages;
     std::shared_ptr<tgl_timer> m_timer;
+    int64_t m_last_depending_query_id;
 
     tgl_secret_chat_private()
         : m_temp_key_fingerprint(0)
@@ -88,6 +89,7 @@ struct tgl_secret_chat_private {
         , m_encr_prime()
         , m_encr_prime_bn(nullptr)
         , m_out_seq_no(0)
+        , m_last_depending_query_id(0)
     {
         memset(m_key, 0, sizeof(m_key));
         memset(m_key_sha, 0, sizeof(m_key_sha));
@@ -126,6 +128,8 @@ public:
     std::vector<std::shared_ptr<tgl_message>> heal_all_holes();
     int32_t raw_in_seq_no() const { return in_seq_no() * 2 + (admin_id() != tgl_state::instance()->our_id().peer_id); }
     int32_t raw_out_seq_no() const { return out_seq_no() * 2 + (admin_id() == tgl_state::instance()->our_id().peer_id); }
+    int64_t last_depending_query_id() const { return d->m_last_depending_query_id; }
+    void set_last_depending_query_id(int64_t query_id) { d->m_last_depending_query_id = query_id; }
 };
 
 inline tgl_secret_chat_private_facet* tgl_secret_chat::private_facet()

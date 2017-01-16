@@ -111,6 +111,8 @@ struct tgl_message {
     tgl_message& set_send_failed(bool b) { m_flags[index_send_failed] = b; return *this; }
     tgl_message& set_history(bool b) { m_flags[index_history] = b; return *this; }
 
+    void set_decrypted_message_media(const tl_ds_decrypted_message_media*);
+
 private:
     static constexpr size_t index_unread = 0;
     static constexpr size_t index_outgoing = 1;

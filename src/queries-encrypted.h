@@ -32,25 +32,6 @@
 #include <vector>
 
 class tgl_secret_chat;
-class mtprotocol_serializer;
-
-class secret_chat_encryptor
-{
-public:
-    secret_chat_encryptor(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<mtprotocol_serializer>& serializer)
-        : m_secret_chat(secret_chat)
-        , m_serializer(serializer)
-    { }
-
-    void start();
-    void end();
-
-private:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
-    std::shared_ptr<mtprotocol_serializer> m_serializer;
-    size_t m_encr_base;
-};
 
 void tgl_do_send_encr_msg(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::shared_ptr<tgl_message>& message,

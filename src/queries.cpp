@@ -78,23 +78,6 @@ void query::clear_timers()
     m_retry_timer = nullptr;
 }
 
-void query::apply_depending_query()
-{
-    int64_t depending_query_id = m_depending_query ? m_depending_query->msg_id() : 0;
-    if (!depending_query_id) {
-        m_depending_query = nullptr;
-        return;
-    }
-
-    m_depending_query = nullptr;
-
-    auto s = std::make_shared<mtprotocol_serializer>();
-    s->out_i32(CODE_invoke_after_msg);
-    s->out_i64(depending_query_id);
-    s->out_i32s(m_serializer->i32_data(), m_serializer->i32_size());
-    m_serializer = s;
-}
-
 void query::alarm()
 {
     TGL_DEBUG("alarm query #" << msg_id() << " (type '" << m_name << "') to DC " << m_client->id());
@@ -122,7 +105,7 @@ void query::alarm()
     }
 
     if (!pending && m_session && m_session_id && m_client->session() == m_session && m_session->session_id == m_session_id) {
-        apply_depending_query();
+        will_send();
         mtprotocol_serializer s;
         s.out_i32(CODE_msg_container);
         s.out_i32(1);
@@ -134,6 +117,7 @@ void query::alarm()
             handle_error(400, "client failed to send message");
             return;
         }
+        sent();
         TGL_NOTICE("resent query #" << msg_id() << " of size " << m_serializer->char_size() << " to DC " << m_client->id());
         timeout_within(timeout_interval());
     } else if (!pending && m_client->session()) {
@@ -143,13 +127,14 @@ void query::alarm()
         }
         m_session = m_client->session();
         int64_t old_id = msg_id();
-        apply_depending_query();
+        will_send();
         m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
         if (m_msg_id == -1) {
             m_msg_id = 0;
             handle_error(400, "client failed to send message");
             return;
         }
+        sent();
         TGL_NOTICE("resent query #" << old_id << " as #" << msg_id() << " of size " << m_serializer->char_size() << " to DC " << m_client->id());
         tgl_state::instance()->add_query(shared_from_this());
         m_session_id = m_session->session_id;
@@ -257,13 +242,14 @@ void query::execute(const std::shared_ptr<mtproto_client>& client, execution_opt
         m_seq_no = 0;
         m_client->add_pending_query(shared_from_this());
     } else {
-        apply_depending_query();
+        will_send();
         m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
         if (m_msg_id == -1) {
             m_msg_id = 0;
             handle_error(400, "client failed to send message");
             return;
         }
+        sent();
 
         if (is_logout()) {
             m_client->set_logout_query_id(msg_id());
@@ -316,13 +302,14 @@ bool query::execute_after_pending()
         return false;
     }
 
-    apply_depending_query();
+    will_send();
     m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
     if (m_msg_id == -1) {
         m_msg_id = 0;
         handle_error(400, "client failed to send message");
         return true;
     }
+    sent();
 
     if (is_logout()) {
         m_client->set_logout_query_id(msg_id());
@@ -398,22 +385,6 @@ void query::ack()
         s.out_i32(CODE_bool_true);
         tgl_in_buffer in = { s.i32_data(), s.i32_data() + s.i32_size() };
         handle_result(&in);
-    }
-}
-
-void query::set_depending_query(const std::shared_ptr<query>& q)
-{
-    auto temp = m_depending_query;
-
-    m_depending_query = q;
-    auto p = q;
-    while (p && p.get() != this) {
-        p = p->m_depending_query;
-    }
-
-    if (p.get() == this) {
-        assert(false);
-        m_depending_query = temp;
     }
 }
 

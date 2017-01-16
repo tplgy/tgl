@@ -104,3 +104,13 @@ tgl_message::tgl_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         secret_chat->private_facet()->set_layer(std::static_pointer_cast<tgl_message_action_notify_layer>(this->action)->layer);
     }
 }
+
+void tgl_message::set_decrypted_message_media(const tl_ds_decrypted_message_media* media)
+{
+    if (media) {
+        this->media = tglf_fetch_message_media_encrypted(media);
+        assert(!is_service());
+    } else {
+        this->media = nullptr;
+    }
+}
