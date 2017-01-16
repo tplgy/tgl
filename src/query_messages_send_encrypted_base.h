@@ -58,6 +58,8 @@ public:
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
+        TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error_string);
+
         if (m_secret_chat && m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
             tgl_secret_chat_deleted(m_secret_chat);
         }
@@ -67,9 +69,11 @@ public:
         }
 
         if (m_message) {
+            m_message->set_pending(false).set_send_failed(true);
             //bl_do_message_delete(&M->permanent_id);
             // FIXME: is this correct?
-            tgl_state::instance()->callback()->message_deleted(m_message->permanent_id);
+            // tgl_state::instance()->callback()->message_deleted(m_message->permanent_id);
+            tgl_state::instance()->callback()->new_messages({m_message});
         }
         return 0;
     }
