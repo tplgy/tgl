@@ -251,7 +251,7 @@ public:
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-        TGL_ERROR("RPC_CALL_FAIL " << error_code << error_string);
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
         if (m_callback) {
             m_callback(tgl_upload_status::failed, nullptr, 0);
         }
@@ -387,43 +387,6 @@ public:
         : query_messages_send_encrypted_base("upload encrypted file", secret_chat, message, callback)
         , m_upload(upload)
     { }
-
-    virtual void on_answer(void* D) override
-    {
-        tl_ds_messages_sent_encrypted_message* DS_MSEM = static_cast<tl_ds_messages_sent_encrypted_message*>(D);
-
-        m_message->set_pending(false);
-        if (DS_MSEM->date) {
-            m_message->date = *DS_MSEM->date;
-        }
-        if(DS_MSEM->file) {
-            tglf_fetch_encrypted_message_file(m_message->media, DS_MSEM->file);
-        }
-        tgl_state::instance()->callback()->new_messages({m_message});
-
-        if (m_callback) {
-            m_callback(true, m_message);
-        }
-
-        tgl_state::instance()->callback()->message_id_updated(m_message->permanent_id, m_message->permanent_id, m_message->to_id);
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        if (m_secret_chat && m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-            tgl_secret_chat_deleted(m_secret_chat);
-        }
-
-        if (m_callback) {
-            m_callback(false, m_message);
-        }
-
-        if (m_message) {
-            m_message->set_pending(false).set_send_failed(true);
-            tgl_state::instance()->callback()->new_messages({m_message});
-        }
-        return 0;
-    }
 
     virtual void assemble() override;
 
@@ -733,9 +696,6 @@ void query_upload_encrypted_file::assemble()
     out_i32((*(int *)md5) ^ (*(int *)(md5 + 4)));
 
     free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
-
-    m_secret_chat->private_facet()->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
-    tgl_state::instance()->callback()->secret_chat_update(m_secret_chat);
 }
 
 void query_upload_encrypted_file::set_message_media(const tl_ds_decrypted_message_media* DS_DMM)

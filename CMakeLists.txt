@@ -151,6 +151,7 @@ set(SOURCES
     src/queries.cpp
     src/queries-encrypted.cpp
     src/query_messages_send_encrypted_action.cpp
+    src/query_messages_send_encrypted_base.cpp
     src/query_messages_send_encrypted_message.cpp
     src/secret_chat_encryptor.cpp
     src/structures.cpp

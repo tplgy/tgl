@@ -48,58 +48,10 @@ public:
     {
     }
 
-    virtual void on_answer(void*) override
-    {
-        tgl_state::instance()->callback()->message_id_updated(m_message->permanent_id, m_message->permanent_id, m_message->to_id);
-        if (m_callback) {
-            m_callback(true, m_message);
-        }
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error_string);
-
-        if (m_secret_chat && m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-            tgl_secret_chat_deleted(m_secret_chat);
-        }
-
-        if (m_callback) {
-            m_callback(false, m_message);
-        }
-
-        if (m_message) {
-            m_message->set_pending(false).set_send_failed(true);
-            //bl_do_message_delete(&M->permanent_id);
-            // FIXME: is this correct?
-            // tgl_state::instance()->callback()->message_deleted(m_message->permanent_id);
-            tgl_state::instance()->callback()->new_messages({m_message});
-        }
-        return 0;
-    }
-
-    virtual void will_send() override
-    {
-        if (m_assembled) {
-            return;
-        }
-
-        m_assembled = true;
-
-        auto depending_query_id = m_secret_chat->private_facet()->last_depending_query_id();
-        if (depending_query_id) {
-            out_i32(CODE_invoke_after_msg);
-            out_i64(depending_query_id);
-        }
-
-        assemble();
-    }
-
-    virtual void sent() override
-    {
-        m_secret_chat->private_facet()->set_last_depending_query_id(msg_id());
-    }
-
+    virtual void on_answer(void*) override;
+    virtual int on_error(int error_code, const std::string& error_string) override;
+    virtual void will_send() override;
+    virtual void sent() override;
     virtual void assemble() = 0;
 
 protected:

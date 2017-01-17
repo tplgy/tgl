@@ -60,7 +60,4 @@ void query_messages_send_encrypted_message::assemble()
         assert(false);
     }
     encryptor.end();
-
-    m_secret_chat->private_facet()->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
-    tgl_state::instance()->callback()->secret_chat_update(m_secret_chat);
 }
