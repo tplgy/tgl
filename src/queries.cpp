@@ -1064,6 +1064,10 @@ void tgl_do_logout(const std::function<void(bool)>& callback)
         return;
     }
 
+    for (const auto& it: tgl_state::instance()->secret_chats()) {
+        tgl_do_discard_secret_chat(it.second, nullptr);
+    }
+
     auto q = std::make_shared<query_logout>(callback);
     q->out_i32(CODE_auth_log_out);
     q->execute(dc, query::execution_option::LOGOUT);
