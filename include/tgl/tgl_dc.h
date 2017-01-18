@@ -55,6 +55,8 @@ public:
     virtual const std::vector<std::pair<std::string, int>>& ipv6_options() const = 0;
     virtual int64_t auth_key_id() const = 0;
     virtual const std::array<unsigned char, 256>& auth_key() const = 0;
+    // UNIX time difference between the server and the local client. Basically it returns server_time - local_time.
+    virtual double time_difference() const = 0;
     virtual ~tgl_dc() { }
 };
 

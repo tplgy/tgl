@@ -36,6 +36,7 @@
 #include <vector>
 
 class tgl_connection;
+class tgl_dc;
 class tgl_online_status_observer;
 struct tgl_session;
 class query;
@@ -129,11 +130,14 @@ struct tgl_state {
 
     const tgl_bn_context* bn_ctx() const { return m_bn_ctx.get(); }
 
+    // Could be null.
+    std::shared_ptr<tgl_dc> active_dc() const;
     void set_dc_auth_key(int dc_id, const char* key, size_t key_length);
-    void set_our_id(int id);
     void set_dc_option(bool is_v6, int id, const std::string& ip, int port);
     void set_dc_logged_in(int dc_id);
     void set_active_dc(int dc_id);
+
+    void set_our_id(int id);
     void set_qts(int32_t qts, bool force = false);
     void set_pts(int32_t pts, bool force = false);
     void set_date(int64_t date, bool force = false);

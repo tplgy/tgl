@@ -78,6 +78,7 @@ public:
     virtual const std::vector<std::pair<std::string, int>>& ipv6_options() const override { return m_ipv6_options; }
     virtual int64_t auth_key_id() const override { return m_auth_key_id; }
     virtual const std::array<unsigned char, 256>& auth_key() const override { return m_auth_key; }
+    virtual double time_difference() const override { return m_server_time_delta; }
 
     const std::shared_ptr<tgl_session>& session() const { return m_session; }
 

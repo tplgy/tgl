@@ -419,3 +419,8 @@ void tgl_state::connection_status_changed(const std::shared_ptr<tgl_connection>&
         m_callback->connection_status_changed(status);
     }
 }
+
+std::shared_ptr<tgl_dc> tgl_state::active_dc() const
+{
+    return m_active_client;
+}
