@@ -78,6 +78,33 @@ void query::clear_timers()
     m_retry_timer = nullptr;
 }
 
+inline bool query::is_in_the_same_session() const
+{
+    return m_client && m_session_id && m_client->session() && m_client->session()->session_id == m_session_id;
+}
+
+bool query::send()
+{
+    m_ack_received = false;
+
+    will_send();
+    m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
+    if (m_msg_id == -1) {
+        m_msg_id = 0;
+        handle_error(400, "client failed to send message");
+        return false;
+    }
+    if (is_logout()) {
+        m_client->set_logout_query_id(msg_id());
+    }
+    tgl_state::instance()->add_query(shared_from_this());
+    m_session_id = m_client->session()->session_id;
+    timeout_within(timeout_interval());
+    sent();
+
+    return true;
+}
+
 void query::alarm()
 {
     TGL_DEBUG("alarm query #" << msg_id() << " (type '" << m_name << "') to DC " << m_client->id());
@@ -87,6 +114,10 @@ void query::alarm()
     auto protect = shared_from_this();
     clear_timers();
 
+    if (msg_id()) {
+        tgl_state::instance()->remove_query(shared_from_this());
+    }
+
     if (!check_connectivity()) {
         return;
     }
@@ -95,17 +126,11 @@ void query::alarm()
         return;
     }
 
-    bool pending = false;
-    if (!m_client->is_configured() && !is_force()) {
-        pending = true;
+    if (!check_pending()) {
+        return;
     }
 
-    if (!m_client->is_logged_in() && !is_login() && !is_force()) {
-        pending = true;
-    }
-
-    if (!pending && m_session && m_session_id && m_client->session() == m_session && m_session->session_id == m_session_id) {
-        will_send();
+    if (is_in_the_same_session()) {
         mtprotocol_serializer s;
         s.out_i32(CODE_msg_container);
         s.out_i32(1);
@@ -113,40 +138,17 @@ void query::alarm()
         s.out_i32(m_seq_no);
         s.out_i32(m_serializer->char_size());
         s.out_i32s(m_serializer->i32_data(), m_serializer->i32_size());
-        if (m_client->send_message(s.i32_data(), s.i32_size(), m_msg_id_override, is_force()) == -1) {
-            handle_error(400, "client failed to send message");
+        if (!send()) {
             return;
         }
-        sent();
         TGL_NOTICE("resent query #" << msg_id() << " of size " << m_serializer->char_size() << " to DC " << m_client->id());
-        timeout_within(timeout_interval());
-    } else if (!pending && m_client->session()) {
-        m_ack_received = false;
-        if (msg_id()) {
-            tgl_state::instance()->remove_query(shared_from_this());
-        }
-        m_session = m_client->session();
+    } else {
+        assert(m_client->session());
         int64_t old_id = msg_id();
-        will_send();
-        m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
-        if (m_msg_id == -1) {
-            m_msg_id = 0;
-            handle_error(400, "client failed to send message");
+        if (!send()) {
             return;
         }
-        sent();
         TGL_NOTICE("resent query #" << old_id << " as #" << msg_id() << " of size " << m_serializer->char_size() << " to DC " << m_client->id());
-        tgl_state::instance()->add_query(shared_from_this());
-        m_session_id = m_session->session_id;
-        if (!m_client->is_configured() && !is_force()) {
-            m_session_id = 0;
-        }
-        timeout_within(timeout_interval());
-    } else {
-        will_be_pending();
-        // we don't have a valid session with the DC, so defer query until we do
-        m_client->add_pending_query(shared_from_this());
-        TGL_DEBUG("added query #" << msg_id() << "(type '" << name() << "') to pending list");
     }
 }
 
@@ -163,12 +165,8 @@ void tglq_regen_query(int64_t id)
 void query::regen()
 {
     m_ack_received = false;
-    if (!(m_session && m_session_id && m_client && m_client->session() == m_session && m_session->session_id == m_session_id)) {
+    if (!is_in_the_same_session() || (!m_client->is_configured() && !is_force())) {
         m_session_id = 0;
-    } else {
-        if (m_client && !m_client->is_configured() && !is_force()) {
-            m_session_id = 0;
-        }
     }
     retry_within(0);
 }
@@ -202,130 +200,54 @@ static void tgl_do_transfer_auth(const std::shared_ptr<mtproto_client>& client, 
 
 void query::execute(const std::shared_ptr<mtproto_client>& client, execution_option option)
 {
-    if (!check_connectivity()) {
-        return;
-    }
-
-    m_ack_received = false;
     m_exec_option = option;
     m_client = client;
     assert(m_client);
 
+    if (!check_connectivity()) {
+        return;
+    }
+
     if (!check_logging_out()) {
         return;
     }
 
-    bool pending = false;
-    if (!m_client->session()) {
-        m_client->create_session();
-        pending = true;
+    if (!check_pending(true)) {
+        return;
     }
 
-    if (!m_client->is_configured() && !is_force()) {
-        pending = true;
+    TGL_DEBUG("sending query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_client->id());
+    if (!send()) {
+        return;
     }
-
-    if (!m_client->is_logged_in() && !is_login() && !is_force()) {
-        pending = true;
-        if (m_client != tgl_state::instance()->active_client()) {
-            tgl_do_transfer_auth(m_client, std::bind(tgl_transfer_auth_callback, m_client, std::placeholders::_1));
-        }
-    }
-
-    TGL_DEBUG("sending query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_client->id() << (pending ? " (pending)" : ""));
-
-    if (pending) {
-        will_be_pending();
-        m_msg_id = 0;
-        m_session = 0;
-        m_session_id = 0;
-        m_seq_no = 0;
-        m_client->add_pending_query(shared_from_this());
-    } else {
-        will_send();
-        m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
-        if (m_msg_id == -1) {
-            m_msg_id = 0;
-            handle_error(400, "client failed to send message");
-            return;
-        }
-        sent();
-
-        if (is_logout()) {
-            m_client->set_logout_query_id(msg_id());
-        }
-
-        m_session = m_client->session();
-        m_session_id = m_session->session_id;
-        m_seq_no = m_session->seq_no - 1;
-
-        tgl_state::instance()->add_query(shared_from_this());
-        timeout_within(timeout_interval());
-
-        TGL_DEBUG("sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_client->id() << ": #" << msg_id());
-    }
+    m_seq_no = m_client->session()->seq_no - 1;
+    TGL_DEBUG("sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_client->id() << ": #" << msg_id());
 }
 
 bool query::execute_after_pending()
 {
-    if (!check_connectivity()) {
-        // We gave an error in check_connectity above. So this has been executed but failed.
-        return true;
-    }
-
-    if (!check_logging_out()) {
-        // We gave an error in check_logging_out above. So this has been executed but failed.
-        return true;
-    }
+    // We only return false when the query is pending.
 
     assert(m_client);
     assert(m_exec_option != execution_option::UNKNOWN);
 
-    bool pending = false;
-    if (!m_client->session()) {
-        m_client->create_session();
-        pending = true;
+    if (!check_connectivity()) {
+        return true;
     }
 
-    if (!m_client->is_configured() && !is_force()) {
-        pending = true;
+    if (!check_logging_out()) {
+        return true;
     }
 
-    if (!m_client->is_logged_in() && !is_login() && !is_force()) {
-        pending = true;
-    }
-
-    if (pending) {
-        will_be_pending();
-        TGL_DEBUG("not ready to send pending query " << this << " (" << m_name << "), re-queuing");
-        m_client->add_pending_query(shared_from_this());
+    if (!check_pending()) {
         return false;
     }
 
-    will_send();
-    m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
-    if (m_msg_id == -1) {
-        m_msg_id = 0;
-        handle_error(400, "client failed to send message");
+    if (!send()) {
         return true;
-    }
-    sent();
-
-    if (is_logout()) {
-        m_client->set_logout_query_id(msg_id());
-    }
-
-    m_ack_received = false;
-    m_session = m_client->session();
-    tgl_state::instance()->add_query(shared_from_this());
-    m_session_id = m_session->session_id;
-    if (!m_client->is_configured() && !is_force()) {
-        m_session_id = 0;
     }
 
     TGL_DEBUG("sent pending query \"" << m_name << "\" (" << msg_id() << ") of size " << m_serializer->char_size() << " to DC " << m_client->id());
-
-    timeout_within(timeout_interval());
 
     return true;
 }
@@ -599,6 +521,36 @@ bool query::check_logging_out()
             on_error(600, "LOGGING_OUT");
             return false;
         }
+    }
+
+    return true;
+}
+
+bool query::check_pending(bool transfer_auth)
+{
+    bool pending = false;
+
+    if (!m_client->session()) {
+        pending = true;
+        m_client->create_session();
+    }
+
+    if (!m_client->is_configured() && !is_force()) {
+        pending = true;
+    }
+
+    if (!m_client->is_logged_in() && !is_login() && !is_force()) {
+        pending = true;
+        if (transfer_auth && m_client != tgl_state::instance()->active_client()) {
+            tgl_do_transfer_auth(m_client, std::bind(tgl_transfer_auth_callback, m_client, std::placeholders::_1));
+        }
+    }
+
+    if (pending) {
+        will_be_pending();
+        m_client->add_pending_query(shared_from_this());
+        TGL_DEBUG("added query #" << msg_id() << "(type '" << name() << "') to pending list");
+        return false;
     }
 
     return true;

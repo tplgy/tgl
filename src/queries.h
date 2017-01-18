@@ -54,7 +54,6 @@ public:
         , m_serializer(std::make_shared<mtprotocol_serializer>())
         , m_timer()
         , m_client()
-        , m_session()
     {
     }
 
@@ -120,7 +119,6 @@ public:
     const std::string& name() const { return m_name; }
     int64_t session_id() const { return m_session_id; }
     int64_t msg_id() const { return m_msg_id_override ? m_msg_id_override : m_msg_id; }
-    const std::shared_ptr<tgl_session>& session() const { return m_session; }
     const std::shared_ptr<mtproto_client>& client() const { return m_client; }
 
     virtual void on_answer(void* DS) = 0;
@@ -150,7 +148,10 @@ private:
     void timeout_alarm();
     bool check_connectivity();
     bool check_logging_out();
+    bool check_pending(bool transfer_auth = false);
     void clear_timers();
+    bool is_in_the_same_session() const;
+    bool send();
 
 private:
     int64_t m_msg_id;
@@ -165,7 +166,6 @@ private:
     std::shared_ptr<tgl_timer> m_timer;
     std::shared_ptr<tgl_timer> m_retry_timer;
     std::shared_ptr<mtproto_client> m_client;
-    std::shared_ptr<tgl_session> m_session;
 };
 
 struct messages_send_extra {
