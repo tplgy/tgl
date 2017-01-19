@@ -107,6 +107,7 @@ set(PUBLIC_HEADERS
     include/tgl/tgl_typing_status.h
     include/tgl/tgl_update_callback.h
     include/tgl/tgl_user.h
+    include/tgl/tgl_value.h
 )
 
 set(PRIVATE_HEADERS

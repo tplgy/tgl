@@ -27,6 +27,7 @@
 #include "tgl_message.h"
 #include "tgl_secret_chat.h"
 #include "tgl_typing_status.h"
+#include "tgl_value.h"
 
 #include <map>
 #include <memory>
@@ -51,8 +52,7 @@ public:
     virtual void message_deleted(int64_t msg_id) = 0;
     virtual void messages_mark_read_in(tgl_peer_id_t peer, int msg_id) = 0;
     virtual void messages_mark_read_out(tgl_peer_id_t peer, int msg_id) = 0;
-    virtual void get_values(enum tgl_value_type type, const char* prompt, int num_values,
-            std::function<void(const void* answer)>) = 0;
+    virtual void get_value(const std::shared_ptr<tgl_value>& value) = 0;
     virtual void logged_in() = 0;
     virtual void logged_out(bool success) = 0;
     virtual void started() = 0;

@@ -43,45 +43,6 @@ class query;
 struct tgl_user;
 struct tgl_state;
 
-enum class tgl_value_type {
-    phone_number,           // user phone number
-    code,                   // telegram login code, or 'call' for phone call request
-    register_info,          // "Y/n" register?, first name, last name
-    new_password,           // new pass, confirm new pass
-    cur_and_new_password,   // curr pass, new pass, confirm new pass
-    cur_password,           // current pass
-    bot_hash,
-};
-
-inline static std::string to_string(tgl_value_type type)
-{
-    switch (type) {
-    case tgl_value_type::phone_number:
-        return "phone_number";
-    case tgl_value_type::code:
-        return "code";
-    case tgl_value_type::register_info:
-        return "register_info";
-    case tgl_value_type::new_password:
-        return "new_password";
-    case tgl_value_type::cur_and_new_password:
-        return "cur_and_new_password";
-    case tgl_value_type::cur_password:
-        return "cur_password";
-    case tgl_value_type::bot_hash:
-        return "bot_hash";
-    default:
-        assert(false);
-        return "unknown tgl value type";
-    }
-}
-
-inline std::ostream& operator<<(std::ostream& os, tgl_value_type type)
-{
-    os << to_string(type);
-    return os;
-}
-
 enum class tgl_user_update_type: int8_t {
     firstname = 0,
     lastname,
