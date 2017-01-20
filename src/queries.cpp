@@ -1212,6 +1212,7 @@ static void send_message(const std::shared_ptr<tgl_message>& M, bool disable_pre
 
 int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
         const std::string& text,
+        int64_t message_id,
         int32_t reply_id,
         bool disable_preview,
         bool post_as_channel_message,
@@ -1239,10 +1240,9 @@ int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
 
     int64_t date = tgl_get_system_time();
 
-    int64_t message_id;
-    do {
+    while (!message_id) {
         tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
-    } while (!message_id);
+    }
 
     if (peer_id.peer_type != tgl_peer_type::enc_chat) {
         struct tl_ds_message_media TDSM;
