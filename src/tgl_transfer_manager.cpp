@@ -95,6 +95,7 @@ struct tgl_upload {
         , duration(0)
         , thumb_width(0)
         , thumb_height(0)
+        , message_id(0)
         , at_EOF(false)
     { }
 
@@ -877,7 +878,12 @@ void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id,
         return;
     }
 
-    tgl_secure_random(reinterpret_cast<unsigned char*>(&u->id), 8);
+    while (!u->id) {
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&u->id), 8);
+    }
+    while (!message_id) {
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
+    }
     u->avatar = avatar;
     u->message_id = message_id;
     u->reply = reply;
