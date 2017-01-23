@@ -224,7 +224,7 @@ void mtproto_client::rpc_send_packet(const char* data, size_t len)
     struct {
         int64_t auth_key_id;
         int64_t out_msg_id;
-        int msg_len;
+        int32_t msg_len;
     } unenc_msg_header;
 
     memset(&unenc_msg_header, 0, sizeof(unenc_msg_header));
@@ -471,7 +471,7 @@ bool mtproto_client::process_respq_answer(const char* packet, int len, bool temp
     auto result = fetch_i32(&in);
     TGL_ASSERT_UNUSED(result, result == static_cast<int32_t>(CODE_res_pq));
 
-    int tmp[4];
+    int32_t tmp[4];
     fetch_i32s(&in, tmp, 4);
     if (memcmp(tmp, m_nonce.data(), 16)) {
         TGL_ERROR("nonce mismatch");

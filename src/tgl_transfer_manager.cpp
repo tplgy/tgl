@@ -610,9 +610,7 @@ void query_upload_encrypted_file::assemble()
     out_i32(CODE_input_encrypted_chat);
     out_i32(u->to_id.peer_id);
     out_i64(m_secret_chat->id().access_hash);
-    int64_t r;
-    tgl_secure_random(reinterpret_cast<unsigned char*>(&r), 8);
-    out_i64(r);
+    out_i64(m_message->permanent_id);
     encryptor.start();
     out_i32(CODE_decrypted_message_layer);
     out_random(15 + 4 * (tgl_random<int>() % 3));
@@ -620,7 +618,7 @@ void query_upload_encrypted_file::assemble()
     out_i32(m_secret_chat->private_facet()->raw_in_seq_no());
     out_i32(m_secret_chat->private_facet()->raw_out_seq_no());
     out_i32(CODE_decrypted_message);
-    out_i64(r);
+    out_i64(m_message->permanent_id);
     out_i32(m_secret_chat->ttl());
     out_string("");
 
