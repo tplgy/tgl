@@ -847,6 +847,7 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_messag
     {
         auto action = std::make_shared<tgl_message_action_channel_create>();
         action->title = DS_STDSTR(DS_MA->title);
+        return action;
     }
     case CODE_message_action_chat_migrate_to:
         return std::make_shared<tgl_message_action_chat_migrate_to>();
