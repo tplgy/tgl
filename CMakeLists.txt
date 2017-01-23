@@ -106,6 +106,8 @@ set(PUBLIC_HEADERS
     include/tgl/tgl_transfer_manager.h
     include/tgl/tgl_typing_status.h
     include/tgl/tgl_update_callback.h
+    include/tgl/tgl_unconfirmed_secret_message.h
+    include/tgl/tgl_unconfirmed_secret_message_storage.h
     include/tgl/tgl_user.h
     include/tgl/tgl_value.h
 )
@@ -135,6 +137,7 @@ set(PRIVATE_HEADERS
     src/tgl_secret_chat_private.h
     src/tgl_session.h
     src/tools.h
+    src/unconfirmed_secret_message.h
     src/updates.h
 )
 
@@ -154,6 +157,7 @@ set(SOURCES
     src/queries-encrypted.cpp
     src/query_messages_send_encrypted_action.cpp
     src/query_messages_send_encrypted_base.cpp
+    src/query_messages_send_encrypted_file.cpp
     src/query_messages_send_encrypted_message.cpp
     src/secret_chat_encryptor.cpp
     src/structures.cpp
@@ -165,6 +169,7 @@ set(SOURCES
     src/tgl_session.cpp
     src/tgl_transfer_manager.cpp
     src/tools.cpp
+    src/unconfirmed_secret_message.cpp
     src/updates.cpp
 )
 

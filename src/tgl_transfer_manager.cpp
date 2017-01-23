@@ -674,8 +674,7 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
             std::string(),
             nullptr,
             nullptr,
-            nullptr,
-            secret_chat->layer(), 0, 0);
+            nullptr);
     message->set_pending(true).set_unread(true);
     auto q = std::make_shared<query_messages_send_encrypted_file>(secret_chat, u, message,
             [=](bool success, const std::shared_ptr<tgl_message>& message) {
@@ -689,13 +688,15 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
 void query_messages_send_encrypted_file::assemble()
 {
     const auto& u = m_upload;
-    secret_chat_encryptor encryptor(m_secret_chat, serializer());
+
     out_i32(CODE_messages_send_encrypted_file);
     out_i32(CODE_input_encrypted_chat);
     out_i32(u->to_id.peer_id);
     out_i64(m_secret_chat->id().access_hash);
     out_i64(m_message->permanent_id);
+    secret_chat_encryptor encryptor(m_secret_chat, serializer());
     encryptor.start();
+    size_t capture_start = begin_unconfirmed_message(CODE_messages_send_encrypted_file);
     out_i32(CODE_decrypted_message_layer);
     out_random(15 + 4 * (tgl_random<int>() % 3));
     out_i32(TGL_ENCRYPTED_LAYER);
@@ -757,8 +758,11 @@ void query_messages_send_encrypted_file::assemble()
     set_message_media(DS_DMM);
     assert(in.ptr == in.end);
 
+    append_blob_to_unconfirmed_message(capture_start);
+
     encryptor.end();
 
+    capture_start = serializer()->char_size();
     if (u->size < BIG_FILE_THRESHOLD) {
         out_i32(CODE_input_encrypted_file_uploaded);
     } else {
@@ -776,6 +780,8 @@ void query_messages_send_encrypted_file::assemble()
     memcpy(str + 32, u->init_iv.data(), 32);
     TGLC_md5(str, 64, md5);
     out_i32((*(int *)md5) ^ (*(int *)(md5 + 4)));
+
+    append_blob_to_unconfirmed_message(capture_start);
 
     free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
 }

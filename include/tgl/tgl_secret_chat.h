@@ -102,7 +102,7 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_secret_chat_exchang
 class tgl_secret_chat_private_facet;
 struct tgl_secret_chat_private;
 
-class tgl_secret_chat {
+class tgl_secret_chat: public std::enable_shared_from_this<tgl_secret_chat> {
 public:
     tgl_secret_chat();
     tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id);
@@ -117,6 +117,11 @@ public:
                     const unsigned char* g_key, size_t g_key_length,
                     const unsigned char* exchange_key, size_t exchange_key_length);
     ~tgl_secret_chat();
+
+    enum class qos { real_time, normal };
+
+    qos quality_of_service() const;
+    void set_quality_of_service(qos);
 
     const tgl_input_peer_t& id() const;
     int64_t exchange_id() const;

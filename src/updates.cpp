@@ -32,6 +32,7 @@
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_queries.h"
 #include "tgl/tgl_update_callback.h"
+#include "tgl_secret_chat_private.h"
 
 #include <assert.h>
 
@@ -276,9 +277,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     */
     case CODE_update_new_encrypted_message:
-        if (auto message = tglf_fetch_encrypted_message(DS_U->encr_message)) {
-            tglf_encrypted_message_received(message);
-        }
+        tgl_secret_chat_private_facet::imbue_encrypted_message(DS_U->encr_message);
         break;
     case CODE_update_encryption:
         if (auto secret_chat = tglf_fetch_alloc_encrypted_chat(DS_U->encr_chat)) {

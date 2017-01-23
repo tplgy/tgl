@@ -50,7 +50,8 @@ void tgl_do_confirm_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat
 void tgl_do_accept_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat, int64_t exchange_id, const std::vector<unsigned char>& g_a);
 void tgl_do_commit_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat, const std::vector<unsigned char>& g_a);
 void tgl_do_abort_exchange(const std::shared_ptr<tgl_secret_chat>& secret_chat);
-void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>& secret_chat, int32_t start_seq_no, int32_t end_seq_no);
+void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>&, int32_t start_seq_no, int32_t end_seq_no);
+void tgl_do_resend_encr_chat_messages(const std::shared_ptr<tgl_secret_chat>&, int32_t start_seq_no, int32_t end_seq_no);
 
 void tgl_secret_chat_deleted(const std::shared_ptr<tgl_secret_chat>& secret_chat);
 

@@ -34,9 +34,6 @@
 #include "tgl/tgl_message_media.h"
 
 
-void tglf_encrypted_message_received(const std::shared_ptr<tgl_message>& message);
-
-std::shared_ptr<tgl_message> tglf_fetch_encrypted_message(const tl_ds_encrypted_message*);
 std::shared_ptr<tgl_user> tglf_fetch_alloc_user(const tl_ds_user* DS_U, bool invoke_callbacks = true);
 std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(const tl_ds_user_full* DS_U);
 std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(const tl_ds_chat* DS_C, bool invoke_callbacks = true);

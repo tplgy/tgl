@@ -1,5 +1,6 @@
 #include "tgl/tgl_message.h"
 
+#include "auto/constants.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_secret_chat.h"
@@ -74,15 +75,9 @@ tgl_message::tgl_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::string& message,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
-        const tl_ds_encrypted_file* file,
-        int32_t layer, int32_t raw_in_seq_no, int32_t raw_out_seq_no)
+        const tl_ds_encrypted_file* file)
     : tgl_message(message_id, from_id, secret_chat->id(), nullptr, nullptr, date, message, nullptr, nullptr, 0, nullptr)
 {
-    secret_message_meta = std::make_shared<tgl_secret_message_meta>();
-    secret_message_meta->layer = layer;
-    secret_message_meta->raw_in_seq_no = raw_in_seq_no;
-    secret_message_meta->raw_out_seq_no = raw_out_seq_no;
-
     if (action) {
         this->action = tglf_fetch_message_action_encrypted(action);
         this->set_service(true);

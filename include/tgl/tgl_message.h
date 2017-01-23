@@ -38,13 +38,6 @@ struct tgl_message_reply_markup {
     tgl_message_reply_markup(): flags(0) { }
 };
 
-struct tgl_secret_message_meta {
-    int32_t layer;
-    int32_t raw_in_seq_no;
-    int32_t raw_out_seq_no;
-    tgl_secret_message_meta(): layer(0), raw_in_seq_no(-1), raw_out_seq_no(-1) { }
-};
-
 class tgl_secret_chat;
 struct tl_ds_message_media;
 struct tl_ds_message_action;
@@ -68,7 +61,6 @@ struct tgl_message {
     std::shared_ptr<tgl_message_reply_markup> reply_markup;
     std::shared_ptr<tgl_message_action> action;
     std::shared_ptr<tgl_message_media> media;
-    std::shared_ptr<tgl_secret_message_meta> secret_message_meta;
     std::string message;
 
     tgl_message();
@@ -92,8 +84,7 @@ struct tgl_message {
             const std::string& message,
             const tl_ds_decrypted_message_media* media,
             const tl_ds_decrypted_message_action* action,
-            const tl_ds_encrypted_file* file,
-            int32_t layer, int32_t raw_in_seq_no, int32_t raw_out_seq_no);
+            const tl_ds_encrypted_file* file);
 
     bool is_unread() const { return m_flags[index_unread]; }
     bool is_outgoing() const { return m_flags[index_outgoing]; }

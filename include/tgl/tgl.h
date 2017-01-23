@@ -68,6 +68,7 @@ class tgl_timer;
 class tgl_timer_factory;
 class tgl_update_callback;
 class tgl_secret_chat;
+class tgl_unconfirmed_secret_message_storage;
 struct tgl_message;
 struct tgl_bn_context;
 
@@ -132,6 +133,8 @@ struct tgl_state {
     const std::shared_ptr<tgl_connection_factory>& connection_factory() const { return m_connection_factory; }
     const std::shared_ptr<tgl_timer_factory>& timer_factory() const { return m_timer_factory; }
     const std::shared_ptr<tgl_update_callback>& callback() const { return m_callback; }
+    const std::shared_ptr<tgl_unconfirmed_secret_message_storage> unconfirmed_secret_message_storage() const { return m_unconfirmed_secret_message_storage; }
+    void set_unconfirmed_secret_message_storage(const std::shared_ptr<tgl_unconfirmed_secret_message_storage>& storage) { m_unconfirmed_secret_message_storage = storage; }
 
     int32_t pts() const { return m_pts; }
     int32_t qts() const { return m_qts; }
@@ -209,6 +212,7 @@ private:
     std::shared_ptr<tgl_timer_factory> m_timer_factory;
     std::shared_ptr<tgl_connection_factory> m_connection_factory;
     std::shared_ptr<tgl_update_callback> m_callback;
+    std::shared_ptr<tgl_unconfirmed_secret_message_storage> m_unconfirmed_secret_message_storage;
 
     std::unique_ptr<tgl_bn_context> m_bn_ctx;
 

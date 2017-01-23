@@ -23,17 +23,48 @@
 
 #include "secret_chat_encryptor.h"
 
+query_messages_send_encrypted_action::query_messages_send_encrypted_action(
+        const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message,
+        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) throw(std::runtime_error)
+    : query_messages_send_encrypted_base("send encrypted action (reassembled)", secret_chat, nullptr, callback, true)
+{
+    const auto& blobs = unconfirmed_message->blobs();
+    if (unconfirmed_message->constructor_code() != CODE_messages_send_encrypted_service
+            || blobs.size() != 1) {
+        throw std::runtime_error("invalid message blob for query_messages_send_encrypted_action");
+    }
+
+    const std::string& layer_blob = blobs[0];
+    if (layer_blob.size() % 4) {
+        throw std::runtime_error("message blob for query_messages_send_encrypted_action don't align in 4 bytes boundary");
+    }
+
+    out_i32(CODE_messages_send_encrypted_service);
+    out_i32(CODE_input_encrypted_chat);
+    out_i32(m_secret_chat->id().peer_id);
+    out_i64(m_secret_chat->id().access_hash);
+    out_i64(unconfirmed_message->message_id());
+    secret_chat_encryptor encryptor(m_secret_chat, serializer());
+    encryptor.start();
+    out_i32s(reinterpret_cast<const int32_t*>(layer_blob.data()), layer_blob.size() / 4);
+    encryptor.end();
+
+    construct_message(unconfirmed_message->message_id(), unconfirmed_message->date(), layer_blob);
+}
+
 void query_messages_send_encrypted_action::assemble()
 {
     assert(m_message->action);
 
-    secret_chat_encryptor encryptor(m_secret_chat, serializer());
     out_i32(CODE_messages_send_encrypted_service);
     out_i32(CODE_input_encrypted_chat);
     out_i32(m_secret_chat->id().peer_id);
     out_i64(m_secret_chat->id().access_hash);
     out_i64(m_message->permanent_id);
+    secret_chat_encryptor encryptor(m_secret_chat, serializer());
     encryptor.start();
+    size_t start = begin_unconfirmed_message(CODE_messages_send_encrypted_service);
     out_i32(CODE_decrypted_message_layer);
     out_random(15 + 4 * (tgl_random<int>() % 3));
     out_i32(TGL_ENCRYPTED_LAYER);
@@ -108,5 +139,7 @@ void query_messages_send_encrypted_action::assemble()
     default:
         assert(false);
     }
+    append_blob_to_unconfirmed_message(start);
     encryptor.end();
+    end_unconfirmed_message();
 }

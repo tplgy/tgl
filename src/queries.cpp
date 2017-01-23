@@ -89,6 +89,9 @@ bool query::send()
     m_ack_received = false;
 
     will_send();
+
+    TGL_DEBUG("sending query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_client->id());
+
     m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
     if (m_msg_id == -1) {
         m_msg_id = 0;
@@ -221,7 +224,6 @@ void query::execute(const std::shared_ptr<mtproto_client>& client, execution_opt
         return;
     }
 
-    TGL_DEBUG("sending query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_client->id());
     if (!send()) {
         return;
     }
@@ -1289,8 +1291,7 @@ int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
         tgl_peer_id_t from_id = tgl_state::instance()->our_id();
 
         assert(secret_chat);
-        auto message = std::make_shared<tgl_message>(secret_chat, message_id, from_id, &date, text, &TDSM, nullptr, nullptr,
-                secret_chat->layer(), secret_chat->private_facet()->raw_in_seq_no(), secret_chat->private_facet()->raw_out_seq_no());
+        auto message = std::make_shared<tgl_message>(secret_chat, message_id, from_id, &date, text, &TDSM, nullptr, nullptr);
         message->set_unread(true).set_pending(true);
         tgl_do_send_encr_msg(secret_chat, message, callback);
         tgl_state::instance()->callback()->new_messages({message});
@@ -3131,9 +3132,7 @@ public:
 
             int encrypted_message_count = DS_LVAL(DS_UD->new_encrypted_messages->cnt);
             for (int i = 0; i < encrypted_message_count; i++) {
-                if (auto message = tglf_fetch_encrypted_message(DS_UD->new_encrypted_messages->data[i])) {
-                    tglf_encrypted_message_received(message);
-                }
+                tgl_secret_chat_private_facet::imbue_encrypted_message(DS_UD->new_encrypted_messages->data[i]);
             }
 
             for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {

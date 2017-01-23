@@ -39,9 +39,14 @@ public:
             const std::shared_ptr<tgl_upload>& upload,
             const std::shared_ptr<tgl_message>& message,
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
-        : query_messages_send_encrypted_base("upload encrypted file", secret_chat, message, callback)
+        : query_messages_send_encrypted_base("send encrypted file message", secret_chat, message, callback, false)
         , m_upload(upload)
     { }
+
+    query_messages_send_encrypted_file(
+            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::shared_ptr<tgl_unconfirmed_secret_message>& message,
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) throw(std::runtime_error);
 
     virtual void assemble() override;
 

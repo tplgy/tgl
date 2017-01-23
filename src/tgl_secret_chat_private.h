@@ -34,11 +34,19 @@
 #include <cstring>
 #include <functional>
 #include <map>
+#include <utility>
 #include <vector>
 
 static constexpr int32_t TGL_ENCRYPTED_LAYER = 17;
 
 class query;
+class tgl_unconfirmed_secret_message;
+
+struct secret_message {
+    std::shared_ptr<tgl_message> message;
+    int32_t raw_in_seq_no = -1;
+    int32_t raw_out_seq_no = -1;
+};
 
 struct tgl_secret_chat_private {
     int64_t m_temp_key_fingerprint;
@@ -65,9 +73,12 @@ struct tgl_secret_chat_private {
     unsigned char m_key_sha[20];
     int32_t m_out_seq_no;
     std::shared_ptr<query> m_last_depending_query;
-    std::map<int32_t, std::shared_ptr<tgl_message>> m_pending_received_messages;
-    std::shared_ptr<tgl_timer> m_timer;
+    std::map<int32_t, secret_message> m_pending_received_messages;
+    std::shared_ptr<tgl_timer> m_fill_hole_timer;
+    std::shared_ptr<tgl_timer> m_skip_hole_timer;
     int64_t m_last_depending_query_id;
+    bool m_unconfirmed_message_loaded;
+    tgl_secret_chat::qos m_qos;
 
     tgl_secret_chat_private()
         : m_temp_key_fingerprint(0)
@@ -90,6 +101,8 @@ struct tgl_secret_chat_private {
         , m_encr_prime_bn(nullptr)
         , m_out_seq_no(0)
         , m_last_depending_query_id(0)
+        , m_unconfirmed_message_loaded(false)
+        , m_qos(tgl_secret_chat::qos::normal)
     {
         memset(m_key, 0, sizeof(m_key));
         memset(m_key_sha, 0, sizeof(m_key_sha));
@@ -121,15 +134,32 @@ public:
     void set_state(const tgl_secret_chat_state& new_state);
     int64_t temp_key_fingerprint() const { return d->m_temp_key_fingerprint; }
     void set_temp_key_fingerprint(int64_t fingerprint) { d->m_temp_key_fingerprint = fingerprint; }
-    void queue_pending_received_message(const std::shared_ptr<tgl_message>& message,
-            double heal_hole_after_seconds, const std::function<void()>& heal_hole);
-    std::vector<std::shared_ptr<tgl_message>> dequeue_pending_received_messages(const std::shared_ptr<tgl_message>& new_message);
-    bool has_hole() const { return !d->m_pending_received_messages.empty(); }
-    std::vector<std::shared_ptr<tgl_message>> heal_all_holes();
+    std::pair<int32_t, int32_t> first_hole() const;
     int32_t raw_in_seq_no() const { return in_seq_no() * 2 + (admin_id() != tgl_state::instance()->our_id().peer_id); }
     int32_t raw_out_seq_no() const { return out_seq_no() * 2 + (admin_id() == tgl_state::instance()->our_id().peer_id); }
     int64_t last_depending_query_id() const { return d->m_last_depending_query_id; }
     void set_last_depending_query_id(int64_t query_id) { d->m_last_depending_query_id = query_id; }
+
+    std::shared_ptr<tgl_message> fetch_message(const tl_ds_encrypted_message*);
+    std::shared_ptr<tgl_message> construct_message(int64_t message_id, int64_t date,
+            const std::string& layer_blob, const std::string& file_info_blob);
+
+    static void imbue_encrypted_message(const tl_ds_encrypted_message*);
+
+private:
+    std::pair<secret_message, std::shared_ptr<tgl_unconfirmed_secret_message>>
+    fetch_message(const tl_ds_encrypted_message* DS_EM, bool construct_unconfirmed_message);
+
+    std::pair<secret_message, std::shared_ptr<tgl_unconfirmed_secret_message>>
+    fetch_message(tgl_in_buffer& in, int64_t message_id,
+            int64_t date, const tl_ds_encrypted_file* file, bool construct_unconfirmed_message);
+
+    void message_received(const secret_message& m, const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
+    bool decrypt_message(int*& decr_ptr, int* decr_end);
+    void queue_pending_received_message(const secret_message& m, const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
+    std::vector<secret_message> dequeue_pending_received_messages(const secret_message& new_message);
+    void process_messages(const std::vector<secret_message>& messages);
+    void load_unconfirmed_messages_if_needed();
 };
 
 inline tgl_secret_chat_private_facet* tgl_secret_chat::private_facet()

@@ -35,6 +35,7 @@
 #include "mtproto-utils.h"
 #include "queries.h"
 #include "query_messages_send_encrypted_action.h"
+#include "query_messages_send_encrypted_base.h"
 #include "query_messages_send_encrypted_message.h"
 #include "tgl_secret_chat_private.h"
 #include "tgl/tgl.h"
@@ -120,8 +121,7 @@ static void tgl_do_send_encr_action(const std::shared_ptr<tgl_secret_chat>& secr
             std::string(),
             nullptr,
             &action,
-            nullptr,
-            secret_chat->layer(), secret_chat->private_facet()->raw_in_seq_no(), secret_chat->private_facet()->raw_out_seq_no());
+            nullptr);
     msg->set_pending(true).set_unread(true);
     tgl_state::instance()->callback()->new_messages({msg});
     tgl_do_send_encr_msg(secret_chat, msg, callback);
@@ -145,12 +145,30 @@ void tgl_do_send_encr_chat_layer(const std::shared_ptr<tgl_secret_chat>& secret_
 void tgl_do_send_encr_chat_request_resend(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         int start_seq_no, int end_seq_no)
 {
+    TGL_DEBUG("requesting to resend range [" << start_seq_no << "," << end_seq_no << "]");
+
     struct tl_ds_decrypted_message_action action;
     action.magic = CODE_decrypted_message_action_resend;
     action.start_seq_no = &start_seq_no;
     action.end_seq_no = &end_seq_no;
 
     tgl_do_send_encr_action(secret_chat, action, nullptr);
+}
+
+void tgl_do_resend_encr_chat_messages(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        int32_t start_seq_no, int32_t end_seq_no)
+{
+    if (start_seq_no < 0 || end_seq_no < 0 || end_seq_no < start_seq_no) {
+        return;
+    }
+
+    TGL_DEBUG("trying to resend range [" << start_seq_no << "," << end_seq_no << "]");
+
+    auto queries = query_messages_send_encrypted_base::create_by_out_seq_no(secret_chat, start_seq_no, end_seq_no);
+
+    for (const auto& q: queries) {
+        q->execute(tgl_state::instance()->active_client());
+    }
 }
 
 void tgl_do_set_encr_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_chat, int ttl)
@@ -261,8 +279,7 @@ void tgl_do_send_location_encr(const tgl_input_peer_t& to_id, double latitude, d
             std::string(),
             &TDSM,
             nullptr,
-            nullptr,
-            secret_chat->layer(), secret_chat->private_facet()->raw_in_seq_no(), secret_chat->private_facet()->raw_out_seq_no());
+            nullptr);
     msg->set_unread(true).set_pending(true);
 
     free(TDSM.latitude);

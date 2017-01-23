@@ -79,4 +79,22 @@ static inline double tgl_get_monotonic_time()
     return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() * 1e-9;
 }
 
+static inline std::string tgl_binary_to_hex(const char* buffer, size_t length)
+{
+    assert(buffer);
+    assert(length);
+
+    static const char table[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    std::vector<char> result(length * 2);
+
+    size_t j = 0;
+    for (size_t i = 0; i < length; ++i) {
+        unsigned char c = buffer[i];
+        result[j++] = table[c >> 4];
+        result[j++] = table[c & 0xf];
+    }
+
+    return std::string(result.data(), result.size());
+}
+
 #endif

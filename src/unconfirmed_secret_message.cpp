@@ -15,35 +15,14 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-    Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016-2017
+    Copyright Topology LP 2017
 */
 
-#ifndef __TGL_SECRET_CHAT_ENCRYPTOR_H__
-#define __TGL_SECRET_CHAT_ENCRYPTOR_H__
+#include "unconfirmed_secret_message.h"
 
-#include <memory>
-
-class tgl_secret_chat;
-class mtprotocol_serializer;
-
-class secret_chat_encryptor
+std::shared_ptr<tgl_unconfirmed_secret_message> tgl_unconfirmed_secret_message::create_default_impl(int64_t message_id,
+        int64_t date, int32_t chat_id, int32_t in_seq_no, int32_t out_seq_no, bool is_out_going, uint32_t constructor_code)
 {
-public:
-    secret_chat_encryptor(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<mtprotocol_serializer>& serializer)
-        : m_secret_chat(secret_chat)
-        , m_serializer(serializer)
-        , m_encr_base(0)
-    { }
-
-    void start();
-    void end();
-
-private:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
-    std::shared_ptr<mtprotocol_serializer> m_serializer;
-    size_t m_encr_base;
-};
-
-#endif
+    return std::make_shared<unconfirmed_secret_message>(
+        message_id, date, chat_id, in_seq_no, out_seq_no, is_out_going, constructor_code);
+}
