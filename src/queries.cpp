@@ -201,9 +201,13 @@ static void tgl_do_transfer_auth(const std::shared_ptr<mtproto_client>& client, 
 
 void query::execute(const std::shared_ptr<mtproto_client>& client, execution_option option)
 {
+    if (m_client) {
+        m_client->remove_connection_status_observer(shared_from_this());
+    }
     m_exec_option = option;
     m_client = client;
     assert(m_client);
+    m_client->add_connection_status_observer(shared_from_this());
 
     if (!check_connectivity()) {
         return;
@@ -410,7 +414,11 @@ int query::handle_error(int error_code, const std::string& error_string)
 
                 m_ack_received = false;
                 m_session_id = 0;
+                if (m_client) {
+                    m_client->remove_connection_status_observer(shared_from_this());
+                }
                 m_client = tgl_state::instance()->active_client();
+                m_client->add_connection_status_observer(shared_from_this());
                 if (should_retry_after_recover_from_error() || is_login()) {
                     should_retry = true;
                 }
@@ -483,7 +491,7 @@ int query::handle_error(int error_code, const std::string& error_string)
         return 0;
     }
 
-    return on_error(error_code, error_string);
+    return on_error_internal(error_code, error_string);
 }
 
 void query::retry_within(double seconds)
@@ -519,7 +527,7 @@ bool query::check_logging_out()
     if (m_client->is_logging_out()) {
         assert(!is_logout());
         if (!is_force()) {
-            on_error(600, "LOGGING_OUT");
+            on_error_internal(600, "LOGGING_OUT");
             return false;
         }
     }
@@ -559,7 +567,21 @@ bool query::check_pending(bool transfer_auth)
 
 void query::on_disconnected()
 {
-    on_error(600, "NOT_CONNECTED");
+    on_error_internal(600, "NOT_CONNECTED");
+}
+
+void query::on_answer_internal(void* DS)
+{
+    assert(m_client);
+    m_client->remove_connection_status_observer(shared_from_this());
+    on_answer(DS);
+}
+
+int query::on_error_internal(int error_code, const std::string& error_string)
+{
+    assert(m_client);
+    m_client->remove_connection_status_observer(shared_from_this());
+    return on_error(error_code, error_string);
 }
 
 int tglq_query_result(tgl_in_buffer* in, int64_t id)
@@ -610,7 +632,7 @@ int query::handle_result(tgl_in_buffer* in)
     void* DS = fetch_ds_type_any(in, &m_type);
     assert(DS);
 
-    on_answer(DS);
+    on_answer_internal(DS);
     free_ds_type_any(DS, &m_type);
 
     assert(in->ptr == in->end);

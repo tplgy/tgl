@@ -1338,14 +1338,8 @@ void mtproto_client::restart_authorization()
     }
 }
 
-int mtproto_client::ready(const std::shared_ptr<tgl_connection>& c)
+void mtproto_client::connected()
 {
-    if (!m_session || !m_session->c) {
-        return -1;
-    }
-
-    assert(m_session->c == c);
-
     TGL_NOTICE("outbound rpc connection from DC " << m_id << " became ready");
 
     if (is_authorized()) {
@@ -1388,7 +1382,6 @@ int mtproto_client::ready(const std::shared_ptr<tgl_connection>& c)
         send_req_pq_packet();
         break;
     }
-    return 0;
 }
 
 void mtproto_client::send_all_acks()
@@ -1547,4 +1540,47 @@ void mtproto_client::add_ipv6_option(const std::string& address, int port)
 void mtproto_client::add_ipv4_option(const std::string& address, int port)
 {
     m_ipv4_options.push_back(std::make_pair(address, port));
+}
+
+void mtproto_client::connection_status_changed(const std::shared_ptr<tgl_connection>& c)
+{
+    if (!m_session || !m_session->c || m_session->c != c) {
+        return;
+    }
+
+    if (c->status() == tgl_connection_status::connected) {
+        connected();
+    }
+
+    if (tgl_state::instance()->active_client().get() == this) {
+        tgl_state::instance()->callback()->connection_status_changed(c->status());
+    }
+
+    for (const auto& weak_observer: m_connection_status_observers) {
+        if (const auto& observer = weak_observer.lock()) {
+            observer->connection_status_changed(c->status());
+        }
+    }
+}
+
+tgl_connection_status mtproto_client::connection_status() const
+{
+    if (!m_session || !m_session->c) {
+        return tgl_connection_status::disconnected;
+    }
+
+    return m_session->c->status();
+}
+
+void mtproto_client::add_connection_status_observer(const std::weak_ptr<connection_status_observer>& weak_observer)
+{
+    m_connection_status_observers.insert(weak_observer);
+    if (auto observer = weak_observer.lock()) {
+        observer->connection_status_changed(connection_status());
+    }
+}
+
+void mtproto_client::remove_connection_status_observer(const std::weak_ptr<connection_status_observer>& observer)
+{
+    m_connection_status_observers.erase(observer);
 }

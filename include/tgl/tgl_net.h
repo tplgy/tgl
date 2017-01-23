@@ -25,6 +25,8 @@
 #include <utility>
 #include <vector>
 
+#include "tgl_connection_status.h"
+
 class tgl_connection {
 public:
     virtual void open() = 0;
@@ -34,6 +36,7 @@ public:
     virtual ssize_t peek(void* data, size_t len) = 0;
     virtual size_t available_bytes_for_read() = 0;
     virtual void flush() = 0;
+    virtual tgl_connection_status status() const = 0;
 
     virtual ~tgl_connection() { }
 };

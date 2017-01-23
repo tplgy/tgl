@@ -50,6 +50,8 @@ class query_upload_part;
 
 enum class tgl_download_status
 {
+    waiting,
+    connecting,
     downloading,
     succeeded,
     failed,
@@ -59,6 +61,10 @@ enum class tgl_download_status
 inline static std::string to_string(tgl_download_status status)
 {
     switch (status) {
+    case tgl_download_status::waiting:
+        return "waiting";
+    case tgl_download_status::connecting:
+        return "connecting";
     case tgl_download_status::downloading:
         return "downloading";
     case tgl_download_status::succeeded:
@@ -67,10 +73,10 @@ inline static std::string to_string(tgl_download_status status)
         return "failed";
     case tgl_download_status::cancelled:
         return "cancelled";
-    default:
-        assert(false);
-        return "unknown";
     }
+
+    assert(false);
+    return "unknown";
 }
 
 inline static std::ostream& operator<<(std::ostream& os, tgl_download_status status)
@@ -81,6 +87,8 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_download_status sta
 
 enum class tgl_upload_status
 {
+    waiting,
+    connecting,
     uploading,
     succeeded,
     failed,
@@ -90,6 +98,10 @@ enum class tgl_upload_status
 inline static std::string to_string(tgl_upload_status status)
 {
     switch (status) {
+    case tgl_upload_status::waiting:
+        return "waiting";
+    case tgl_upload_status::connecting:
+        return "connecting";
     case tgl_upload_status::uploading:
         return "uploading";
     case tgl_upload_status::succeeded:
@@ -98,10 +110,10 @@ inline static std::string to_string(tgl_upload_status status)
         return "failed";
     case tgl_upload_status::cancelled:
         return "cancelled";
-    default:
-        assert(false);
-        return "unknown";
     }
+
+    assert(false);
+    return "unknown";
 }
 
 inline static std::ostream& operator<<(std::ostream& oss, tgl_upload_status status)
@@ -143,8 +155,8 @@ struct tgl_upload_document
     { }
 };
 
-using tgl_download_callback = std::function<void(tgl_download_status status, const std::string& file_name, int64_t downloaded_bytes)>;
-using tgl_upload_callback = std::function<void(tgl_upload_status status, const std::shared_ptr<tgl_message>& message, int64_t downloaded_bytes)>;
+using tgl_download_callback = std::function<void(tgl_download_status, const std::string& file_name, int64_t downloaded_bytes)>;
+using tgl_upload_callback = std::function<void(tgl_upload_status, const std::shared_ptr<tgl_message>& message, int64_t uploaded_bytes)>;
 using tgl_read_callback = std::function<std::shared_ptr<std::vector<uint8_t>>(uint32_t chunk_size)>;
 using tgl_upload_part_done_callback = std::function<void()>;
 

@@ -56,7 +56,6 @@ struct tgl_upload {
     tgl_document_type doc_type;
     std::string file_name;
     bool as_photo;
-    bool cancelled;
     bool animated;
     int32_t avatar;
     int32_t reply;
@@ -74,6 +73,7 @@ struct tgl_upload {
 
     int64_t message_id;
 
+    tgl_upload_status status;
     bool at_EOF;
 
     tgl_upload()
@@ -86,7 +86,6 @@ struct tgl_upload {
         , to_id()
         , doc_type(tgl_document_type::unknown)
         , as_photo(false)
-        , cancelled(false)
         , animated(false)
         , avatar(0)
         , reply(0)
@@ -96,6 +95,7 @@ struct tgl_upload {
         , thumb_width(0)
         , thumb_height(0)
         , message_id(0)
+        , status(tgl_upload_status::waiting)
         , at_EOF(false)
     { }
 
@@ -123,8 +123,8 @@ struct tgl_download {
         , size(size)
         , type(0)
         , fd(-1)
-        , cancelled(false)
         , location(location)
+        , status(tgl_download_status::waiting)
         , iv()
         , key()
         , valid(true)
@@ -137,8 +137,8 @@ struct tgl_download {
         , size(document->size)
         , type(0)
         , fd(-1)
-        , cancelled(false)
         , location()
+        , status(tgl_download_status::waiting)
         , iv()
         , key()
         , valid(true)
@@ -161,10 +161,10 @@ struct tgl_download {
     int32_t size;
     int32_t type;
     int fd;
-    bool cancelled;
     tgl_file_location location;
     std::string file_name;
     std::string ext;
+    tgl_download_status status;
     //encrypted documents
     std::vector<unsigned char> iv;
     std::vector<unsigned char> key;
@@ -242,20 +242,14 @@ public:
     virtual void on_answer(void* answer) override
     {
         TGL_DEBUG("offset=" << m_upload->offset << " size=" << m_upload->size);
-
-        if (m_callback) {
-            m_callback(tgl_upload_status::uploading, nullptr, m_upload->offset);
-        }
-
+        set_upload_status(tgl_upload_status::uploading);
         m_download_manager->upload_part_on_answer(shared_from_this(), answer);
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
         TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-        if (m_callback) {
-            m_callback(tgl_upload_status::failed, nullptr, 0);
-        }
+        set_upload_status(tgl_upload_status::failed);
         return 0;
     }
 
@@ -268,6 +262,44 @@ public:
         // offset of 4 seconds.
         return 20;
     }
+
+    virtual void connection_status_changed(tgl_connection_status status) override
+    {
+        if (upload_finished()) {
+            return;
+        }
+
+        tgl_upload_status upload_status;
+
+        switch (status) {
+        case tgl_connection_status::connecting:
+            upload_status = tgl_upload_status::connecting;
+            break;
+        case tgl_connection_status::disconnected:
+        case tgl_connection_status::connected:
+            upload_status = tgl_upload_status::waiting;
+            break;
+        }
+
+        set_upload_status(upload_status);
+    }
+
+    virtual void will_send() override
+    {
+        if (upload_finished()) {
+            return;
+        }
+        set_upload_status(tgl_upload_status::uploading);
+    }
+
+    void set_upload_status(tgl_upload_status status, const std::shared_ptr<tgl_message>& message = nullptr)
+    {
+        m_upload->status = status;
+        if (m_callback) {
+            m_callback(status, message, m_upload->offset);
+        }
+    }
+
 
     const tgl_upload_callback& callback() const
     {
@@ -287,6 +319,14 @@ public:
     const tgl_upload_part_done_callback& done_callback() const
     {
         return m_done_callback;
+    }
+
+private:
+    bool upload_finished() const
+    {
+        return m_upload->status == tgl_upload_status::succeeded
+                || m_upload->status == tgl_upload_status::failed
+                || m_upload->status == tgl_upload_status::cancelled;
     }
 
 private:
@@ -362,6 +402,35 @@ public:
         return 20.0;
     }
 
+    virtual void connection_status_changed(tgl_connection_status status) override
+    {
+        if (download_finished()) {
+            return;
+        }
+
+        tgl_download_status download_status;
+
+        switch (status) {
+        case tgl_connection_status::connecting:
+            download_status = tgl_download_status::connecting;
+            break;
+        case tgl_connection_status::disconnected:
+        case tgl_connection_status::connected:
+            download_status = tgl_download_status::waiting;
+            break;
+        }
+
+        set_download_status(download_status);
+    }
+
+    virtual void will_send() override
+    {
+        if (download_finished()) {
+            return;
+        }
+        set_download_status(tgl_download_status::downloading);
+    }
+
     const tgl_download_callback& callback() const
     {
         return m_callback;
@@ -370,6 +439,23 @@ public:
     const std::shared_ptr<tgl_download>& get_download() const
     {
         return m_download;
+    }
+
+    void set_download_status(tgl_download_status status)
+    {
+        m_download->status = status;
+        if (m_callback) {
+            std::string file_name = (status == tgl_download_status::succeeded || status == tgl_download_status::cancelled) ? m_download->file_name : std::string();
+            m_callback(status, file_name, m_download->offset);
+        }
+    }
+
+private:
+    bool download_finished() const
+    {
+        return m_download->status == tgl_download_status::succeeded
+                || m_download->status == tgl_download_status::failed
+                || m_download->status == tgl_download_status::cancelled;
     }
 
 private:
@@ -475,7 +561,8 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
     auto file_size = u->size;
     auto q = std::make_shared<query_send_msgs>(extra,
             [=](bool success, const std::shared_ptr<tgl_message>& message) {
-                callback(success ? tgl_upload_status::succeeded : tgl_upload_status::failed, message, file_size);
+                u->status = success ? tgl_upload_status::succeeded : tgl_upload_status::failed;
+                callback(u->status, message, file_size);
             });
 
     auto message = std::make_shared<tgl_message>();
@@ -597,7 +684,8 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
     message->set_pending(true).set_unread(true);
     auto q = std::make_shared<query_upload_encrypted_file>(secret_chat, u, message,
             [=](bool success, const std::shared_ptr<tgl_message>& message) {
-                callback(success ? tgl_upload_status::succeeded : tgl_upload_status::failed, message, file_size);
+                u->status = success ? tgl_upload_status::succeeded : tgl_upload_status::failed;
+                callback(u->status, message, file_size);
             });
 
     q->execute(tgl_state::instance()->active_client());
@@ -731,9 +819,9 @@ void tgl_transfer_manager::upload_end(const std::shared_ptr<tgl_upload>& u,
 
     m_uploads.erase(u->message_id);
 
-    if (u->cancelled) {
+    if (u->status == tgl_upload_status::cancelled) {
         if (callback) {
-            callback(tgl_upload_status::cancelled, nullptr, 0);
+            callback(u->status, nullptr, 0);
         }
         return;
     }
@@ -741,8 +829,9 @@ void tgl_transfer_manager::upload_end(const std::shared_ptr<tgl_upload>& u,
     if (u->avatar) {
         upload_avatar_end(u,
                 [=](bool success) {
+                    u->status = success ? tgl_upload_status::succeeded : tgl_upload_status::failed;
                     if(callback) {
-                        callback(success ? tgl_upload_status::succeeded : tgl_upload_status::failed, nullptr, 0);
+                        callback(u->status, nullptr, 0);
                     }
                 });
         return;
@@ -762,7 +851,7 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
 {
-    if (u->cancelled) {
+    if (u->status == tgl_upload_status::cancelled) {
         done_callback();
         upload_end(u, callback);
         return;
@@ -787,8 +876,9 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
 
         if (read_size == 0) {
             TGL_WARNING("could not send empty file");
+            u->status = tgl_upload_status::failed;
             if (callback) {
-                callback(tgl_upload_status::failed, nullptr, 0);
+                callback(u->status, nullptr, 0);
             }
             return;
         }
@@ -829,7 +919,7 @@ void tgl_transfer_manager::upload_thumb(const std::shared_ptr<tgl_upload>& u,
 {
     TGL_NOTICE("upload_thumb " << u->thumb.size() << " bytes @ " << u->thumb_width << "x" << u->thumb_height);
 
-    if (u->cancelled) {
+    if (u->status == tgl_upload_status::cancelled) {
         done_callback();
         upload_end(u, callback);
         return;
@@ -837,8 +927,9 @@ void tgl_transfer_manager::upload_thumb(const std::shared_ptr<tgl_upload>& u,
 
     if (u->thumb.size() > MAX_PART_SIZE) {
         TGL_ERROR("the thumnail size of " << u->thumb.size() << " is larger than the maximum part size of " << MAX_PART_SIZE);
+        u->status = tgl_upload_status::failed;
         if (callback) {
-            callback(tgl_upload_status::failed, nullptr, 0);
+            callback(u->status, nullptr, 0);
         }
     }
 
@@ -869,11 +960,16 @@ void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id,
     u->size = document->file_size;
     u->part_size = MAX_PART_SIZE;
 
+    if (callback) {
+        callback(u->status, nullptr, 0);
+    }
+
     static constexpr int MAX_PARTS = 3000; // How do we get this number?
     if (((u->size + u->part_size - 1) / u->part_size) > MAX_PARTS) {
         TGL_ERROR("file is too big");
+        u->status = tgl_upload_status::failed;
         if (callback) {
-            callback(tgl_upload_status::failed, nullptr, 0);
+            callback(u->status, nullptr, 0);
         }
         return;
     }
@@ -1018,17 +1114,19 @@ void tgl_transfer_manager::end_download(const std::shared_ptr<tgl_download>& d,
         close(d->fd);
     }
 
-    if (d->cancelled) {
+    if (d->status == tgl_download_status::cancelled) {
         boost::system::error_code ec;
         boost::filesystem::remove(d->file_name, ec);
         if (ec) {
             TGL_WARNING("failed to remove cancelled download: " << d->file_name << ": " << ec.value() << " - " << ec.message());
         }
         d->file_name = std::string();
+    } else {
+        d->status = tgl_download_status::succeeded;
     }
 
     if (callback) {
-        callback(d->cancelled ? tgl_download_status::cancelled : tgl_download_status::succeeded, d->file_name, d->size);
+        callback(d->status, d->file_name, d->size);
     }
 }
 
@@ -1041,10 +1139,7 @@ int tgl_transfer_manager::download_on_answer(const std::shared_ptr<query_downloa
         d->fd = open(d->file_name.c_str(), O_CREAT | O_WRONLY, 0640);
         if (d->fd < 0) {
             TGL_ERROR("can not open file [" << d->file_name << "] for writing: " << errno << " - " << strerror(errno));
-            if (q->callback()) {
-                (q->callback())(tgl_download_status::failed, std::string(), 0);
-            }
-
+            q->set_download_status(tgl_download_status::failed);
             return 0;
         }
     }
@@ -1071,7 +1166,7 @@ int tgl_transfer_manager::download_on_answer(const std::shared_ptr<query_downloa
 
     d->offset += len;
     if (d->offset < d->size) {
-        (q->callback())(tgl_download_status::downloading, std::string(), d->offset);
+        q->set_download_status(tgl_download_status::downloading);
         download_next_part(d, q->callback());
         return 0;
     } else {
@@ -1093,9 +1188,7 @@ int tgl_transfer_manager::download_on_error(const std::shared_ptr<query_download
     boost::filesystem::remove(d->file_name, ec);
     d->file_name = std::string();
 
-    if (q->callback()) {
-        (q->callback())(tgl_download_status::failed, d->file_name, 0);
-    }
+    q->set_download_status(tgl_download_status::failed);
 
     return 0;
 }
@@ -1108,7 +1201,7 @@ void tgl_transfer_manager::begin_download(const std::shared_ptr<tgl_download>& n
 void tgl_transfer_manager::download_next_part(const std::shared_ptr<tgl_download>& d,
         const tgl_download_callback& callback)
 {
-    if (d->cancelled) {
+    if (d->status == tgl_download_status::cancelled) {
         end_download(d, callback);
         return;
     }
@@ -1163,6 +1256,10 @@ int32_t tgl_transfer_manager::download_by_file_location(const tgl_file_location&
     }
 
     auto d = std::make_shared<tgl_download>(file_size, file_location);
+    if (callback) {
+        callback(d->status, std::string(), 0);
+    }
+
     TGL_DEBUG("download_file_location - file_size: " << file_size);
     download_next_part(d, callback);
     return d->id;
@@ -1184,6 +1281,9 @@ int32_t tgl_transfer_manager::download_document(const std::shared_ptr<tgl_docume
         const tgl_download_callback& callback)
 {
     std::shared_ptr<tgl_download> d = std::make_shared<tgl_download>(document);
+    if (callback) {
+        callback(d->status, std::string(), 0);
+    }
 
     if (!d->valid) {
         TGL_WARNING("encrypted document key finger print doesn't match");
@@ -1203,7 +1303,7 @@ void tgl_transfer_manager::cancel_download(int32_t download_id)
         TGL_DEBUG("can't find download " << download_id);
         return;
     }
-    it->second->cancelled = true;
+    it->second->status = tgl_download_status::cancelled;
     TGL_DEBUG("download " << download_id << " has been cancelled");
 }
 
@@ -1214,7 +1314,7 @@ void tgl_transfer_manager::cancel_upload(int64_t message_id)
         TGL_DEBUG("can't find upload " << message_id);
         return;
     }
-    it->second->cancelled = true;
+    it->second->status = tgl_upload_status::cancelled;
     TGL_DEBUG("upload " << message_id << " has been cancelled");
 }
 

@@ -51,6 +51,12 @@ class mtproto_client: public std::enable_shared_from_this<mtproto_client>
 public:
     explicit mtproto_client(int32_t id);
 
+    class connection_status_observer {
+    public:
+        virtual ~connection_status_observer() { }
+        virtual void connection_status_changed(tgl_connection_status status) = 0;
+    };
+
     enum class state {
         init,
         reqpq_sent,
@@ -68,7 +74,7 @@ public:
     virtual int32_t id() const override { return m_id; }
 
     // From tgl_mtproto_client
-    virtual int ready(const std::shared_ptr<tgl_connection>& c) override;
+    virtual void connection_status_changed(const std::shared_ptr<tgl_connection>& c) override;
     virtual bool try_rpc_execute(const std::shared_ptr<tgl_connection>& c) override;
     virtual void ping() override;
 
@@ -130,7 +136,13 @@ public:
     bool auth_transfer_in_process() const { return m_auth_transfer_in_process; }
     void set_auth_transfer_in_process(bool b = true) { m_auth_transfer_in_process = b; }
 
+    tgl_connection_status connection_status() const;
+
+    void add_connection_status_observer(const std::weak_ptr<connection_status_observer>& observer);
+    void remove_connection_status_observer(const std::weak_ptr<connection_status_observer>& observer);
+
 private:
+    void connected();
     void reset_temp_authorization();
     void cleanup_timer_expired();
     void send_all_acks();
@@ -193,6 +205,7 @@ private:
 
     std::shared_ptr<tgl_timer> m_session_cleanup_timer;
     std::shared_ptr<tgl_rsa_key> m_rsa_key;
+    std::set<std::weak_ptr<connection_status_observer>, std::owner_less<std::weak_ptr<connection_status_observer>>> m_connection_status_observers;
 };
 
 #endif

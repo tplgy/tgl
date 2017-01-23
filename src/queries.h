@@ -37,7 +37,7 @@
 
 class tgl_timer;
 
-class query: public std::enable_shared_from_this<query>
+class query: public std::enable_shared_from_this<query>, public mtproto_client::connection_status_observer
 {
 public:
     enum class execution_option { UNKNOWN, NORMAL, LOGIN, LOGOUT, FORCE };
@@ -136,6 +136,8 @@ public:
 
     bool ack_received() const { return m_ack_received; }
 
+    virtual void connection_status_changed(tgl_connection_status status) override { }
+
 protected:
     void timeout_within(double seconds);
     void retry_within(double seconds);
@@ -152,6 +154,8 @@ private:
     void clear_timers();
     bool is_in_the_same_session() const;
     bool send();
+    void on_answer_internal(void* DS);
+    int on_error_internal(int error_code, const std::string& error_string);
 
 private:
     int64_t m_msg_id;

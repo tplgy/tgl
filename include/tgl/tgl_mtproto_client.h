@@ -24,17 +24,18 @@
 
 #include <memory>
 
+#include "tgl_connection_status.h"
+
 class tgl_connection;
 
 class tgl_mtproto_client
 {
 public:
+    virtual ~tgl_mtproto_client() { }
     virtual int32_t id() const = 0;
-    virtual int ready(const std::shared_ptr<tgl_connection>& c) = 0;
+    virtual void connection_status_changed(const std::shared_ptr<tgl_connection>& c) = 0;
     virtual bool try_rpc_execute(const std::shared_ptr<tgl_connection>& c) = 0;
     virtual void ping() = 0;
-
-    virtual ~tgl_mtproto_client() { }
 };
 
 #endif
