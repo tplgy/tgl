@@ -512,8 +512,19 @@ void tgl_transfer_manager::upload_avatar_end(const std::shared_ptr<tgl_upload>& 
 {
     if (u->avatar > 0) {
         auto q = std::make_shared<query_send_msgs>(callback);
-        q->out_i32(CODE_messages_edit_chat_photo);
-        q->out_i32(u->avatar);
+        if (u->to_id.peer_type == tgl_peer_type::channel) {
+            q->out_i32(CODE_channels_edit_photo);
+            q->out_i32(CODE_input_channel);
+        } else {
+            q->out_i32(CODE_messages_edit_chat_photo);
+        }
+
+        q->out_i32(u->to_id.peer_id);
+
+        if (u->to_id.peer_type == tgl_peer_type::channel) {
+            q->out_i64(u->to_id.access_hash);
+        }
+
         q->out_i32(CODE_input_chat_uploaded_photo);
         if (u->size < BIG_FILE_THRESHOLD) {
             q->out_i32(CODE_input_file);
@@ -1015,19 +1026,18 @@ void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id,
     }
 }
 
-void tgl_transfer_manager::upload_chat_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
+void tgl_transfer_manager::upload_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
         const std::function<void(bool success)>& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
 {
-    assert(chat_id.peer_type == tgl_peer_type::chat);
     auto document = std::make_shared<tgl_upload_document>();
     document->type = tgl_document_type::image;
     document->file_name = file_name;
     document->file_size = file_size;
     upload_document(chat_id,
             0 /* message_id */,
-            0 /* avatar */,
+            1 /* avatar -1 indicates avatar*/,
             chat_id.peer_id /* reply */,
             true /* as_photo */,
             document,
@@ -1038,6 +1048,24 @@ void tgl_transfer_manager::upload_chat_photo(const tgl_input_peer_t& chat_id, co
             },
             read_callback,
             done_callback);
+}
+
+void tgl_transfer_manager::upload_chat_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
+        const std::function<void(bool success)>& callback,
+        const tgl_read_callback& read_callback,
+        const tgl_upload_part_done_callback& done_callback)
+{
+    assert(chat_id.peer_type == tgl_peer_type::chat);
+    upload_photo(chat_id, file_name, file_size, callback, read_callback, done_callback);
+}
+
+void tgl_transfer_manager::upload_channel_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
+        const std::function<void(bool success)>& callback,
+        const tgl_read_callback& read_callback,
+        const tgl_upload_part_done_callback& done_callback)
+{
+    assert(chat_id.peer_type == tgl_peer_type::channel);
+    upload_photo(chat_id, file_name, file_size, callback, read_callback, done_callback);
 }
 
 void tgl_transfer_manager::upload_profile_photo(const std::string& file_name, int32_t file_size,

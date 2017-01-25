@@ -194,6 +194,12 @@ public:
                         const tgl_read_callback& read_callback,
                         const tgl_upload_part_done_callback& done_callback);
 
+    void upload_channel_photo(const tgl_input_peer_t& chat_id, const std::string &file_name, int32_t file_size,
+                        const std::function<void(bool success)>& callback,
+                        const tgl_read_callback& read_callback,
+                        const tgl_upload_part_done_callback& done_callback);
+
+
     void cancel_upload(int64_t message_id);
 
     bool is_uploading_file(int64_t message_id) const;
@@ -226,6 +232,11 @@ private:
             const tgl_upload_callback& callback,
             const tgl_read_callback& read_callback,
             const tgl_upload_part_done_callback& part_done_callback);
+
+    void upload_photo(const tgl_input_peer_t& chat_id, const std::string &file_name, int32_t file_size,
+                      const std::function<void(bool success)>& callback,
+                      const tgl_read_callback& read_callback,
+                      const tgl_upload_part_done_callback& done_callback);
 
     int32_t download_document(const std::shared_ptr<tgl_download>&, const std::string& mime_type,
              const tgl_download_callback& callback);
