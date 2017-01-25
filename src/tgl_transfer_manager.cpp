@@ -42,7 +42,7 @@
 #include <boost/filesystem.hpp>
 #include <fstream>
 
-static constexpr size_t BIG_FILE_THRESHOLD = 16 * 1024 * 1024;
+static constexpr size_t BIG_FILE_THRESHOLD = 10 * 1024 * 1024;
 static constexpr size_t MAX_PART_SIZE = 512 * 1024;
 
 struct tgl_upload {
