@@ -269,7 +269,7 @@ public:
             return;
         }
 
-        tgl_upload_status upload_status;
+        tgl_upload_status upload_status = m_upload->status;
 
         switch (status) {
         case tgl_connection_status::connecting:
@@ -408,7 +408,7 @@ public:
             return;
         }
 
-        tgl_download_status download_status;
+        tgl_download_status download_status = m_download->status;
 
         switch (status) {
         case tgl_connection_status::connecting:
