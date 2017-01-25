@@ -645,12 +645,7 @@ static void tglu_work_update_short_sent_message(const tl_ds_updates* DS_U,
 
     if (std::shared_ptr<tgl_message> message = std::static_pointer_cast<tgl_message>(extra)) {
         auto new_message = tglf_fetch_alloc_message_short(DS_U);
-        new_message->to_id = message->to_id;
-        new_message->message = message->message;
-        tgl_state::instance()->callback()->message_id_updated(message->permanent_id,  new_message->permanent_id, message->to_id);
-        if (new_message->media) {
-            tgl_state::instance()->callback()->new_messages({new_message});
-        }
+        tgl_state::instance()->callback()->message_id_updated(message->permanent_id, new_message->permanent_id, message->to_id);
     }
 
     if (mode != tgl_update_mode::check_and_update_consistency) {
