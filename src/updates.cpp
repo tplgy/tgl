@@ -353,22 +353,33 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
 
             std::map<tgl_user_update_type, std::string> updates;
             int32_t mute_until = DS_LVAL(DS_NS->mute_until);
+            std::string notification_sound = DS_STDSTR(DS_NS->sound);
+            bool show_previews = DS_BOOL(DS_NS->show_previews);
+            int32_t event_mask = DS_LVAL(DS_NS->events_mask);
+            int32_t peer_id = 0;
+            tgl_peer_type peer_type = tgl_peer_type::unknown;
+
             switch (DS_NP->peer->magic) {
                 case CODE_peer_user:
-                    TGL_NOTICE("update_notify_settings, user_id " << DS_LVAL(DS_NP->peer->user_id) << ", settings " << mute_until);
-                    updates.emplace(tgl_user_update_type::mute_until, std::to_string(mute_until));
-                    tgl_state::instance()->callback()->user_update(DS_LVAL(DS_NP->peer->user_id) , updates);
+                    peer_id = DS_LVAL(DS_NP->peer->user_id);
+                    peer_type = tgl_peer_type::user;
                     break;
                 case CODE_peer_chat: // group
-                    TGL_NOTICE("update_notify_settings, chat_id " << DS_LVAL(DS_NP->peer->chat_id) << ", settings " << mute_until);
-                    tgl_state::instance()->callback()->chat_update_notify_settings(DS_LVAL(DS_NP->peer->chat_id), mute_until);
+                    peer_id = DS_LVAL(DS_NP->peer->chat_id);
+                    peer_type = tgl_peer_type::chat;
                     break;
                 case CODE_peer_channel:
-                    TGL_NOTICE("update_notify_settings, channel_id " << DS_LVAL(DS_NP->peer->channel_id) << ", settings " << mute_until);
-                    tgl_state::instance()->callback()->channel_update_notify_settings(DS_LVAL(DS_NP->peer->channel_id), mute_until);
+                    peer_id = DS_LVAL(DS_NP->peer->channel_id);
+                    peer_type = tgl_peer_type::channel;
                     break;
                 default:
                     break;
+            }
+            if (peer_type != tgl_peer_type::unknown && peer_id != 0) {
+                TGL_NOTICE("update_notify_settings, peer_id " << peer_id << " type " << static_cast<int32_t>(peer_type) << "; mute until " << mute_until
+                           << " show previews " << show_previews << " sound " << notification_sound);
+                tgl_state::instance()->callback()->update_notification_settings(peer_id, peer_type, mute_until,
+                        show_previews, notification_sound, event_mask);
             }
         }
         break;

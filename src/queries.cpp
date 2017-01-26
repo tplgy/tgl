@@ -1537,6 +1537,10 @@ public:
             m_state->last_message_ids.push_back(DS_LVAL(DS_D->top_message));
             m_state->unread_count.push_back(DS_LVAL(DS_D->unread_count));
             m_state->read_box_max_id.push_back(DS_LVAL(DS_D->read_inbox_max_id));
+            if (DS_D->notify_settings) {
+                tgl_state::instance()->callback()->update_notification_settings(peer_id.peer_id, peer_id.peer_type, DS_LVAL(DS_D->notify_settings->mute_until),
+                        DS_BOOL(DS_D->notify_settings->show_previews), DS_STDSTR(DS_D->notify_settings->sound), DS_LVAL(DS_D->notify_settings->events_mask));
+            }
         }
 
         std::vector<std::shared_ptr<tgl_message>> new_messages;
@@ -4434,7 +4438,7 @@ private:
 
 void tgl_do_update_notify_settings(
             const tgl_input_peer_t& peer_id,
-            int32_t mute_until,
+            int32_t mute_until, const std::string& sound, bool show_previews, int32_t mask,
             const std::function<void(bool)>& callback)
 {
     auto q = std::make_shared<query_update_notify_settings>(callback);
@@ -4443,8 +4447,8 @@ void tgl_do_update_notify_settings(
     q->out_input_peer(peer_id);
     q->out_i32(CODE_input_peer_notify_settings);
     q->out_i32(mute_until);
-    q->out_std_string(std::string(""));
-    q->out_i32(CODE_bool_true);
+    q->out_std_string(sound);
+    q->out_i32(show_previews ? CODE_bool_true : CODE_bool_false);
     q->out_i32(CODE_input_peer_notify_events_all);
 
     q->execute(tgl_state::instance()->active_client());

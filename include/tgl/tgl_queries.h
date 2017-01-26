@@ -167,7 +167,7 @@ void tgl_get_blocked_users(const std::function<void(std::vector<int32_t>)>& call
 
 // update peer notification settings.
 void tgl_do_update_notify_settings(const tgl_input_peer_t& peer_id,
-        int32_t mute_until, const std::function<void(bool)>& callback);
+        int32_t mute_until, const std::string& sound, bool show_previews, int32_t mask, const std::function<void(bool)>& callback);
 
 // query peer notification settings.
 void tgl_get_notify_settings(const tgl_input_peer_t& peer_id,

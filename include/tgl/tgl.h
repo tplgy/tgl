@@ -48,8 +48,7 @@ enum class tgl_user_update_type: int8_t {
     lastname,
     username,
     phone,
-    blocked,
-    mute_until
+    blocked
 };
 
 enum class tgl_user_status_type {
