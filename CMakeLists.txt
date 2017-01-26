@@ -127,6 +127,7 @@ set(PRIVATE_HEADERS
     src/queries-encrypted.h
     src/query_messages_send_encrypted_action.h
     src/query_messages_send_encrypted_base.h
+    src/query_messages_send_encrypted_file.h
     src/query_messages_send_encrypted_message.h
     src/secret_chat_encryptor.h
     src/structures.h

@@ -28,7 +28,7 @@
 #include "mtproto-common.h"
 #include "queries.h"
 #include "queries-encrypted.h"
-#include "query_messages_send_encrypted_base.h"
+#include "query_messages_send_encrypted_file.h"
 #include "secret_chat_encryptor.h"
 #include "tools.h"
 #include "tgl/tgl_mime_type.h"
@@ -464,26 +464,6 @@ private:
     tgl_download_callback m_callback;
 };
 
-class query_upload_encrypted_file: public query_messages_send_encrypted_base
-{
-public:
-    query_upload_encrypted_file(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<tgl_upload>& upload,
-            const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
-        : query_messages_send_encrypted_base("upload encrypted file", secret_chat, message, callback)
-        , m_upload(upload)
-    { }
-
-    virtual void assemble() override;
-
-private:
-    void set_message_media(const tl_ds_decrypted_message_media*);
-
-private:
-    std::shared_ptr<tgl_upload> m_upload;
-};
-
 tgl_transfer_manager::tgl_transfer_manager(std::string download_directory)
     : m_download_directory(download_directory)
 {
@@ -693,7 +673,7 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
             nullptr,
             secret_chat->layer(), 0, 0);
     message->set_pending(true).set_unread(true);
-    auto q = std::make_shared<query_upload_encrypted_file>(secret_chat, u, message,
+    auto q = std::make_shared<query_messages_send_encrypted_file>(secret_chat, u, message,
             [=](bool success, const std::shared_ptr<tgl_message>& message) {
                 u->status = success ? tgl_upload_status::succeeded : tgl_upload_status::failed;
                 callback(u->status, message, file_size);
@@ -702,7 +682,7 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
     q->execute(tgl_state::instance()->active_client());
 }
 
-void query_upload_encrypted_file::assemble()
+void query_messages_send_encrypted_file::assemble()
 {
     const auto& u = m_upload;
     secret_chat_encryptor encryptor(m_secret_chat, serializer());
@@ -796,7 +776,7 @@ void query_upload_encrypted_file::assemble()
     free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
 }
 
-void query_upload_encrypted_file::set_message_media(const tl_ds_decrypted_message_media* DS_DMM)
+void query_messages_send_encrypted_file::set_message_media(const tl_ds_decrypted_message_media* DS_DMM)
 {
     m_message->set_decrypted_message_media(DS_DMM);
 
