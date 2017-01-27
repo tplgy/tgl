@@ -242,7 +242,6 @@ public:
     virtual void on_answer(void* answer) override
     {
         TGL_DEBUG("offset=" << m_upload->offset << " size=" << m_upload->size);
-        set_upload_status(tgl_upload_status::uploading);
         m_download_manager->upload_part_on_answer(shared_from_this(), answer);
     }
 
@@ -484,6 +483,11 @@ std::string tgl_transfer_manager::get_file_path(int64_t secret)
 
 int tgl_transfer_manager::upload_part_on_answer(const std::shared_ptr<query_upload_part>& q, void*)
 {
+    auto status = q->get_upload()->status;
+    if (status == tgl_upload_status::waiting || status == tgl_upload_status::connecting) {
+        q->set_upload_status(tgl_upload_status::uploading);
+    }
+
     upload_part(q->get_upload(), q->callback(), q->read_callback(), q->done_callback());
     return 0;
 }
@@ -1174,7 +1178,10 @@ int tgl_transfer_manager::download_on_answer(const std::shared_ptr<query_downloa
 
     d->offset += len;
     if (d->offset < d->size) {
-        q->set_download_status(tgl_download_status::downloading);
+        auto status = q->get_download()->status;
+        if (status == tgl_download_status::waiting || status == tgl_download_status::connecting) {
+            q->set_download_status(tgl_download_status::downloading);
+        }
         download_next_part(d, q->callback());
         return 0;
     } else {
