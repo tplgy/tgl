@@ -2198,14 +2198,14 @@ void tgl_do_reply_location(tgl_message_id_t *_reply_id, double latitude, double 
 
 /* {{{ Rename chat */
 
-void tgl_do_rename_chat(const tgl_peer_id_t& id, const std::string& name,
-        const std::function<void(bool success)>& callback)
+void tgl_do_rename_chat(const tgl_input_peer_t& id, const std::string& new_title,
+                        const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_send_msgs>(callback);
     q->out_i32(CODE_messages_edit_chat_title);
     assert(id.peer_type == tgl_peer_type::chat);
     q->out_i32(id.peer_id);
-    q->out_std_string(name);
+    q->out_std_string(new_title);
     q->execute(tgl_state::instance()->active_client());
 }
 /* }}} */
@@ -2263,6 +2263,20 @@ void tgl_do_delete_channel(const tgl_input_peer_t& channel_id, const std::functi
     q->out_i32(channel_id.peer_id);
     q->out_i64(channel_id.access_hash);
     q->execute(tgl_state::instance()->active_client());
+}
+
+void tgl_do_channel_edit_title(const tgl_input_peer_t& channel_id,
+                          const std::string& title,
+                          const std::function<void(bool success)>& callback)
+{
+     auto q = std::make_shared<query_send_msgs>(callback);
+     q->out_i32(CODE_channels_edit_title);
+     assert(channel_id.peer_type == tgl_peer_type::channel);
+     q->out_i32(CODE_input_channel);
+     q->out_i32(channel_id.peer_id);
+     q->out_i64(channel_id.access_hash);
+     q->out_std_string(title);
+     q->execute(tgl_state::instance()->active_client());
 }
 
 class query_channels_set_about: public query
