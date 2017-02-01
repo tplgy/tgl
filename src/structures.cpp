@@ -1605,7 +1605,7 @@ static void process_encrypted_messages(const std::shared_ptr<tgl_secret_chat>& s
         } else if (action_type == tgl_message_action_type::delete_messages) {
             auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(message->action);
             for (int64_t id : action->msg_ids) {
-                tgl_state::instance()->callback()->message_deleted(id);
+                tgl_state::instance()->callback()->message_deleted(id, secret_chat->id());
             }
         } else if (action_type == tgl_message_action_type::resend) {
             //FIXME implement this

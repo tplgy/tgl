@@ -3452,10 +3452,11 @@ void tgl_do_create_channel(const std::string& topic, const std::string& about,
 class query_delete_msg: public query
 {
 public:
-    query_delete_msg(const tgl_input_peer_t& chat,
+    query_delete_msg(const tgl_input_peer_t& chat, int64_t message_id,
             const std::function<void(bool)>& callback)
         : query("delete message", TYPE_TO_PARAM(messages_affected_messages))
         , m_chat(chat)
+        , m_message_id(message_id)
         , m_callback(callback)
     { }
 
@@ -3468,7 +3469,7 @@ public:
             bl_do_message_delete(&M->permanent_id);
         }
 #endif
-        tgl_state::instance()->callback()->message_deleted(m_chat.peer_id);
+        tgl_state::instance()->callback()->message_deleted(m_message_id, m_chat);
 
         if (tgl_check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count))) {
             tgl_state::instance()->set_pts(DS_LVAL(DS_MAM->pts));
@@ -3490,6 +3491,7 @@ public:
 
 private:
     tgl_input_peer_t m_chat;
+    int64_t m_message_id;
     std::function<void(bool)> m_callback;
 };
 
@@ -3516,7 +3518,7 @@ void tgl_do_delete_msg(const tgl_input_peer_t& chat, int64_t message_id,
         }
         return;
     }
-    auto q = std::make_shared<query_delete_msg>(chat, callback);
+    auto q = std::make_shared<query_delete_msg>(chat, message_id, callback);
     if (chat.peer_type == tgl_peer_type::channel) {
         q->out_i32(CODE_channels_delete_messages);
         q->out_i32(CODE_input_channel);
