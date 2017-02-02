@@ -38,6 +38,7 @@ enum class tgl_channel_participant_type
 
 struct tgl_channel_participant: public tgl_chat_participant
 {
+    bool is_editor;
 };
 
 struct tgl_channel: public tgl_chat {

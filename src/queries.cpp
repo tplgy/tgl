@@ -2484,6 +2484,66 @@ void tgl_do_get_channel_participants(const tgl_input_peer_t& channel_id, int lim
     tgl_do_get_channel_participants(state, callback);
 }
 
+class query_channel_get_participant: public query
+{
+public:
+    query_channel_get_participant(int32_t channel_id, const std::function<void(bool)>& callback)
+        : query("channel get participant", TYPE_TO_PARAM(channels_channel_participant))
+        , m_channel_id(channel_id)
+        , m_callback(callback)
+    { }
+
+    virtual void on_answer(void* D) override
+    {
+        tl_ds_channels_channel_participant* DS_CP = static_cast<tl_ds_channels_channel_participant*>(D);
+        if (!DS_CP->participant) {
+            return;
+        }
+
+        bool admin = false;
+        bool creator = false;
+        auto magic = DS_CP->participant->magic;
+        if (magic == CODE_channel_participant_moderator || magic == CODE_channel_participant_editor) {
+            admin = true;
+        } else if (magic == CODE_channel_participant_creator) {
+            creator = true;
+            admin = true;
+        }
+
+        auto participant = std::make_shared<tgl_channel_participant>();
+        participant->user_id = DS_LVAL(DS_CP->participant->user_id);
+        participant->inviter_id = DS_LVAL(DS_CP->participant->inviter_id);
+        participant->date = DS_LVAL(DS_CP->participant->date);
+        participant->is_creator = creator;
+        participant->is_admin = admin;
+        tgl_state::instance()->callback()->channel_update_participants(m_channel_id, {participant});
+    }
+
+    virtual int on_error(int error_code, const std::string& error_string) override
+    {
+        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+        if (m_callback) {
+            m_callback(false);
+        }
+        return 0;
+    }
+
+private:
+    int32_t m_channel_id;
+    std::function<void(bool)> m_callback;
+};
+
+void tgl_do_get_channel_participant_self(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback)
+{
+    auto q = std::make_shared<query_channel_get_participant>(channel_id.peer_id, callback);
+    q->out_i32(CODE_channels_get_participant);
+    q->out_i32(CODE_input_channel);
+    q->out_i32(channel_id.peer_id);
+    q->out_i64(channel_id.access_hash);
+    q->out_i32(CODE_input_user_self);
+    q->execute(tgl_state::instance()->active_client());
+}
+
 /* {{{ Chat info */
 class query_chat_info: public query
 {

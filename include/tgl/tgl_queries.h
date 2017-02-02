@@ -119,6 +119,8 @@ void tgl_do_get_channel_info(const tgl_input_peer_t& id, const std::function<voi
 void tgl_do_get_channel_participants(const tgl_input_peer_t& channel_id, int limit, int offset, tgl_channel_participant_type type,
         const std::function<void(bool success)>& callback);
 
+void tgl_do_get_channel_participant_self(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback);
+
 // adds user *id* to chat *chat_id*
 // sends *limit* last messages from this chat to user
 void tgl_do_add_user_to_chat(const tgl_peer_id_t& chat_id, const tgl_input_peer_t& user_id, int32_t limit,

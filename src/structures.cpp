@@ -580,6 +580,34 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(const tl_ds_messages_
         channel->photo_small = tglf_fetch_file_location(DS_CF->chat_photo->sizes->data[0]->location);
     }
 
+    if (DS_CF->participants && DS_CF->participants->participants) {
+        std::vector<std::shared_ptr<tgl_channel_participant>> participants;
+        for (int i = 0; i < DS_LVAL(DS_CF->participants->participants->cnt); ++i) {
+            bool admin = false;
+            bool creator = false;
+            bool editor = false;
+            if (DS_CF->participants->participants->data[i]->magic == CODE_channel_participant_moderator) {
+                admin = true;
+            } else if (DS_CF->participants->participants->data[i]->magic == CODE_channel_participant_creator) {
+                creator = true;
+                admin = true;
+            } else if (DS_CF->participants->participants->data[i]->magic == CODE_channel_participant_editor) {
+                editor = true;
+            }
+            auto participant = std::make_shared<tgl_channel_participant>();
+            participant->user_id = DS_LVAL(DS_CF->participants->participants->data[i]->user_id);
+            participant->inviter_id = DS_LVAL(DS_CF->participants->participants->data[i]->inviter_id);
+            participant->date = DS_LVAL(DS_CF->participants->participants->data[i]->date);
+            participant->is_admin = admin;
+            participant->is_creator = creator;
+            participant->is_editor = editor;
+            participants.push_back(participant);
+        }
+        if (participants.size()) {
+            tgl_state::instance()->callback()->channel_update_participants(channel->id.peer_id, participants);
+        }
+    }
+
     tgl_state::instance()->callback()->channel_update_info(channel->id.peer_id, channel->about, channel->participants_count);
 
     return channel;
