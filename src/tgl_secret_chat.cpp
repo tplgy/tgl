@@ -750,11 +750,6 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, int64_t message_
         struct tl_ds_decrypted_message* DS_DM = fetch_ds_type_decrypted_message(&in, &decrypted_message);
         assert(DS_DM);
 
-        int layer = 8;
-        if (DS_DM->action && DS_DM->action->magic == CODE_decrypted_message_action_notify_layer) {
-            layer = *(DS_DM->action->layer);
-        }
-
         tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, user_id());
 
         m.message = std::make_shared<tgl_message>(shared_from_this(),
