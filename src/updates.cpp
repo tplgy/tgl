@@ -41,6 +41,11 @@ bool tgl_check_pts_diff(int32_t pts, int32_t pts_count) {
         return true;
     }
 
+    if (pts_count == 0) {
+        // no change in pts, so it's allowed
+        return true;
+    }
+
     if (pts < tgl_state::instance()->pts() + pts_count) {
         TGL_NOTICE("duplicate message with pts=" << pts);
         return false;
