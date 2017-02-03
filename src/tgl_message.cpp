@@ -1,6 +1,5 @@
 #include "tgl/tgl_message.h"
 
-#include "auto/constants.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_secret_chat.h"
