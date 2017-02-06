@@ -46,6 +46,7 @@
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "queries-encrypted.h"
+#include "query_user_info.h"
 #include "structures.h"
 #include "tools.h"
 #include "tgl/tgl.h"
@@ -62,96 +63,6 @@
 #include "tgl_session.h"
 #include "updates.h"
 
-constexpr int32_t TGL_SCHEME_LAYER = 45;
-constexpr int TGL_MAX_DC_NUM = 100;
-const char* TGL_VERSION = "0.1.0";
-
-void query::clear_timers()
-{
-    if (m_timer) {
-        m_timer->cancel();
-    }
-    m_timer = nullptr;
-
-    if (m_retry_timer) {
-        m_retry_timer->cancel();
-    }
-    m_retry_timer = nullptr;
-}
-
-inline bool query::is_in_the_same_session() const
-{
-    return m_client && m_session_id && m_client->session() && m_client->session()->session_id == m_session_id;
-}
-
-bool query::send()
-{
-    m_ack_received = false;
-
-    will_send();
-
-    TGL_DEBUG("sending query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_client->id());
-
-    m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
-    if (m_msg_id == -1) {
-        m_msg_id = 0;
-        handle_error(400, "client failed to send message");
-        return false;
-    }
-    if (is_logout()) {
-        m_client->set_logout_query_id(msg_id());
-    }
-    tgl_state::instance()->add_query(shared_from_this());
-    m_session_id = m_client->session()->session_id;
-    timeout_within(timeout_interval());
-    sent();
-
-    return true;
-}
-
-void query::alarm()
-{
-    TGL_DEBUG("alarm query #" << msg_id() << " (type '" << m_name << "') to DC " << m_client->id());
-
-    // The query could be referred by the timer only. In this case clear_timers
-    // will led to the destruction of the query. So we need to prevent this.
-    auto protect = shared_from_this();
-    clear_timers();
-
-    if (msg_id()) {
-        tgl_state::instance()->remove_query(shared_from_this());
-    }
-
-    if (!check_logging_out()) {
-        return;
-    }
-
-    if (!check_pending()) {
-        return;
-    }
-
-    if (is_in_the_same_session()) {
-        mtprotocol_serializer s;
-        s.out_i32(CODE_msg_container);
-        s.out_i32(1);
-        s.out_i64(msg_id());
-        s.out_i32(m_seq_no);
-        s.out_i32(m_serializer->char_size());
-        s.out_i32s(m_serializer->i32_data(), m_serializer->i32_size());
-        if (!send()) {
-            return;
-        }
-        TGL_NOTICE("resent query #" << msg_id() << " of size " << m_serializer->char_size() << " to DC " << m_client->id());
-    } else {
-        assert(m_client->session());
-        int64_t old_id = msg_id();
-        if (!send()) {
-            return;
-        }
-        TGL_NOTICE("resent query #" << old_id << " as #" << msg_id() << " of size " << m_serializer->char_size() << " to DC " << m_client->id());
-    }
-}
-
 void tglq_regen_query(int64_t id)
 {
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
@@ -160,15 +71,6 @@ void tglq_regen_query(int64_t id)
     }
     TGL_NOTICE("regen query " << id);
     q->regen();
-}
-
-void query::regen()
-{
-    m_ack_received = false;
-    if (!is_in_the_same_session() || (!m_client->is_configured() && !is_force())) {
-        m_session_id = 0;
-    }
-    retry_within(0);
 }
 
 void tglq_query_restart(int64_t id)
@@ -180,128 +82,11 @@ void tglq_query_restart(int64_t id)
     }
 }
 
-void query::timeout_alarm()
-{
-    auto protect = shared_from_this();
-    clear_timers();
-    on_timeout();
-    if (!should_retry_on_timeout()) {
-        if (msg_id()) {
-            tgl_state::instance()->remove_query(shared_from_this());
-        }
-        m_client->remove_pending_query(shared_from_this());
-    } else {
-        alarm();
-    }
-}
-
-static void tgl_transfer_auth_callback(const std::shared_ptr<mtproto_client>& client, bool success);
-static void tgl_do_transfer_auth(const std::shared_ptr<mtproto_client>& client, const std::function<void(bool success)>& callback);
-
-void query::execute(const std::shared_ptr<mtproto_client>& client, execution_option option)
-{
-    if (m_client) {
-        m_client->remove_connection_status_observer(shared_from_this());
-    }
-    m_exec_option = option;
-    m_client = client;
-    assert(m_client);
-    m_client->add_connection_status_observer(shared_from_this());
-
-    if (!check_logging_out()) {
-        return;
-    }
-
-    if (!check_pending(true)) {
-        return;
-    }
-
-    if (!send()) {
-        return;
-    }
-    m_seq_no = m_client->session()->seq_no - 1;
-    TGL_DEBUG("sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_client->id() << ": #" << msg_id());
-}
-
-bool query::execute_after_pending()
-{
-    // We only return false when the query is pending.
-
-    assert(m_client);
-    assert(m_exec_option != execution_option::UNKNOWN);
-
-    if (!check_logging_out()) {
-        return true;
-    }
-
-    if (!check_pending()) {
-        return false;
-    }
-
-    if (!send()) {
-        return true;
-    }
-
-    TGL_DEBUG("sent pending query \"" << m_name << "\" (" << msg_id() << ") of size " << m_serializer->char_size() << " to DC " << m_client->id());
-
-    return true;
-}
-
-void query::out_peer_id(const tgl_peer_id_t& id, int64_t access_hash)
-{
-    switch (id.peer_type) {
-    case tgl_peer_type::chat:
-        m_serializer->out_i32(CODE_input_peer_chat);
-        m_serializer->out_i32(id.peer_id);
-        break;
-    case tgl_peer_type::user:
-        if (id.peer_id == tgl_state::instance()->our_id().peer_id) {
-            m_serializer->out_i32(CODE_input_peer_self);
-        } else {
-            m_serializer->out_i32(CODE_input_peer_user);
-            m_serializer->out_i32(id.peer_id);
-            m_serializer->out_i64(access_hash);
-        }
-        break;
-    case tgl_peer_type::channel:
-        m_serializer->out_i32(CODE_input_peer_channel);
-        m_serializer->out_i32(id.peer_id);
-        m_serializer->out_i64(access_hash);
-        break;
-    default:
-        assert(false);
-    }
-}
-
-void query::out_input_peer(const tgl_input_peer_t& id)
-{
-    out_peer_id(tgl_peer_id_t(id.peer_type, id.peer_id), id.access_hash);
-}
-
 void tglq_query_ack(int64_t id)
 {
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
     if (q) {
         q->ack();
-    }
-}
-
-void query::ack()
-{
-    if (m_ack_received) {
-        return;
-    }
-
-    m_ack_received = true;
-    timeout_within(timeout_interval());
-
-    // FIXME: This a workaround to the weird server behavour. The server
-    // replies a logout query with ack and then closes the connection.
-    if (is_logout()) {
-        mtprotocol_serializer s;
-        s.out_i32(CODE_bool_true);
-        tgl_in_buffer in = { s.i32_data(), s.i32_data() + s.i32_size() };
-        handle_result(&in);
     }
 }
 
@@ -317,8 +102,6 @@ void tglq_query_delete(int64_t id)
         tgl_state::instance()->remove_query(q);
     }
 }
-
-static void resend_query_cb(const std::shared_ptr<query>& q, bool success);
 
 int tglq_query_error(tgl_in_buffer* in, int64_t id)
 {
@@ -338,226 +121,6 @@ int tglq_query_error(tgl_in_buffer* in, int64_t id)
     return 0;
 }
 
-static void tgl_do_check_password(const std::function<void(bool success)>& callback);
-
-static bool get_int_from_prefixed_string(int& number, const std::string& prefixed_string, const std::string& prefix)
-{
-    std::string number_string;
-    if (prefixed_string.size() >= prefix.size() + 1 && !prefixed_string.compare(0, prefix.size(), prefix)) {
-        number_string = prefixed_string.substr(prefix.size());
-    }
-
-    if (number_string.size()) {
-        try {
-            number = std::stoi(number_string);
-            return true;
-        } catch (...) {
-            return false;
-        }
-    }
-
-    return false;
-}
-
-static int get_dc_from_migration(const std::string& migration_error_string)
-{
-    int dc = -1;
-    if (get_int_from_prefixed_string(dc, migration_error_string, "USER_MIGRATE_")) {
-        return dc;
-    }
-
-    if (get_int_from_prefixed_string(dc, migration_error_string, "PHONE_MIGRATE_")) {
-        return dc;
-    }
-
-    if (get_int_from_prefixed_string(dc, migration_error_string, "NETWORK_MIGRATE_")) {
-        return dc;
-    }
-
-    return dc;
-}
-
-int query::handle_error(int error_code, const std::string& error_string)
-{
-    if (msg_id()) {
-        tgl_state::instance()->remove_query(shared_from_this());
-    }
-    auto protect = shared_from_this();
-    clear_timers();
-
-    int retry_within_seconds = 0;
-    bool should_retry = false;
-    bool error_handled = false;
-
-    switch (error_code) {
-        case 303: // migrate
-        {
-            TGL_NOTICE("trying to handle migration error of " << error_string);
-            int new_dc = get_dc_from_migration(error_string);
-            if (new_dc > 0 && new_dc < TGL_MAX_DC_NUM) {
-                tgl_state::instance()->set_active_dc(new_dc);
-                auto dc = tgl_state::instance()->active_client();
-
-                if (!dc->is_authorized()) {
-                    dc->restart_authorization();
-                }
-
-                m_ack_received = false;
-                m_session_id = 0;
-                if (m_client) {
-                    m_client->remove_connection_status_observer(shared_from_this());
-                }
-                m_client = tgl_state::instance()->active_client();
-                m_client->add_connection_status_observer(shared_from_this());
-                if (should_retry_after_recover_from_error() || is_login()) {
-                    should_retry = true;
-                }
-                error_handled = true;
-            }
-            break;
-        }
-        case 400:
-            // nothing to handle
-            // bad user input probably
-            break;
-        case 401:
-            if (error_string == "SESSION_PASSWORD_NEEDED") {
-                if (!tgl_state::instance()->is_password_locked()) {
-                    tgl_state::instance()->set_password_locked(true);
-                    tgl_do_check_password(std::bind(resend_query_cb, shared_from_this(), std::placeholders::_1));
-                }
-                if (should_retry_after_recover_from_error()) {
-                    should_retry = true;
-                }
-                error_handled = true;
-            } else if (error_string == "AUTH_KEY_UNREGISTERED" || error_string == "AUTH_KEY_INVALID") {
-                tgl_do_set_client_logged_out(m_client, true);
-                tgl_state::instance()->login();
-                if (should_retry_after_recover_from_error()) {
-                    should_retry = true;
-                }
-                error_handled = true;
-            } else if (error_string == "AUTH_KEY_PERM_EMPTY") {
-                assert(tgl_state::instance()->pfs_enabled());
-                m_client->restart_temp_authorization();
-                if (should_retry_after_recover_from_error()) {
-                    should_retry = true;
-                }
-                error_handled = true;
-            }
-            break;
-        case 403: // privacy violation
-            break;
-        case 404: // not found
-            break;
-        case 420: // flood
-        case 500: // internal error
-        default: // anything else treated as internal error
-        {
-            if (!get_int_from_prefixed_string(retry_within_seconds, error_string, "FLOOD_WAIT_")) {
-                if (error_code == 420) {
-                    TGL_ERROR("error 420: " << error_string);
-                }
-                retry_within_seconds = 10;
-            }
-            m_ack_received = false;
-            if (should_retry_after_recover_from_error()) {
-                should_retry = true;
-            }
-            if (!m_client->is_configured() && !is_force()) {
-                m_session_id = 0;
-            }
-            error_handled = true;
-            break;
-        }
-    }
-
-    if (should_retry) {
-        retry_within(retry_within_seconds);
-    }
-
-    if (error_handled) {
-        TGL_NOTICE("error for query #" << msg_id() << " error:" << error_code << " " << error_string << " (HANDLED)");
-        return 0;
-    }
-
-    return on_error_internal(error_code, error_string);
-}
-
-void query::retry_within(double seconds)
-{
-    if (!m_retry_timer) {
-        m_retry_timer = tgl_state::instance()->timer_factory()->create_timer(std::bind(&query::alarm, shared_from_this()));
-    }
-    m_retry_timer->start(seconds);
-}
-
-void query::timeout_within(double seconds)
-{
-    if (!m_timer) {
-        m_timer = tgl_state::instance()->timer_factory()->create_timer(std::bind(&query::timeout_alarm, shared_from_this()));
-    }
-
-    m_timer->start(seconds);
-}
-
-bool query::check_logging_out()
-{
-    if (m_client->is_logging_out()) {
-        assert(!is_logout());
-        if (!is_force()) {
-            on_error_internal(600, "LOGGING_OUT");
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool query::check_pending(bool transfer_auth)
-{
-    bool pending = false;
-
-    if (!m_client->session()) {
-        pending = true;
-        m_client->create_session();
-    }
-
-    if (!m_client->is_configured() && !is_force()) {
-        pending = true;
-    }
-
-    if (!m_client->is_logged_in() && !is_login() && !is_force()) {
-        pending = true;
-        if (transfer_auth && m_client != tgl_state::instance()->active_client()) {
-            tgl_do_transfer_auth(m_client, std::bind(tgl_transfer_auth_callback, m_client, std::placeholders::_1));
-        }
-    }
-
-    if (pending) {
-        will_be_pending();
-        m_client->add_pending_query(shared_from_this());
-        TGL_DEBUG("added query #" << msg_id() << "(type '" << name() << "') to pending list");
-        return false;
-    }
-
-    return true;
-}
-
-void query::on_answer_internal(void* DS)
-{
-    assert(m_client);
-    m_client->remove_connection_status_observer(shared_from_this());
-    on_answer(DS);
-}
-
-int query::on_error_internal(int error_code, const std::string& error_string)
-{
-    assert(m_client);
-    m_client->remove_connection_status_observer(shared_from_this());
-    return on_error(error_code, error_string);
-}
-
 int tglq_query_result(tgl_in_buffer* in, int64_t id)
 {
     std::shared_ptr<query> q = tgl_state::instance()->get_query(id);
@@ -568,75 +131,6 @@ int tglq_query_result(tgl_in_buffer* in, int64_t id)
 
     return q->handle_result(in);
 }
-
-int query::handle_result(tgl_in_buffer* in)
-{
-    int32_t op = prefetch_i32(in);
-
-    tgl_in_buffer save_in = { nullptr, nullptr };
-    std::unique_ptr<int32_t[]> packed_buffer;
-
-    if (op == CODE_gzip_packed) {
-        fetch_i32(in);
-        int l = prefetch_strlen(in);
-        const char* s = fetch_str(in, l);
-
-        constexpr size_t MAX_PACKED_SIZE = 1 << 24;
-        packed_buffer.reset(new int32_t[MAX_PACKED_SIZE / 4]);
-
-        int total_out = tgl_inflate(s, l, packed_buffer.get(), MAX_PACKED_SIZE);
-        TGL_DEBUG("inflated " << total_out << " bytes");
-        save_in = *in;
-        in->ptr = packed_buffer.get();
-        in->end = in->ptr + total_out / 4;
-    }
-
-    TGL_DEBUG("result for query #" << msg_id() << ". Size " << (long)4 * (in->end - in->ptr) << " bytes");
-
-    tgl_in_buffer skip_in = *in;
-    if (skip_type_any(&skip_in, &m_type) < 0) {
-        TGL_ERROR("skipped " << (long)(skip_in.ptr - in->ptr) << " int out of " << (long)(skip_in.end - in->ptr) << " (type " << m_type.type.id << ") (query type " << name() << ")");
-        TGL_ERROR("0x" << std::hex << *(in->ptr - 1) << " 0x" << *(in->ptr) << " 0x" << *(in->ptr + 1) << " 0x" << *(in->ptr + 2));
-        TGL_ERROR(in->print_buffer());
-        assert(false);
-    }
-
-    assert(skip_in.ptr == skip_in.end);
-
-    void* DS = fetch_ds_type_any(in, &m_type);
-    assert(DS);
-
-    on_answer_internal(DS);
-    free_ds_type_any(DS, &m_type);
-
-    assert(in->ptr == in->end);
-
-    auto protect = shared_from_this();
-    clear_timers();
-    tgl_state::instance()->remove_query(shared_from_this());
-
-    if (save_in.ptr) {
-        *in = save_in;
-    }
-
-    return 0;
-}
-
-void query::out_header()
-{
-    m_serializer->out_i32(CODE_invoke_with_layer);
-    m_serializer->out_i32(TGL_SCHEME_LAYER);
-    m_serializer->out_i32(CODE_init_connection);
-    m_serializer->out_i32(tgl_state::instance()->app_id());
-
-    m_serializer->out_string("x86");
-    m_serializer->out_string("OSX");
-    std::string buf = tgl_state::instance()->app_version() + " (TGL " + TGL_VERSION + ")";
-    m_serializer->out_std_string(buf);
-    m_serializer->out_string("en");
-}
-
-/* {{{ Get config */
 
 void fetch_dc_option(const tl_ds_dc_option* DS_DO)
 {
@@ -2599,36 +2093,6 @@ void tgl_do_get_channel_info(const tgl_input_peer_t& id,
 }
 /* }}} */
 
-/* {{{ User info */
-class query_user_info: public query
-{
-public:
-    explicit query_user_info(const std::function<void(bool, const std::shared_ptr<tgl_user>&)>& callback)
-        : query("user info", TYPE_TO_PARAM(user_full))
-        , m_callback(callback)
-    { }
-
-    virtual void on_answer(void* D) override
-    {
-        std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user_full(static_cast<tl_ds_user_full*>(D));
-        if (m_callback) {
-            m_callback(true, user);
-        }
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-        if (m_callback) {
-            m_callback(false, nullptr);
-        }
-        return 0;
-    }
-
-private:
-    std::function<void(bool, const std::shared_ptr<tgl_user>&)> m_callback;
-};
-
 void tgl_do_get_user_info(const tgl_input_peer_t& id, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback)
 {
     if (id.peer_type != tgl_peer_type::user) {
@@ -2648,117 +2112,6 @@ void tgl_do_get_user_info(const tgl_input_peer_t& id, const std::function<void(b
     q->execute(tgl_state::instance()->active_client());
 }
 
-static void resend_query_cb(const std::shared_ptr<query>& q, bool success)
-{
-    assert(success);
-
-    TGL_DEBUG("resend_query_cb");
-    tgl_state::instance()->set_dc_logged_in(tgl_state::instance()->active_client()->id());
-
-    auto user_info_q = std::make_shared<query_user_info>(nullptr);
-    user_info_q->out_i32(CODE_users_get_full_user);
-    user_info_q->out_i32(CODE_input_user_self);
-    user_info_q->execute(tgl_state::instance()->active_client());
-
-    if (const auto& client = q->client()) {
-        client->add_pending_query(q);
-        client->send_pending_queries();
-    }
-}
-/* }}} */
-
-/* {{{ Export auth */
-class query_import_auth: public query
-{
-public:
-    query_import_auth(const std::shared_ptr<mtproto_client>& client,
-            const std::function<void(bool)>& callback)
-        : query("import authorization", TYPE_TO_PARAM(auth_authorization))
-        , m_client(client)
-        , m_callback(callback)
-    { }
-
-    virtual void on_answer(void* D) override
-    {
-        tl_ds_auth_authorization* DS_U = static_cast<tl_ds_auth_authorization*>(D);
-        tglf_fetch_alloc_user(DS_U->user);
-
-        assert(m_client);
-        TGL_NOTICE("auth imported from DC " << tgl_state::instance()->active_client()->id() << " to DC " << m_client->id());
-
-        tgl_state::instance()->set_dc_logged_in(m_client->id());
-
-        if (m_callback) {
-            m_callback(true);
-        }
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-        if (m_callback) {
-            m_callback(false);
-        }
-        return 0;
-    }
-
-private:
-    std::shared_ptr<mtproto_client> m_client;
-    std::function<void(bool)> m_callback;
-};
-
-class query_export_auth: public query
-{
-public:
-    query_export_auth(const std::shared_ptr<mtproto_client>& client,
-            const std::function<void(bool)>& callback)
-        : query("export authorization", TYPE_TO_PARAM(auth_exported_authorization))
-        , m_client(client)
-        , m_callback(callback)
-    { }
-
-    virtual void on_answer(void* D) override
-    {
-        TGL_NOTICE("export_auth_on_answer " << m_client->id());
-        tl_ds_auth_exported_authorization* DS_EA = static_cast<tl_ds_auth_exported_authorization*>(D);
-        tgl_state::instance()->set_our_id(DS_LVAL(DS_EA->id));
-
-        auto q = std::make_shared<query_import_auth>(m_client, m_callback);
-        q->out_header();
-        q->out_i32(CODE_auth_import_authorization);
-        q->out_i32(tgl_state::instance()->our_id().peer_id);
-        q->out_string(DS_STR(DS_EA->bytes));
-        q->execute(m_client, query::execution_option::LOGIN);
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-        if (m_callback) {
-            m_callback(false);
-        }
-        return 0;
-    }
-
-private:
-    std::shared_ptr<mtproto_client> m_client;
-    std::function<void(bool)> m_callback;
-};
-
-// export auth from working DC and import to DC "num"
-static void tgl_do_transfer_auth(const std::shared_ptr<mtproto_client>& client, const std::function<void(bool success)>& callback)
-{
-    if (client->auth_transfer_in_process()) {
-        return;
-    }
-    client->set_auth_transfer_in_process(true);
-    TGL_NOTICE("transferring auth from DC " << tgl_state::instance()->active_client()->id() << " to DC " << client->id());
-    auto q = std::make_shared<query_export_auth>(client, callback);
-    q->out_i32(CODE_auth_export_authorization);
-    q->out_i32(client->id());
-    q->execute(tgl_state::instance()->active_client());
-}
-/* }}} */
 
 /* {{{ Add contact */
 class query_add_contacts: public query
@@ -4274,7 +3627,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-static void tgl_do_check_password(const std::function<void(bool success)>& callback)
+void tgl_do_check_password(const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_get_and_check_password>(callback);
     q->out_i32(CODE_account_get_password);
@@ -4699,7 +4052,7 @@ void tgl_do_set_client_configured(const std::shared_ptr<mtproto_client>& client,
         if (client->auth_transfer_in_process()) {
             client->send_pending_queries();
         } else {
-            tgl_do_transfer_auth(client, std::bind(tgl_transfer_auth_callback, client, std::placeholders::_1));
+            client->transfer_auth_to_me();
         }
     }
 }
@@ -4842,24 +4195,11 @@ void tgl_started_cb(bool success)
     }
 }
 
-static void tgl_transfer_auth_callback(const std::shared_ptr<mtproto_client>& client, bool success)
-{
-    assert(client);
-    client->set_auth_transfer_in_process(false);
-    if (!success) {
-        TGL_ERROR("auth transfer problem to DC " << client->id());
-        return;
-    }
-
-    TGL_NOTICE("auth transferred from DC " << tgl_state::instance()->active_client()->id() << " to DC " << client->id());
-    client->send_pending_queries();
-}
-
 void tgl_export_all_auth()
 {
     for (const auto& client: tgl_state::instance()->clients()) {
         if (client && !client->is_logged_in()) {
-            tgl_do_transfer_auth(client, std::bind(tgl_transfer_auth_callback, client, std::placeholders::_1));
+            client->transfer_auth_to_me();
         }
     }
 }

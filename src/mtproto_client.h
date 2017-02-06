@@ -141,6 +141,8 @@ public:
     void add_connection_status_observer(const std::weak_ptr<connection_status_observer>& observer);
     void remove_connection_status_observer(const std::weak_ptr<connection_status_observer>& observer);
 
+    void transfer_auth_to_me();
+
 private:
     void connected();
     void reset_temp_authorization();

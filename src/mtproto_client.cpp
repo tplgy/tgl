@@ -33,6 +33,7 @@
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "queries.h"
+#include "query_export_auth.h"
 #include "structures.h"
 #include "tgl_rsa_key.h"
 #include "tools.h"
@@ -1583,4 +1584,32 @@ void mtproto_client::add_connection_status_observer(const std::weak_ptr<connecti
 void mtproto_client::remove_connection_status_observer(const std::weak_ptr<connection_status_observer>& observer)
 {
     m_connection_status_observers.erase(observer);
+}
+
+void mtproto_client::transfer_auth_to_me()
+{
+    if (auth_transfer_in_process()) {
+        return;
+    }
+
+    assert(tgl_state::instance()->active_client()->id() != id());
+
+    m_auth_transfer_in_process = true;
+
+    TGL_DEBUG("transferring auth from DC " << tgl_state::instance()->active_client()->id() << " to DC " << id());
+
+    auto shared_this = shared_from_this();
+    auto q = std::make_shared<query_export_auth>(shared_this, [this, shared_this](bool success) {
+        m_auth_transfer_in_process = false;
+        if (!success) {
+            TGL_ERROR("auth transfer problem to DC " << id());
+            return;
+        }
+        TGL_DEBUG("auth transferred from DC " << tgl_state::instance()->active_client()->id() << " to DC " << id());
+        send_pending_queries();
+    });
+
+    q->out_i32(CODE_auth_export_authorization);
+    q->out_i32(id());
+    q->execute(tgl_state::instance()->active_client());
 }

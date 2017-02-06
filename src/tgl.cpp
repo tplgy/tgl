@@ -39,6 +39,7 @@
 #include "tgl/tgl_update_callback.h"
 #include "tgl_session.h"
 #include "queries.h"
+#include "query.h"
 
 #include <assert.h>
 #include <stdlib.h>
