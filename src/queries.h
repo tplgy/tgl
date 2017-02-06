@@ -124,7 +124,6 @@ public:
     virtual void on_answer(void* DS) = 0;
     virtual int on_error(int error_code, const std::string& error_string) = 0;
     virtual void on_timeout() { }
-    virtual void on_disconnected();
 
     virtual double timeout_interval() const { return m_ack_received ? 120.0 : 12.0; }
     virtual bool should_retry_on_timeout() { return true; }
@@ -148,7 +147,6 @@ private:
     bool is_login() const { return m_exec_option == execution_option::LOGIN; }
     bool is_logout() const { return m_exec_option == execution_option::LOGOUT; }
     void timeout_alarm();
-    bool check_connectivity();
     bool check_logging_out();
     bool check_pending(bool transfer_auth = false);
     void clear_timers();

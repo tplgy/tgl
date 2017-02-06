@@ -122,10 +122,6 @@ void query::alarm()
         tgl_state::instance()->remove_query(shared_from_this());
     }
 
-    if (!check_connectivity()) {
-        return;
-    }
-
     if (!check_logging_out()) {
         return;
     }
@@ -212,10 +208,6 @@ void query::execute(const std::shared_ptr<mtproto_client>& client, execution_opt
     assert(m_client);
     m_client->add_connection_status_observer(shared_from_this());
 
-    if (!check_connectivity()) {
-        return;
-    }
-
     if (!check_logging_out()) {
         return;
     }
@@ -237,10 +229,6 @@ bool query::execute_after_pending()
 
     assert(m_client);
     assert(m_exec_option != execution_option::UNKNOWN);
-
-    if (!check_connectivity()) {
-        return true;
-    }
 
     if (!check_logging_out()) {
         return true;
@@ -513,17 +501,6 @@ void query::timeout_within(double seconds)
     m_timer->start(seconds);
 }
 
-bool query::check_connectivity()
-{
-    if (tgl_state::instance()->online_status() != tgl_online_status::not_online) {
-        return true;
-    }
-
-    TGL_WARNING("we don't have internet connection, failing query (" << name() << ")");
-    on_disconnected();
-    return false;
-}
-
 bool query::check_logging_out()
 {
     if (m_client->is_logging_out()) {
@@ -565,11 +542,6 @@ bool query::check_pending(bool transfer_auth)
     }
 
     return true;
-}
-
-void query::on_disconnected()
-{
-    on_error_internal(600, "NOT_CONNECTED");
 }
 
 void query::on_answer_internal(void* DS)
