@@ -160,6 +160,7 @@ private:
     std::vector<secret_message> dequeue_pending_received_messages(const secret_message& new_message);
     void process_messages(const std::vector<secret_message>& messages);
     void load_unconfirmed_messages_if_needed();
+    void messages_deleted(const std::vector<int64_t>& message_ids);
 };
 
 inline tgl_secret_chat_private_facet* tgl_secret_chat::private_facet()

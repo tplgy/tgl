@@ -33,6 +33,8 @@ public:
 
     virtual void store_message(const std::shared_ptr<tgl_unconfirmed_secret_message>& message) = 0;
 
+    virtual void update_message(const std::shared_ptr<tgl_unconfirmed_secret_message>& message) = 0;
+
     virtual std::vector<std::shared_ptr<tgl_unconfirmed_secret_message>>
     load_messages_by_out_seq_no(int32_t chat_id, int32_t seq_no_start, int32_t seq_no_end, bool is_out_going) = 0;
 

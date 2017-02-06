@@ -332,10 +332,11 @@ void tgl_secret_chat_private_facet::message_received(const secret_message& m,
                 // end up with a deadlock where both sides are requesting resend but the resend will
                 // never get processed because of a hole ahead of it.
                 auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action);
-                TGL_DEBUG("received request for message resend; start-seq: "<< action->start_seq_no << " end-seq: " << action->end_seq_no);
+                TGL_DEBUG("received request for message resend, start-seq: "<< action->start_seq_no << " end-seq: " << action->end_seq_no);
                 tgl_do_resend_encr_chat_messages(shared_from_this(), action->start_seq_no, action->end_seq_no);
                 auto secret_message_copy = m;
                 secret_message_copy.message = nullptr;
+                unconfirmed_message->clear_blobs();
                 queue_pending_received_message(secret_message_copy, unconfirmed_message);
             } else {
                 queue_pending_received_message(m, unconfirmed_message);
@@ -539,9 +540,7 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
             set_ttl(action->ttl);
         } else if (action_type == tgl_message_action_type::delete_messages) {
             auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(message->action);
-            for (int64_t id : action->msg_ids) {
-                tgl_state::instance()->callback()->message_deleted(id, this->id());
-            }
+            messages_deleted(action->msg_ids);
         } else if (action_type == tgl_message_action_type::resend) {
             auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action);
             TGL_DEBUG("received request for message resend; start-seq: "<< action->start_seq_no << " end-seq: " << action->end_seq_no);
@@ -734,7 +733,7 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, int64_t message_
                     m.raw_in_seq_no / 2,
                     m.raw_out_seq_no / 2,
                     false,
-                    CODE_decrypted_message_layer);
+                    0/* we don't use constructor code for incoming messages*/);
             unconfirmed_message->append_blob(std::move(layer_blob));
         }
 
@@ -825,4 +824,32 @@ void tgl_secret_chat_private_facet::imbue_encrypted_message(const tl_ds_encrypte
 
     auto message_pair = secret_chat->private_facet()->fetch_message(DS_EM, true);
     secret_chat->private_facet()->message_received(message_pair.first, message_pair.second);
+}
+
+void tgl_secret_chat_private_facet::messages_deleted(const std::vector<int64_t>& message_ids)
+{
+    const auto& storage = tgl_state::instance()->unconfirmed_secret_message_storage();
+    for (int64_t id : message_ids) {
+        bool is_unconfirmed = false;
+        for (auto& it: d->m_pending_received_messages) {
+            const auto& message = it.second.message;
+            if (message && message->permanent_id == id) {
+               auto unconfirmed_message = unconfirmed_secret_message::create_default_impl(
+                        id,
+                        message->date,
+                        this->id().peer_id,
+                        it.second.raw_in_seq_no / 2,
+                        it.second.raw_out_seq_no / 2,
+                        false,
+                        0);
+                storage->update_message(unconfirmed_message);
+                it.second.message = nullptr;
+                is_unconfirmed = true;
+                break;
+            }
+        }
+        if (!is_unconfirmed) {
+            tgl_state::instance()->callback()->message_deleted(id, this->id());
+        }
+    }
 }

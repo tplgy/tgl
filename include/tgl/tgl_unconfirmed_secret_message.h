@@ -38,6 +38,7 @@ public:
     virtual uint32_t constructor_code() const = 0;
     virtual const std::vector<std::string>& blobs() const = 0;
     virtual void append_blob(std::string&& blob) = 0;
+    virtual void clear_blobs() = 0;
 
     static std::shared_ptr<tgl_unconfirmed_secret_message> create_default_impl(int64_t message_id,
             int64_t date, int32_t chat_id, int32_t in_seq_no, int32_t out_seq_no, bool is_out_going, uint32_t construtor_code);

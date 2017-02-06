@@ -50,6 +50,7 @@ public:
         m_blobs.push_back(std::move(blob));
     }
     virtual uint32_t constructor_code() const override { return m_constructor_code; }
+    virtual void clear_blobs() override { m_blobs.clear(); }
 
 private:
     int64_t m_message_id;
