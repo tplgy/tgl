@@ -241,7 +241,6 @@ public:
 
     virtual void on_answer(void* answer) override
     {
-        TGL_DEBUG("offset=" << m_upload->offset << " size=" << m_upload->size);
         m_download_manager->upload_part_on_answer(shared_from_this(), answer);
     }
 
@@ -483,12 +482,17 @@ std::string tgl_transfer_manager::get_file_path(int64_t secret)
 
 int tgl_transfer_manager::upload_part_on_answer(const std::shared_ptr<query_upload_part>& q, void*)
 {
-    auto status = q->get_upload()->status;
-    if (status == tgl_upload_status::waiting || status == tgl_upload_status::connecting) {
+    const auto& u = q->get_upload();
+    u->offset = u->part_num * u->part_size;
+    if (u->offset > u->size) {
+        u->offset = u->size;
+    }
+
+    if (u->status == tgl_upload_status::waiting || u->status == tgl_upload_status::connecting) {
         q->set_upload_status(tgl_upload_status::uploading);
     }
 
-    upload_part(q->get_upload(), q->callback(), q->read_callback(), q->done_callback());
+    upload_part(u, q->callback(), q->read_callback(), q->done_callback());
     return 0;
 }
 
@@ -553,11 +557,10 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
 {
     auto extra = std::make_shared<messages_send_extra>();
     extra->id = u->message_id;
-    auto file_size = u->size;
     auto q = std::make_shared<query_send_msgs>(extra,
             [=](bool success, const std::shared_ptr<tgl_message>& message) {
                 u->status = success ? tgl_upload_status::succeeded : tgl_upload_status::failed;
-                callback(u->status, message, file_size);
+                callback(u->status, message, u->size);
             });
 
     auto message = std::make_shared<tgl_message>();
@@ -663,8 +666,6 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(u->to_id);
     assert(secret_chat);
 
-    auto file_size = u->size;
-
     tgl_peer_id_t from_id = tgl_state::instance()->our_id();
     int64_t date = tgl_get_system_time();
     std::shared_ptr<tgl_message> message = std::make_shared<tgl_message>(secret_chat,
@@ -679,7 +680,7 @@ void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_u
     auto q = std::make_shared<query_messages_send_encrypted_file>(secret_chat, u, message,
             [=](bool success, const std::shared_ptr<tgl_message>& message) {
                 u->status = success ? tgl_upload_status::succeeded : tgl_upload_status::failed;
-                callback(u->status, message, file_size);
+                callback(u->status, message, u->size);
             });
 
     q->execute(tgl_state::instance()->active_client());
@@ -832,7 +833,7 @@ void tgl_transfer_manager::upload_end(const std::shared_ptr<tgl_upload>& u,
                 [=](bool success) {
                     u->status = success ? tgl_upload_status::succeeded : tgl_upload_status::failed;
                     if(callback) {
-                        callback(u->status, nullptr, 0);
+                        callback(u->status, nullptr, u->size);
                     }
                 });
         return;
@@ -859,7 +860,6 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
     }
 
     if (!u->at_EOF) {
-        u->offset = u->part_num * u->part_size;
         auto q = std::make_shared<query_upload_part>(this, u, callback, read_callback, done_callback);
         if (u->size < BIG_FILE_THRESHOLD) {
             q->out_i32(CODE_upload_save_file_part);
@@ -885,11 +885,11 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
         }
 
         assert(read_size > 0);
-        u->offset += read_size;
+        uintmax_t offset = u->offset + read_size;
 
         if (u->is_encrypted()) {
             if (read_size & 15) {
-                assert(u->offset == u->size);
+                assert(offset == u->size);
                 tgl_secure_random(reinterpret_cast<unsigned char*>(sending_buffer->data()) + read_size, (-read_size) & 15);
                 read_size = (read_size + 15) & ~15;
             }
@@ -902,7 +902,7 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
         }
         q->out_string(reinterpret_cast<char*>(sending_buffer->data()), read_size);
 
-        if (u->offset == u->size) {
+        if (offset == u->size) {
             u->at_EOF = true;
         } else {
             assert(u->part_size == read_size);
