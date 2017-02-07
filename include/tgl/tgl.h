@@ -85,7 +85,8 @@ struct tgl_state {
     std::shared_ptr<mtproto_client> client_at(int id) const;
     int temp_key_expire_time() const { return m_temp_key_expire_time; }
 
-    int init(const std::string& download_dir, int app_id, const std::string& app_hash, const std::string& app_version);
+    int init(const std::string& download_dir, int app_id, const std::string& app_hash, const std::string& app_version,
+            const std::string& device_model, const std::string& system_version, const std::string& lang_code);
     void login();
     void logout();
 
@@ -127,6 +128,10 @@ struct tgl_state {
     const std::string& app_version() const { return m_app_version; }
     const std::string& app_hash() const { return m_app_hash; }
     int32_t app_id() const { return m_app_id; }
+    const std::string& device_model() const { return m_device_model; }
+    const std::string& system_version() const { return m_system_version; }
+    const std::string& lang_code() const { return m_lang_code; }
+
     const std::vector<std::shared_ptr<tgl_rsa_key>>& rsa_key_list() const { return m_rsa_key_list; }
 
     const std::shared_ptr<tgl_transfer_manager>& transfer_manager() const { return m_transfer_manager; }
@@ -204,6 +209,9 @@ private:
 
     tgl_peer_id_t m_our_id; // ID of logged in user
     std::string m_app_version;
+    std::string m_device_model;
+    std::string m_system_version;
+    std::string m_lang_code;
     std::vector<std::shared_ptr<tgl_rsa_key>> m_rsa_key_list;
     std::map<int32_t/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
     std::map<int64_t/*msg_id*/, std::shared_ptr<query>> m_active_queries;

@@ -532,12 +532,12 @@ void query::out_header()
 {
     m_serializer->out_i32(CODE_invoke_with_layer);
     m_serializer->out_i32(TGL_SCHEME_LAYER);
+
+    // initConnection#69796de9 {X:Type} api_id:int device_model:string system_version:string app_version:string lang_code:string query:!X = X;
     m_serializer->out_i32(CODE_init_connection);
     m_serializer->out_i32(tgl_state::instance()->app_id());
-
-    m_serializer->out_string("x86");
-    m_serializer->out_string("OSX");
-    std::string buf = tgl_state::instance()->app_version() + " (TGL " + TGL_VERSION + ")";
-    m_serializer->out_std_string(buf);
-    m_serializer->out_string("en");
+    m_serializer->out_std_string(tgl_state::instance()->device_model());
+    m_serializer->out_std_string(tgl_state::instance()->system_version());
+    m_serializer->out_std_string(tgl_state::instance()->app_version());
+    m_serializer->out_std_string(tgl_state::instance()->lang_code());
 }

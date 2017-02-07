@@ -229,12 +229,16 @@ void tgl_state::add_rsa_key(const std::string& key)
     m_rsa_key_list.push_back(std::unique_ptr<tgl_rsa_key>(new tgl_rsa_key(key)));
 }
 
-int tgl_state::init(const std::string& download_dir, int app_id, const std::string& app_hash, const std::string& app_version)
+int tgl_state::init(const std::string& download_dir, int app_id, const std::string& app_hash, const std::string& app_version,
+            const std::string& device_model, const std::string& system_version, const std::string& lang_code)
 {
     m_transfer_manager = std::make_shared<tgl_transfer_manager>(download_dir);
     m_app_id = app_id;
     m_app_hash = app_hash;
     m_app_version = app_version;
+    m_device_model = device_model;
+    m_system_version = system_version;
+    m_lang_code = lang_code;
     assert(m_timer_factory);
     assert(m_connection_factory);
     if (!m_temp_key_expire_time) {
