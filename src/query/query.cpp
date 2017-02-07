@@ -31,7 +31,6 @@
 
 constexpr int32_t TGL_SCHEME_LAYER = 45;
 constexpr int TGL_MAX_DC_NUM = 100;
-const char* TGL_VERSION = "0.1.0";
 
 void query::clear_timers()
 {
