@@ -45,6 +45,10 @@
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
+#include "query_messages_accept_encryption.h"
+#include "query_messages_discard_encryption.h"
+#include "query_messages_get_dh_config.h"
+#include "query_messages_request_encryption.h"
 #include "query_user_info.h"
 #include "structures.h"
 #include "tools.h"
@@ -4626,5 +4630,174 @@ void tgl_do_send_inline_query_to_bot(const tgl_input_peer_t& bot, const std::str
     q->out_input_peer(bot);
     q->out_std_string(query);
     q->out_std_string(std::string());
+    q->execute(tgl_state::instance()->active_client());
+}
+
+void tgl_do_set_encr_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_chat, int ttl)
+{
+    struct tl_ds_decrypted_message_action action;
+    action.magic = CODE_decrypted_message_action_set_message_ttl;
+    action.ttl_seconds = &ttl;
+
+    secret_chat->private_facet()->send_action(action, nullptr);
+}
+
+static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        std::array<unsigned char, 256>& random,
+        std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> callback)
+{
+    bool ok = false;
+    const int* key = reinterpret_cast<const int*>(secret_chat->key());
+    for (int i = 0; i < 64; i++) {
+        if (key[i]) {
+            ok = true;
+            break;
+        }
+    }
+    if (ok) {
+        // Already generated key for this chat
+        if (callback) {
+            callback(true, secret_chat);
+        }
+        return;
+    }
+
+    assert(!secret_chat->g_key().empty());
+    assert(tgl_state::instance()->bn_ctx()->ctx);
+    unsigned char random_here[256];
+    tgl_secure_random(random_here, 256);
+    for (int i = 0; i < 256; i++) {
+        random[i] ^= random_here[i];
+    }
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> b(TGLC_bn_bin2bn(random.data(), 256, 0));
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_a(TGLC_bn_bin2bn(secret_chat->g_key().data(), 256, 0));
+    if (tglmp_check_g_a(secret_chat->private_facet()->encr_prime_bn()->bn, g_a.get()) < 0) {
+        if (callback) {
+            callback(false, secret_chat);
+        }
+        secret_chat->private_facet()->set_deleted();
+        return;
+    }
+
+    TGLC_bn* p = secret_chat->private_facet()->encr_prime_bn()->bn;
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()->ctx));
+    unsigned char buffer[256];
+    memset(buffer, 0, sizeof(buffer));
+    TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
+
+    secret_chat->private_facet()->set_key(buffer);
+    secret_chat->private_facet()->set_state(tgl_secret_chat_state::ok);
+
+    memset(buffer, 0, sizeof(buffer));
+    check_crypto_result(TGLC_bn_set_word(g_a.get(), secret_chat->encr_root()));
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, tgl_state::instance()->bn_ctx()->ctx));
+    TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
+
+    auto q = std::make_shared<query_messages_accept_encryption>(secret_chat, callback);
+    q->out_i32(CODE_messages_accept_encryption);
+    q->out_i32(CODE_input_encrypted_chat);
+    q->out_i32(secret_chat->id().peer_id);
+    q->out_i64(secret_chat->id().access_hash);
+    q->out_string(reinterpret_cast<const char*>(buffer), 256);
+    q->out_i64(secret_chat->key_fingerprint());
+    q->execute(tgl_state::instance()->active_client());
+}
+
+static void tgl_do_send_create_encr_chat(const tgl_input_peer_t& user_id,
+        const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        std::array<unsigned char, 256>& random,
+        std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> callback)
+{
+    unsigned char random_here[256];
+    tgl_secure_random(random_here, 256);
+    for (int i = 0; i < 256; i++) {
+        random[i] ^= random_here[i];
+    }
+
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(random.data(), 256, 0));
+    TGLC_bn* p = secret_chat->private_facet()->encr_prime_bn()->bn;
+
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g(TGLC_bn_new());
+    check_crypto_result(TGLC_bn_set_word(g.get(), secret_chat->encr_root()));
+
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
+
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g.get(), a.get(), p, tgl_state::instance()->bn_ctx()->ctx));
+
+    char g_a[256];
+    memset(g_a, 0, sizeof(g_a));
+
+    TGLC_bn_bn2bin(r.get(), reinterpret_cast<unsigned char*>(g_a + (256 - TGLC_bn_num_bytes(r.get()))));
+
+    secret_chat->private_facet()->set_admin_id(tgl_state::instance()->our_id().peer_id);
+    secret_chat->private_facet()->set_key(random.data());
+    secret_chat->private_facet()->set_state(tgl_secret_chat_state::waiting);
+    tgl_state::instance()->callback()->secret_chat_update(secret_chat);
+
+    auto q = std::make_shared<query_messages_request_encryption>(secret_chat, callback);
+    q->out_i32(CODE_messages_request_encryption);
+    q->out_i32(CODE_input_user);
+    q->out_i32(user_id.peer_id);
+    q->out_i64(user_id.access_hash);
+    q->out_i32(secret_chat->id().peer_id);
+    q->out_string(g_a, sizeof(g_a));
+    q->execute(tgl_state::instance()->active_client());
+}
+
+void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
+{
+    assert(secret_chat);
+
+    if (secret_chat->state() == tgl_secret_chat_state::deleted || secret_chat->state() == tgl_secret_chat_state::none) {
+        if (callback) {
+            callback(false, secret_chat);
+        }
+        return;
+    }
+
+    auto q = std::make_shared<query_messages_discard_encryption>(secret_chat, callback);
+    q->out_i32(CODE_messages_discard_encryption);
+    q->out_i32(secret_chat->id().peer_id);
+
+    q->execute(tgl_state::instance()->active_client());
+}
+
+void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
+{
+    if (secret_chat->state() != tgl_secret_chat_state::request) {
+        if (callback) {
+            callback(false, secret_chat);
+        }
+        return;
+    }
+    assert(secret_chat->state() == tgl_secret_chat_state::request);
+
+    auto q = std::make_shared<query_messages_get_dh_config>(secret_chat, tgl_do_send_accept_encr_chat, callback);
+    q->out_i32(CODE_messages_get_dh_config);
+    q->out_i32(secret_chat->encr_param_version());
+    q->out_i32(256);
+    q->execute(tgl_state::instance()->active_client());
+}
+
+void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id, int32_t new_secret_chat_id,
+        const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback)
+{
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->create_secret_chat(
+            tgl_input_peer_t(tgl_peer_type::enc_chat, new_secret_chat_id, 0), user_id.peer_id);
+
+    if (!secret_chat) {
+        if (callback) {
+            callback(false, nullptr);
+        }
+    }
+
+    auto q = std::make_shared<query_messages_get_dh_config>(secret_chat,
+            std::bind(&tgl_do_send_create_encr_chat, user_id, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), callback);
+    q->out_i32(CODE_messages_get_dh_config);
+    q->out_i32(0);
+    q->out_i32(256);
     q->execute(tgl_state::instance()->active_client());
 }

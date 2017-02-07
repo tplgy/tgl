@@ -130,6 +130,10 @@ set(PRIVATE_HEADERS
     src/query/query_export_auth.h
     src/query/query_import_auth.h
     src/query/query_mark_read_encr.h
+    src/query/query_messages_accept_encryption.h
+    src/query/query_messages_discard_encryption.h
+    src/query/query_messages_get_dh_config.h
+    src/query/query_messages_request_encryption.h
     src/query/query_messages_send_encrypted_action.h
     src/query/query_messages_send_encrypted_base.h
     src/query/query_messages_send_encrypted_file.h
@@ -158,8 +162,10 @@ set(SOURCES
     src/mtproto-common.cpp
     src/mtproto-utils.cpp
     src/query/queries.cpp
-    src/query/queries-encrypted.cpp
     src/query/query.cpp
+    src/query/query_messages_accept_encryption.cpp
+    src/query/query_messages_get_dh_config.cpp
+    src/query/query_messages_request_encryption.cpp
     src/query/query_messages_send_encrypted_action.cpp
     src/query/query_messages_send_encrypted_base.cpp
     src/query/query_messages_send_encrypted_file.cpp
