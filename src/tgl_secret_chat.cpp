@@ -31,7 +31,7 @@
 #include "crypto/tgl_crypto_sha.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
-#include "queries-encrypted.h"
+#include "query/queries-encrypted.h"
 #include "tgl_secret_chat_private.h"
 #include "tgl/tgl.h"
 #include "tgl/tgl_log.h"

@@ -125,16 +125,16 @@ set(PRIVATE_HEADERS
     src/mtproto_client.h
     src/mtproto-common.h
     src/mtproto-utils.h
-    src/queries.h
-    src/queries-encrypted.h
-    src/query.h
-    src/query_export_auth.h
-    src/query_import_auth.h
-    src/query_messages_send_encrypted_action.h
-    src/query_messages_send_encrypted_base.h
-    src/query_messages_send_encrypted_file.h
-    src/query_messages_send_encrypted_message.h
-    src/query_user_info.h
+    src/query/queries.h
+    src/query/queries-encrypted.h
+    src/query/query.h
+    src/query/query_export_auth.h
+    src/query/query_import_auth.h
+    src/query/query_messages_send_encrypted_action.h
+    src/query/query_messages_send_encrypted_base.h
+    src/query/query_messages_send_encrypted_file.h
+    src/query/query_messages_send_encrypted_message.h
+    src/query/query_user_info.h
     src/secret_chat_encryptor.h
     src/structures.h
     src/tgl_rsa_key.h
@@ -157,13 +157,13 @@ set(SOURCES
     src/mtproto_client.cpp
     src/mtproto-common.cpp
     src/mtproto-utils.cpp
-    src/queries.cpp
-    src/queries-encrypted.cpp
-    src/query.cpp
-    src/query_messages_send_encrypted_action.cpp
-    src/query_messages_send_encrypted_base.cpp
-    src/query_messages_send_encrypted_file.cpp
-    src/query_messages_send_encrypted_message.cpp
+    src/query/queries.cpp
+    src/query/queries-encrypted.cpp
+    src/query/query.cpp
+    src/query/query_messages_send_encrypted_action.cpp
+    src/query/query_messages_send_encrypted_base.cpp
+    src/query/query_messages_send_encrypted_file.cpp
+    src/query/query_messages_send_encrypted_message.cpp
     src/secret_chat_encryptor.cpp
     src/structures.cpp
     src/tgl.cpp

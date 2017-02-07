@@ -38,8 +38,8 @@
 #include "tgl/tgl_unconfirmed_secret_message_storage.h"
 #include "tgl/tgl_update_callback.h"
 #include "tgl_session.h"
-#include "queries.h"
-#include "query.h"
+#include "query/queries.h"
+#include "query/query.h"
 
 #include <assert.h>
 #include <stdlib.h>
