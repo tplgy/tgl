@@ -294,6 +294,7 @@ int32_t tgl_state::create_secret_chat_id()
 std::shared_ptr<tgl_secret_chat> tgl_state::create_secret_chat(const tgl_input_peer_t& chat_id, int32_t user_id)
 {
     if (m_secret_chats.find(chat_id.peer_id) != m_secret_chats.end()) {
+        TGL_WARNING("can't create a secret chat with exisiting id " << chat_id.peer_id);
         return nullptr;
     }
 

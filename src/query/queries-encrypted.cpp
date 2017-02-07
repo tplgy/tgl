@@ -396,9 +396,16 @@ void tgl_do_accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& sec
 /* {{{ Create secret chat */
 
 void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id, int32_t new_secret_chat_id,
-        const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& E)>& callback)
+        const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback)
 {
-    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->create_secret_chat(tgl_input_peer_t(tgl_peer_type::enc_chat, new_secret_chat_id, 0), user_id.peer_id);
+    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->create_secret_chat(
+            tgl_input_peer_t(tgl_peer_type::enc_chat, new_secret_chat_id, 0), user_id.peer_id);
+
+    if (!secret_chat) {
+        if (callback) {
+            callback(false, nullptr);
+        }
+    }
 
     auto q = std::make_shared<query_get_dh_config>(secret_chat,
             std::bind(&tgl_do_send_create_encr_chat, user_id, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), callback);
