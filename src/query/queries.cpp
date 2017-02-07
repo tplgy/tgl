@@ -45,7 +45,6 @@
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
-#include "queries-encrypted.h"
 #include "query_user_info.h"
 #include "structures.h"
 #include "tools.h"
@@ -621,7 +620,8 @@ static void send_message(const std::shared_ptr<tgl_message>& M, bool disable_pre
 {
     assert(M->to_id.peer_type != tgl_peer_type::enc_chat);
     if (M->to_id.peer_type == tgl_peer_type::enc_chat) {
-        TGL_WARNING("call tgl_do_send_encr_msg please");
+        TGL_WARNING("call tgl_secret_chat_private_facet::send_message please");
+        assert(false);
         return;
     }
     auto q = std::make_shared<query_msg_send>(M, callback);
@@ -759,7 +759,7 @@ int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
         assert(secret_chat);
         auto message = std::make_shared<tgl_message>(secret_chat, message_id, from_id, &date, text, &TDSM, nullptr, nullptr);
         message->set_unread(true).set_pending(true);
-        tgl_do_send_encr_msg(secret_chat, message, callback);
+        secret_chat->private_facet()->send_message(message, callback);
         tgl_state::instance()->callback()->new_messages({message});
     }
 
@@ -832,7 +832,7 @@ void tgl_do_message_mark_read_encrypted(const tgl_input_peer_t& id, int32_t max_
         }
         return;
     }
-    tgl_do_messages_mark_read_encr(secret_chat, max_time, nullptr);
+    secret_chat->private_facet()->mark_messages_read(max_time, nullptr);
 }
 
 void tgl_do_mark_read(const tgl_input_peer_t& id, int max_id_or_time,
@@ -1610,7 +1610,14 @@ void tgl_do_send_location(const tgl_input_peer_t& peer_id, double latitude, doub
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback)
 {
     if (peer_id.peer_type == tgl_peer_type::enc_chat) {
-        tgl_do_send_location_encr(peer_id, latitude, longitude, callback);
+        auto secret_chat = tgl_state::instance()->secret_chat_for_id(peer_id);
+        if (secret_chat) {
+            secret_chat->private_facet()->send_location(latitude, longitude, callback);
+        } else {
+            if (callback) {
+                callback(false, nullptr);
+            }
+        }
     } else {
         std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
         tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
@@ -2886,12 +2893,12 @@ void tgl_do_delete_msg(const tgl_input_peer_t& chat, int64_t message_id,
         std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(chat.peer_id);
         if (!secret_chat) {
             TGL_ERROR("could not find secret chat");
+            if (callback) {
+                callback(false);
+            }
             return;
         }
-        tgl_do_messages_delete_encr(secret_chat, message_id, nullptr);
-        if (callback) {
-            callback(false);
-        }
+        secret_chat->private_facet()->delete_message(message_id, nullptr);
         return;
     }
 

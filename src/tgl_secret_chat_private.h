@@ -144,7 +144,32 @@ public:
     std::shared_ptr<tgl_message> construct_message(int64_t message_id, int64_t date,
             const std::string& layer_blob, const std::string& file_info_blob);
 
+    void send_message(const std::shared_ptr<tgl_message>& message,
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+
+    void send_action(const tl_ds_decrypted_message_action& action,
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+
+    void send_location(double latitude, double longitude,
+            const std::function<void(bool success, const std::shared_ptr<tgl_message>&)>& callback);
+
+    void send_layer();
+
+    void mark_messages_read(int32_t max_time,
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+
+    void delete_message(int64_t message_id,
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+
+    void set_deleted();
+
     static void imbue_encrypted_message(const tl_ds_encrypted_message*);
+
+    void request_key_exchange();
+    void accept_key_exchange(int64_t exchange_id, const std::vector<unsigned char>& ga);
+    void confirm_key_exchange(int sen_nop);
+    void commit_key_exchange(const std::vector<unsigned char>& gb);
+    void abort_key_exchange();
 
 private:
     std::pair<secret_message, std::shared_ptr<tgl_unconfirmed_secret_message>>
@@ -155,12 +180,14 @@ private:
             int64_t date, const tl_ds_encrypted_file* file, bool construct_unconfirmed_message);
 
     void message_received(const secret_message& m, const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
-    bool decrypt_message(int*& decr_ptr, int* decr_end);
+    bool decrypt_message(int32_t*& decr_ptr, int32_t* decr_end);
     void queue_pending_received_message(const secret_message& m, const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
     std::vector<secret_message> dequeue_pending_received_messages(const secret_message& new_message);
     void process_messages(const std::vector<secret_message>& messages);
     void load_unconfirmed_messages_if_needed();
     void messages_deleted(const std::vector<int64_t>& message_ids);
+    void request_resend_messages(int32_t start_seq_no, int32_t end_seq_no);
+    void resend_messages(int32_t start_seq_no, int32_t end_seq_no);
 };
 
 inline tgl_secret_chat_private_facet* tgl_secret_chat::private_facet()

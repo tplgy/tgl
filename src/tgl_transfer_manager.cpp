@@ -27,7 +27,6 @@
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "query/queries.h"
-#include "query/queries-encrypted.h"
 #include "query/query_messages_send_encrypted_file.h"
 #include "secret_chat_encryptor.h"
 #include "tools.h"

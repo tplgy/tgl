@@ -126,10 +126,10 @@ set(PRIVATE_HEADERS
     src/mtproto-common.h
     src/mtproto-utils.h
     src/query/queries.h
-    src/query/queries-encrypted.h
     src/query/query.h
     src/query/query_export_auth.h
     src/query/query_import_auth.h
+    src/query/query_mark_read_encr.h
     src/query/query_messages_send_encrypted_action.h
     src/query/query_messages_send_encrypted_base.h
     src/query/query_messages_send_encrypted_file.h

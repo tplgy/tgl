@@ -55,7 +55,7 @@ int query_messages_send_encrypted_base::on_error(int error_code, const std::stri
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error_string);
 
     if (m_secret_chat && m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-        tgl_secret_chat_deleted(m_secret_chat);
+        m_secret_chat->private_facet()->set_deleted();
     }
 
     if (m_callback) {

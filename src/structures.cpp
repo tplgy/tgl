@@ -32,7 +32,6 @@
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "query/queries.h"
-#include "query/queries-encrypted.h"
 #include "tgl/tgl.h"
 #include "tgl/tgl_bot.h"
 #include "tgl/tgl_queries.h"
@@ -306,7 +305,7 @@ std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_enc
         }
 
         TGL_DEBUG("discarded secret chat " << chat_id.peer_id << " found, setting it to deleted state");
-        tgl_secret_chat_deleted(secret_chat);
+        secret_chat->private_facet()->set_deleted();
         return secret_chat;
     }
 
