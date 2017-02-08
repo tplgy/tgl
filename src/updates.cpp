@@ -243,7 +243,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_chat_participants:
         if (DS_U->participants->magic == CODE_chat_participants) {
-            tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL(DS_U->chat_id));
+            tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL(DS_U->participants->chat_id));
             int count = DS_LVAL(DS_U->participants->participants->cnt);
             std::vector<std::shared_ptr<tgl_chat_participant>> participants;
             for (int i = 0; i < count; ++i) {
