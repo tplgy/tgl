@@ -338,13 +338,13 @@ void tgl_secret_chat_private_facet::message_received(const secret_message& m,
                 auto secret_message_copy = m;
                 secret_message_copy.message = nullptr;
                 unconfirmed_message->clear_blobs();
-                queue_pending_received_message(secret_message_copy, unconfirmed_message);
+                queue_unconfirmed_incoming_message(secret_message_copy, unconfirmed_message);
             } else {
-                queue_pending_received_message(m, unconfirmed_message);
+                queue_unconfirmed_incoming_message(m, unconfirmed_message);
             }
             return;
         }
-        process_messages(dequeue_pending_received_messages(m));
+        process_messages(dequeue_unconfirmed_incoming_messages(m));
     } else if (raw_in_seq_no < 0 && raw_out_seq_no < 0) {
         process_messages({ m });
     } else {
@@ -352,15 +352,15 @@ void tgl_secret_chat_private_facet::message_received(const secret_message& m,
     }
 }
 
-void tgl_secret_chat_private_facet::load_unconfirmed_messages_if_needed()
+void tgl_secret_chat_private_facet::load_unconfirmed_incoming_messages_if_needed()
 {
-    if (d->m_unconfirmed_message_loaded) {
+    if (d->m_unconfirmed_incoming_messages_loaded) {
         return;
     }
 
-    d->m_unconfirmed_message_loaded = true;
+    d->m_unconfirmed_incoming_messages_loaded = true;
     auto storage = tgl_state::instance()->unconfirmed_secret_message_storage();
-    d->m_pending_received_messages.clear();
+    d->m_unconfirmed_incoming_messages.clear();
     auto unconfirmed_messages = storage->load_messages_by_out_seq_no(id().peer_id, in_seq_no() + 1, -1, false);
     for (const auto& unconfirmed_message: unconfirmed_messages) {
         const auto& blobs = unconfirmed_message->blobs();
@@ -379,23 +379,43 @@ void tgl_secret_chat_private_facet::load_unconfirmed_messages_if_needed()
                 continue;
             }
         }
-        d->m_pending_received_messages.emplace(unconfirmed_message->out_seq_no(), m);
+        d->m_unconfirmed_incoming_messages.emplace(unconfirmed_message->out_seq_no(), m);
     }
 }
 
-void tgl_secret_chat_private_facet::queue_pending_received_message(const secret_message& m,
+void tgl_secret_chat_private_facet::load_unconfirmed_outgoing_messages_if_needed()
+{
+    if (d->m_unconfirmed_outgoing_messages_loaded) {
+        return;
+    }
+
+    d->m_unconfirmed_outgoing_messages_loaded = true;
+    auto storage = tgl_state::instance()->unconfirmed_secret_message_storage();
+    d->m_unconfirmed_outgoing_seq_numbers.clear();
+    d->m_unconfirmed_outgoing_message_ids.clear();
+    auto unconfirmed_messages = storage->load_messages_by_out_seq_no(id().peer_id, 0, out_seq_no(), true);
+    for (const auto& unconfirmed_message: unconfirmed_messages) {
+        if (unconfirmed_message->blobs().empty()) {
+            continue;
+        }
+        d->m_unconfirmed_outgoing_seq_numbers.emplace(unconfirmed_message->message_id(), unconfirmed_message->out_seq_no());
+        d->m_unconfirmed_outgoing_message_ids.emplace(unconfirmed_message->out_seq_no(), unconfirmed_message->message_id());
+    }
+}
+
+void tgl_secret_chat_private_facet::queue_unconfirmed_incoming_message(const secret_message& m,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message)
 {
     assert(m.raw_out_seq_no >= 0);
     int32_t out_seq_no = m.raw_out_seq_no / 2;
     assert(out_seq_no > in_seq_no());
 
-    load_unconfirmed_messages_if_needed();
+    load_unconfirmed_incoming_messages_if_needed();
 
     if (unconfirmed_message) {
         tgl_state::instance()->unconfirmed_secret_message_storage()->store_message(unconfirmed_message);
     }
-    d->m_pending_received_messages.emplace(out_seq_no, m);
+    d->m_unconfirmed_incoming_messages.emplace(out_seq_no, m);
 
     if (!d->m_skip_hole_timer) {
         std::weak_ptr<tgl_secret_chat> weak_secret_chat(shared_from_this());
@@ -404,18 +424,18 @@ void tgl_secret_chat_private_facet::queue_pending_received_message(const secret_
             if (!secret_chat) {
                 return;
             }
-            if (secret_chat->d->m_pending_received_messages.size()) {
+            if (secret_chat->d->m_unconfirmed_incoming_messages.size()) {
                 std::vector<secret_message> messages;
-                auto it = secret_chat->d->m_pending_received_messages.begin();
+                auto it = secret_chat->d->m_unconfirmed_incoming_messages.begin();
                 int32_t seq_no = it->first;
-                while (it != secret_chat->d->m_pending_received_messages.end() && seq_no == it->first) {
+                while (it != secret_chat->d->m_unconfirmed_incoming_messages.end() && seq_no == it->first) {
                     messages.push_back(it->second);
                     ++it;
                     seq_no++;
                 }
                 TGL_DEBUG("skipped hole range [" << secret_chat->in_seq_no() << "," << seq_no - 1 << "] with " << messages.size() << " messages");
                 secret_chat->private_facet()->process_messages(messages);
-                secret_chat->d->m_pending_received_messages.erase(secret_chat->d->m_pending_received_messages.begin(), it);
+                secret_chat->d->m_unconfirmed_incoming_messages.erase(secret_chat->d->m_unconfirmed_incoming_messages.begin(), it);
             }
             secret_chat->d->m_fill_hole_timer->start(REQUEST_RESEND_DELAY);
         });
@@ -446,7 +466,7 @@ void tgl_secret_chat_private_facet::queue_pending_received_message(const secret_
 }
 
 std::vector<secret_message>
-tgl_secret_chat_private_facet::dequeue_pending_received_messages(const secret_message& m)
+tgl_secret_chat_private_facet::dequeue_unconfirmed_incoming_messages(const secret_message& m)
 {
     assert(m.raw_out_seq_no >= 0);
     assert(m.raw_out_seq_no >= 0);
@@ -454,33 +474,42 @@ tgl_secret_chat_private_facet::dequeue_pending_received_messages(const secret_me
     std::vector<secret_message> messages;
 
     int32_t out_seq_no = m.raw_out_seq_no / 2;
-    d->m_pending_received_messages.emplace(out_seq_no, m);
+    d->m_unconfirmed_incoming_messages.emplace(out_seq_no, m);
     int32_t in_seq_no = this->in_seq_no();
-    auto it = d->m_pending_received_messages.begin();
-    while (it != d->m_pending_received_messages.end() && it->first == in_seq_no) {
+    auto it = d->m_unconfirmed_incoming_messages.begin();
+    while (it != d->m_unconfirmed_incoming_messages.end() && it->first == in_seq_no) {
         in_seq_no++;
         messages.push_back(it->second);
-        d->m_pending_received_messages.erase(it);
-        it = d->m_pending_received_messages.begin();
+        d->m_unconfirmed_incoming_messages.erase(it);
+        it = d->m_unconfirmed_incoming_messages.begin();
     }
 
     if (messages.size() > 1) {
         TGL_DEBUG("after received a message with out_seq_no " << out_seq_no << " we dequeued " << messages.size() - 1 << " messages, "
-                << d->m_pending_received_messages.size() << " out of order messages left");
+                << d->m_unconfirmed_incoming_messages.size() << " out of order messages left");
     }
 
     return messages;
 }
 
+void tgl_secret_chat_private_facet::queue_unconfirmed_outgoing_message(
+        const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message)
+{
+    auto storage = tgl_state::instance()->unconfirmed_secret_message_storage();
+    storage->store_message(unconfirmed_message);
+    d->m_unconfirmed_outgoing_seq_numbers.emplace(unconfirmed_message->message_id(), unconfirmed_message->out_seq_no());
+    d->m_unconfirmed_outgoing_message_ids.emplace(unconfirmed_message->out_seq_no(), unconfirmed_message->message_id());
+}
+
 std::pair<int32_t, int32_t>
 tgl_secret_chat_private_facet::first_hole() const
 {
-    if (d->m_pending_received_messages.empty()) {
+    if (d->m_unconfirmed_incoming_messages.empty()) {
         return std::make_pair(-1, -1);
     }
 
     int32_t in_seq_no = this->in_seq_no();
-    auto it = d->m_pending_received_messages.begin();
+    auto it = d->m_unconfirmed_incoming_messages.begin();
     assert(it->first > in_seq_no);
     return std::make_pair(in_seq_no, it->first - 1);
 }
@@ -541,7 +570,7 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
             set_ttl(action->ttl);
         } else if (action_type == tgl_message_action_type::delete_messages) {
             auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(message->action);
-            messages_deleted(action->msg_ids);
+            incoming_messages_deleted(action->msg_ids);
         } else if (action_type == tgl_message_action_type::resend) {
             auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action);
             TGL_DEBUG("received request for message resend; start-seq: "<< action->start_seq_no << " end-seq: " << action->end_seq_no);
@@ -566,6 +595,11 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
         int32_t peer_in_seq_no = peer_raw_in_seq_no / 2;
         int32_t peer_out_seq_no = peer_raw_out_seq_no / 2;
         if (peer_in_seq_no > 0) {
+            auto end = d->m_unconfirmed_outgoing_message_ids.lower_bound(peer_in_seq_no);
+            for (auto it = d->m_unconfirmed_outgoing_message_ids.begin(); it != end; ++it) {
+                d->m_unconfirmed_outgoing_seq_numbers.erase(it->second);
+            }
+            d->m_unconfirmed_outgoing_message_ids.erase(d->m_unconfirmed_outgoing_message_ids.begin(), end);
             storage->remove_messages_by_out_seq_no(id().peer_id, 0, peer_in_seq_no - 1, true);
         }
         storage->remove_messages_by_out_seq_no(id().peer_id, 0, peer_out_seq_no, false);
@@ -827,12 +861,14 @@ void tgl_secret_chat_private_facet::imbue_encrypted_message(const tl_ds_encrypte
     secret_chat->private_facet()->message_received(message_pair.first, message_pair.second);
 }
 
-void tgl_secret_chat_private_facet::messages_deleted(const std::vector<int64_t>& message_ids)
+void tgl_secret_chat_private_facet::incoming_messages_deleted(const std::vector<int64_t>& message_ids)
 {
+    load_unconfirmed_incoming_messages_if_needed();
+
     const auto& storage = tgl_state::instance()->unconfirmed_secret_message_storage();
     for (int64_t id : message_ids) {
         bool is_unconfirmed = false;
-        for (auto& it: d->m_pending_received_messages) {
+        for (auto& it: d->m_unconfirmed_incoming_messages) {
             const auto& message = it.second.message;
             if (message && message->permanent_id == id) {
                auto unconfirmed_message = unconfirmed_secret_message::create_default_impl(
@@ -866,20 +902,34 @@ void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<tgl_messa
         return;
     }
 
-    if (message->is_service()) {
-        if (!message->action) {
-            if (callback) {
-                callback(true, nullptr);
-            }
-            return;
+    assert(message->permanent_id);
+
+    std::shared_ptr<query> q;
+
+    load_unconfirmed_outgoing_messages_if_needed();
+    const auto& it = d->m_unconfirmed_outgoing_seq_numbers.find(message->permanent_id);
+    if (it != d->m_unconfirmed_outgoing_seq_numbers.end()) {
+        auto queries = query_messages_send_encrypted_base::create_by_out_seq_no(shared_from_this(), it->second, it->second);
+        if (queries.size() == 1) {
+            q = *(queries.begin());
         }
-        auto q = std::make_shared<query_messages_send_encrypted_action>(shared_from_this(), message, callback);
-        q->execute(tgl_state::instance()->active_client());
-        return;
     }
 
+    if (!q) {
+        if (message->is_service()) {
+            if (!message->action) {
+                if (callback) {
+                    TGL_WARNING("we can't see a service message which doesn't have an action");
+                    callback(true, nullptr);
+                }
+                return;
+            }
+            q = std::make_shared<query_messages_send_encrypted_action>(shared_from_this(), message, callback);
+        } else {
+            q = std::make_shared<query_messages_send_encrypted_message>(shared_from_this(), message, callback);
+        }
+    }
 
-    auto q = std::make_shared<query_messages_send_encrypted_message>(shared_from_this(), message, callback);
     q->execute(tgl_state::instance()->active_client());
 }
 

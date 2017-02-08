@@ -73,11 +73,14 @@ struct tgl_secret_chat_private {
     unsigned char m_key_sha[20];
     int32_t m_out_seq_no;
     std::shared_ptr<query> m_last_depending_query;
-    std::map<int32_t, secret_message> m_pending_received_messages;
+    std::map<int32_t, secret_message> m_unconfirmed_incoming_messages;
+    std::map<int64_t, int32_t> m_unconfirmed_outgoing_seq_numbers;
+    std::map<int32_t, int64_t> m_unconfirmed_outgoing_message_ids;
     std::shared_ptr<tgl_timer> m_fill_hole_timer;
     std::shared_ptr<tgl_timer> m_skip_hole_timer;
     int64_t m_last_depending_query_id;
-    bool m_unconfirmed_message_loaded;
+    bool m_unconfirmed_incoming_messages_loaded;
+    bool m_unconfirmed_outgoing_messages_loaded;
     tgl_secret_chat::qos m_qos;
 
     tgl_secret_chat_private()
@@ -101,7 +104,8 @@ struct tgl_secret_chat_private {
         , m_encr_prime_bn(nullptr)
         , m_out_seq_no(0)
         , m_last_depending_query_id(0)
-        , m_unconfirmed_message_loaded(false)
+        , m_unconfirmed_incoming_messages_loaded(false)
+        , m_unconfirmed_outgoing_messages_loaded(false)
         , m_qos(tgl_secret_chat::qos::normal)
     {
         memset(m_key, 0, sizeof(m_key));
@@ -139,6 +143,8 @@ public:
     int32_t raw_out_seq_no() const { return out_seq_no() * 2 + (admin_id() == tgl_state::instance()->our_id().peer_id); }
     int64_t last_depending_query_id() const { return d->m_last_depending_query_id; }
     void set_last_depending_query_id(int64_t query_id) { d->m_last_depending_query_id = query_id; }
+
+    void queue_unconfirmed_outgoing_message(const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
 
     std::shared_ptr<tgl_message> fetch_message(const tl_ds_encrypted_message*);
     std::shared_ptr<tgl_message> construct_message(int64_t message_id, int64_t date,
@@ -181,11 +187,12 @@ private:
 
     void message_received(const secret_message& m, const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
     bool decrypt_message(int32_t*& decr_ptr, int32_t* decr_end);
-    void queue_pending_received_message(const secret_message& m, const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
-    std::vector<secret_message> dequeue_pending_received_messages(const secret_message& new_message);
+    void queue_unconfirmed_incoming_message(const secret_message& m, const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
+    std::vector<secret_message> dequeue_unconfirmed_incoming_messages(const secret_message& new_message);
     void process_messages(const std::vector<secret_message>& messages);
-    void load_unconfirmed_messages_if_needed();
-    void messages_deleted(const std::vector<int64_t>& message_ids);
+    void load_unconfirmed_incoming_messages_if_needed();
+    void load_unconfirmed_outgoing_messages_if_needed();
+    void incoming_messages_deleted(const std::vector<int64_t>& message_ids);
     void request_resend_messages(int32_t start_seq_no, int32_t end_seq_no);
     void resend_messages(int32_t start_seq_no, int32_t end_seq_no);
 };

@@ -86,8 +86,7 @@ void query_messages_send_encrypted_base::will_send()
     assemble();
 
     if (m_unconfirmed_message) {
-        auto storage = tgl_state::instance()->unconfirmed_secret_message_storage();
-        storage->store_message(m_unconfirmed_message);
+        m_secret_chat->private_facet()->queue_unconfirmed_outgoing_message(m_unconfirmed_message);
         m_unconfirmed_message = nullptr;
     }
 
