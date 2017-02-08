@@ -919,7 +919,7 @@ void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<tgl_messa
         if (message->is_service()) {
             if (!message->action) {
                 if (callback) {
-                    TGL_WARNING("we can't see a service message which doesn't have an action");
+                    TGL_WARNING("we can't send a service message which doesn't have an action");
                     callback(true, nullptr);
                 }
                 return;
