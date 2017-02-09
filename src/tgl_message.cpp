@@ -35,7 +35,6 @@ tgl_message::tgl_message(int64_t message_id,
     : tgl_message()
 {
     this->permanent_id = message_id;
-    this->seq_no = message_id;
     this->from_id = from_id;
     this->to_id = to_id;
 

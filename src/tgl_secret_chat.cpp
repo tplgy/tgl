@@ -362,6 +362,7 @@ void tgl_secret_chat_private_facet::load_unconfirmed_incoming_messages_if_needed
     auto storage = tgl_state::instance()->unconfirmed_secret_message_storage();
     d->m_unconfirmed_incoming_messages.clear();
     auto unconfirmed_messages = storage->load_messages_by_out_seq_no(id().peer_id, in_seq_no() + 1, -1, false);
+    tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, user_id());
     for (const auto& unconfirmed_message: unconfirmed_messages) {
         const auto& blobs = unconfirmed_message->blobs();
         secret_message m;
@@ -372,7 +373,7 @@ void tgl_secret_chat_private_facet::load_unconfirmed_incoming_messages_if_needed
                 TGL_WARNING("invalid unconfirmed incoming serecet message, skipping");
                 continue;
             }
-            m.message = construct_message(unconfirmed_message->message_id(),
+            m.message = construct_message(from_id, unconfirmed_message->message_id(),
                     unconfirmed_message->date(), blobs[0], blobs.size() == 2 ? blobs[1] : std::string());
             if (!m.message) {
                 TGL_WARNING("failed to construct message");
@@ -714,11 +715,12 @@ tgl_secret_chat_private_facet::fetch_message(const tl_ds_encrypted_message* DS_E
     auto ret = fetch_i32(&in);
     TGL_ASSERT_UNUSED(ret, ret == decrypted_data_length);
 
-    return fetch_message(in, message_id, DS_LVAL(DS_EM->date), DS_EM->file, construct_unconfirmed_message);
+    tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, user_id());
+    return fetch_message(in, from_id, message_id, DS_LVAL(DS_EM->date), DS_EM->file, construct_unconfirmed_message);
 }
 
 std::pair<secret_message, std::shared_ptr<tgl_unconfirmed_secret_message>>
-tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, int64_t message_id,
+tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, const tgl_peer_id_t& from_id, int64_t message_id,
         int64_t date, const tl_ds_encrypted_file* file, bool construct_unconfirmed_message)
 {
     secret_message m;
@@ -747,8 +749,6 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, int64_t message_
             return std::make_pair(m, nullptr);;
         }
 
-        tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, user_id());
-
         m.message = std::make_shared<tgl_message>(shared_from_this(),
                 message_id,
                 from_id,
@@ -759,6 +759,11 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, int64_t message_
                 file);
         m.raw_in_seq_no = DS_LVAL(DS_DML->in_seq_no);
         m.raw_out_seq_no = DS_LVAL(DS_DML->out_seq_no);
+        if (m.message->is_outgoing()) {
+            m.message->seq_no = m.raw_out_seq_no / 2;
+        } else {
+            m.message->seq_no = m.raw_in_seq_no / 2;
+        }
 
         if (construct_unconfirmed_message) {
             unconfirmed_message = unconfirmed_secret_message::create_default_impl(
@@ -783,8 +788,6 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, int64_t message_
 
         struct tl_ds_decrypted_message* DS_DM = fetch_ds_type_decrypted_message(&in, &decrypted_message);
         assert(DS_DM);
-
-        tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, user_id());
 
         m.message = std::make_shared<tgl_message>(shared_from_this(),
                 message_id,
@@ -813,8 +816,8 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, int64_t message_
     return std::make_pair(m, unconfirmed_message);
 }
 
-std::shared_ptr<tgl_message> tgl_secret_chat_private_facet::construct_message(int64_t message_id,
-        int64_t date, const std::string& layer_blob, const std::string& file_info_blob)
+std::shared_ptr<tgl_message> tgl_secret_chat_private_facet::construct_message(const tgl_peer_id_t& from_id,
+        int64_t message_id, int64_t date, const std::string& layer_blob, const std::string& file_info_blob)
 {
     if ((layer_blob.size() % 4) || (file_info_blob.size() % 4)) {
         TGL_ERROR("invalid blob sizes for incoming secret message");
@@ -837,7 +840,7 @@ std::shared_ptr<tgl_message> tgl_secret_chat_private_facet::construct_message(in
     }
 
     tgl_in_buffer in = { reinterpret_cast<const int*>(layer_blob.data()), reinterpret_cast<const int*>(layer_blob.data()) + layer_blob.size() / 4 };
-    auto message_pair = fetch_message(in, message_id, date, file, false);
+    auto message_pair = fetch_message(in, from_id, message_id, date, file, false);
     if (file) {
         free_ds_type_encrypted_file(file, &encrypted_file_type);
     }

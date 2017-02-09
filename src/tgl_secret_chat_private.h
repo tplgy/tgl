@@ -147,8 +147,8 @@ public:
     void queue_unconfirmed_outgoing_message(const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
 
     std::shared_ptr<tgl_message> fetch_message(const tl_ds_encrypted_message*);
-    std::shared_ptr<tgl_message> construct_message(int64_t message_id, int64_t date,
-            const std::string& layer_blob, const std::string& file_info_blob);
+    std::shared_ptr<tgl_message> construct_message(const tgl_peer_id_t& from_id, int64_t message_id,
+            int64_t date, const std::string& layer_blob, const std::string& file_info_blob);
 
     void send_message(const std::shared_ptr<tgl_message>& message,
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
@@ -182,7 +182,7 @@ private:
     fetch_message(const tl_ds_encrypted_message* DS_EM, bool construct_unconfirmed_message);
 
     std::pair<secret_message, std::shared_ptr<tgl_unconfirmed_secret_message>>
-    fetch_message(tgl_in_buffer& in, int64_t message_id,
+    fetch_message(tgl_in_buffer& in, const tgl_peer_id_t& from_id, int64_t message_id,
             int64_t date, const tl_ds_encrypted_file* file, bool construct_unconfirmed_message);
 
     void message_received(const secret_message& m, const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);

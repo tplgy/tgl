@@ -90,8 +90,10 @@ void query_messages_send_encrypted_base::will_send()
         m_unconfirmed_message = nullptr;
     }
 
+    m_message->seq_no = m_secret_chat->private_facet()->out_seq_no();
     m_secret_chat->private_facet()->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
     tgl_state::instance()->callback()->secret_chat_update(m_secret_chat);
+    tgl_state::instance()->callback()->new_messages({m_message});
 }
 
 void query_messages_send_encrypted_base::sent()
@@ -130,13 +132,13 @@ void query_messages_send_encrypted_base::end_unconfirmed_message()
 void query_messages_send_encrypted_base::construct_message(int64_t message_id, int64_t date,
         const std::string& layer_blob) throw(std::runtime_error)
 {
-    m_message = m_secret_chat->private_facet()->construct_message(message_id,
-            date, layer_blob, std::string());
+    m_message = m_secret_chat->private_facet()->construct_message(tgl_state::instance()->our_id(),
+            message_id, date, layer_blob, std::string());
     if (!m_message) {
         throw std::runtime_error("failed to reconstruct message from blobs");
     }
-    m_message->from_id = tgl_state::instance()->our_id();
-    m_message->set_unread(true).set_pending(true).set_outgoing(true);
+    m_message->set_unread(true).set_pending(true);
+    tgl_state::instance()->callback()->new_messages({m_message});
 }
 
 std::vector<std::shared_ptr<query_messages_send_encrypted_base>>
