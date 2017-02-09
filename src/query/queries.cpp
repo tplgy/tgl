@@ -4750,9 +4750,9 @@ void tgl_do_discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_c
 {
     assert(secret_chat);
 
-    if (secret_chat->state() == tgl_secret_chat_state::deleted || secret_chat->state() == tgl_secret_chat_state::none) {
+    if (secret_chat->state() == tgl_secret_chat_state::deleted) {
         if (callback) {
-            callback(false, secret_chat);
+            callback(true, secret_chat);
         }
         return;
     }
