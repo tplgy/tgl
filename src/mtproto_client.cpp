@@ -34,6 +34,7 @@
 #include "mtproto-utils.h"
 #include "query/queries.h"
 #include "query/query_export_auth.h"
+#include "query/query_help_get_config.h"
 #include "structures.h"
 #include "tgl_rsa_key.h"
 #include "tools.h"
@@ -743,10 +744,10 @@ bool mtproto_client::process_auth_complete(const char* packet, int len, bool tem
             memcpy(m_temp_auth_key.data(), m_auth_key.data(), 256);
             set_bound();
             if (!is_configured()) {
-                tgl_do_help_get_client_config(shared_from_this());
+                configure();
             } else {
                 // To trigger sending pending queries if any.
-                tgl_do_set_client_configured(shared_from_this(), true);
+                configured(true);
             }
         }
     }
@@ -1371,10 +1372,10 @@ void mtproto_client::connected()
             }
         } else if (!is_configured()) {
             TGL_DEBUG("DC " << m_id << " is not configured");
-            tgl_do_help_get_client_config(shared_from_this());
+            configure();
         } else {
             // To trigger sending pending queries if any.
-            tgl_do_set_client_configured(shared_from_this(), true);
+            configured(true);
         }
         break;
     default:
@@ -1382,6 +1383,36 @@ void mtproto_client::connected()
         m_state = state::init; // previous connection was reset
         send_req_pq_packet();
         break;
+    }
+}
+
+void mtproto_client::configure()
+{
+    auto q = std::make_shared<query_help_get_config>(
+            std::bind(&mtproto_client::configured, shared_from_this(), std::placeholders::_1));
+    q->out_header();
+    q->out_i32(CODE_help_get_config);
+    q->execute(shared_from_this(), query::execution_option::FORCE);
+}
+
+void mtproto_client::configured(bool success)
+{
+    set_configured(success);
+
+    if (!success) {
+        return;
+    }
+
+    TGL_DEBUG("DC " << id() << " is now configured");
+
+    if (this == tgl_state::instance()->active_client().get() || is_logged_in()) {
+        send_pending_queries();
+    } else if (!is_logged_in()) {
+        if (auth_transfer_in_process()) {
+            send_pending_queries();
+        } else {
+            transfer_auth_to_me();
+        }
     }
 }
 

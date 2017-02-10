@@ -71,8 +71,6 @@ double get_double_time(void);
 void tgl_do_bind_temp_key(const std::shared_ptr<mtproto_client>& client, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id);
 void tgl_do_get_channel_difference(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback);
 void tgl_do_lookup_state();
-void tgl_do_help_get_client_config(const std::shared_ptr<mtproto_client>& client);
-void tgl_do_set_client_configured(const std::shared_ptr<mtproto_client>& client, bool success);
 void tgl_do_set_client_logged_out(const std::shared_ptr<mtproto_client>& client, bool success);
 void tgl_do_check_password(const std::function<void(bool success)>& callback);
 

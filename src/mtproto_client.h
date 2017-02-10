@@ -142,9 +142,11 @@ public:
     void remove_connection_status_observer(const std::weak_ptr<connection_status_observer>& observer);
 
     void transfer_auth_to_me();
+    void configure();
 
 private:
     void connected();
+    void configured(bool success);
     void reset_temp_authorization();
     void cleanup_timer_expired();
     void send_all_acks();

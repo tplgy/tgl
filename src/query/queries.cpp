@@ -46,6 +46,7 @@
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "query_create_chat.h"
+#include "query_help_get_config.h"
 #include "query_messages_accept_encryption.h"
 #include "query_messages_discard_encryption.h"
 #include "query_messages_get_dh_config.h"
@@ -147,47 +148,6 @@ void fetch_dc_option(const tl_ds_dc_option* DS_DO)
             DS_LVAL(DS_DO->port));
 }
 
-class query_help_get_config: public query
-{
-public:
-    explicit query_help_get_config(const std::function<void(bool)>& callback)
-        : query("get config", TYPE_TO_PARAM(config))
-        , m_callback(callback)
-    { }
-
-    virtual void on_answer(void* DS) override
-    {
-        tl_ds_config* DS_C = static_cast<tl_ds_config*>(DS);
-
-        int count = DS_LVAL(DS_C->dc_options->cnt);
-        for (int i = 0; i < count; ++i) {
-            fetch_dc_option(DS_C->dc_options->data[i]);
-        }
-
-        int max_chat_size = DS_LVAL(DS_C->chat_size_max);
-        int max_bcast_size = 0; //DS_LVAL(DS_C->broadcast_size_max);
-        TGL_DEBUG("chat_size = " << max_chat_size << ", bcast_size = " << max_bcast_size);
-
-        if (m_callback) {
-            m_callback(true);
-        }
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-        if (m_callback) {
-            m_callback(false);
-        }
-        return 0;
-    }
-
-    virtual double timeout_interval() const override { return 1; }
-
-private:
-    std::function<void(bool)> m_callback;
-};
-
 void tgl_do_help_get_config(const std::function<void(bool)>& callback)
 {
     auto q = std::make_shared<query_help_get_config>(callback);
@@ -196,13 +156,6 @@ void tgl_do_help_get_config(const std::function<void(bool)>& callback)
     q->execute(tgl_state::instance()->active_client());
 }
 
-void tgl_do_help_get_client_config(const std::shared_ptr<mtproto_client>& client)
-{
-    auto q = std::make_shared<query_help_get_config>(std::bind(tgl_do_set_client_configured, client, std::placeholders::_1));
-    q->out_header();
-    q->out_i32(CODE_help_get_config);
-    q->execute(client, query::execution_option::FORCE);
-}
 /* }}} */
 
 /* {{{ Send code */
@@ -4008,27 +3961,6 @@ void tgl_do_upgrade_group(const tgl_peer_id_t& id, const std::function<void(bool
 }
 
 
-void tgl_do_set_client_configured(const std::shared_ptr<mtproto_client>& client, bool success)
-{
-    client->set_configured(success);
-
-    if (!success) {
-        return;
-    }
-
-    TGL_DEBUG("DC " << client->id() << " is now configured");
-
-    if (client == tgl_state::instance()->active_client() || client->is_logged_in()) {
-        client->send_pending_queries();
-    } else if (!client->is_logged_in()) {
-        if (client->auth_transfer_in_process()) {
-            client->send_pending_queries();
-        } else {
-            client->transfer_auth_to_me();
-        }
-    }
-}
-
 void tgl_do_set_client_logged_out(const std::shared_ptr<mtproto_client>& from_client, bool success)
 {
     if (from_client->is_logging_out()) {
@@ -4073,7 +4005,7 @@ public:
     {
         m_client->set_bound();
         TGL_DEBUG("bind temp auth key successfully for DC " << m_client->id());
-        tgl_do_help_get_client_config(m_client);
+        m_client->configure();
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
