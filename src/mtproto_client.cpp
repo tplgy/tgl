@@ -1435,9 +1435,6 @@ void mtproto_client::reset_authorization()
     m_state = state::init;
     memset(m_auth_key.data(), 0, m_auth_key.size());
     m_auth_key_id = 0;
-    if (!m_pending_queries.empty()) {
-        send_pending_queries();
-    }
 }
 
 void mtproto_client::reset_temp_authorization()
@@ -1549,10 +1546,6 @@ void mtproto_client::connection_status_changed(const std::shared_ptr<tgl_connect
         return;
     }
 
-    if (c->status() == tgl_connection_status::connected) {
-        connected();
-    }
-
     if (tgl_state::instance()->active_client().get() == this) {
         tgl_state::instance()->callback()->connection_status_changed(c->status());
     }
@@ -1561,6 +1554,10 @@ void mtproto_client::connection_status_changed(const std::shared_ptr<tgl_connect
         if (const auto& observer = weak_observer.lock()) {
             observer->connection_status_changed(c->status());
         }
+    }
+
+    if (c->status() == tgl_connection_status::connected) {
+        connected();
     }
 }
 
