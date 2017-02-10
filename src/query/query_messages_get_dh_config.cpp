@@ -29,11 +29,13 @@ query_messages_get_dh_config::query_messages_get_dh_config(const std::shared_ptr
         const std::function<void(const std::shared_ptr<tgl_secret_chat>&,
                 std::array<unsigned char, 256>& random,
                 const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>&)>& callback,
-        const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& final_callback)
+        const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& final_callback,
+        double timeout)
     : query("get dh config", TYPE_TO_PARAM(messages_dh_config))
     , m_secret_chat(secret_chat)
     , m_callback(callback)
     , m_final_callback(final_callback)
+    , m_timeout(timeout)
 {
 }
 
@@ -88,4 +90,37 @@ int query_messages_get_dh_config::on_error(int error_code, const std::string& er
         m_final_callback(false, m_secret_chat);
     }
     return 0;
+}
+
+void query_messages_get_dh_config::on_timeout()
+{
+    TGL_ERROR("timed out for query #" << msg_id() << " (" << name() << ")");
+    if (m_final_callback) {
+        m_final_callback(false, m_secret_chat);
+    }
+}
+
+double query_messages_get_dh_config::timeout_interval() const
+{
+    if (m_timeout > 0) {
+        return m_timeout;
+    }
+
+    return query::timeout_interval();
+}
+
+bool query_messages_get_dh_config::should_retry_on_timeout() const
+{
+    if (m_timeout > 0) {
+        return false;
+    }
+
+    return query::should_retry_on_timeout();
+}
+
+void query_messages_get_dh_config::will_be_pending()
+{
+    if (m_timeout > 0) {
+        timeout_within(timeout_interval());
+    }
 }

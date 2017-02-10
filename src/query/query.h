@@ -26,6 +26,7 @@
 #include "auto/auto-types.h"
 #include "mtproto-common.h"
 #include "mtproto_client.h"
+#include "tgl/tgl_connection_status.h"
 #include "tgl/tgl_peer_id.h"
 
 #include <memory>
@@ -44,6 +45,7 @@ public:
         , m_session_id(0)
         , m_seq_no(0)
         , m_exec_option(execution_option::UNKNOWN)
+        , m_connection_status(tgl_connection_status::disconnected)
         , m_ack_received(false)
         , m_name(name)
         , m_type(type)
@@ -120,10 +122,11 @@ public:
     virtual void on_answer(void* DS) = 0;
     virtual int on_error(int error_code, const std::string& error_string) = 0;
     virtual void on_timeout() { }
+    virtual void on_connection_status_changed(tgl_connection_status status) { }
 
-    virtual double timeout_interval() const { return m_ack_received ? 120.0 : 12.0; }
-    virtual bool should_retry_on_timeout() { return true; }
-    virtual bool should_retry_after_recover_from_error() { return true; }
+    virtual double timeout_interval() const { return m_ack_received ? 24.0 : 12.0; }
+    virtual bool should_retry_on_timeout() const { return true; }
+    virtual bool should_retry_after_recover_from_error() const { return true; }
 
     virtual void will_be_pending() { }
     virtual void will_send() { }
@@ -131,14 +134,13 @@ public:
 
     bool ack_received() const { return m_ack_received; }
 
-    virtual void connection_status_changed(tgl_connection_status status) override { }
-
 protected:
     void timeout_within(double seconds);
     void retry_within(double seconds);
 
 private:
     friend void tglq_query_delete(int64_t id);
+    virtual void connection_status_changed(tgl_connection_status status) override final;
     bool is_force() const { return m_exec_option == execution_option::FORCE; }
     bool is_login() const { return m_exec_option == execution_option::LOGIN; }
     bool is_logout() const { return m_exec_option == execution_option::LOGOUT; }
@@ -157,6 +159,7 @@ private:
     int64_t m_session_id;
     int32_t m_seq_no;
     execution_option m_exec_option;
+    tgl_connection_status m_connection_status;
     bool m_ack_received;
     const std::string m_name;
     paramed_type m_type;

@@ -16,27 +16,18 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016-2017
+    Copyright Topology LP 2016-17
 */
 
-#ifndef __TGL_QUERY_MESSAGES_GET_DH_CONFIG_H__
-#define __TGL_QUERY_MESSAGES_GET_DH_CONFIG_H__
+#ifndef __TGL_QUERY_CREATE_CHAT_H__
+#define __TGL_QUERY_CREATE_CHAT_H__
 
 #include "query.h"
 
-#include <array>
-
-class tgl_secret_chat;
-
-class query_messages_get_dh_config: public query
+class query_create_chat: public query
 {
 public:
-    query_messages_get_dh_config(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::function<void(const std::shared_ptr<tgl_secret_chat>&,
-                    std::array<unsigned char, 256>& random,
-                    const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>&)>& callback,
-            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& final_callback,
-            double timeout = 0);
+    explicit query_create_chat(const std::function<void(int32_t chat_id)>& callback, bool is_channel = false);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     virtual void on_timeout() override;
@@ -45,12 +36,7 @@ public:
     virtual void will_be_pending() override;
 
 private:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
-    std::function<void(const std::shared_ptr<tgl_secret_chat>&,
-             std::array<unsigned char, 256>& random,
-             const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>&)> m_callback;
-    std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_final_callback;
-    double m_timeout;
+    std::function<void(int32_t)> m_callback;
 };
 
 #endif

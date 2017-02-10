@@ -45,6 +45,7 @@
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
+#include "query_create_chat.h"
 #include "query_messages_accept_encryption.h"
 #include "query_messages_discard_encryption.h"
 #include "query_messages_get_dh_config.h"
@@ -245,7 +246,7 @@ public:
         return 20;
     }
 
-    virtual bool should_retry_on_timeout() override
+    virtual bool should_retry_on_timeout() const override
     {
         return false;
     }
@@ -309,7 +310,7 @@ public:
         return 20;
     }
 
-    virtual bool should_retry_on_timeout() override
+    virtual bool should_retry_on_timeout() const override
     {
         return false;
     }
@@ -379,7 +380,7 @@ public:
         return 20;
     }
 
-    virtual bool should_retry_on_timeout() override
+    virtual bool should_retry_on_timeout() const override
     {
         return false;
     }
@@ -482,7 +483,7 @@ public:
         return 20;
     }
 
-    virtual bool should_retry_on_timeout() override
+    virtual bool should_retry_on_timeout() const override
     {
         return false;
     }
@@ -2758,46 +2759,6 @@ void tgl_do_channel_delete_user(const tgl_input_peer_t& channel_id, const tgl_in
     q->execute(tgl_state::instance()->active_client());
 }
 
-class query_create_chat: public query
-{
-public:
-    explicit query_create_chat(const std::function<void(int32_t chat_id)>& callback, bool is_channel = false)
-        : query(is_channel ? "create channel" : "create chat", TYPE_TO_PARAM(updates))
-        , m_callback(callback)
-    { }
-
-    virtual void on_answer(void* D) override
-    {
-        tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
-        tglu_work_any_updates(DS_U, nullptr);
-
-        int32_t chat_id = 0;
-        if (DS_U->magic == CODE_updates && DS_U->chats && DS_U->chats->cnt && *DS_U->chats->cnt == 1) {
-            chat_id = DS_LVAL(DS_U->chats->data[0]->id);
-        }
-
-        if (!chat_id) {
-            assert(false);
-        }
-
-        if (m_callback) {
-            m_callback(chat_id);
-        }
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-        if (m_callback) {
-            m_callback(0);
-        }
-        return 0;
-    }
-
-private:
-    std::function<void(int32_t)> m_callback;
-};
-
 void tgl_do_create_group_chat(const std::vector<tgl_input_peer_t>& user_ids, const std::string& chat_topic,
         const std::function<void(int32_t chat_id)>& callback)
 {
@@ -4130,12 +4091,12 @@ public:
         m_client->restart_temp_authorization();
     }
 
-    virtual bool should_retry_on_timeout() override
+    virtual bool should_retry_on_timeout() const override
     {
         return false;
     }
 
-    virtual bool should_retry_after_recover_from_error() override
+    virtual bool should_retry_after_recover_from_error() const override
     {
         return false;
     }
@@ -4795,7 +4756,8 @@ void tgl_do_create_secret_chat(const tgl_input_peer_t& user_id, int32_t new_secr
     }
 
     auto q = std::make_shared<query_messages_get_dh_config>(secret_chat,
-            std::bind(&tgl_do_send_create_encr_chat, user_id, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), callback);
+            std::bind(&tgl_do_send_create_encr_chat, user_id, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+            callback, 10.0);
     q->out_i32(CODE_messages_get_dh_config);
     q->out_i32(0);
     q->out_i32(256);

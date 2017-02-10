@@ -260,7 +260,7 @@ public:
         return 20;
     }
 
-    virtual void connection_status_changed(tgl_connection_status status) override
+    virtual void on_connection_status_changed(tgl_connection_status status) override
     {
         if (upload_finished()) {
             return;
@@ -399,7 +399,7 @@ public:
         return 20.0;
     }
 
-    virtual void connection_status_changed(tgl_connection_status status) override
+    virtual void on_connection_status_changed(tgl_connection_status status) override
     {
         if (download_finished()) {
             return;

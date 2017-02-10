@@ -33,6 +33,10 @@ public:
             const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
+    virtual void on_timeout() override;
+    virtual double timeout_interval() const override;
+    virtual bool should_retry_on_timeout() const override;
+    virtual void will_be_pending() override;
 
 private:
     std::shared_ptr<tgl_secret_chat> m_secret_chat;

@@ -167,6 +167,12 @@ void query::execute(const std::shared_ptr<mtproto_client>& client, execution_opt
     TGL_DEBUG("sent query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_client->id() << ": #" << msg_id());
 }
 
+void query::connection_status_changed(tgl_connection_status status)
+{
+    m_connection_status = status;
+    on_connection_status_changed(status);
+}
+
 bool query::execute_after_pending()
 {
     // We only return false when the query is pending.
@@ -437,6 +443,10 @@ bool query::check_pending(bool transfer_auth)
     if (!m_client->session()) {
         pending = true;
         m_client->create_session();
+    }
+
+    if (m_connection_status != tgl_connection_status::connected) {
+        pending = true;
     }
 
     if (!m_client->is_configured() && !is_force()) {

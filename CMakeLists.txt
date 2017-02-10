@@ -127,6 +127,7 @@ set(PRIVATE_HEADERS
     src/mtproto-utils.h
     src/query/queries.h
     src/query/query.h
+    src/query/query_create_chat.h
     src/query/query_export_auth.h
     src/query/query_import_auth.h
     src/query/query_mark_read_encr.h
@@ -163,6 +164,7 @@ set(SOURCES
     src/mtproto-utils.cpp
     src/query/queries.cpp
     src/query/query.cpp
+    src/query/query_create_chat.cpp
     src/query/query_messages_accept_encryption.cpp
     src/query/query_messages_get_dh_config.cpp
     src/query/query_messages_request_encryption.cpp

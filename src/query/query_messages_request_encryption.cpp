@@ -54,3 +54,26 @@ int query_messages_request_encryption::on_error(int error_code, const std::strin
 
     return 0;
 }
+
+void query_messages_request_encryption::on_timeout()
+{
+    TGL_ERROR("timed out for query #" << msg_id() << " (" << name() << ")");
+    if (m_callback) {
+        m_callback(false, m_secret_chat);
+    }
+}
+
+double query_messages_request_encryption::timeout_interval() const
+{
+    return 10;
+}
+
+bool query_messages_request_encryption::should_retry_on_timeout() const
+{
+    return false;
+}
+
+void query_messages_request_encryption::will_be_pending()
+{
+    timeout_within(timeout_interval());
+}
