@@ -2412,6 +2412,10 @@ public:
                 tglf_fetch_alloc_chat(DS_UD->chats->data[i]);
             }
 
+            for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
+                tglu_work_update(DS_UD->other_updates->data[i], nullptr, tgl_update_mode::dont_check_and_update_consistency);
+            }
+
             int message_count = DS_LVAL(DS_UD->new_messages->cnt);
             std::vector<std::shared_ptr<tgl_message>> messages;
             for (int i = 0; i < message_count; i++) {
@@ -2424,16 +2428,6 @@ public:
             for (int i = 0; i < encrypted_message_count; i++) {
                 tgl_secret_chat_private_facet::imbue_encrypted_message(DS_UD->new_encrypted_messages->data[i]);
             }
-
-            for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
-                tglu_work_update(DS_UD->other_updates->data[i], nullptr, tgl_update_mode::dont_check_and_update_consistency);
-            }
-#if 0
-            for (int i = 0; i < message_count; i++) {
-                bl_do_msg_update(&messages[i]->permanent_id);
-                tgl_state::instance()->callback()->new_message(messages[i]);
-            }
-#endif
 
             if (DS_UD->state) {
                 tgl_state::instance()->set_pts(DS_LVAL(DS_UD->state->pts));
@@ -2541,22 +2535,16 @@ public:
                 tglf_fetch_alloc_chat(DS_UD->chats->data[i]);
             }
 
+            for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
+                tglu_work_update(DS_UD->other_updates->data[i], nullptr, tgl_update_mode::dont_check_and_update_consistency);
+            }
+
             int message_count = DS_LVAL(DS_UD->new_messages->cnt);
             std::vector<std::shared_ptr<tgl_message>> messages;
             for (int i = 0; i < message_count; i++) {
                 messages.push_back(tglf_fetch_alloc_message(DS_UD->new_messages->data[i]));
             }
             tgl_state::instance()->callback()->new_messages(messages);
-
-            for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
-                tglu_work_update(DS_UD->other_updates->data[i], nullptr, tgl_update_mode::dont_check_and_update_consistency);
-            }
-
-#if 0
-            for (int i = 0; i < ml_pos; i++) {
-                bl_do_msg_update(&messages[i]->permanent_id);
-            }
-#endif
 
             //bl_do_set_channel_pts(tgl_get_peer_id(m_channel->id), DS_LVAL(DS_UD->channel_pts));
             if (DS_UD->magic != CODE_updates_channel_difference_too_long) {
