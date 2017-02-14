@@ -48,7 +48,8 @@ public:
     virtual void pts_changed(int32_t new_value) = 0;
     virtual void date_changed(int64_t new_value) = 0;
     virtual void new_messages(const std::vector<std::shared_ptr<tgl_message>>& msgs) = 0;
-    virtual void message_id_updated(int64_t old_msg_id, int64_t new_msg_id, const tgl_input_peer_t& peer) = 0;
+    virtual void message_id_updated(int64_t old_msg_id, int64_t new_msg_id, const tgl_input_peer_t& peere) = 0;
+    virtual void message_sent(int64_t old_msg_id, int64_t new_msg_id, int64_t new_date, const tgl_input_peer_t& peer) = 0;
     virtual void message_deleted(int64_t msg_id) = 0;
     virtual void message_deleted(int64_t msg_id, const tgl_input_peer_t& peer) = 0;
     virtual void messages_mark_read_in(tgl_peer_id_t peer, int64_t msg_id_or_max_time) = 0;

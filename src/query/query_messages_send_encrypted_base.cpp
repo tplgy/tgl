@@ -47,7 +47,7 @@ void query_messages_send_encrypted_base::on_answer(void* D)
         m_callback(true, m_message);
     }
 
-    tgl_state::instance()->callback()->message_id_updated(m_message->permanent_id, m_message->permanent_id, m_message->to_id);
+    tgl_state::instance()->callback()->message_sent(m_message->permanent_id, m_message->permanent_id, 0 /* date unchanged */, m_message->to_id);
 }
 
 int query_messages_send_encrypted_base::on_error(int error_code, const std::string& error_string)
