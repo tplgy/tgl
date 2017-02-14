@@ -29,6 +29,7 @@ enum class tgl_connection_status {
     disconnected,
     connecting,
     connected,
+    closed,
 };
 
 inline static std::string to_string(tgl_connection_status status)
@@ -40,6 +41,8 @@ inline static std::string to_string(tgl_connection_status status)
         return "connecting";
     case tgl_connection_status::connected:
         return "connected";
+    case tgl_connection_status::closed:
+        return "closed";
     default:
         assert(false);
         return "unknown connection status";

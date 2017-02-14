@@ -50,6 +50,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits>
 #include <memory>
 #include <signal.h>
 #include <stdio.h>
@@ -58,9 +59,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static constexpr float SESSION_CLEANUP_TIMEOUT = 5.0;
+static constexpr double SESSION_CLEANUP_TIMEOUT = 5.0;
 static constexpr int MAX_MESSAGE_INTS = 1048576;
 static constexpr int ACK_TIMEOUT = 1;
+static constexpr size_t MAX_SECONDARY_WORKERS_PER_SESSION = 3;
+static constexpr double MAX_SECONDARY_WORKER_IDLE_TIME = 15.0;
 
 #pragma pack(push,4)
 struct encrypted_message {
@@ -161,7 +164,6 @@ bool mtproto_client::try_rpc_execute(const std::shared_ptr<tgl_connection>& c)
     }
 
     assert(c);
-    assert(m_session->c == c);
 
     while (true) {
         if (c->available_bytes_for_read() < 1) {
@@ -204,7 +206,7 @@ bool mtproto_client::try_rpc_execute(const std::shared_ptr<tgl_connection>& c)
         int op;
         result = c->peek(&op, 4);
         TGL_ASSERT_UNUSED(result, result == 4);
-        if (!rpc_execute(op, len)) {
+        if (!rpc_execute(c, op, len)) {
             return false;
         }
     }
@@ -239,7 +241,7 @@ void mtproto_client::rpc_send_packet(const char* data, size_t len)
     total_len >>= 2;
     TGL_DEBUG("writing packet: total_len = " << total_len << ", len = " << len);
 
-    const std::shared_ptr<tgl_connection>& c = m_session->c;
+    const std::shared_ptr<tgl_connection>& c = m_session->primary_worker->connection;
     if (total_len < 0x7f) {
         int result = c->write(&total_len, 1);
         TGL_ASSERT_UNUSED(result, result == 1);
@@ -306,7 +308,7 @@ void mtproto_client::send_req_pq_packet()
 {
     assert(m_state == state::init);
     assert(m_session);
-    assert(m_session->c);
+    assert(m_session->primary_worker->connection);
 
     tgl_secure_random(m_nonce.data(), 16);
     mtprotocol_serializer s;
@@ -322,6 +324,7 @@ void mtproto_client::send_req_pq_packet()
 void mtproto_client::send_req_pq_temp_packet()
 {
     assert(m_state == state::authorized);
+    assert(m_session->primary_worker->connection);
 
     tgl_secure_random(m_nonce.data(), 16);
     mtprotocol_serializer s;
@@ -873,17 +876,14 @@ static std::unique_ptr<char[]> allocate_encrypted_message_buffer(int msg_ints)
     return buffer;
 }
 
-int64_t mtproto_client::send_message(
-        const int32_t* msg, int msg_ints,
-        int64_t msg_id_override, bool force_send, bool useful)
+int64_t mtproto_client::send_message_impl(
+        const int32_t* msg, size_t msg_ints, int64_t msg_id_override,
+        bool force_send, bool useful, bool allow_secondary_connections, bool count_work_load)
 {
-    if (!m_session || !m_session->c) {
+    if (!m_session || !m_session->primary_worker) {
         return -1;
     }
 
-    assert(is_configured() || force_send);
-
-    const int UNENCSZ = offsetof(struct encrypted_message, server_salt);
     if (msg_ints <= 0) {
         TGL_NOTICE("message length is zero or negative");
         return -1;
@@ -891,6 +891,17 @@ int64_t mtproto_client::send_message(
 
     if (msg_ints > MAX_MESSAGE_INTS - 4) {
         TGL_NOTICE("message too long");
+        return -1;
+    }
+
+    assert(is_configured() || force_send);
+
+    auto best_worker = select_best_worker(allow_secondary_connections);
+    assert(best_worker);
+
+    if (!best_worker->connection || best_worker->connection->status() == tgl_connection_status::disconnected) {
+        assert(best_worker == m_session->primary_worker);
+        TGL_ERROR("primary worker has been stopped");
         return -1;
     }
 
@@ -906,9 +917,74 @@ int64_t mtproto_client::send_message(
 
     int l = aes_encrypt_message(m_temp_auth_key.data(), enc_msg);
     assert(l > 0);
-    rpc_send_message(m_session->c, enc_msg, l + UNENCSZ);
+
+    if (count_work_load) {
+        best_worker->work_load.insert(msg_id);
+    }
+
+    const int UNENCSZ = offsetof(struct encrypted_message, server_salt);
+    rpc_send_message(best_worker->connection, enc_msg, l + UNENCSZ);
 
     return msg_id;
+}
+
+std::shared_ptr<worker> mtproto_client::select_best_worker(bool allow_secondary_workers)
+{
+    assert(m_session);
+    assert(m_session->primary_worker);
+
+    std::shared_ptr<worker> best_worker = m_session->primary_worker;
+
+    if (!allow_secondary_workers) {
+        TGL_DEBUG("selected the primary worker with work_load " << best_worker->work_load.size());
+        return best_worker;
+    }
+
+    auto min_work_load = best_worker->work_load.size();
+    for (const auto& w: m_session->secondary_workers) {
+        if (!w->connection || w->connection->status() == tgl_connection_status::disconnected) {
+            continue;
+        }
+        if (w->work_load.size() < min_work_load) {
+            min_work_load = w->work_load.size();
+            best_worker = w;
+        }
+    }
+
+    if (best_worker->work_load.size() != 0 && m_session->secondary_workers.size() < MAX_SECONDARY_WORKERS_PER_SESSION) {
+        auto connection = tgl_state::instance()->connection_factory()->create_connection(
+                m_ipv4_options, m_ipv6_options, shared_from_this());
+        connection->open();
+        best_worker = std::make_shared<worker>(connection);
+        std::weak_ptr<mtproto_client> weak_client = shared_from_this();
+        best_worker->live_timer = tgl_state::instance()->timer_factory()->create_timer([=] {
+            if (best_worker->work_load.size()) {
+                TGL_DEBUG("a worker idle timer fired but it still has " << best_worker->work_load.size() << " jobs to do, refreshing the timer");
+                best_worker->live_timer->start(MAX_SECONDARY_WORKER_IDLE_TIME);
+                return;
+            }
+            if (best_worker->connection) {
+               TGL_DEBUG("an idle worker stopped");
+               best_worker->connection->close();
+            }
+            if (auto client = weak_client.lock()) {
+                if (client->m_session) {
+                    client->m_session->secondary_workers.erase(best_worker);
+                    TGL_DEBUG("now we have " << client->m_session->secondary_workers.size() << " secondary workers");
+                }
+            }
+        });
+        m_session->secondary_workers.insert(best_worker);
+        TGL_DEBUG("started a secondary worker, now we have " << m_session->secondary_workers.size() << " secondary workers");
+    }
+
+    if (best_worker == m_session->primary_worker) {
+        TGL_DEBUG("selected the primary worker with work_load " << best_worker->work_load.size());
+    } else {
+        TGL_DEBUG("selected a secondary worker with work_load " << best_worker->work_load.size());
+    }
+
+    return best_worker;
 }
 
 int mtproto_client::encrypt_inner_temp(const int32_t* msg, int msg_ints, void* data, int64_t msg_id)
@@ -999,12 +1075,43 @@ static int work_msgs_ack(tgl_in_buffer* in, int64_t msg_id)
     return 0;
 }
 
-static int work_rpc_result(tgl_in_buffer* in, int64_t msg_id)
+void mtproto_client::worker_job_done(int64_t id)
+{
+    if (!m_session) {
+        return;
+    }
+
+    if (const auto& w = m_session->primary_worker) {
+        auto it = w->work_load.lower_bound(id);
+        if (it != w->work_load.end() && *it == id) {
+            w->work_load.erase(it);
+            assert(!w->live_timer);
+            return;
+        }
+    }
+
+    for (const auto& w: m_session->secondary_workers) {
+        auto it = w->work_load.lower_bound(id);
+        if (it != w->work_load.end() && *it == id) {
+            w->work_load.erase(it);
+            if (w->work_load.empty() && w->live_timer) {
+                assert(w != m_session->primary_worker);
+                w->live_timer->start(MAX_SECONDARY_WORKER_IDLE_TIME);
+            }
+            break;
+        }
+    }
+}
+
+int mtproto_client::work_rpc_result(tgl_in_buffer* in, int64_t msg_id)
 {
     TGL_DEBUG("work_rpc_result: msg_id = " << msg_id);
     auto result = fetch_i32(in);
     TGL_ASSERT_UNUSED(result, result == static_cast<int32_t>(CODE_rpc_result));
     int64_t id = fetch_i64(in);
+
+    worker_job_done(id);
+
     uint32_t op = prefetch_i32(in);
     if (op == CODE_rpc_error) {
         return tglq_query_error(in, id);
@@ -1045,12 +1152,13 @@ int mtproto_client::work_bad_server_salt(tgl_in_buffer* in)
     return 0;
 }
 
-static int work_pong(tgl_in_buffer* in)
+int mtproto_client::work_pong(tgl_in_buffer* in)
 {
     auto result = fetch_i32(in);
     TGL_ASSERT_UNUSED(result, result == static_cast<int32_t>(CODE_pong));
-    fetch_i64(in); // msg_id
+    int64_t id = fetch_i64(in); // msg_id
     fetch_i64(in); // ping_id
+    worker_job_done(id);
     return 0;
 }
 
@@ -1259,10 +1367,10 @@ bool mtproto_client::process_rpc_message(encrypted_message* enc, int len)
     return true;
 }
 
-bool mtproto_client::rpc_execute(int op, int len)
+bool mtproto_client::rpc_execute(const std::shared_ptr<tgl_connection>& c, int op, int len)
 {
     assert(m_session);
-    assert(m_session->c);
+    assert(c);
 
     if (len >= MAX_RESPONSE_SIZE/* - 12*/ || len < 0/*12*/) {
         TGL_WARNING("answer too long, skipping. lengeth:" << len);
@@ -1271,12 +1379,9 @@ bool mtproto_client::rpc_execute(int op, int len)
 
     std::unique_ptr<char[]> response(new char[len]);
     TGL_DEBUG("response of " << len << " bytes received from DC " << m_id);
-    int result = m_session->c->read(response.get(), len);
+    int result = c->read(response.get(), len);
     TGL_ASSERT_UNUSED(result, result == len);
 
-#if !defined(__MACH__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__CYGWIN__)
-    //  setsockopt(c->fd, IPPROTO_TCP, TCP_QUICKACK, (int[]){0}, 4);
-#endif
     state current_state = m_state;
     if (current_state != state::authorized) {
         TGL_DEBUG("state = " << current_state << " for DC " << m_id);
@@ -1388,6 +1493,7 @@ void mtproto_client::connected()
 
 void mtproto_client::configure()
 {
+    TGL_DEBUG("start configuring DC " << id());
     auto q = std::make_shared<query_help_get_config>(
             std::bind(&mtproto_client::configured, shared_from_this(), std::placeholders::_1));
     q->out_header();
@@ -1399,18 +1505,21 @@ void mtproto_client::configured(bool success)
 {
     set_configured(success);
 
+    TGL_DEBUG("configured DC " << id() << " success: " << std::boolalpha << success);
+
     if (!success) {
         return;
     }
 
-    TGL_DEBUG("DC " << id() << " is now configured");
-
     if (this == tgl_state::instance()->active_client().get() || is_logged_in()) {
+        TGL_DEBUG("sart sending pending queries if we have");
         send_pending_queries();
     } else if (!is_logged_in()) {
         if (auth_transfer_in_process()) {
+            TGL_DEBUG("auth transfer is still in process but we sart sending pending queries if we have");
             send_pending_queries();
         } else {
+            TGL_DEBUG("start transferring auth to DC " << id());
             transfer_auth_to_me();
         }
     }
@@ -1430,7 +1539,7 @@ void mtproto_client::send_all_acks()
         s.out_i64(id);
     }
     m_session->ack_set.clear();
-    send_message(s.i32_data(), s.i32_size());
+    send_ack_message(s.i32_data(), s.i32_size());
 }
 
 void mtproto_client::insert_msg_id(int64_t id)
@@ -1453,9 +1562,12 @@ void mtproto_client::create_session()
     while (!m_session->session_id) {
         tgl_secure_random(reinterpret_cast<unsigned char*>(&m_session->session_id), 8);
     }
-    m_session->c = tgl_state::instance()->connection_factory()->create_connection(
-            m_ipv4_options, m_ipv6_options, shared_from_this());
-    m_session->c->open();
+
+    TGL_DEBUG("start creating connection to DC " << id());
+
+    m_session->primary_worker = std::make_shared<worker>(tgl_state::instance()->connection_factory()->create_connection(
+            m_ipv4_options, m_ipv6_options, shared_from_this()));
+    m_session->primary_worker->connection->open();
     m_session->ev = tgl_state::instance()->timer_factory()->create_timer(
             std::bind(&mtproto_client::send_all_acks, shared_from_this()));
 }
@@ -1573,7 +1685,20 @@ void mtproto_client::add_ipv4_option(const std::string& address, int port)
 
 void mtproto_client::connection_status_changed(const std::shared_ptr<tgl_connection>& c)
 {
-    if (!m_session || !m_session->c || m_session->c != c) {
+    if (!m_session || !m_session->primary_worker || !m_session->primary_worker->connection) {
+        return;
+    }
+
+    if (c != m_session->primary_worker->connection) {
+        if (c->status() == tgl_connection_status::closed) {
+            auto it = m_session->secondary_workers.begin();
+            for (; it != m_session->secondary_workers.end(); ++it) {
+                if ((*it)->connection == c) {
+                    m_session->secondary_workers.erase(it);
+                    break;
+                }
+            }
+        }
         return;
     }
 
@@ -1594,11 +1719,11 @@ void mtproto_client::connection_status_changed(const std::shared_ptr<tgl_connect
 
 tgl_connection_status mtproto_client::connection_status() const
 {
-    if (!m_session || !m_session->c) {
+    if (!m_session || !m_session->primary_worker || !m_session->primary_worker->connection) {
         return tgl_connection_status::disconnected;
     }
 
-    return m_session->c->status();
+    return m_session->primary_worker->connection->status();
 }
 
 void mtproto_client::add_connection_status_observer(const std::weak_ptr<connection_status_observer>& weak_observer)
@@ -1640,4 +1765,9 @@ void mtproto_client::transfer_auth_to_me()
     q->out_i32(CODE_auth_export_authorization);
     q->out_i32(id());
     q->execute(tgl_state::instance()->active_client());
+}
+
+size_t mtproto_client::max_connections() const
+{
+    return MAX_SECONDARY_WORKERS_PER_SESSION + 1;
 }

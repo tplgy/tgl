@@ -28,7 +28,11 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <unordered_set>
 #include <vector>
+
+class query_upload_file_part;
+struct tgl_message;
 
 class upload_task {
 public:
@@ -62,6 +66,10 @@ public:
     tgl_upload_status status;
     bool at_EOF;
 
+    std::unordered_set<size_t> running_parts;
+    tgl_upload_callback callback;
+    tgl_read_callback read_callback;
+    tgl_upload_part_done_callback part_done_callback;
 
     upload_task();
     ~upload_task();
@@ -73,6 +81,13 @@ public:
     bool is_video() const { return doc_type == tgl_document_type::video; }
     bool is_sticker() const { return doc_type == tgl_document_type::sticker; }
     bool is_unknown() const { return doc_type == tgl_document_type::unknown; }
+
+    void set_status(tgl_upload_status status, const std::shared_ptr<tgl_message>& message = nullptr);
+    void request_cancel() { m_cancel_requested = true; }
+    bool check_cancelled();
+
+private:
+    bool m_cancel_requested;
 };
 
 #endif

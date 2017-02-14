@@ -44,6 +44,7 @@ upload_task::upload_task()
     , message_id(0)
     , status(tgl_upload_status::waiting)
     , at_EOF(false)
+    , m_cancel_requested(false)
 {
 }
 
@@ -53,4 +54,21 @@ upload_task::~upload_task()
     memset(iv.data(), 0, iv.size());
     memset(init_iv.data(), 0, init_iv.size());
     memset(key.data(), 0, key.size());
+}
+
+void upload_task::set_status(tgl_upload_status status, const std::shared_ptr<tgl_message>& message)
+{
+    this->status = status;
+    if (callback) {
+        callback(status, message, offset);
+    }
+}
+
+bool upload_task::check_cancelled()
+{
+    if (!m_cancel_requested && status != tgl_upload_status::cancelled) {
+        return false;
+    }
+    set_status(tgl_upload_status::cancelled);
+    return true;
 }

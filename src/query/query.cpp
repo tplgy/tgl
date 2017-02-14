@@ -58,7 +58,7 @@ bool query::send()
 
     TGL_DEBUG("sending query \"" << m_name << "\" of size " << m_serializer->char_size() << " to DC " << m_client->id());
 
-    m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), true);
+    m_msg_id = m_client->send_message(m_serializer->i32_data(), m_serializer->i32_size(), m_msg_id_override, is_force(), is_file_transfer());
     if (m_msg_id == -1) {
         m_msg_id = 0;
         handle_error(400, "client failed to send message");

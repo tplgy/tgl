@@ -141,6 +141,7 @@ set(PRIVATE_HEADERS
     src/query/query_messages_send_encrypted_base.h
     src/query/query_messages_send_encrypted_file.h
     src/query/query_messages_send_encrypted_message.h
+    src/query/query_upload_file_part.h
     src/query/query_user_info.h
     src/secret_chat_encryptor.h
     src/structures.h
@@ -178,6 +179,7 @@ set(SOURCES
     src/query/query_messages_send_encrypted_base.cpp
     src/query/query_messages_send_encrypted_file.cpp
     src/query/query_messages_send_encrypted_message.cpp
+    src/query/query_upload_file_part.cpp
     src/secret_chat_encryptor.cpp
     src/structures.cpp
     src/tgl.cpp

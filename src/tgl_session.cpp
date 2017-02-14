@@ -30,8 +30,18 @@ void tgl_session::clear()
     last_msg_id = 0;
     seq_no = 0;
     received_messages = 0;
-    c->close();
-    c = nullptr;
+    if (primary_worker) {
+        if (primary_worker->connection) {
+            primary_worker->connection->close();
+        }
+        primary_worker = nullptr;
+    }
+    for (const auto& w: secondary_workers) {
+        if (w->connection) {
+            w->connection->close();
+        }
+    }
+    secondary_workers.clear();
     ack_set.clear();
     ev->cancel();
     ev = nullptr;

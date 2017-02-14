@@ -22,19 +22,32 @@
 #ifndef __TGL_SESSION_H__
 #define __TGL_SESSION_H__
 
+#include "tgl/tgl_timer.h"
+
 #include <memory>
 #include <set>
 #include <stdint.h>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 class tgl_connection;
 class tgl_timer;
+
+struct worker {
+    std::shared_ptr<tgl_connection> connection;
+    std::shared_ptr<tgl_timer> live_timer;
+    std::set<int64_t> work_load;
+    explicit worker(const std::shared_ptr<tgl_connection>& c): connection(c) { }
+};
 
 struct tgl_session {
     int64_t session_id;
     int64_t last_msg_id;
     int32_t seq_no;
     int32_t received_messages;
-    std::shared_ptr<tgl_connection> c;
+    std::shared_ptr<worker> primary_worker;
+    std::unordered_set<std::shared_ptr<worker>> secondary_workers;
     std::set<int64_t> ack_set;
     std::shared_ptr<tgl_timer> ev;
     tgl_session()
@@ -42,7 +55,6 @@ struct tgl_session {
         , last_msg_id(0)
         , seq_no(0)
         , received_messages(0)
-        , c()
         , ack_set()
         , ev()
     { }

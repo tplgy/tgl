@@ -24,14 +24,15 @@
 
 #include "tgl/tgl_transfer_manager.h"
 
+#include <memory>
 #include <map>
 
 class download_task;
 class query_download;
-class query_upload_part;
+class query_upload_file_part;
 class upload_task;
 
-class transfer_manager: public tgl_transfer_manager
+class transfer_manager: public std::enable_shared_from_this<transfer_manager>, public tgl_transfer_manager
 {
 public:
     transfer_manager(const std::string& download_directory)
@@ -71,26 +72,20 @@ public:
 
 private:
     friend class query_download;
-    friend class query_upload_part;
+    friend class query_upload_file_part;
 
     int download_on_answer(const std::shared_ptr<query_download>& q, void* answer);
     int download_on_error(const std::shared_ptr<query_download>& q, int error_code, const std::string &error);
-    int upload_part_on_answer(const std::shared_ptr<query_upload_part>& q, void* answer);
+    void upload_part_finished(const std::shared_ptr<upload_task>&u, size_t part_number, bool success);
 
     void upload_avatar_end(const std::shared_ptr<upload_task>&, const std::function<void(bool)>& callback);
-    void upload_end(const std::shared_ptr<upload_task>&, const tgl_upload_callback& callback);
-    void upload_unencrypted_file_end(const std::shared_ptr<upload_task>&, const tgl_upload_callback& callback);
-    void upload_encrypted_file_end(const std::shared_ptr<upload_task>&, const tgl_upload_callback& callback);
-    void upload_thumb(const std::shared_ptr<upload_task>&,
-            const tgl_upload_callback& callback,
-            const tgl_read_callback& read_callback,
-            const tgl_upload_part_done_callback& done_callback);
+    void upload_end(const std::shared_ptr<upload_task>&);
+    void upload_unencrypted_file_end(const std::shared_ptr<upload_task>&);
+    void upload_encrypted_file_end(const std::shared_ptr<upload_task>&);
+    void upload_thumb(const std::shared_ptr<upload_task>&);
 
-    void upload_part(
-            const std::shared_ptr<upload_task>&,
-            const tgl_upload_callback& callback,
-            const tgl_read_callback& read_callback,
-            const tgl_upload_part_done_callback& done_callback);
+    void upload_multiple_parts(const std::shared_ptr<upload_task>& u, size_t count);
+    void upload_part(const std::shared_ptr<upload_task>&);
 
     void upload_document(const tgl_input_peer_t& to_id,
             int64_t message_id, int32_t avatar, int32_t reply, bool as_photo,

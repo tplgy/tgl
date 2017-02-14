@@ -98,8 +98,11 @@ public:
 
     void create_session();
 
-    int64_t send_message(const int32_t* msg, int msg_ints,
-            int64_t msg_id_override = 0, bool force_send = false, bool useful = false);
+    int64_t send_message(const int32_t* message, size_t message_ints,
+            int64_t message_id_override, bool force_send, bool allow_secondary_connections)
+    {
+        return send_message_impl(message, message_ints, message_id_override, force_send, true, allow_secondary_connections, true);
+    }
 
     void reset_authorization();
     void restart_authorization();
@@ -144,6 +147,8 @@ public:
     void transfer_auth_to_me();
     void configure();
 
+    size_t max_connections() const;
+
 private:
     void connected();
     void configured(bool success);
@@ -169,13 +174,31 @@ private:
     int work_new_session_created(tgl_in_buffer* in, int64_t msg_id);
     int work_packed(tgl_in_buffer* in, int64_t msg_id);
     int work_bad_server_salt(tgl_in_buffer* in);
+    int work_rpc_result(tgl_in_buffer* in, int64_t msg_id);
+    int work_pong(tgl_in_buffer* in);
     void insert_msg_id(int64_t id);
     void calculate_auth_key_id(bool temp_key);
-    bool rpc_execute(int op, int len);
+    bool rpc_execute(const std::shared_ptr<tgl_connection>& c, int op, int len);
     bool process_respq_answer(const char* packet, int len, bool temp_key);
     bool process_dh_answer(const char* packet, int len, bool temp_key);
     bool process_auth_complete(const char* packet, int len, bool temp_key);
     bool process_rpc_message(encrypted_message* enc, int len);
+
+    int64_t send_message(const int32_t* message, size_t message_ints)
+    {
+        return send_message_impl(message, message_ints, 0, false, false, false, true);
+    }
+
+    int64_t send_ack_message(const int32_t* message, size_t message_ints)
+    {
+        return send_message_impl(message, message_ints, 0, false, false, false, false);
+    }
+
+    int64_t send_message_impl(const int32_t* msg, size_t msg_ints,
+            int64_t msg_id_override, bool force_send, bool useful, bool allow_secondary_connections, bool count_work_load);
+
+    std::shared_ptr<worker> select_best_worker(bool allow_secondary_workers);
+    void worker_job_done(int64_t id);
 
 private:
     int32_t m_id;

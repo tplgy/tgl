@@ -127,6 +127,7 @@ public:
     virtual double timeout_interval() const { return m_ack_received ? 24.0 : 12.0; }
     virtual bool should_retry_on_timeout() const { return true; }
     virtual bool should_retry_after_recover_from_error() const { return true; }
+    virtual bool is_file_transfer() const { return false; }
 
     virtual void will_be_pending() { }
     virtual void will_send() { }
