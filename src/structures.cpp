@@ -923,6 +923,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short(const tl_ds_updates*
             DS_LVAL(DS_U->reply_to_msg_id),
             nullptr);
     msg->set_unread(flags&1).set_outgoing(flags&2).set_mention(flags&16);
+    msg->seq_no = message_id;
     return msg;
 }
 
@@ -958,6 +959,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat(const tl_ds_upd
             DS_LVAL(DS_U->reply_to_msg_id),
             nullptr);
     message->set_unread(flags&1).set_outgoing(flags&2).set_mention(flags&16);
+    message->seq_no = message_id;
     return message;
 }
 
@@ -1317,6 +1319,7 @@ std::shared_ptr<tgl_message> tglf_fetch_alloc_message(const tl_ds_message* DS_M)
         DS_LVAL(DS_M->reply_to_msg_id),
         DS_M->reply_markup);
     M->set_unread(flags&1).set_outgoing(flags&2).set_mention(flags&16);
+    M->seq_no = message_id;
     return M;
 }
 
