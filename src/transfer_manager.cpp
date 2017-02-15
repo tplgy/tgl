@@ -19,6 +19,8 @@
     Copyright Topology LP 2016
 */
 
+#include "transfer_manager.h"
+
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"
@@ -31,7 +33,6 @@
 #include "secret_chat_encryptor.h"
 #include "tools.h"
 #include "tgl/tgl_mime_type.h"
-#include "tgl/tgl_transfer_manager.h"
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_secure_random.h"
 #include "tgl/tgl_update_callback.h"
@@ -213,13 +214,13 @@ private:
 class query_upload_part: public query
 {
 public:
-    query_upload_part(tgl_transfer_manager* download_manager,
+    query_upload_part(transfer_manager* manager,
             const std::shared_ptr<tgl_upload>& u,
             const tgl_upload_callback& callback,
             const tgl_read_callback& read_callback,
             const tgl_upload_part_done_callback& done_callback)
         : query("upload part", TYPE_TO_PARAM(bool))
-        , m_download_manager(download_manager)
+        , m_manager(manager)
         , m_upload(u)
         , m_callback(callback)
         , m_read_callback(read_callback)
@@ -240,7 +241,7 @@ public:
 
     virtual void on_answer(void* answer) override
     {
-        m_download_manager->upload_part_on_answer(shared_from_this(), answer);
+        m_manager->upload_part_on_answer(shared_from_this(), answer);
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
@@ -327,7 +328,7 @@ private:
     }
 
 private:
-    tgl_transfer_manager* m_download_manager;
+    transfer_manager* m_manager;
     std::shared_ptr<tgl_upload> m_upload;
     tgl_upload_callback m_callback;
     tgl_read_callback m_read_callback;
@@ -370,11 +371,11 @@ private:
 class query_download: public query
 {
 public:
-    query_download(tgl_transfer_manager* download_manager,
+    query_download(transfer_manager* manager,
             const std::shared_ptr<tgl_download>& download,
             const tgl_download_callback& callback)
         : query("download", TYPE_TO_PARAM(upload_file))
-        , m_download_manager(download_manager)
+        , m_manager(manager)
         , m_download(download)
         , m_callback(callback)
     { }
@@ -386,12 +387,12 @@ public:
 
     virtual void on_answer(void* answer) override
     {
-        m_download_manager->download_on_answer(shared_from_this(), answer);
+        m_manager->download_on_answer(shared_from_this(), answer);
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-        return m_download_manager->download_on_error(shared_from_this(), error_code, error_string);
+        return m_manager->download_on_error(shared_from_this(), error_code, error_string);
     }
 
     virtual double timeout_interval() const override
@@ -456,30 +457,30 @@ private:
     }
 
 private:
-    tgl_transfer_manager* m_download_manager;
+    transfer_manager* m_manager;
     std::shared_ptr<tgl_download> m_download;
     tgl_download_callback m_callback;
 };
 
-tgl_transfer_manager::tgl_transfer_manager(std::string download_directory)
-    : m_download_directory(download_directory)
+std::shared_ptr<tgl_transfer_manager> tgl_transfer_manager::create_default_impl(const std::string& download_dir)
 {
+    return std::make_shared<transfer_manager>(download_dir);
 }
 
-bool tgl_transfer_manager::file_exists(const tgl_file_location &location)
+bool transfer_manager::file_exists(const tgl_file_location &location) const
 {
     std::string path = get_file_path(location.access_hash());
     return boost::filesystem::exists(path);
 }
 
-std::string tgl_transfer_manager::get_file_path(int64_t secret)
+std::string transfer_manager::get_file_path(int64_t secret) const
 {
     std::ostringstream stream;
     stream << download_directory() << "/download_" << secret;
     return stream.str();
 }
 
-int tgl_transfer_manager::upload_part_on_answer(const std::shared_ptr<query_upload_part>& q, void*)
+int transfer_manager::upload_part_on_answer(const std::shared_ptr<query_upload_part>& q, void*)
 {
     const auto& u = q->get_upload();
     u->offset = u->part_num * u->part_size;
@@ -495,7 +496,7 @@ int tgl_transfer_manager::upload_part_on_answer(const std::shared_ptr<query_uplo
     return 0;
 }
 
-void tgl_transfer_manager::upload_avatar_end(const std::shared_ptr<tgl_upload>& u, const std::function<void(bool)>& callback)
+void transfer_manager::upload_avatar_end(const std::shared_ptr<tgl_upload>& u, const std::function<void(bool)>& callback)
 {
     if (u->avatar > 0) {
         auto q = std::make_shared<query_send_msgs>(callback);
@@ -551,7 +552,7 @@ void tgl_transfer_manager::upload_avatar_end(const std::shared_ptr<tgl_upload>& 
 }
 
 
-void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl_upload>& u,
+void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl_upload>& u,
         const tgl_upload_callback& callback)
 {
     auto extra = std::make_shared<messages_send_extra>();
@@ -659,7 +660,7 @@ void tgl_transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl
     q->execute(tgl_state::instance()->active_client());
 }
 
-void tgl_transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_upload>& u,
+void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_upload>& u,
         const tgl_upload_callback& callback)
 {
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(u->to_id);
@@ -813,7 +814,7 @@ void query_messages_send_encrypted_file::set_message_media(const tl_ds_decrypted
     }
 }
 
-void tgl_transfer_manager::upload_end(const std::shared_ptr<tgl_upload>& u,
+void transfer_manager::upload_end(const std::shared_ptr<tgl_upload>& u,
         const tgl_upload_callback& callback)
 {
     TGL_NOTICE("upload_end");
@@ -847,7 +848,7 @@ void tgl_transfer_manager::upload_end(const std::shared_ptr<tgl_upload>& u,
     return;
 }
 
-void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
+void transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
         const tgl_upload_callback& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
@@ -859,6 +860,7 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
     }
 
     if (!u->at_EOF) {
+        auto offset = u->part_num * u->part_size;
         auto q = std::make_shared<query_upload_part>(this, u, callback, read_callback, done_callback);
         if (u->size < BIG_FILE_THRESHOLD) {
             q->out_i32(CODE_upload_save_file_part);
@@ -884,7 +886,7 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
         }
 
         assert(read_size > 0);
-        uintmax_t offset = u->offset + read_size;
+        offset += read_size;
 
         if (u->is_encrypted()) {
             if (read_size & 15) {
@@ -912,7 +914,7 @@ void tgl_transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
     }
 }
 
-void tgl_transfer_manager::upload_thumb(const std::shared_ptr<tgl_upload>& u,
+void transfer_manager::upload_thumb(const std::shared_ptr<tgl_upload>& u,
         const tgl_upload_callback& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
@@ -946,7 +948,7 @@ void tgl_transfer_manager::upload_thumb(const std::shared_ptr<tgl_upload>& u,
 }
 
 
-void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id,
+void transfer_manager::upload_document(const tgl_input_peer_t& to_id,
         int64_t message_id, int32_t avatar, int32_t reply, bool as_photo,
         const std::shared_ptr<tgl_upload_document>& document,
         const tgl_upload_callback& callback,
@@ -1015,7 +1017,7 @@ void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id,
     }
 }
 
-void tgl_transfer_manager::upload_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
+void transfer_manager::upload_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
         const std::function<void(bool success)>& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
@@ -1039,7 +1041,7 @@ void tgl_transfer_manager::upload_photo(const tgl_input_peer_t& chat_id, const s
             done_callback);
 }
 
-void tgl_transfer_manager::upload_chat_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
+void transfer_manager::upload_chat_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
         const std::function<void(bool success)>& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
@@ -1048,7 +1050,7 @@ void tgl_transfer_manager::upload_chat_photo(const tgl_input_peer_t& chat_id, co
     upload_photo(chat_id, file_name, file_size, callback, read_callback, done_callback);
 }
 
-void tgl_transfer_manager::upload_channel_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
+void transfer_manager::upload_channel_photo(const tgl_input_peer_t& chat_id, const std::string& file_name, int32_t file_size,
         const std::function<void(bool success)>& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
@@ -1057,7 +1059,7 @@ void tgl_transfer_manager::upload_channel_photo(const tgl_input_peer_t& chat_id,
     upload_photo(chat_id, file_name, file_size, callback, read_callback, done_callback);
 }
 
-void tgl_transfer_manager::upload_profile_photo(const std::string& file_name, int32_t file_size,
+void transfer_manager::upload_profile_photo(const std::string& file_name, int32_t file_size,
         const std::function<void(bool success)>& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
@@ -1087,7 +1089,7 @@ void tgl_transfer_manager::upload_profile_photo(const std::string& file_name, in
             done_callback);
 }
 
-void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id, int64_t message_id,
+void transfer_manager::upload_document(const tgl_input_peer_t& to_id, int64_t message_id,
         const std::shared_ptr<tgl_upload_document>& document,
         tgl_upload_option option,
         const tgl_upload_callback& callback,
@@ -1122,7 +1124,7 @@ void tgl_transfer_manager::upload_document(const tgl_input_peer_t& to_id, int64_
     upload_document(to_id, message_id, 0 /* avatar */, reply, as_photo, document, callback, read_callback, done_callback);
 }
 
-void tgl_transfer_manager::end_download(const std::shared_ptr<tgl_download>& d,
+void transfer_manager::end_download(const std::shared_ptr<tgl_download>& d,
         const tgl_download_callback& callback)
 {
     m_downloads.erase(d->id);
@@ -1147,7 +1149,7 @@ void tgl_transfer_manager::end_download(const std::shared_ptr<tgl_download>& d,
     }
 }
 
-int tgl_transfer_manager::download_on_answer(const std::shared_ptr<query_download>& q, void* DD)
+int transfer_manager::download_on_answer(const std::shared_ptr<query_download>& q, void* DD)
 {
     tl_ds_upload_file* DS_UF = static_cast<tl_ds_upload_file*>(DD);
 
@@ -1195,7 +1197,7 @@ int tgl_transfer_manager::download_on_answer(const std::shared_ptr<query_downloa
     }
 }
 
-int tgl_transfer_manager::download_on_error(const std::shared_ptr<query_download>& q, int error_code, const std::string &error)
+int transfer_manager::download_on_error(const std::shared_ptr<query_download>& q, int error_code, const std::string &error)
 {
     TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << std::string(error));
 
@@ -1213,12 +1215,12 @@ int tgl_transfer_manager::download_on_error(const std::shared_ptr<query_download
     return 0;
 }
 
-void tgl_transfer_manager::begin_download(const std::shared_ptr<tgl_download>& new_download)
+void transfer_manager::begin_download(const std::shared_ptr<tgl_download>& new_download)
 {
     m_downloads[new_download->id] = new_download;
 }
 
-void tgl_transfer_manager::download_next_part(const std::shared_ptr<tgl_download>& d,
+void transfer_manager::download_next_part(const std::shared_ptr<tgl_download>& d,
         const tgl_download_callback& callback)
 {
     if (d->status == tgl_download_status::cancelled) {
@@ -1264,7 +1266,7 @@ void tgl_transfer_manager::download_next_part(const std::shared_ptr<tgl_download
     q->execute(tgl_state::instance()->client_at(d->location.dc()));
 }
 
-int32_t tgl_transfer_manager::download_by_file_location(const tgl_file_location& file_location, const int32_t file_size,
+int32_t transfer_manager::download_by_file_location(const tgl_file_location& file_location, const int32_t file_size,
         const tgl_download_callback& callback)
 {
     if (!file_location.dc()) {
@@ -1285,7 +1287,7 @@ int32_t tgl_transfer_manager::download_by_file_location(const tgl_file_location&
     return d->id;
 }
 
-int32_t tgl_transfer_manager::download_document(const std::shared_ptr<tgl_download>& d,
+int32_t transfer_manager::download_document(const std::shared_ptr<tgl_download>& d,
         const std::string& mime_type,
         const tgl_download_callback& callback)
 {
@@ -1297,7 +1299,7 @@ int32_t tgl_transfer_manager::download_document(const std::shared_ptr<tgl_downlo
     return d->id;
 }
 
-int32_t tgl_transfer_manager::download_document(const std::shared_ptr<tgl_document>& document,
+int32_t transfer_manager::download_document(const std::shared_ptr<tgl_document>& document,
         const tgl_download_callback& callback)
 {
     std::shared_ptr<tgl_download> d = std::make_shared<tgl_download>(document);
@@ -1316,7 +1318,7 @@ int32_t tgl_transfer_manager::download_document(const std::shared_ptr<tgl_docume
     return download_document(d, document->mime_type, callback);
 }
 
-void tgl_transfer_manager::cancel_download(int32_t download_id)
+void transfer_manager::cancel_download(int32_t download_id)
 {
     auto it = m_downloads.find(download_id);
     if (it == m_downloads.end()) {
@@ -1327,7 +1329,7 @@ void tgl_transfer_manager::cancel_download(int32_t download_id)
     TGL_DEBUG("download " << download_id << " has been cancelled");
 }
 
-void tgl_transfer_manager::cancel_upload(int64_t message_id)
+void transfer_manager::cancel_upload(int64_t message_id)
 {
     auto it = m_uploads.find(message_id);
     if (it == m_uploads.end()) {
@@ -1338,7 +1340,7 @@ void tgl_transfer_manager::cancel_upload(int64_t message_id)
     TGL_DEBUG("upload " << message_id << " has been cancelled");
 }
 
-bool tgl_transfer_manager::is_uploading_file(int64_t message_id) const
+bool transfer_manager::is_uploading_file(int64_t message_id) const
 {
     return m_uploads.count(message_id);
 }

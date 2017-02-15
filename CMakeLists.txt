@@ -147,6 +147,7 @@ set(PRIVATE_HEADERS
     src/tgl_secret_chat_private.h
     src/tgl_session.h
     src/tools.h
+    src/transfer_manager.h
     src/unconfirmed_secret_message.h
     src/updates.h
 )
@@ -182,7 +183,7 @@ set(SOURCES
     src/tgl_message.cpp
     src/tgl_secret_chat.cpp
     src/tgl_session.cpp
-    src/tgl_transfer_manager.cpp
+    src/transfer_manager.cpp
     src/tools.cpp
     src/unconfirmed_secret_message.cpp
     src/updates.cpp

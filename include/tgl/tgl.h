@@ -179,8 +179,6 @@ struct tgl_state {
         m_phone_number_input_locked = false;
     }
 
-    void connection_status_changed(const std::shared_ptr<tgl_connection>& c, tgl_connection_status status);
-
 private:
     tgl_state();
     static void state_lookup_timeout();

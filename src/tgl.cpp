@@ -232,7 +232,7 @@ void tgl_state::add_rsa_key(const std::string& key)
 int tgl_state::init(const std::string& download_dir, int app_id, const std::string& app_hash, const std::string& app_version,
             const std::string& device_model, const std::string& system_version, const std::string& lang_code)
 {
-    m_transfer_manager = std::make_shared<tgl_transfer_manager>(download_dir);
+    m_transfer_manager = tgl_transfer_manager::create_default_impl(download_dir);
     m_app_id = app_id;
     m_app_hash = app_hash;
     m_app_version = app_version;
@@ -416,14 +416,6 @@ void tgl_state::set_online_status(tgl_online_status status)
 
     for (const auto& dead_weak_observer: dead_weak_observers) {
         m_online_status_observers.erase(dead_weak_observer);
-    }
-}
-
-void tgl_state::connection_status_changed(const std::shared_ptr<tgl_connection>& c, tgl_connection_status status)
-{
-    const auto& session = m_active_client->session();
-    if (session && session->c == c) {
-        m_callback->connection_status_changed(status);
     }
 }
 
