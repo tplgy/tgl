@@ -26,6 +26,7 @@
 #include "auto/auto-skip.h"
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_md5.h"
+#include "download_task.h"
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "query/queries.h"
@@ -37,185 +38,19 @@
 #include "tgl/tgl_secure_random.h"
 #include "tgl/tgl_update_callback.h"
 #include "tgl_secret_chat_private.h"
+#include "upload_task.h"
 
 #include <fcntl.h>
 #include <boost/filesystem.hpp>
 #include <fstream>
 
-static constexpr size_t BIG_FILE_THRESHOLD = 10 * 1024 * 1024;
 static constexpr size_t MAX_PART_SIZE = 512 * 1024;
-
-struct tgl_upload {
-    uintmax_t size;
-    uintmax_t offset;
-    size_t part_num;
-    size_t part_size;
-    int64_t id;
-    int64_t thumb_id;
-    tgl_input_peer_t to_id;
-    tgl_document_type doc_type;
-    std::string file_name;
-    bool as_photo;
-    bool animated;
-    int32_t avatar;
-    int32_t reply;
-    std::array<unsigned char, 32> iv;
-    std::array<unsigned char, 32> init_iv;
-    std::array<unsigned char, 32> key;
-    int32_t width;
-    int32_t height;
-    int32_t duration;
-    std::string caption;
-
-    std::vector<uint8_t> thumb;
-    int32_t thumb_width;
-    int32_t thumb_height;
-
-    int64_t message_id;
-
-    tgl_upload_status status;
-    bool at_EOF;
-
-    tgl_upload()
-        : size(0)
-        , offset(0)
-        , part_num(0)
-        , part_size(0)
-        , id(0)
-        , thumb_id(0)
-        , to_id()
-        , doc_type(tgl_document_type::unknown)
-        , as_photo(false)
-        , animated(false)
-        , avatar(0)
-        , reply(0)
-        , width(0)
-        , height(0)
-        , duration(0)
-        , thumb_width(0)
-        , thumb_height(0)
-        , message_id(0)
-        , status(tgl_upload_status::waiting)
-        , at_EOF(false)
-    { }
-
-    ~tgl_upload()
-    {
-        // For security reasion.
-        memset(iv.data(), 0, iv.size());
-        memset(init_iv.data(), 0, init_iv.size());
-        memset(key.data(), 0, key.size());
-    }
-
-    bool is_encrypted() const { return to_id.peer_type == tgl_peer_type::enc_chat; }
-    bool is_animated() const { return animated; }
-    bool is_image() const { return doc_type == tgl_document_type::image; }
-    bool is_audio() const { return doc_type == tgl_document_type::audio; }
-    bool is_video() const { return doc_type == tgl_document_type::video; }
-    bool is_sticker() const { return doc_type == tgl_document_type::sticker; }
-    bool is_unknown() const { return doc_type == tgl_document_type::unknown; }
-};
-
-struct tgl_download {
-    tgl_download(int32_t size, const tgl_file_location& location)
-        : id(next_id())
-        , offset(0)
-        , size(size)
-        , type(0)
-        , fd(-1)
-        , location(location)
-        , status(tgl_download_status::waiting)
-        , iv()
-        , key()
-        , valid(true)
-    {
-    }
-
-    tgl_download(const std::shared_ptr<tgl_document>& document)
-        : id(next_id())
-        , offset(0)
-        , size(document->size)
-        , type(0)
-        , fd(-1)
-        , location()
-        , status(tgl_download_status::waiting)
-        , iv()
-        , key()
-        , valid(true)
-    {
-        location.set_dc(document->dc_id);
-        location.set_local_id(0);
-        location.set_secret(document->access_hash);
-        location.set_volume(document->id);
-        init_from_document(document);
-    }
-
-    ~tgl_download()
-    {
-        memset(iv.data(), 0, iv.size());
-        memset(key.data(), 0, key.size());
-    }
-
-    int32_t id;
-    int32_t offset;
-    int32_t size;
-    int32_t type;
-    int fd;
-    tgl_file_location location;
-    std::string file_name;
-    std::string ext;
-    tgl_download_status status;
-    //encrypted documents
-    std::vector<unsigned char> iv;
-    std::vector<unsigned char> key;
-    bool valid;
-    // ---
-
-    static int32_t next_id()
-    {
-        static int32_t next = 0;
-        return ++next;
-    }
-
-private:
-    void init_from_document(const std::shared_ptr<tgl_document>& document)
-    {
-        if (document->is_encrypted()) {
-            type = CODE_input_encrypted_file_location;
-            auto encr_document = std::static_pointer_cast<tgl_encr_document>(document);
-            iv = std::move(encr_document->iv);
-            key = std::move(encr_document->key);
-            unsigned char md5[16];
-            unsigned char str[64];
-            memcpy(str, key.data(), 32);
-            memcpy(str + 32, iv.data(), 32);
-            TGLC_md5(str, 64, md5);
-            if (encr_document->key_fingerprint != ((*(int *)md5) ^ (*(int *)(md5 + 4)))) {
-                valid = false;
-                return;
-            }
-            return;
-        }
-
-        switch (document->type) {
-        case tgl_document_type::audio:
-            type = CODE_input_audio_file_location;
-            break;
-        case tgl_document_type::video:
-            type = CODE_input_video_file_location;
-            break;
-        default:
-            type = CODE_input_document_file_location;
-            break;
-        }
-    }
-};
 
 class query_upload_part: public query
 {
 public:
     query_upload_part(transfer_manager* manager,
-            const std::shared_ptr<tgl_upload>& u,
+            const std::shared_ptr<upload_task>& u,
             const tgl_upload_callback& callback,
             const tgl_read_callback& read_callback,
             const tgl_upload_part_done_callback& done_callback)
@@ -304,7 +139,7 @@ public:
         return m_callback;
     }
 
-    const std::shared_ptr<tgl_upload>& get_upload() const
+    const std::shared_ptr<upload_task>& get_upload() const
     {
         return m_upload;
     }
@@ -329,7 +164,7 @@ private:
 
 private:
     transfer_manager* m_manager;
-    std::shared_ptr<tgl_upload> m_upload;
+    std::shared_ptr<upload_task> m_upload;
     tgl_upload_callback m_callback;
     tgl_read_callback m_read_callback;
     tgl_upload_part_done_callback m_done_callback;
@@ -372,7 +207,7 @@ class query_download: public query
 {
 public:
     query_download(transfer_manager* manager,
-            const std::shared_ptr<tgl_download>& download,
+            const std::shared_ptr<download_task>& download,
             const tgl_download_callback& callback)
         : query("download", TYPE_TO_PARAM(upload_file))
         , m_manager(manager)
@@ -434,7 +269,7 @@ public:
         return m_callback;
     }
 
-    const std::shared_ptr<tgl_download>& get_download() const
+    const std::shared_ptr<download_task>& get_download() const
     {
         return m_download;
     }
@@ -458,7 +293,7 @@ private:
 
 private:
     transfer_manager* m_manager;
-    std::shared_ptr<tgl_download> m_download;
+    std::shared_ptr<download_task> m_download;
     tgl_download_callback m_callback;
 };
 
@@ -496,7 +331,7 @@ int transfer_manager::upload_part_on_answer(const std::shared_ptr<query_upload_p
     return 0;
 }
 
-void transfer_manager::upload_avatar_end(const std::shared_ptr<tgl_upload>& u, const std::function<void(bool)>& callback)
+void transfer_manager::upload_avatar_end(const std::shared_ptr<upload_task>& u, const std::function<void(bool)>& callback)
 {
     if (u->avatar > 0) {
         auto q = std::make_shared<query_send_msgs>(callback);
@@ -552,7 +387,7 @@ void transfer_manager::upload_avatar_end(const std::shared_ptr<tgl_upload>& u, c
 }
 
 
-void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl_upload>& u,
+void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_task>& u,
         const tgl_upload_callback& callback)
 {
     auto extra = std::make_shared<messages_send_extra>();
@@ -660,7 +495,7 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<tgl_upl
     q->execute(tgl_state::instance()->active_client());
 }
 
-void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_upload>& u,
+void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<upload_task>& u,
         const tgl_upload_callback& callback)
 {
     std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(u->to_id);
@@ -686,135 +521,7 @@ void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<tgl_uploa
     q->execute(tgl_state::instance()->active_client());
 }
 
-void query_messages_send_encrypted_file::assemble()
-{
-    const auto& u = m_upload;
-
-    out_i32(CODE_messages_send_encrypted_file);
-    out_i32(CODE_input_encrypted_chat);
-    out_i32(u->to_id.peer_id);
-    out_i64(m_secret_chat->id().access_hash);
-    out_i64(m_message->permanent_id);
-    secret_chat_encryptor encryptor(m_secret_chat, serializer());
-    encryptor.start();
-    size_t capture_start = begin_unconfirmed_message(CODE_messages_send_encrypted_file);
-    out_i32(CODE_decrypted_message_layer);
-    out_random(15 + 4 * (tgl_random<int>() % 3));
-    out_i32(TGL_ENCRYPTED_LAYER);
-    out_i32(m_secret_chat->private_facet()->raw_in_seq_no());
-    out_i32(m_secret_chat->private_facet()->raw_out_seq_no());
-    out_i32(CODE_decrypted_message);
-    out_i64(m_message->permanent_id);
-    out_i32(m_secret_chat->ttl());
-    out_string("");
-
-    size_t start = serializer()->i32_size();
-
-    if (u->as_photo) {
-        out_i32(CODE_decrypted_message_media_photo);
-    } else if (u->is_video()) {
-        out_i32(CODE_decrypted_message_media_video);
-    } else if (u->is_audio()) {
-        out_i32(CODE_decrypted_message_media_audio);
-    } else {
-        out_i32(CODE_decrypted_message_media_document);
-    }
-    if (u->as_photo || !u->is_audio()) {
-        TGL_DEBUG("secret chat thumb data " << u->thumb.size() << " bytes @ " << u->thumb_width << "x" << u->thumb_height);
-        out_string(reinterpret_cast<char*>(u->thumb.data()), u->thumb.size());
-        out_i32(u->thumb_width);
-        out_i32(u->thumb_height);
-    }
-
-    if (u->as_photo) {
-        out_i32(u->width);
-        out_i32(u->height);
-    } else if (u->is_video()) {
-        out_i32(u->duration);
-        out_std_string(tgl_mime_type_by_filename(u->file_name));
-        out_i32(u->width);
-        out_i32(u->height);
-    } else if (u->is_audio()) {
-        out_i32(u->duration);
-        out_std_string(tgl_mime_type_by_filename(u->file_name));
-    } else { // document
-        boost::filesystem::path path(u->file_name);
-        out_std_string(path.filename().string());
-        out_std_string(tgl_mime_type_by_filename(u->file_name));
-    }
-
-    out_i32(u->size);
-    out_string(reinterpret_cast<const char*>(u->key.data()), u->key.size());
-    out_string(reinterpret_cast<const char*>(u->init_iv.data()), u->init_iv.size());
-
-    tgl_in_buffer in = { serializer()->i32_data() + start, serializer()->i32_data() + serializer()->i32_size() };
-
-    struct paramed_type decrypted_message_media = TYPE_TO_PARAM(decrypted_message_media);
-    auto result = skip_type_any(&in, &decrypted_message_media);
-    TGL_ASSERT_UNUSED(result, result >= 0);
-    assert(in.ptr == in.end);
-
-    in = { serializer()->i32_data() + start, serializer()->i32_data() + serializer()->i32_size() };
-    tl_ds_decrypted_message_media* DS_DMM = fetch_ds_type_decrypted_message_media(&in, &decrypted_message_media);
-    set_message_media(DS_DMM);
-    assert(in.ptr == in.end);
-
-    append_blob_to_unconfirmed_message(capture_start);
-
-    encryptor.end();
-
-    capture_start = serializer()->char_size();
-    if (u->size < BIG_FILE_THRESHOLD) {
-        out_i32(CODE_input_encrypted_file_uploaded);
-    } else {
-        out_i32(CODE_input_encrypted_file_big_uploaded);
-    }
-    out_i64(u->id);
-    out_i32(u->part_num);
-    if (u->size < BIG_FILE_THRESHOLD) {
-        out_string("");
-    }
-
-    unsigned char md5[16];
-    unsigned char str[64];
-    memcpy(str, u->key.data(), 32);
-    memcpy(str + 32, u->init_iv.data(), 32);
-    TGLC_md5(str, 64, md5);
-    out_i32((*(int *)md5) ^ (*(int *)(md5 + 4)));
-
-    append_blob_to_unconfirmed_message(capture_start);
-
-    free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
-}
-
-void query_messages_send_encrypted_file::set_message_media(const tl_ds_decrypted_message_media* DS_DMM)
-{
-    m_message->set_decrypted_message_media(DS_DMM);
-
-    if (m_message->media->type() == tgl_message_media_type::document_encr) {
-        if (auto encr_document = std::static_pointer_cast<tgl_message_media_document_encr>(m_message->media)->encr_document) {
-            const auto& u = m_upload;
-            if (u->is_image() || u->as_photo) {
-                encr_document->type = tgl_document_type::image;
-                if (u->is_animated()) {
-                    encr_document->is_animated = true;
-                } else {
-                    encr_document->is_animated = false;
-                }
-            } else if (u->is_video()) {
-                encr_document->type = tgl_document_type::video;
-            } else if (u->is_audio()) {
-                encr_document->type = tgl_document_type::audio;
-            } else if (u->is_sticker()) {
-                encr_document->type = tgl_document_type::sticker;
-            } else {
-                encr_document->type = tgl_document_type::unknown;
-            }
-        }
-    }
-}
-
-void transfer_manager::upload_end(const std::shared_ptr<tgl_upload>& u,
+void transfer_manager::upload_end(const std::shared_ptr<upload_task>& u,
         const tgl_upload_callback& callback)
 {
     TGL_NOTICE("upload_end");
@@ -848,7 +555,7 @@ void transfer_manager::upload_end(const std::shared_ptr<tgl_upload>& u,
     return;
 }
 
-void transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
+void transfer_manager::upload_part(const std::shared_ptr<upload_task>& u,
         const tgl_upload_callback& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
@@ -914,7 +621,7 @@ void transfer_manager::upload_part(const std::shared_ptr<tgl_upload>& u,
     }
 }
 
-void transfer_manager::upload_thumb(const std::shared_ptr<tgl_upload>& u,
+void transfer_manager::upload_thumb(const std::shared_ptr<upload_task>& u,
         const tgl_upload_callback& callback,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
@@ -958,7 +665,7 @@ void transfer_manager::upload_document(const tgl_input_peer_t& to_id,
     TGL_NOTICE("upload_document " << document->file_name << " with size " << document->file_size
             << " and dimension " << document->width << "x" << document->height);
 
-    auto u = std::make_shared<tgl_upload>();
+    auto u = std::make_shared<upload_task>();
     u->size = document->file_size;
     u->part_size = MAX_PART_SIZE;
 
@@ -1124,7 +831,7 @@ void transfer_manager::upload_document(const tgl_input_peer_t& to_id, int64_t me
     upload_document(to_id, message_id, 0 /* avatar */, reply, as_photo, document, callback, read_callback, done_callback);
 }
 
-void transfer_manager::end_download(const std::shared_ptr<tgl_download>& d,
+void transfer_manager::end_download(const std::shared_ptr<download_task>& d,
         const tgl_download_callback& callback)
 {
     m_downloads.erase(d->id);
@@ -1153,7 +860,7 @@ int transfer_manager::download_on_answer(const std::shared_ptr<query_download>& 
 {
     tl_ds_upload_file* DS_UF = static_cast<tl_ds_upload_file*>(DD);
 
-    const std::shared_ptr<tgl_download>& d = q->get_download();
+    const std::shared_ptr<download_task>& d = q->get_download();
     if (d->fd == -1) {
         d->fd = open(d->file_name.c_str(), O_CREAT | O_WRONLY, 0640);
         if (d->fd < 0) {
@@ -1201,7 +908,7 @@ int transfer_manager::download_on_error(const std::shared_ptr<query_download>& q
 {
     TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << std::string(error));
 
-    const std::shared_ptr<tgl_download>& d = q->get_download();
+    const std::shared_ptr<download_task>& d = q->get_download();
     if (d->fd >= 0) {
         close(d->fd);
     }
@@ -1215,12 +922,12 @@ int transfer_manager::download_on_error(const std::shared_ptr<query_download>& q
     return 0;
 }
 
-void transfer_manager::begin_download(const std::shared_ptr<tgl_download>& new_download)
+void transfer_manager::begin_download(const std::shared_ptr<download_task>& new_download)
 {
     m_downloads[new_download->id] = new_download;
 }
 
-void transfer_manager::download_next_part(const std::shared_ptr<tgl_download>& d,
+void transfer_manager::download_next_part(const std::shared_ptr<download_task>& d,
         const tgl_download_callback& callback)
 {
     if (d->status == tgl_download_status::cancelled) {
@@ -1277,7 +984,7 @@ int32_t transfer_manager::download_by_file_location(const tgl_file_location& fil
         return 0;
     }
 
-    auto d = std::make_shared<tgl_download>(file_size, file_location);
+    auto d = std::make_shared<download_task>(file_size, file_location);
     if (callback) {
         callback(d->status, std::string(), 0);
     }
@@ -1287,7 +994,7 @@ int32_t transfer_manager::download_by_file_location(const tgl_file_location& fil
     return d->id;
 }
 
-int32_t transfer_manager::download_document(const std::shared_ptr<tgl_download>& d,
+int32_t transfer_manager::download_document(const std::shared_ptr<download_task>& d,
         const std::string& mime_type,
         const tgl_download_callback& callback)
 {
@@ -1302,7 +1009,7 @@ int32_t transfer_manager::download_document(const std::shared_ptr<tgl_download>&
 int32_t transfer_manager::download_document(const std::shared_ptr<tgl_document>& document,
         const tgl_download_callback& callback)
 {
-    std::shared_ptr<tgl_download> d = std::make_shared<tgl_download>(document);
+    std::shared_ptr<download_task> d = std::make_shared<download_task>(document);
     if (callback) {
         callback(d->status, std::string(), 0);
     }

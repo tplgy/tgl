@@ -29,14 +29,14 @@
 
 class tgl_secret_chat;
 struct tgl_message;
-struct tgl_upload;
 struct tl_ds_decrypted_message_media;
+class upload_task;
 
 class query_messages_send_encrypted_file: public query_messages_send_encrypted_base
 {
 public:
     query_messages_send_encrypted_file(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<tgl_upload>& upload,
+            const std::shared_ptr<upload_task>& upload,
             const std::shared_ptr<tgl_message>& message,
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
         : query_messages_send_encrypted_base("send encrypted file message", secret_chat, message, callback, false)
@@ -54,7 +54,7 @@ private:
     void set_message_media(const tl_ds_decrypted_message_media*);
 
 private:
-    std::shared_ptr<tgl_upload> m_upload;
+    std::shared_ptr<upload_task> m_upload;
 };
 
 #endif

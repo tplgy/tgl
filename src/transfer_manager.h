@@ -16,7 +16,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2014-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
 
 #ifndef __TRANSFER_MANAGER_H__
@@ -26,10 +26,10 @@
 
 #include <map>
 
-struct tgl_encr_document;
-struct tgl_message;
+class download_task;
 class query_download;
 class query_upload_part;
+class upload_task;
 
 class transfer_manager: public tgl_transfer_manager
 {
@@ -76,17 +76,17 @@ private:
     int download_on_error(const std::shared_ptr<query_download>& q, int error_code, const std::string &error);
     int upload_part_on_answer(const std::shared_ptr<query_upload_part>& q, void* answer);
 
-    void upload_avatar_end(const std::shared_ptr<tgl_upload>&, const std::function<void(bool)>& callback);
-    void upload_end(const std::shared_ptr<tgl_upload>&, const tgl_upload_callback& callback);
-    void upload_unencrypted_file_end(const std::shared_ptr<tgl_upload>&, const tgl_upload_callback& callback);
-    void upload_encrypted_file_end(const std::shared_ptr<tgl_upload>&, const tgl_upload_callback& callback);
-    void upload_thumb(const std::shared_ptr<tgl_upload>&,
+    void upload_avatar_end(const std::shared_ptr<upload_task>&, const std::function<void(bool)>& callback);
+    void upload_end(const std::shared_ptr<upload_task>&, const tgl_upload_callback& callback);
+    void upload_unencrypted_file_end(const std::shared_ptr<upload_task>&, const tgl_upload_callback& callback);
+    void upload_encrypted_file_end(const std::shared_ptr<upload_task>&, const tgl_upload_callback& callback);
+    void upload_thumb(const std::shared_ptr<upload_task>&,
             const tgl_upload_callback& callback,
             const tgl_read_callback& read_callback,
             const tgl_upload_part_done_callback& done_callback);
 
     void upload_part(
-            const std::shared_ptr<tgl_upload>&,
+            const std::shared_ptr<upload_task>&,
             const tgl_upload_callback& callback,
             const tgl_read_callback& read_callback,
             const tgl_upload_part_done_callback& done_callback);
@@ -103,16 +103,18 @@ private:
                       const tgl_read_callback& read_callback,
                       const tgl_upload_part_done_callback& done_callback);
 
-    int32_t download_document(const std::shared_ptr<tgl_download>&, const std::string& mime_type,
+    int32_t download_document(const std::shared_ptr<download_task>&, const std::string& mime_type,
              const tgl_download_callback& callback);
 
-    void begin_download(const std::shared_ptr<tgl_download>&);
-    void download_next_part(const std::shared_ptr<tgl_download>&, const tgl_download_callback& callback);
-    void end_download(const std::shared_ptr<tgl_download>&, const tgl_download_callback& callback);
+    void begin_download(const std::shared_ptr<download_task>&);
+    void download_next_part(const std::shared_ptr<download_task>&, const tgl_download_callback& callback);
+    void end_download(const std::shared_ptr<download_task>&, const tgl_download_callback& callback);
 
-    std::map<int32_t, std::shared_ptr<tgl_download>> m_downloads;
-    std::map<int64_t, std::shared_ptr<tgl_upload>> m_uploads;
+    std::map<int32_t, std::shared_ptr<download_task>> m_downloads;
+    std::map<int64_t, std::shared_ptr<upload_task>> m_uploads;
     std::string m_download_directory;
 };
+
+static constexpr size_t BIG_FILE_THRESHOLD = 10 * 1024 * 1024;
 
 #endif

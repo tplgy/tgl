@@ -122,6 +122,7 @@ set(PRIVATE_HEADERS
     src/crypto/tgl_crypto_rsa_pem.h
     src/crypto/tgl_crypto_sha.h
     src/crypto/tgl_crypto_rand.h
+    src/download_task.h
     src/mtproto_client.h
     src/mtproto-common.h
     src/mtproto-utils.h
@@ -150,6 +151,7 @@ set(PRIVATE_HEADERS
     src/transfer_manager.h
     src/unconfirmed_secret_message.h
     src/updates.h
+    src/upload_task.h
 )
 
 set(GENERATED_TGL_SOURCES
@@ -164,6 +166,7 @@ set(SOURCES
     src/mtproto_client.cpp
     src/mtproto-common.cpp
     src/mtproto-utils.cpp
+    src/download_task.cpp
     src/query/queries.cpp
     src/query/query.cpp
     src/query/query_create_chat.cpp
@@ -187,6 +190,7 @@ set(SOURCES
     src/tools.cpp
     src/unconfirmed_secret_message.cpp
     src/updates.cpp
+    src/upload_task.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})

@@ -34,9 +34,6 @@
 #include <vector>
 
 struct tgl_document;
-struct tgl_message;
-struct tgl_upload;
-struct tgl_download;
 
 enum class tgl_download_status
 {
