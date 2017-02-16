@@ -161,13 +161,13 @@ public:
     // Parameter is either secret or access hash depending on file type
     virtual std::string get_file_path(int64_t secret) const = 0;
 
-    virtual int32_t download_by_file_location(const tgl_file_location& location,
+    virtual void download_by_file_location(int64_t download_id, const tgl_file_location& location,
             int32_t file_size, const tgl_download_callback& callback) = 0;
 
-    virtual int32_t download_document(const std::shared_ptr<tgl_document>& document,
+    virtual void download_document(int64_t download_id, const std::shared_ptr<tgl_document>& document,
             const tgl_download_callback& callback) = 0;
 
-    virtual void cancel_download(int32_t download_id) = 0;
+    virtual void cancel_download(int64_t download_id) = 0;
 
     virtual void upload_document(const tgl_input_peer_t& to_id, int64_t message_id,
             const std::shared_ptr<tgl_upload_document>& document,
@@ -197,6 +197,8 @@ public:
     virtual void cancel_upload(int64_t message_id) = 0;
 
     virtual bool is_uploading_file(int64_t message_id) const = 0;
+
+    virtual bool is_downloading_file(int64_t download_id) const = 0;
 };
 
 #endif

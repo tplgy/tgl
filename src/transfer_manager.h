@@ -41,11 +41,11 @@ public:
     virtual std::string download_directory() const override { return m_download_directory; }
     virtual bool file_exists(const tgl_file_location &location) const override;
     virtual std::string get_file_path(int64_t secret) const override;
-    virtual int32_t download_by_file_location(const tgl_file_location& location,
+    virtual void download_by_file_location(int64_t download_id, const tgl_file_location& location,
             int32_t file_size, const tgl_download_callback& callback) override;
-    virtual int32_t download_document(const std::shared_ptr<tgl_document>& document,
+    virtual void download_document(int64_t download_id, const std::shared_ptr<tgl_document>& document,
             const tgl_download_callback& callback) override;
-    virtual void cancel_download(int32_t download_id) override;
+    virtual void cancel_download(int64_t download_id) override;
     virtual void upload_document(const tgl_input_peer_t& to_id, int64_t message_id,
             const std::shared_ptr<tgl_upload_document>& document,
             tgl_upload_option option,
@@ -67,6 +67,7 @@ public:
             const tgl_upload_part_done_callback& done_callback) override;
     virtual void cancel_upload(int64_t message_id) override;
     virtual bool is_uploading_file(int64_t message_id) const override;
+    virtual bool is_downloading_file(int64_t download_id) const override;
 
 private:
     friend class query_download;
@@ -103,14 +104,13 @@ private:
                       const tgl_read_callback& read_callback,
                       const tgl_upload_part_done_callback& done_callback);
 
-    int32_t download_document(const std::shared_ptr<download_task>&, const std::string& mime_type,
+    void download_document(const std::shared_ptr<download_task>&, const std::string& mime_type,
              const tgl_download_callback& callback);
 
-    void begin_download(const std::shared_ptr<download_task>&);
     void download_next_part(const std::shared_ptr<download_task>&, const tgl_download_callback& callback);
     void end_download(const std::shared_ptr<download_task>&, const tgl_download_callback& callback);
 
-    std::map<int32_t, std::shared_ptr<download_task>> m_downloads;
+    std::map<int64_t, std::shared_ptr<download_task>> m_downloads;
     std::map<int64_t, std::shared_ptr<upload_task>> m_uploads;
     std::string m_download_directory;
 };

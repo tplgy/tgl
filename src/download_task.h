@@ -32,7 +32,7 @@
 
 class download_task {
 public:
-    int32_t id;
+    int64_t id;
     int32_t offset;
     int32_t size;
     int32_t type;
@@ -47,15 +47,9 @@ public:
     bool valid;
     // ---
 
-    download_task(int32_t size, const tgl_file_location& location);
-    download_task(const std::shared_ptr<tgl_document>& document);
+    download_task(int64_t id, int32_t size, const tgl_file_location& location);
+    download_task(int64_t id, const std::shared_ptr<tgl_document>& document);
     ~download_task();
-
-    static int32_t next_id()
-    {
-        static int32_t next = 0;
-        return ++next;
-    }
 
 private:
     void init_from_document(const std::shared_ptr<tgl_document>& document);

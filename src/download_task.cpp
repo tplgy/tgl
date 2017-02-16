@@ -26,8 +26,8 @@
 
 #include <cstring>
 
-download_task::download_task(int32_t size, const tgl_file_location& location)
-    : id(next_id())
+download_task::download_task(int64_t id, int32_t size, const tgl_file_location& location)
+    : id(id)
     , offset(0)
     , size(size)
     , type(0)
@@ -40,8 +40,8 @@ download_task::download_task(int32_t size, const tgl_file_location& location)
 {
 }
 
-download_task::download_task(const std::shared_ptr<tgl_document>& document)
-    : id(next_id())
+download_task::download_task(int64_t id, const std::shared_ptr<tgl_document>& document)
+    : id(id)
     , offset(0)
     , size(document->size)
     , type(0)

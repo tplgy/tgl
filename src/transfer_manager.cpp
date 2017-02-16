@@ -922,11 +922,6 @@ int transfer_manager::download_on_error(const std::shared_ptr<query_download>& q
     return 0;
 }
 
-void transfer_manager::begin_download(const std::shared_ptr<download_task>& new_download)
-{
-    m_downloads[new_download->id] = new_download;
-}
-
 void transfer_manager::download_next_part(const std::shared_ptr<download_task>& d,
         const tgl_download_callback& callback)
 {
@@ -973,59 +968,80 @@ void transfer_manager::download_next_part(const std::shared_ptr<download_task>& 
     q->execute(tgl_state::instance()->client_at(d->location.dc()));
 }
 
-int32_t transfer_manager::download_by_file_location(const tgl_file_location& file_location, const int32_t file_size,
+void transfer_manager::download_by_file_location(int64_t download_id,
+        const tgl_file_location& file_location, const int32_t file_size,
         const tgl_download_callback& callback)
 {
+    if (m_downloads.count(download_id)) {
+        TGL_ERROR("duplicate download id " << download_id);
+        if (callback) {
+            callback(tgl_download_status::failed, std::string(), 0);
+        }
+        return;
+    }
+
     if (!file_location.dc()) {
         TGL_ERROR("bad file location");
         if (callback) {
             callback(tgl_download_status::failed, std::string(), 0);
         }
-        return 0;
+        return;
     }
 
-    auto d = std::make_shared<download_task>(file_size, file_location);
+    auto d = std::make_shared<download_task>(download_id, file_size, file_location);
+    m_downloads[d->id] = d;
+
     if (callback) {
         callback(d->status, std::string(), 0);
     }
 
     TGL_DEBUG("download_file_location - file_size: " << file_size);
     download_next_part(d, callback);
-    return d->id;
 }
 
-int32_t transfer_manager::download_document(const std::shared_ptr<download_task>& d,
+void transfer_manager::download_document(const std::shared_ptr<download_task>& d,
         const std::string& mime_type,
         const tgl_download_callback& callback)
 {
     if (!mime_type.empty()) {
         d->ext = tgl_extension_by_mime_type(mime_type);
     }
-    begin_download(d);
     download_next_part(d, callback);
-    return d->id;
 }
 
-int32_t transfer_manager::download_document(const std::shared_ptr<tgl_document>& document,
+void transfer_manager::download_document(int64_t download_id,
+        const std::shared_ptr<tgl_document>& document,
         const tgl_download_callback& callback)
 {
-    std::shared_ptr<download_task> d = std::make_shared<download_task>(document);
+    if (m_downloads.count(download_id)) {
+        TGL_ERROR("duplicate download id " << download_id);
+        if (callback) {
+            callback(tgl_download_status::failed, std::string(), 0);
+        }
+        return;
+    }
+
+    std::shared_ptr<download_task> d = std::make_shared<download_task>(download_id, document);
+
+    if (!d->valid) {
+        TGL_WARNING("encrypted document key finger print doesn't match");
+        d->status = tgl_download_status::failed;
+        if (callback) {
+            callback(d->status, std::string(), 0);
+        }
+        return;
+    }
+
+    m_downloads[d->id] = d;
+
     if (callback) {
         callback(d->status, std::string(), 0);
     }
 
-    if (!d->valid) {
-        TGL_WARNING("encrypted document key finger print doesn't match");
-        if (callback) {
-            callback(tgl_download_status::failed, std::string(), 0);
-        }
-        return 0;
-    }
-
-    return download_document(d, document->mime_type, callback);
+    download_document(d, document->mime_type, callback);
 }
 
-void transfer_manager::cancel_download(int32_t download_id)
+void transfer_manager::cancel_download(int64_t download_id)
 {
     auto it = m_downloads.find(download_id);
     if (it == m_downloads.end()) {
@@ -1050,4 +1066,9 @@ void transfer_manager::cancel_upload(int64_t message_id)
 bool transfer_manager::is_uploading_file(int64_t message_id) const
 {
     return m_uploads.count(message_id);
+}
+
+bool transfer_manager::is_downloading_file(int64_t download_id) const
+{
+    return m_downloads.count(download_id);
 }
