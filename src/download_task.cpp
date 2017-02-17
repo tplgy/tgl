@@ -29,28 +29,30 @@
 download_task::download_task(int64_t id, int32_t size, const tgl_file_location& location)
     : id(id)
     , offset(0)
+    , downloaded_bytes(0)
     , size(size)
     , type(0)
-    , fd(-1)
     , location(location)
     , status(tgl_download_status::waiting)
     , iv()
     , key()
     , valid(true)
+    , m_cancel_requested(false)
 {
 }
 
 download_task::download_task(int64_t id, const std::shared_ptr<tgl_document>& document)
     : id(id)
     , offset(0)
+    , downloaded_bytes(0)
     , size(document->size)
     , type(0)
-    , fd(-1)
     , location()
     , status(tgl_download_status::waiting)
     , iv()
     , key()
     , valid(true)
+    , m_cancel_requested(false)
 {
     location.set_dc(document->dc_id);
     location.set_local_id(0);
@@ -95,4 +97,22 @@ void download_task::init_from_document(const std::shared_ptr<tgl_document>& docu
         type = CODE_input_document_file_location;
         break;
     }
+}
+
+void download_task::set_status(tgl_download_status status)
+{
+    this->status = status;
+    if (callback) {
+        std::string file_name = (status == tgl_download_status::succeeded || status == tgl_download_status::cancelled) ? this->file_name : std::string();
+        callback(status, file_name, downloaded_bytes);
+    }
+}
+
+bool download_task::check_cancelled()
+{
+    if (!m_cancel_requested && status != tgl_download_status::cancelled) {
+        return false;
+    }
+    set_status(tgl_download_status::cancelled);
+    return true;
 }

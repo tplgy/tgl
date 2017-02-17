@@ -129,6 +129,7 @@ set(PRIVATE_HEADERS
     src/query/queries.h
     src/query/query.h
     src/query/query_create_chat.h
+    src/query/query_download_file_part.h
     src/query/query_export_auth.h
     src/query/query_help_get_config.h
     src/query/query_import_auth.h
@@ -171,6 +172,7 @@ set(SOURCES
     src/query/queries.cpp
     src/query/query.cpp
     src/query/query_create_chat.cpp
+    src/query/query_download_file_part.cpp
     src/query/query_help_get_config.cpp
     src/query/query_messages_accept_encryption.cpp
     src/query/query_messages_get_dh_config.cpp

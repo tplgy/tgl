@@ -25,9 +25,8 @@
 
 upload_task::upload_task()
     : size(0)
-    , offset(0)
+    , uploaded_bytes(0)
     , part_num(0)
-    , part_size(0)
     , id(0)
     , thumb_id(0)
     , to_id()
@@ -43,7 +42,6 @@ upload_task::upload_task()
     , thumb_height(0)
     , message_id(0)
     , status(tgl_upload_status::waiting)
-    , at_EOF(false)
     , m_cancel_requested(false)
 {
 }
@@ -60,7 +58,7 @@ void upload_task::set_status(tgl_upload_status status, const std::shared_ptr<tgl
 {
     this->status = status;
     if (callback) {
-        callback(status, message, offset);
+        callback(status, message, uploaded_bytes);
     }
 }
 

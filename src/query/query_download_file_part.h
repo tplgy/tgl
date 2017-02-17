@@ -19,34 +19,32 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_UPLOAD_FILE_PART_H__
-#define __TGL_QUERY_UPLOAD_FILE_PART_H__
+#ifndef __TGL_QUERY_DOWNLOAD_FILE_PART_H__
+#define __TGL_QUERY_DOWNLOAD_FILE_PART_H__
 
 #include "query.h"
-#include "transfer_manager.h"
-#include "upload_task.h"
 
-#include <functional>
-#include <memory>
+class download_task;
+struct tl_ds_upload_file;
 
-class query_upload_file_part: public query
+class query_download_file_part: public query
 {
 public:
-    query_upload_file_part(const std::shared_ptr<upload_task>& u,
-            const std::function<void(bool success)>& callback);
+    query_download_file_part(const std::shared_ptr<download_task>& download,
+            const std::function<void(const tl_ds_upload_file*)>& callback);
     virtual void on_answer(void* answer) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
-    virtual double timeout_interval() const override;
+    virtual double timeout_interval() const override { return 20.0; }
     virtual void on_connection_status_changed(tgl_connection_status status) override;
     virtual void will_send() override;
     virtual bool is_file_transfer() const override { return true; }
 
 private:
-    bool upload_finished() const;
+    bool download_finished() const;
 
 private:
-    std::shared_ptr<upload_task> m_upload;
-    std::function<void(bool success)> m_callback;
+    std::shared_ptr<download_task> m_download;
+    std::function<void(const tl_ds_upload_file*)> m_callback;
 };
 
 #endif

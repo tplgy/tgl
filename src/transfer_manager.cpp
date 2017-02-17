@@ -24,12 +24,14 @@
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"
+#include "auto/auto-types.h"
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_md5.h"
 #include "download_task.h"
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "query/queries.h"
+#include "query/query_download_file_part.h"
 #include "query/query_messages_send_encrypted_file.h"
 #include "query/query_upload_file_part.h"
 #include "secret_chat_encryptor.h"
@@ -41,9 +43,7 @@
 #include "tgl_secret_chat_private.h"
 #include "upload_task.h"
 
-#include <fcntl.h>
 #include <boost/filesystem.hpp>
-#include <fstream>
 #include <limits>
 
 static constexpr size_t MAX_PART_SIZE = 512 * 1024;
@@ -79,103 +79,6 @@ public:
 
 private:
     std::function<void(bool)> m_callback;
-};
-
-class query_download: public query
-{
-public:
-    query_download(transfer_manager* manager,
-            const std::shared_ptr<download_task>& download,
-            const tgl_download_callback& callback)
-        : query("download", TYPE_TO_PARAM(upload_file))
-        , m_manager(manager)
-        , m_download(download)
-        , m_callback(callback)
-    { }
-
-    const std::shared_ptr<query_download> shared_from_this()
-    {
-        return std::static_pointer_cast<query_download>(query::shared_from_this());
-    }
-
-    virtual void on_answer(void* answer) override
-    {
-        m_manager->download_on_answer(shared_from_this(), answer);
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        return m_manager->download_on_error(shared_from_this(), error_code, error_string);
-    }
-
-    virtual double timeout_interval() const override
-    {
-        return 20.0;
-    }
-
-    virtual void on_connection_status_changed(tgl_connection_status status) override
-    {
-        if (download_finished()) {
-            return;
-        }
-
-        tgl_download_status download_status = m_download->status;
-
-        switch (status) {
-        case tgl_connection_status::connecting:
-            download_status = tgl_download_status::connecting;
-            break;
-        case tgl_connection_status::disconnected:
-        case tgl_connection_status::closed:
-        case tgl_connection_status::connected:
-            download_status = tgl_download_status::waiting;
-            break;
-        }
-
-        set_download_status(download_status);
-    }
-
-    virtual void will_send() override
-    {
-        if (download_finished()) {
-            return;
-        }
-        set_download_status(tgl_download_status::downloading);
-    }
-
-    virtual bool is_file_transfer() const override { return true; }
-
-    const tgl_download_callback& callback() const
-    {
-        return m_callback;
-    }
-
-    const std::shared_ptr<download_task>& get_download() const
-    {
-        return m_download;
-    }
-
-    void set_download_status(tgl_download_status status)
-    {
-        m_download->status = status;
-        if (m_callback) {
-            std::string file_name = (status == tgl_download_status::succeeded || status == tgl_download_status::cancelled) ? m_download->file_name : std::string();
-            m_callback(status, file_name, m_download->offset);
-        }
-    }
-
-private:
-    bool download_finished() const
-    {
-        return m_download->status == tgl_download_status::succeeded
-                || m_download->status == tgl_download_status::failed
-                || m_download->status == tgl_download_status::cancelled;
-    }
-
-private:
-    transfer_manager* m_manager;
-    std::shared_ptr<download_task> m_download;
-    tgl_download_callback m_callback;
 };
 
 std::shared_ptr<tgl_transfer_manager> tgl_transfer_manager::create_default_impl(const std::string& download_dir)
@@ -415,39 +318,46 @@ void transfer_manager::upload_end(const std::shared_ptr<upload_task>& u)
 
 void transfer_manager::upload_multiple_parts(const std::shared_ptr<upload_task>&u, size_t count)
 {
-    for (size_t i = 0; !u->at_EOF && i < count; ++i) {
+    for (size_t i = 0; u->part_num * MAX_PART_SIZE < u->size && i < count; ++i) {
         upload_part(u);
     }
 }
 
-void transfer_manager::upload_part_finished(const std::shared_ptr<upload_task>&u, size_t part_number, bool success)
+void transfer_manager::upload_part_finished(const std::shared_ptr<upload_task>& u, size_t part_number, bool success)
 {
+    u->running_parts.erase(part_number);
+
+    u->uploaded_bytes += MAX_PART_SIZE;
+    if (u->uploaded_bytes > u->size) {
+        u->uploaded_bytes = u->size;
+    }
+
     if (u->part_done_callback) {
         u->part_done_callback();
     }
 
-    u->running_parts.erase(part_number);
-
     if (!success || u->check_cancelled()) {
+        if (!success) {
+            u->set_status(tgl_upload_status::failed);
+        }
         upload_end(u);
         return;
     }
 
-    if (u->at_EOF && u->running_parts.empty()) {
-        upload_end(u);
-        return;
+    if (u->status == tgl_upload_status::waiting || u->status == tgl_upload_status::connecting) {
+        u->set_status(tgl_upload_status::uploading);
     }
 
-    if (!u->at_EOF) {
+    if (u->part_num * MAX_PART_SIZE < u->size) {
         upload_part(u);
+    } else if (u->running_parts.empty()) {
+        upload_end(u);
     }
 }
 
 void transfer_manager::upload_part(const std::shared_ptr<upload_task>& u)
 {
-    assert(!u->at_EOF);
-
-    auto offset = u->part_num * u->part_size;
+    auto offset = u->part_num * MAX_PART_SIZE;
     u->running_parts.insert(u->part_num);
     auto q = std::make_shared<query_upload_file_part>(u, std::bind(&transfer_manager::upload_part_finished,
             shared_from_this(), u, u->part_num, std::placeholders::_1));
@@ -459,10 +369,10 @@ void transfer_manager::upload_part(const std::shared_ptr<upload_task>& u)
         q->out_i32(CODE_upload_save_big_file_part);
         q->out_i64(u->id);
         q->out_i32(u->part_num++);
-        q->out_i32((u->size + u->part_size - 1) / u->part_size);
+        q->out_i32((u->size + MAX_PART_SIZE - 1) / MAX_PART_SIZE);
     }
 
-    auto sending_buffer = u->read_callback(u->part_size);
+    auto sending_buffer = u->read_callback(MAX_PART_SIZE);
     size_t read_size = sending_buffer->size();
 
     if (read_size == 0) {
@@ -490,10 +400,8 @@ void transfer_manager::upload_part(const std::shared_ptr<upload_task>& u)
     }
     q->out_string(reinterpret_cast<char*>(sending_buffer->data()), read_size);
 
-    if (offset == u->size) {
-        u->at_EOF = true;
-    } else {
-        assert(u->part_size == read_size);
+    if (offset != u->size) {
+        assert(MAX_PART_SIZE == read_size);
     }
     q->execute(tgl_state::instance()->active_client());
 }
@@ -539,12 +447,11 @@ void transfer_manager::upload_document(const tgl_input_peer_t& to_id,
     u->part_done_callback = done_callback;
 
     u->size = document->file_size;
-    u->part_size = MAX_PART_SIZE;
 
     u->set_status(tgl_upload_status::waiting);
 
     static constexpr int MAX_PARTS = 3000; // How do we get this number?
-    if (((u->size + u->part_size - 1) / u->part_size) > MAX_PARTS) {
+    if (((u->size + MAX_PART_SIZE - 1) / MAX_PART_SIZE) > MAX_PARTS) {
         TGL_ERROR("file is too big");
         u->set_status(tgl_upload_status::failed);
         upload_end(u);
@@ -700,16 +607,19 @@ void transfer_manager::upload_document(const tgl_input_peer_t& to_id, int64_t me
     upload_document(to_id, message_id, 0 /* avatar */, reply, as_photo, document, callback, read_callback, done_callback);
 }
 
-void transfer_manager::end_download(const std::shared_ptr<download_task>& d,
-        const tgl_download_callback& callback)
+void transfer_manager::download_end(const std::shared_ptr<download_task>& d)
 {
-    m_downloads.erase(d->id);
-
-    if (d->fd >= 0) {
-        close(d->fd);
+    auto it = m_downloads.find(d->id);
+    if (it == m_downloads.end()) {
+        TGL_DEBUG("download " << d->id << " has finshed");
+        return;
     }
 
-    if (d->status == tgl_download_status::cancelled) {
+    m_downloads.erase(it);
+
+    d->file_stream.reset();
+
+    if (d->status != tgl_download_status::downloading && !d->file_name.empty()) {
         boost::system::error_code ec;
         boost::filesystem::remove(d->file_name, ec);
         if (ec) {
@@ -717,25 +627,30 @@ void transfer_manager::end_download(const std::shared_ptr<download_task>& d,
         }
         d->file_name = std::string();
     } else {
-        d->status = tgl_download_status::succeeded;
-    }
-
-    if (callback) {
-        callback(d->status, d->file_name, d->size);
+        d->set_status(tgl_download_status::succeeded);
     }
 }
 
-int transfer_manager::download_on_answer(const std::shared_ptr<query_download>& q, void* DD)
+void transfer_manager::download_part_finished(const std::shared_ptr<download_task>& d, size_t offset,
+        const tl_ds_upload_file* DS_UF)
 {
-    tl_ds_upload_file* DS_UF = static_cast<tl_ds_upload_file*>(DD);
+    d->running_parts.erase(offset);
 
-    const std::shared_ptr<download_task>& d = q->get_download();
-    if (d->fd == -1) {
-        d->fd = open(d->file_name.c_str(), O_CREAT | O_WRONLY, 0640);
-        if (d->fd < 0) {
-            TGL_ERROR("can not open file [" << d->file_name << "] for writing: " << errno << " - " << strerror(errno));
-            q->set_download_status(tgl_download_status::failed);
-            return 0;
+    if (!DS_UF || d->check_cancelled()) {
+        if (!DS_UF) {
+            d->set_status(tgl_download_status::failed);
+        }
+        download_end(d);
+        return;
+    }
+
+    if (!d->file_stream) {
+        d->file_stream = std::make_unique<std::ofstream>(d->file_name, std::ios_base::trunc | std::ios_base::out | std::ios_base::binary);
+        if (!d->file_stream || !d->file_stream->good()) {
+            TGL_ERROR("can not open file [" << d->file_name << "] for writing");
+            d->set_status(tgl_download_status::failed);
+            download_end(d);
+            return;
         }
     }
 
@@ -743,83 +658,60 @@ int transfer_manager::download_on_answer(const std::shared_ptr<query_download>& 
 
     if (!d->iv.empty()) {
         assert(!(len & 15));
-        void* ptr = DS_UF->bytes->data;
+        char* ptr = DS_UF->bytes->data;
 
         TGLC_aes_key aes_key;
         TGLC_aes_set_decrypt_key(d->key.data(), 256, &aes_key);
-        TGLC_aes_ige_encrypt(static_cast<unsigned char*>(ptr), static_cast<unsigned char*>(ptr), len, &aes_key, d->iv.data(), 0);
+        TGLC_aes_ige_encrypt(reinterpret_cast<const unsigned char*>(ptr), reinterpret_cast<unsigned char*>(ptr), len, &aes_key, d->iv.data(), 0);
         memset(&aes_key, 0, sizeof(aes_key));
-        if (len > d->size - d->offset) {
-            len = d->size - d->offset;
+        if (len > d->size - offset) {
+            len = d->size - offset;
         }
-        auto result = write(d->fd, ptr, len);
-        TGL_ASSERT_UNUSED(result, result == len);
+        d->file_stream->seekp(offset);
+        d->file_stream->write(ptr, len);
     } else {
-        auto result = write(d->fd, DS_UF->bytes->data, len);
-        TGL_ASSERT_UNUSED(result, result == len);
+        d->file_stream->seekp(offset);
+        d->file_stream->write(DS_UF->bytes->data, len);
     }
 
-    d->offset += len;
+    d->downloaded_bytes += len;
+
+
+    if (d->status == tgl_download_status::waiting || d->status == tgl_download_status::connecting) {
+        d->set_status(tgl_download_status::downloading);
+    }
+
     if (d->offset < d->size) {
-        auto status = q->get_download()->status;
-        if (status == tgl_download_status::waiting || status == tgl_download_status::connecting) {
-            q->set_download_status(tgl_download_status::downloading);
-        }
-        download_next_part(d, q->callback());
-        return 0;
-    } else {
-        end_download(d, q->callback());
-        return 0;
+        download_part(d);
+    } else if (d->running_parts.empty()) {
+        download_end(d);
     }
 }
 
-int transfer_manager::download_on_error(const std::shared_ptr<query_download>& q, int error_code, const std::string &error)
+void transfer_manager::download_multiple_parts(const std::shared_ptr<download_task>& d, size_t count)
 {
-    TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << std::string(error));
-
-    const std::shared_ptr<download_task>& d = q->get_download();
-    if (d->fd >= 0) {
-        close(d->fd);
+    for (size_t i = 0; d->offset < d->size && i < count; ++i) {
+        download_part(d);
     }
-
-    boost::system::error_code ec;
-    boost::filesystem::remove(d->file_name, ec);
-    d->file_name = std::string();
-
-    q->set_download_status(tgl_download_status::failed);
-
-    return 0;
 }
 
-void transfer_manager::download_next_part(const std::shared_ptr<download_task>& d,
-        const tgl_download_callback& callback)
+void transfer_manager::download_part(const std::shared_ptr<download_task>& d)
 {
-    if (d->status == tgl_download_status::cancelled) {
-        end_download(d, callback);
-        return;
-    }
+    TGL_DEBUG("download_part from offset " << d->offset << "(file size " << d->size << ")");
 
-    TGL_DEBUG("download_next_part (file size " << d->size << ")");
     if (!d->offset) {
         std::string path = get_file_path(d->location.access_hash());
-
         if (!d->ext.empty()) {
             path += std::string(".") + d->ext;
         }
-
         d->file_name = path;
-        if (boost::filesystem::exists(path)) {
-            boost::system::error_code ec;
-            d->offset = boost::filesystem::file_size(path, ec);
-            if (!ec && d->offset >= d->size) {
-                TGL_NOTICE("file [" << path << "] already downloaded");
-                end_download(d, callback);
-                return;
-            }
-        }
-
     }
-    auto q = std::make_shared<query_download>(this, d, callback);
+
+    d->running_parts.insert(d->offset);
+
+    auto q = std::make_shared<query_download_file_part>(d, std::bind(&transfer_manager::download_part_finished,
+            shared_from_this(), d, d->offset, std::placeholders::_1));
+
     q->out_i32(CODE_upload_get_file);
     if (d->location.local_id()) {
         q->out_i32(CODE_input_file_location);
@@ -833,6 +725,7 @@ void transfer_manager::download_next_part(const std::shared_ptr<download_task>& 
     }
     q->out_i32(d->offset);
     q->out_i32(MAX_PART_SIZE);
+    d->offset += MAX_PART_SIZE;
 
     q->execute(tgl_state::instance()->client_at(d->location.dc()));
 }
@@ -857,25 +750,13 @@ void transfer_manager::download_by_file_location(int64_t download_id,
         return;
     }
 
-    auto d = std::make_shared<download_task>(download_id, file_size, file_location);
-    m_downloads[d->id] = d;
-
-    if (callback) {
-        callback(d->status, std::string(), 0);
-    }
-
     TGL_DEBUG("download_file_location - file_size: " << file_size);
-    download_next_part(d, callback);
-}
 
-void transfer_manager::download_document(const std::shared_ptr<download_task>& d,
-        const std::string& mime_type,
-        const tgl_download_callback& callback)
-{
-    if (!mime_type.empty()) {
-        d->ext = tgl_extension_by_mime_type(mime_type);
-    }
-    download_next_part(d, callback);
+    auto d = std::make_shared<download_task>(download_id, file_size, file_location);
+    d->callback = callback;
+    m_downloads[d->id] = d;
+    d->set_status(tgl_download_status::waiting);
+    download_multiple_parts(d, tgl_state::instance()->client_at(d->location.dc())->max_connections());
 }
 
 void transfer_manager::download_document(int64_t download_id,
@@ -891,23 +772,20 @@ void transfer_manager::download_document(int64_t download_id,
     }
 
     std::shared_ptr<download_task> d = std::make_shared<download_task>(download_id, document);
+    d->callback = callback;
 
     if (!d->valid) {
         TGL_WARNING("encrypted document key finger print doesn't match");
-        d->status = tgl_download_status::failed;
-        if (callback) {
-            callback(d->status, std::string(), 0);
-        }
+        d->set_status(tgl_download_status::failed);
         return;
     }
 
     m_downloads[d->id] = d;
-
-    if (callback) {
-        callback(d->status, std::string(), 0);
+    if (!document->mime_type.empty()) {
+        d->ext = tgl_extension_by_mime_type(document->mime_type);
     }
-
-    download_document(d, document->mime_type, callback);
+    d->set_status(tgl_download_status::waiting);
+    download_multiple_parts(d, tgl_state::instance()->client_at(d->location.dc())->max_connections());
 }
 
 void transfer_manager::cancel_download(int64_t download_id)
@@ -917,7 +795,7 @@ void transfer_manager::cancel_download(int64_t download_id)
         TGL_DEBUG("can't find download " << download_id);
         return;
     }
-    it->second->status = tgl_download_status::cancelled;
+    it->second->request_cancel();
     TGL_DEBUG("download " << download_id << " has been cancelled");
 }
 

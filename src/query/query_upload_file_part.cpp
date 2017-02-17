@@ -31,15 +31,6 @@ query_upload_file_part::query_upload_file_part(const std::shared_ptr<upload_task
 
 void query_upload_file_part::on_answer(void*)
 {
-    m_upload->offset = m_upload->part_num * m_upload->part_size;
-    if (m_upload->offset > m_upload->size) {
-        m_upload->offset = m_upload->size;
-    }
-
-    if (m_upload->status == tgl_upload_status::waiting || m_upload->status == tgl_upload_status::connecting) {
-        m_upload->set_status(tgl_upload_status::uploading);
-    }
-
     if (m_callback) {
         m_callback(true);
     }
@@ -48,7 +39,6 @@ void query_upload_file_part::on_answer(void*)
 int query_upload_file_part::on_error(int error_code, const std::string& error_string)
 {
     TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-    m_upload->set_status(tgl_upload_status::failed);
     if (m_callback) {
         m_callback(false);
     }

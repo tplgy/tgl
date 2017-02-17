@@ -26,21 +26,26 @@
 #include "tgl/tgl_transfer_manager.h"
 
 #include <cstdint>
+#include <fstream>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 class download_task {
 public:
     int64_t id;
     int32_t offset;
+    int32_t downloaded_bytes;
     int32_t size;
     int32_t type;
-    int fd;
+    std::unique_ptr<std::ofstream> file_stream;
     tgl_file_location location;
     std::string file_name;
     std::string ext;
     tgl_download_status status;
+    tgl_download_callback callback;
+    std::unordered_set<size_t> running_parts;
     //encrypted documents
     std::vector<unsigned char> iv;
     std::vector<unsigned char> key;
@@ -50,9 +55,15 @@ public:
     download_task(int64_t id, int32_t size, const tgl_file_location& location);
     download_task(int64_t id, const std::shared_ptr<tgl_document>& document);
     ~download_task();
+    void set_status(tgl_download_status status);
+    void request_cancel() { m_cancel_requested = true; }
+    bool check_cancelled();
 
 private:
     void init_from_document(const std::shared_ptr<tgl_document>& document);
+
+private:
+    bool m_cancel_requested;
 };
 
 #endif

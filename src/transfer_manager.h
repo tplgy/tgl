@@ -28,9 +28,10 @@
 #include <map>
 
 class download_task;
-class query_download;
+class query_download_file_part;
 class query_upload_file_part;
 class upload_task;
+struct tl_ds_upload_file;
 
 class transfer_manager: public std::enable_shared_from_this<transfer_manager>, public tgl_transfer_manager
 {
@@ -71,11 +72,6 @@ public:
     virtual bool is_downloading_file(int64_t download_id) const override;
 
 private:
-    friend class query_download;
-    friend class query_upload_file_part;
-
-    int download_on_answer(const std::shared_ptr<query_download>& q, void* answer);
-    int download_on_error(const std::shared_ptr<query_download>& q, int error_code, const std::string &error);
     void upload_part_finished(const std::shared_ptr<upload_task>&u, size_t part_number, bool success);
 
     void upload_avatar_end(const std::shared_ptr<upload_task>&, const std::function<void(bool)>& callback);
@@ -99,11 +95,11 @@ private:
                       const tgl_read_callback& read_callback,
                       const tgl_upload_part_done_callback& done_callback);
 
-    void download_document(const std::shared_ptr<download_task>&, const std::string& mime_type,
-             const tgl_download_callback& callback);
+    void download_part_finished(const std::shared_ptr<download_task>&, size_t offset, const tl_ds_upload_file*);
 
-    void download_next_part(const std::shared_ptr<download_task>&, const tgl_download_callback& callback);
-    void end_download(const std::shared_ptr<download_task>&, const tgl_download_callback& callback);
+    void download_multiple_parts(const std::shared_ptr<download_task>&, size_t count);
+    void download_part(const std::shared_ptr<download_task>&);
+    void download_end(const std::shared_ptr<download_task>&);
 
     std::map<int64_t, std::shared_ptr<download_task>> m_downloads;
     std::map<int64_t, std::shared_ptr<upload_task>> m_uploads;

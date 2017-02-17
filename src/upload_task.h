@@ -37,9 +37,8 @@ struct tgl_message;
 class upload_task {
 public:
     uintmax_t size;
-    uintmax_t offset;
+    uintmax_t uploaded_bytes;
     size_t part_num;
-    size_t part_size;
     int64_t id;
     int64_t thumb_id;
     tgl_input_peer_t to_id;
@@ -64,7 +63,6 @@ public:
     int64_t message_id;
 
     tgl_upload_status status;
-    bool at_EOF;
 
     std::unordered_set<size_t> running_parts;
     tgl_upload_callback callback;
