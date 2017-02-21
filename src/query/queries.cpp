@@ -4415,8 +4415,8 @@ public:
                 case(CODE_privacy_value_allow_users): {
                     tgl_rule = tgl_privacy_rule::allow_users;
                     if (rules->rules->data[i]->users) {
-                        for (int32_t i=0; i<DS_LVAL(rules->rules->data[i]->users->cnt); ++i) {
-                            users.push_back(DS_LVAL(rules->rules->data[i]->users->data[i]));
+                        for (int32_t j=0; j<DS_LVAL(rules->rules->data[i]->users->cnt); ++j) {
+                            users.push_back(DS_LVAL(rules->rules->data[i]->users->data[j]));
                         }
                     }
                     break;

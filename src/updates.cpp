@@ -390,7 +390,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         break;
     case CODE_update_service_notification:
         TGL_NOTICE("notification " << DS_STDSTR(DS_U->type) << ":" << DS_STDSTR(DS_U->message_text));
-        tgl_state::instance()->callback()->notification(DS_U->type->data, DS_U->message_text->data);
+        tgl_state::instance()->callback()->notification(DS_STDSTR(DS_U->type), DS_STDSTR(DS_U->message_text));
         break;
     case CODE_update_privacy:
         TGL_NOTICE("privacy change update");

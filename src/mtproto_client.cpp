@@ -574,7 +574,7 @@ bool mtproto_client::process_dh_answer(const char* packet, int len, bool temp_ke
     }
 
     std::unique_ptr<int[]> decrypted_buffer(new int[(decrypted_buffer_size + 3) / 4]);
-    l = tgl_pad_aes_decrypt(&aes_key,
+    tgl_pad_aes_decrypt(&aes_key,
             aes_iv,
             reinterpret_cast<const unsigned char *>(fetch_str(&in, l)),
             l,
