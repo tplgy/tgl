@@ -756,7 +756,11 @@ void transfer_manager::download_by_file_location(int64_t download_id,
     d->callback = callback;
     m_downloads[d->id] = d;
     d->set_status(tgl_download_status::waiting);
-    download_multiple_parts(d, tgl_state::instance()->client_at(d->location.dc())->max_connections());
+    if (file_size <= 0) { // It's likely for avatar which doesn't have a file size
+        download_part(d);
+    } else {
+        download_multiple_parts(d, tgl_state::instance()->client_at(d->location.dc())->max_connections());
+    }
 }
 
 void transfer_manager::download_document(int64_t download_id,
