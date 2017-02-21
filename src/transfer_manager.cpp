@@ -690,6 +690,15 @@ void transfer_manager::download_part_finished(const std::shared_ptr<download_tas
 
 void transfer_manager::download_multiple_parts(const std::shared_ptr<download_task>& d, size_t count)
 {
+    // FIXME: for now we don't download enctypted file in parallel because AES ige mode
+    // should operate serially. We should implement a map to hold the downloaded parts
+    // which makes holes and then decrypt the parts that forms serial parts when new parts
+    // come in.
+    if (!d->iv.empty()) {
+        download_part(d);
+        return;
+    }
+
     for (size_t i = 0; d->offset < d->size && i < count; ++i) {
         download_part(d);
     }
