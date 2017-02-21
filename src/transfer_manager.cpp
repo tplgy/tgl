@@ -388,8 +388,10 @@ void transfer_manager::upload_part(const std::shared_ptr<upload_task>& u)
     if (u->is_encrypted()) {
         if (read_size & 15) {
             assert(offset == u->size);
-            tgl_secure_random(reinterpret_cast<unsigned char*>(sending_buffer->data()) + read_size, (-read_size) & 15);
-            read_size = (read_size + 15) & ~15;
+            int32_t padding_size = (-read_size) & 15;
+            sending_buffer->resize(read_size + padding_size);
+            tgl_secure_random(reinterpret_cast<unsigned char*>(sending_buffer->data()) + read_size, padding_size);
+            read_size += padding_size;
         }
 
         TGLC_aes_key aes_key;
