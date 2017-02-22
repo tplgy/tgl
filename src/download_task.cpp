@@ -36,6 +36,7 @@ download_task::download_task(int64_t id, int32_t size, const tgl_file_location& 
     , status(tgl_download_status::waiting)
     , iv()
     , key()
+    , decryption_offset(0)
     , valid(true)
     , m_cancel_requested(false)
 {
@@ -51,6 +52,7 @@ download_task::download_task(int64_t id, const std::shared_ptr<tgl_document>& do
     , status(tgl_download_status::waiting)
     , iv()
     , key()
+    , decryption_offset(0)
     , valid(true)
     , m_cancel_requested(false)
 {

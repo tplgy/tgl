@@ -636,12 +636,11 @@ void transfer_manager::download_end(const std::shared_ptr<download_task>& d)
 void transfer_manager::download_part_finished(const std::shared_ptr<download_task>& d, size_t offset,
         const tl_ds_upload_file* DS_UF)
 {
-    d->running_parts.erase(offset);
-
     if (!DS_UF || d->check_cancelled()) {
         if (!DS_UF) {
             d->set_status(tgl_download_status::failed);
         }
+        d->running_parts.clear();
         download_end(d);
         return;
     }
@@ -651,33 +650,57 @@ void transfer_manager::download_part_finished(const std::shared_ptr<download_tas
         if (!d->file_stream || !d->file_stream->good()) {
             TGL_ERROR("can not open file [" << d->file_name << "] for writing");
             d->set_status(tgl_download_status::failed);
+            d->running_parts.clear();
             download_end(d);
             return;
         }
     }
 
-    int32_t len = DS_UF->bytes->len;
-
-    if (!d->iv.empty()) {
-        assert(!(len & 15));
-        char* ptr = DS_UF->bytes->data;
-
-        TGLC_aes_key aes_key;
-        TGLC_aes_set_decrypt_key(d->key.data(), 256, &aes_key);
-        TGLC_aes_ige_encrypt(reinterpret_cast<const unsigned char*>(ptr), reinterpret_cast<unsigned char*>(ptr), len, &aes_key, d->iv.data(), 0);
-        memset(&aes_key, 0, sizeof(aes_key));
-        if (len > d->size - offset) {
-            len = d->size - offset;
-        }
-        d->file_stream->seekp(offset);
-        d->file_stream->write(ptr, len);
-    } else {
-        d->file_stream->seekp(offset);
-        d->file_stream->write(DS_UF->bytes->data, len);
+    if (!DS_UF->bytes || !DS_UF->bytes->data || DS_UF->bytes->len <= 0) {
+        TGL_ERROR("the server returned nothing to us");
+        d->set_status(tgl_download_status::failed);
+        d->running_parts.clear();
+        download_end(d);
+        return;
     }
 
-    d->downloaded_bytes += len;
+    if (!d->iv.empty()) {
+        d->running_parts[offset] = download_data(DS_UF->bytes->data, DS_UF->bytes->len, false);
+        auto it = d->running_parts.begin();
+        for (;it != d->running_parts.end() && d->decryption_offset == it->first && it->second; ++it) {
+            char* data = it->second.data();
+            size_t length = it->second.length();
+            if (length & 15) {
+                TGL_ERROR("the encrypted data length is not half byte aligned");
+                assert(false);
+                d->set_status(tgl_download_status::failed);
+                d->running_parts.clear();
+                download_end(d);
+            }
+            TGLC_aes_key aes_key;
+            TGLC_aes_set_decrypt_key(d->key.data(), 256, &aes_key);
+            TGLC_aes_ige_encrypt(reinterpret_cast<const unsigned char*>(data),
+                    reinterpret_cast<unsigned char*>(data), length, &aes_key, d->iv.data(), 0);
+            memset(&aes_key, 0, sizeof(aes_key));
+            if (length > d->size - it->first) {
+                length = d->size - it->first;
+            }
+            d->file_stream->seekp(it->first);
+            d->file_stream->write(data, length);
+            d->decryption_offset += length;
+        }
+        if (it == d->running_parts.begin()) {
+            d->running_parts[offset] = download_data(DS_UF->bytes->data, DS_UF->bytes->len, true);
+        } else {
+            d->running_parts.erase(d->running_parts.begin(), it);
+        }
+    } else {
+        d->file_stream->seekp(offset);
+        d->file_stream->write(DS_UF->bytes->data, DS_UF->bytes->len);
+        d->running_parts.erase(offset);
+    }
 
+    d->downloaded_bytes += DS_UF->bytes->len;
 
     if (d->status == tgl_download_status::waiting || d->status == tgl_download_status::connecting) {
         d->set_status(tgl_download_status::downloading);
@@ -692,15 +715,6 @@ void transfer_manager::download_part_finished(const std::shared_ptr<download_tas
 
 void transfer_manager::download_multiple_parts(const std::shared_ptr<download_task>& d, size_t count)
 {
-    // FIXME: for now we don't download enctypted file in parallel because AES ige mode
-    // should operate serially. We should implement a map to hold the downloaded parts
-    // which makes holes and then decrypt the parts that forms serial parts when new parts
-    // come in.
-    if (!d->iv.empty()) {
-        download_part(d);
-        return;
-    }
-
     for (size_t i = 0; d->offset < d->size && i < count; ++i) {
         download_part(d);
     }
@@ -718,7 +732,7 @@ void transfer_manager::download_part(const std::shared_ptr<download_task>& d)
         d->file_name = path;
     }
 
-    d->running_parts.insert(d->offset);
+    d->running_parts[d->offset] = download_data();
 
     auto q = std::make_shared<query_download_file_part>(d, std::bind(&transfer_manager::download_part_finished,
             shared_from_this(), d, d->offset, std::placeholders::_1));

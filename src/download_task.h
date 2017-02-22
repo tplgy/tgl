@@ -26,11 +26,42 @@
 #include "tgl/tgl_transfer_manager.h"
 
 #include <cstdint>
+#include <cstring>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
+
+class download_data {
+public:
+    download_data()
+        : m_ref_data(nullptr)
+        , m_length(0)
+    { }
+
+    download_data(char* data, size_t length, bool own_data)
+        : m_length(length)
+    {
+        if (own_data) {
+            m_ref_data = nullptr;
+            m_owning_data.reset(new char[length]);
+            memcpy(m_owning_data.get(), data, length);
+        } else {
+            m_ref_data = data;
+        }
+    }
+
+    char* data() const { return m_owning_data ? m_owning_data.get() : m_ref_data; }
+    size_t length() const { return m_length; }
+    operator bool() const { return !!data() && !!length(); }
+
+private:
+    char* m_ref_data;
+    std::unique_ptr<char[]> m_owning_data;
+    size_t m_length;
+};
 
 class download_task {
 public:
@@ -45,10 +76,11 @@ public:
     std::string ext;
     tgl_download_status status;
     tgl_download_callback callback;
-    std::unordered_set<size_t> running_parts;
+    std::map<size_t, download_data> running_parts;
     //encrypted documents
     std::vector<unsigned char> iv;
     std::vector<unsigned char> key;
+    int32_t decryption_offset;
     bool valid;
     // ---
 
