@@ -80,7 +80,7 @@ public:
     //encrypted documents
     std::vector<unsigned char> iv;
     std::vector<unsigned char> key;
-    int32_t decryption_offset;
+    size_t decryption_offset;
     bool valid;
     // ---
 
