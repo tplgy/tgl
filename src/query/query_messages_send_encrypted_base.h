@@ -66,7 +66,7 @@ protected:
     void append_blob_to_unconfirmed_message(size_t buffer_position_start);
     void end_unconfirmed_message();
     void construct_message(int64_t message_id, int64_t date,
-            const std::string& layer_blob) throw(std::runtime_error);
+            const std::string& layer_blob, const std::string& file_info_blob = std::string()) throw(std::runtime_error);
 
 protected:
     std::shared_ptr<tgl_secret_chat> m_secret_chat;

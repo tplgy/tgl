@@ -63,7 +63,7 @@ query_messages_send_encrypted_file::query_messages_send_encrypted_file(
     encryptor.end();
     out_i32s(reinterpret_cast<const int32_t*>(input_file_info_blob.data()), input_file_info_blob.size() / 4);
 
-    construct_message(unconfirmed_message->message_id(), unconfirmed_message->date(), layer_blob);
+    construct_message(unconfirmed_message->message_id(), unconfirmed_message->date(), layer_blob, input_file_info_blob);
 }
 
 void query_messages_send_encrypted_file::set_message_media(const tl_ds_decrypted_message_media* DS_DMM)
@@ -187,7 +187,14 @@ void query_messages_send_encrypted_file::assemble()
     memcpy(str, u->key.data(), 32);
     memcpy(str + 32, u->init_iv.data(), 32);
     TGLC_md5(str, 64, md5);
-    out_i32((*(int *)md5) ^ (*(int *)(md5 + 4)));
+    int32_t key_fingerprint = (*(int32_t *)md5) ^ (*(int32_t *)(md5 + 4));
+    out_i32(key_fingerprint);
+
+    if (m_message->media && m_message->media->type() == tgl_message_media_type::document_encr) {
+        std::static_pointer_cast<tgl_message_media_document_encr>(m_message->media)->encr_document->key_fingerprint = key_fingerprint;
+    } else {
+        assert(false);
+    }
 
     append_blob_to_unconfirmed_message(capture_start);
 
