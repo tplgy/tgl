@@ -793,7 +793,7 @@ std::shared_ptr<tgl_document> tglf_fetch_alloc_document(const tl_ds_document* DS
     return document;
 }
 
-static std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W)
+std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W)
 {
     if (!DS_W) {
         return nullptr;

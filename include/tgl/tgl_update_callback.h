@@ -54,6 +54,7 @@ public:
     virtual void message_deleted(int64_t msg_id, const tgl_input_peer_t& peer) = 0;
     virtual void messages_mark_read_in(tgl_peer_id_t peer, int64_t msg_id_or_max_time) = 0;
     virtual void messages_mark_read_out(tgl_peer_id_t peer, int64_t msg_id_or_max_time) = 0;
+    virtual void messages_media_update(const std::shared_ptr<tgl_message_media>& msg_media) = 0;
     virtual void get_value(const std::shared_ptr<tgl_value>& value) = 0;
     virtual void logged_in() = 0;
     virtual void logged_out(bool success) = 0;

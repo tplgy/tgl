@@ -415,8 +415,12 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             tgl_state::instance()->callback()->messages_mark_read_out(id, DS_LVAL(DS_U->max_id));
         }
         break;
-    case CODE_update_web_page:
+    case CODE_update_web_page: {
+        auto media = std::make_shared<tgl_message_media_webpage>();
+        media->webpage = tglf_fetch_alloc_webpage(DS_U->webpage);
+        tgl_state::instance()->callback()->messages_media_update(media);
         break;
+    }
     /*
     case CODE_update_msg_update:
         {
