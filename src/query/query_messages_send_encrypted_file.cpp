@@ -34,6 +34,39 @@
 #include <boost/filesystem.hpp>
 #include <cstring>
 
+struct query_messages_send_encrypted_file::decrypted_message_media {
+    explicit decrypted_message_media(tgl_in_buffer in)
+        : decrypted_message_media_type(TYPE_TO_PARAM(decrypted_message_media))
+    {
+        tgl_in_buffer skip_in = in;
+        auto result = skip_type_any(&skip_in, &decrypted_message_media_type);
+        TGL_ASSERT_UNUSED(result, result >= 0);
+        assert(skip_in.ptr == skip_in.end);
+        media = fetch_ds_type_decrypted_message_media(&in, &decrypted_message_media_type);
+        assert(media);
+        assert(in.ptr == in.end);
+    }
+
+    ~decrypted_message_media()
+    {
+        if (media) {
+            free_ds_type_decrypted_message_media(media, &decrypted_message_media_type);
+        }
+    }
+
+    paramed_type decrypted_message_media_type;
+    tl_ds_decrypted_message_media* media;
+};
+
+query_messages_send_encrypted_file::query_messages_send_encrypted_file(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::shared_ptr<upload_task>& upload,
+        const std::shared_ptr<tgl_message>& message,
+        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
+    : query_messages_send_encrypted_base("send encrypted file message", secret_chat, message, callback, false)
+    , m_upload(upload)
+{
+}
+
 query_messages_send_encrypted_file::query_messages_send_encrypted_file(
         const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message,
@@ -63,7 +96,11 @@ query_messages_send_encrypted_file::query_messages_send_encrypted_file(
     encryptor.end();
     out_i32s(reinterpret_cast<const int32_t*>(input_file_info_blob.data()), input_file_info_blob.size() / 4);
 
-    construct_message(unconfirmed_message->message_id(), unconfirmed_message->date(), layer_blob, input_file_info_blob);
+    construct_message(unconfirmed_message->message_id(), unconfirmed_message->date(), layer_blob);
+}
+
+query_messages_send_encrypted_file::~query_messages_send_encrypted_file()
+{
 }
 
 void query_messages_send_encrypted_file::set_message_media(const tl_ds_decrypted_message_media* DS_DMM)
@@ -128,7 +165,7 @@ void query_messages_send_encrypted_file::assemble()
     }
     if (u->as_photo || !u->is_audio()) {
         TGL_DEBUG("secret chat thumb data " << u->thumb.size() << " bytes @ " << u->thumb_width << "x" << u->thumb_height);
-        out_string(reinterpret_cast<char*>(u->thumb.data()), u->thumb.size());
+        out_string(reinterpret_cast<const char*>(u->thumb.data()), u->thumb.size());
         out_i32(u->thumb_width);
         out_i32(u->thumb_height);
     }
@@ -155,16 +192,7 @@ void query_messages_send_encrypted_file::assemble()
     out_string(reinterpret_cast<const char*>(u->init_iv.data()), u->init_iv.size());
 
     tgl_in_buffer in = { serializer()->i32_data() + start, serializer()->i32_data() + serializer()->i32_size() };
-
-    struct paramed_type decrypted_message_media = TYPE_TO_PARAM(decrypted_message_media);
-    auto result = skip_type_any(&in, &decrypted_message_media);
-    TGL_ASSERT_UNUSED(result, result >= 0);
-    assert(in.ptr == in.end);
-
-    in = { serializer()->i32_data() + start, serializer()->i32_data() + serializer()->i32_size() };
-    tl_ds_decrypted_message_media* DS_DMM = fetch_ds_type_decrypted_message_media(&in, &decrypted_message_media);
-    set_message_media(DS_DMM);
-    assert(in.ptr == in.end);
+    m_message_media = std::make_unique<decrypted_message_media>(in);
 
     append_blob_to_unconfirmed_message(capture_start);
 
@@ -190,13 +218,15 @@ void query_messages_send_encrypted_file::assemble()
     int32_t key_fingerprint = (*(int32_t *)md5) ^ (*(int32_t *)(md5 + 4));
     out_i32(key_fingerprint);
 
-    if (m_message->media && m_message->media->type() == tgl_message_media_type::document_encr) {
-        std::static_pointer_cast<tgl_message_media_document_encr>(m_message->media)->encr_document->key_fingerprint = key_fingerprint;
-    } else {
-        assert(false);
+    append_blob_to_unconfirmed_message(capture_start);
+}
+
+void query_messages_send_encrypted_file::on_answer(void* D)
+{
+    if (m_message_media) {
+        set_message_media(m_message_media->media);
+        m_message_media = nullptr;
     }
 
-    append_blob_to_unconfirmed_message(capture_start);
-
-    free_ds_type_decrypted_message_media(DS_DMM, &decrypted_message_media);
+    query_messages_send_encrypted_base::on_answer(D);
 }

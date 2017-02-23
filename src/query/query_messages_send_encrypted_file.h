@@ -38,23 +38,25 @@ public:
     query_messages_send_encrypted_file(const std::shared_ptr<tgl_secret_chat>& secret_chat,
             const std::shared_ptr<upload_task>& upload,
             const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
-        : query_messages_send_encrypted_base("send encrypted file message", secret_chat, message, callback, false)
-        , m_upload(upload)
-    { }
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
 
     query_messages_send_encrypted_file(
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
             const std::shared_ptr<tgl_unconfirmed_secret_message>& message,
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) throw(std::runtime_error);
 
+    ~query_messages_send_encrypted_file();
+
+    virtual void on_answer(void*) override;
     virtual void assemble() override;
 
 private:
     void set_message_media(const tl_ds_decrypted_message_media*);
 
 private:
+    struct decrypted_message_media;
     std::shared_ptr<upload_task> m_upload;
+    std::unique_ptr<decrypted_message_media> m_message_media;
 };
 
 #endif

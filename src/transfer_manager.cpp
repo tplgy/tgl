@@ -400,7 +400,7 @@ void transfer_manager::upload_part(const std::shared_ptr<upload_task>& u)
                 reinterpret_cast<unsigned char*>(sending_buffer->data()), read_size, &aes_key, u->iv.data(), 1);
         memset(&aes_key, 0, sizeof(aes_key));
     }
-    q->out_string(reinterpret_cast<char*>(sending_buffer->data()), read_size);
+    q->out_string(reinterpret_cast<const char*>(sending_buffer->data()), read_size);
 
     if (offset != u->size) {
         assert(MAX_PART_SIZE == read_size);

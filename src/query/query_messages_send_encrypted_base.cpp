@@ -130,10 +130,10 @@ void query_messages_send_encrypted_base::end_unconfirmed_message()
 }
 
 void query_messages_send_encrypted_base::construct_message(int64_t message_id, int64_t date,
-        const std::string& layer_blob, const std::string& file_info_blob) throw(std::runtime_error)
+        const std::string& layer_blob) throw(std::runtime_error)
 {
     m_message = m_secret_chat->private_facet()->construct_message(tgl_state::instance()->our_id(),
-            message_id, date, layer_blob, file_info_blob);
+            message_id, date, layer_blob, std::string());
     if (!m_message) {
         throw std::runtime_error("failed to reconstruct message from blobs");
     }
