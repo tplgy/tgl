@@ -1207,6 +1207,12 @@ std::shared_ptr<tgl_message_action> tglf_fetch_message_action_encrypted(const tl
         return std::make_shared<tgl_message_action_commit_key>(DS_LVAL(DS_DMA->exchange_id), DS_LVAL(DS_DMA->key_fingerprint));
     case CODE_decrypted_message_action_abort_key:
         return std::make_shared<tgl_message_action_abort_key>(DS_LVAL(DS_DMA->exchange_id));
+    case CODE_decrypted_message_action_opaque_message:
+    {
+        auto action = std::make_shared<tgl_message_action_opaque_message>();
+        action->message = DS_STDSTR(DS_DMA->message);
+        return action;
+    }
     default:
         assert(false);
         return nullptr;

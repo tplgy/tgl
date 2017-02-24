@@ -123,6 +123,9 @@ public:
     qos quality_of_service() const;
     void set_quality_of_service(qos);
 
+    bool opaque_service_message_enabled() const;
+    void set_opaque_service_message_enabled(bool b);
+
     const tgl_input_peer_t& id() const;
     int64_t exchange_id() const;
     int64_t exchange_key_fingerprint() const;

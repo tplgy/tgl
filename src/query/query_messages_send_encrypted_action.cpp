@@ -136,6 +136,13 @@ void query_messages_send_encrypted_action::assemble()
         }
         break;
     }
+    case tgl_message_action_type::opaque_message:
+    {
+        auto action = std::static_pointer_cast<tgl_message_action_opaque_message>(m_message->action);
+        out_i32(CODE_decrypted_message_action_opaque_message);
+        out_std_string(action->message);
+        break;
+    }
     default:
         assert(false);
     }

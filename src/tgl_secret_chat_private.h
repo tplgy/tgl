@@ -81,6 +81,7 @@ struct tgl_secret_chat_private {
     int64_t m_last_depending_query_id;
     bool m_unconfirmed_incoming_messages_loaded;
     bool m_unconfirmed_outgoing_messages_loaded;
+    bool m_opaque_service_message_enabled;
     tgl_secret_chat::qos m_qos;
 
     tgl_secret_chat_private()
@@ -106,6 +107,7 @@ struct tgl_secret_chat_private {
         , m_last_depending_query_id(0)
         , m_unconfirmed_incoming_messages_loaded(false)
         , m_unconfirmed_outgoing_messages_loaded(false)
+        , m_opaque_service_message_enabled(false)
         , m_qos(tgl_secret_chat::qos::normal)
     {
         memset(m_key, 0, sizeof(m_key));
@@ -154,6 +156,7 @@ public:
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
 
     void send_action(const tl_ds_decrypted_message_action& action,
+            int64_t message_id,
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
 
     void send_location(double latitude, double longitude,

@@ -101,6 +101,16 @@ void tgl_secret_chat::set_quality_of_service(qos q)
     d->m_qos = q;
 }
 
+bool tgl_secret_chat::opaque_service_message_enabled() const
+{
+    return d->m_opaque_service_message_enabled;
+}
+
+void tgl_secret_chat::set_opaque_service_message_enabled(bool b)
+{
+    d->m_opaque_service_message_enabled = b;
+}
+
 const tgl_input_peer_t& tgl_secret_chat::id() const
 {
     return d->m_id;
@@ -521,7 +531,7 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
         return;
     }
 
-    std::vector<std::shared_ptr<tgl_message>> none_action_messages;
+    std::vector<std::shared_ptr<tgl_message>> messages_to_deliver;
     for (const auto& m: messages) {
         const auto& message = m.message;
         if (!message) {
@@ -533,7 +543,7 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
         }
         auto action_type = message->action ? message->action->type() : tgl_message_action_type::none;
         if (action_type == tgl_message_action_type::none) {
-            none_action_messages.push_back(message);
+            messages_to_deliver.push_back(message);
         } else if (action_type == tgl_message_action_type::request_key) {
             auto action = std::static_pointer_cast<tgl_message_action_request_key>(message->action);
             if (exchange_state() == tgl_secret_chat_exchange_state::none
@@ -576,6 +586,8 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
             auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action);
             TGL_DEBUG("received request for message resend; start-seq: "<< action->start_seq_no << " end-seq: " << action->end_seq_no);
             resend_messages(action->start_seq_no, action->end_seq_no);
+        } else if (action_type == tgl_message_action_type::opaque_message) {
+            messages_to_deliver.push_back(message);
         }
     }
 
@@ -587,8 +599,8 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
         tgl_state::instance()->callback()->secret_chat_update(shared_from_this());
     }
 
-    if (none_action_messages.size()) {
-        tgl_state::instance()->callback()->new_messages(none_action_messages);
+    if (messages_to_deliver.size()) {
+        tgl_state::instance()->callback()->new_messages(messages_to_deliver);
     }
 
     if (peer_raw_in_seq_no >= 0 && peer_raw_out_seq_no >= 0) {
@@ -933,15 +945,24 @@ void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<tgl_messa
         }
     }
 
+    tgl_state::instance()->callback()->new_messages({message});
     q->execute(tgl_state::instance()->active_client());
 }
 
 void tgl_secret_chat_private_facet::send_action(const tl_ds_decrypted_message_action& action,
+        int64_t message_id,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
 {
+    if (action.magic == CODE_decrypted_message_action_opaque_message && !opaque_service_message_enabled()) {
+        TGL_ERROR("opaque service message disabled");
+        if (callback) {
+            callback(false, nullptr);
+        }
+        return;
+    }
+
     int64_t date = tgl_get_system_time();
 
-    int64_t message_id = 0;
     while (!message_id) {
         tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
     }
@@ -955,7 +976,6 @@ void tgl_secret_chat_private_facet::send_action(const tl_ds_decrypted_message_ac
             &action,
             nullptr);
     message->set_pending(true).set_unread(true);
-    tgl_state::instance()->callback()->new_messages({message});
     send_message(message, callback);
 }
 
@@ -965,10 +985,8 @@ void tgl_secret_chat_private_facet::send_location(double latitude, double longit
     struct tl_ds_decrypted_message_media TDSM;
     memset(&TDSM, 0, sizeof(TDSM));
     TDSM.magic = CODE_decrypted_message_media_geo_point;
-    TDSM.latitude = static_cast<double*>(malloc(sizeof(double)));
-    *TDSM.latitude = latitude;
-    TDSM.longitude = static_cast<double*>(malloc(sizeof(double)));
-    *TDSM.longitude = longitude;
+    TDSM.latitude = &latitude;
+    TDSM.longitude = &longitude;
 
     int64_t date = tgl_get_system_time();
 
@@ -987,11 +1005,6 @@ void tgl_secret_chat_private_facet::send_location(double latitude, double longit
             nullptr,
             nullptr);
     message->set_unread(true).set_pending(true);
-
-    free(TDSM.latitude);
-    free(TDSM.longitude);
-
-    tgl_state::instance()->callback()->new_messages({message});
     send_message(message, callback);
 }
 
@@ -1003,7 +1016,7 @@ void tgl_secret_chat_private_facet::send_layer()
     int layer = TGL_ENCRYPTED_LAYER;
     action.layer = &layer;
 
-    send_action(action, [=](bool success, const std::shared_ptr<tgl_message>& msg) {
+    send_action(action, 0, [=](bool success, const std::shared_ptr<tgl_message>& msg) {
         if (success) {
             tgl_state::instance()->callback()->secret_chat_update(shared_from_this());
         }
@@ -1042,7 +1055,7 @@ void tgl_secret_chat_private_facet::delete_message(int64_t message_id,
     ids.data = &msg_id_ptr;
 
     action.random_ids = &ids;
-    send_action(action, callback);
+    send_action(action, 0, callback);
 }
 
 void tgl_secret_chat_private_facet::request_resend_messages(int32_t start_seq_no, int32_t end_seq_no)
@@ -1054,7 +1067,7 @@ void tgl_secret_chat_private_facet::request_resend_messages(int32_t start_seq_no
     action.start_seq_no = &start_seq_no;
     action.end_seq_no = &end_seq_no;
 
-    send_action(action, nullptr);
+    send_action(action, 0, nullptr);
 }
 
 void tgl_secret_chat_private_facet::resend_messages(int32_t start_seq_no, int32_t end_seq_no)

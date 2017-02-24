@@ -1,5 +1,6 @@
 #include "tgl/tgl_message.h"
 
+#include "auto/constants.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_secret_chat.h"
@@ -77,8 +78,13 @@ tgl_message::tgl_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
     : tgl_message(message_id, from_id, secret_chat->id(), nullptr, nullptr, date, message, nullptr, nullptr, 0, nullptr)
 {
     if (action) {
-        this->action = tglf_fetch_message_action_encrypted(action);
-        this->set_service(true);
+        if (action->magic == CODE_decrypted_message_action_opaque_message
+                && !secret_chat->opaque_service_message_enabled()) {
+            // ignore the action.
+        } else {
+            this->action = tglf_fetch_message_action_encrypted(action);
+            this->set_service(true);
+        }
     }
 
     if (media) {

@@ -39,6 +39,7 @@
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
+#include "auto/constants.h"
 #include "crypto/tgl_crypto_md5.h"
 #include "crypto/tgl_crypto_rand.h"
 #include "crypto/tgl_crypto_sha.h"
@@ -655,6 +656,7 @@ static void send_message(const std::shared_ptr<tgl_message>& M, bool disable_pre
         }
     }
 
+    tgl_state::instance()->callback()->new_messages({M});
     q->execute(tgl_state::instance()->active_client());
 }
 
@@ -664,6 +666,7 @@ int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
         int32_t reply_id,
         bool disable_preview,
         bool post_as_channel_message,
+        bool send_as_secret_chat_service_message,
         const std::shared_ptr<tl_ds_reply_markup>& reply_markup,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback)
 {
@@ -693,32 +696,36 @@ int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id,
     }
 
     if (peer_id.peer_type != tgl_peer_type::enc_chat) {
-        struct tl_ds_message_media TDSM;
+        tl_ds_message_media TDSM;
         TDSM.magic = CODE_message_media_empty;
-
         tgl_peer_id_t from_id;
         if (post_as_channel_message) {
             from_id = tgl_peer_id_t::from_input_peer(peer_id);
         } else {
             from_id = tgl_state::instance()->our_id();
         }
-
         auto message = std::make_shared<tgl_message>(message_id, from_id, peer_id, nullptr, nullptr, &date, text, &TDSM, nullptr, reply_id, reply_markup.get());
         message->set_unread(true).set_outgoing(true).set_pending(true);
-        tgl_state::instance()->callback()->new_messages({message});
-
         send_message(message, disable_preview, callback);
     } else {
-        struct tl_ds_decrypted_message_media TDSM;
-        TDSM.magic = CODE_decrypted_message_media_empty;
-
-        tgl_peer_id_t from_id = tgl_state::instance()->our_id();
-
         assert(secret_chat);
-        auto message = std::make_shared<tgl_message>(secret_chat, message_id, from_id, &date, text, &TDSM, nullptr, nullptr);
-        message->set_unread(true).set_pending(true);
-        secret_chat->private_facet()->send_message(message, callback);
-        tgl_state::instance()->callback()->new_messages({message});
+        if (send_as_secret_chat_service_message) {
+            tl_ds_decrypted_message_action action;
+            tl_ds_string opaque_message;
+            memset(&action, 0, sizeof(action));
+            opaque_message.data = const_cast<char*>(text.data());
+            opaque_message.len = text.size();
+            action.magic = CODE_decrypted_message_action_opaque_message;
+            action.message = &opaque_message;
+            secret_chat->private_facet()->send_action(action, message_id, callback);
+        } else {
+            tl_ds_decrypted_message_media TDSM;
+            TDSM.magic = CODE_decrypted_message_media_empty;
+            tgl_peer_id_t from_id = tgl_state::instance()->our_id();
+            auto message = std::make_shared<tgl_message>(secret_chat, message_id, from_id, &date, text, &TDSM, nullptr, nullptr);
+            message->set_unread(true).set_pending(true);
+            secret_chat->private_facet()->send_message(message, callback);
+        }
     }
 
     return message_id;
@@ -4516,7 +4523,7 @@ void tgl_do_set_encr_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_cha
     action.magic = CODE_decrypted_message_action_set_message_ttl;
     action.ttl_seconds = &ttl;
 
-    secret_chat->private_facet()->send_action(action, nullptr);
+    secret_chat->private_facet()->send_action(action, 0, nullptr);
 }
 
 static void tgl_do_send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,

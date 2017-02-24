@@ -55,7 +55,9 @@ struct tl_ds_reply_markup;
 // Otherwise it uses the message_id passed in and returns it. The message id can be changed
 // by the server except for secret chats.
 int64_t tgl_do_send_message(const tgl_input_peer_t& peer_id, const std::string& text, int64_t message_id = 0,
-        int32_t reply_id = 0, bool disable_preview = false, bool post_as_channel_message = false, const std::shared_ptr<tl_ds_reply_markup>& reply_markup = nullptr,
+        int32_t reply_id = 0, bool disable_preview = false, bool post_as_channel_message = false,
+        bool send_as_secret_chat_service_message = false,
+        const std::shared_ptr<tl_ds_reply_markup>& reply_markup = nullptr,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback = nullptr);
 
 // forward message *msg_id* to peer *id*

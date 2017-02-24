@@ -9,6 +9,7 @@ decryptedMessageActionReadMessages#c4f40be random_ids:Vector<long> = DecryptedMe
 decryptedMessageActionDeleteMessages#65614304 random_ids:Vector<long> = DecryptedMessageAction;
 decryptedMessageActionScreenshotMessages#8ac1f475 random_ids:Vector<long> = DecryptedMessageAction;
 decryptedMessageActionFlushHistory#6719e45c = DecryptedMessageAction;
+decryptedMessageActionOpaqueMessage#249a0720 message:bytes = DecryptedMessageAction;
 
 decryptedMessage#204d3878 random_id:long ttl:int message:string media:DecryptedMessageMedia = DecryptedMessage;
 decryptedMessageService#73164160 random_id:long action:DecryptedMessageAction = DecryptedMessage;

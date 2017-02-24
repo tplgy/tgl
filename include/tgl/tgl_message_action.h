@@ -57,6 +57,7 @@ enum class tgl_message_action_type {
     channel_create,
     chat_migrate_to,
     channel_migrate_from,
+    opaque_message,
 };
 
 struct tgl_message_action {
@@ -208,6 +209,11 @@ struct tgl_message_action_flush_history: public tgl_message_action {
 
 struct tgl_message_action_none: public tgl_message_action {
     virtual tgl_message_action_type type() override { return tgl_message_action_type::none; }
+};
+
+struct tgl_message_action_opaque_message: public tgl_message_action {
+    virtual tgl_message_action_type type() override { return tgl_message_action_type::opaque_message; }
+    std::string message;
 };
 
 #endif
