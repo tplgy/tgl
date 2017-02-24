@@ -1167,7 +1167,7 @@ class query_contacts_search: public query
 {
 public:
     explicit query_contacts_search(const std::function<void(const std::vector<std::shared_ptr<tgl_user>>&,
-            const std::vector<std::shared_ptr<tgl_chat>>&)> callback)
+            const std::vector<std::shared_ptr<tgl_chat>>&)>& callback)
         : query("contact search", TYPE_TO_PARAM(contacts_found))
         , m_callback(callback)
     { }
@@ -3168,7 +3168,7 @@ void tgl_do_export_chat_link(const tgl_peer_id_t& id, const std::function<void(b
 }
 
 void tgl_do_import_chat_link(const std::string& link,
-        const std::function<void(bool success)> callback)
+        const std::function<void(bool success)>& callback)
 {
     const char* link_str = link.c_str();
     const char* l = link_str + link.size() - 1;
@@ -3464,7 +3464,7 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-static void tgl_pwd_got(const std::string& current_salt, const std::function<void(bool)>& callback, const std::string password)
+static void tgl_pwd_got(const std::string& current_salt, const std::function<void(bool)>& callback, const std::string& password)
 {
     char s[512];
     unsigned char shab[32];
@@ -3512,10 +3512,6 @@ public:
             tgl_state::instance()->set_password_locked(false);
             return;
         }
-
-        char s[512];
-        memset(s, 0, sizeof(s));
-        snprintf(s, sizeof(s) - 1, "type password (hint %.*s): ", DS_RSTR(DS_AP->hint));
 
         std::string current_salt;
         if (DS_AP->current_salt && DS_AP->current_salt->data) {
