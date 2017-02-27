@@ -381,12 +381,12 @@ static inline ssize_t in_remaining(struct tgl_in_buffer* in)
     return 4 * (in->end - in->ptr);
 }
 
-int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC_bn* N, TGLC_bn* E);
-int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC_bn* N, TGLC_bn* D);
+int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, TGLC_bn* N, TGLC_bn* E);
+int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, TGLC_bn* N, TGLC_bn* D);
 
 static inline int tgl_pad_rsa_encrypt_dest_buffer_size(int src_buffer_size)
 {
-    return tgl_pad_rsa_encrypt(nullptr, src_buffer_size, nullptr, 0, nullptr, nullptr);
+    return tgl_pad_rsa_encrypt(nullptr, src_buffer_size, nullptr, 0, nullptr, nullptr, nullptr);
 }
 
 void tgl_init_aes_unauth(TGLC_aes_key* aes_key, unsigned char aes_iv[32],

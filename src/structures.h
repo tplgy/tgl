@@ -25,7 +25,6 @@
 
 #include "auto/auto-types.h"
 #include "tools.h"
-#include "tgl/tgl.h"
 #include "tgl/tgl_bot.h"
 #include "tgl/tgl_chat.h"
 #include "tgl/tgl_channel.h"
@@ -33,15 +32,16 @@
 #include "tgl/tgl_message.h"
 #include "tgl/tgl_message_media.h"
 
+class user_agent;
 
-std::shared_ptr<tgl_user> tglf_fetch_alloc_user(const tl_ds_user* DS_U, bool invoke_callbacks = true);
-std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(const tl_ds_user_full* DS_U);
-std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(const tl_ds_chat* DS_C, bool invoke_callbacks = true);
-std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full(const tl_ds_messages_chat_full* DS_MCF);
-std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel(const tl_ds_chat* DS_C, bool invoke_callbacks = true);
-std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(const tl_ds_messages_chat_full* DS_MCF);
-std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(const tl_ds_encrypted_chat* DS_EC);
-std::shared_ptr<tgl_message> tglf_fetch_alloc_message(const tl_ds_message* DS_M);
+std::shared_ptr<tgl_user> tglf_fetch_alloc_user(user_agent* ua, const tl_ds_user* DS_U, bool invoke_callbacks = true);
+std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(user_agent* ua, const tl_ds_user_full* DS_U);
+std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(user_agent* ua, const tl_ds_chat* DS_C, bool invoke_callbacks = true);
+std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full(user_agent* ua, const tl_ds_messages_chat_full* DS_MCF);
+std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel(user_agent* ua, const tl_ds_chat* DS_C, bool invoke_callbacks = true);
+std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(user_agent* ua, const tl_ds_messages_chat_full* DS_MCF);
+std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(user_agent* ua, const tl_ds_encrypted_chat* DS_EC);
+std::shared_ptr<tgl_message> tglf_fetch_alloc_message(user_agent* ua, const tl_ds_message* DS_M);
 tgl_peer_id_t tglf_fetch_peer_id(const tl_ds_peer* DS_P);
 
 std::shared_ptr<tgl_message_media> tglf_fetch_message_media(const tl_ds_message_media* DS_MM);
@@ -60,7 +60,7 @@ tgl_file_location tglf_fetch_file_location(const tl_ds_file_location* DS_FL);
 void tglf_fetch_message_short(const std::shared_ptr<tgl_message>& M, const tl_ds_updates* DS_U);
 void tglf_fetch_message_short_chat(const std::shared_ptr<tgl_message>& M, const tl_ds_updates* DS_U);
 
-std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short(const tl_ds_updates* DS_U);
+std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short(user_agent* ua, const tl_ds_updates* DS_U);
 std::shared_ptr<tgl_message> tglf_fetch_alloc_message_short_chat(const tl_ds_updates* DS_U);
 std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P);
 std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W);

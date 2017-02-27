@@ -30,8 +30,7 @@
 
 #include "auto/auto.h"
 #include "auto/constants.h"
-#include "queries.h"
-#include "tgl/tgl.h"
+#include "query.h"
 #include "tgl/tgl_message.h"
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_unconfirmed_secret_message.h"

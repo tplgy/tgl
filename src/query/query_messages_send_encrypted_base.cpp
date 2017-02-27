@@ -24,7 +24,7 @@
 #include "query_messages_send_encrypted_action.h"
 #include "query_messages_send_encrypted_file.h"
 #include "query_messages_send_encrypted_message.h"
-#include "tgl/tgl.h"
+#include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_unconfirmed_secret_message_storage.h"
 
@@ -41,20 +41,27 @@ void query_messages_send_encrypted_base::on_answer(void* D)
     if(DS_MSEM->file) {
         tglf_fetch_encrypted_message_file(m_message->media, DS_MSEM->file);
     }
-    tgl_state::instance()->callback()->new_messages({m_message});
 
-    if (m_callback) {
-        m_callback(true, m_message);
+    auto ua = get_user_agent();
+    if (ua) {
+        ua->callback()->new_messages({m_message});
     }
 
-    tgl_state::instance()->callback()->message_sent(m_message->permanent_id, m_message->permanent_id, 0 /* date unchanged */, m_message->to_id);
+    if (m_callback) {
+        m_callback(!!ua, m_message);
+    }
+
+    if (ua) {
+        ua->callback()->message_sent(m_message->permanent_id, m_message->permanent_id, 0 /* date unchanged */, m_message->to_id);
+    }
 }
 
 int query_messages_send_encrypted_base::on_error(int error_code, const std::string& error_string)
 {
     TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error_string);
 
-    if (m_secret_chat && m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
+    if (m_secret_chat->state() != tgl_secret_chat_state::deleted
+            && (error_code == 400 && (error_string == "ENCRYPTION_DECLINED" || error_string == "ENCRYPTION_ID_INVALID"))) {
         m_secret_chat->private_facet()->set_deleted();
     }
 
@@ -64,7 +71,9 @@ int query_messages_send_encrypted_base::on_error(int error_code, const std::stri
 
     if (m_message) {
         m_message->set_pending(false).set_send_failed(true);
-        tgl_state::instance()->callback()->new_messages({m_message});
+        if (auto ua = get_user_agent()) {
+            ua->callback()->new_messages({m_message});
+        }
     }
     return 0;
 }
@@ -92,8 +101,10 @@ void query_messages_send_encrypted_base::will_send()
 
     m_message->seq_no = m_secret_chat->private_facet()->out_seq_no();
     m_secret_chat->private_facet()->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
-    tgl_state::instance()->callback()->secret_chat_update(m_secret_chat);
-    tgl_state::instance()->callback()->new_messages({m_message});
+    if (auto ua = get_user_agent()) {
+        ua->callback()->secret_chat_update(m_secret_chat);
+        ua->callback()->new_messages({m_message});
+    }
 }
 
 void query_messages_send_encrypted_base::sent()
@@ -132,13 +143,16 @@ void query_messages_send_encrypted_base::end_unconfirmed_message()
 void query_messages_send_encrypted_base::construct_message(int64_t message_id, int64_t date,
         const std::string& layer_blob) throw(std::runtime_error)
 {
-    m_message = m_secret_chat->private_facet()->construct_message(tgl_state::instance()->our_id(),
+    m_message = m_secret_chat->private_facet()->construct_message(
+            m_secret_chat->private_facet()->our_id(),
             message_id, date, layer_blob, std::string());
     if (!m_message) {
         throw std::runtime_error("failed to reconstruct message from blobs");
     }
     m_message->set_unread(true).set_pending(true);
-    tgl_state::instance()->callback()->new_messages({m_message});
+    if (auto ua = get_user_agent()) {
+        ua->callback()->new_messages({m_message});
+    }
 }
 
 std::vector<std::shared_ptr<query_messages_send_encrypted_base>>
@@ -146,7 +160,12 @@ query_messages_send_encrypted_base::create_by_out_seq_no(const std::shared_ptr<t
             int32_t out_seq_no_start, int32_t out_seq_no_end)
 {
     std::vector<std::shared_ptr<query_messages_send_encrypted_base>> queries;
-    auto storage = tgl_state::instance()->unconfirmed_secret_message_storage();
+    auto ua = secret_chat->private_facet()->weak_user_agent().lock();
+    if (!ua) {
+        return queries;
+    }
+
+    auto storage = ua->unconfirmed_secret_message_storage();
     auto messages = storage->load_messages_by_out_seq_no(secret_chat->id().peer_id, out_seq_no_start, out_seq_no_end, true);
     for (const auto& message: messages) {
         TGL_DEBUG("reconstructing query from unconfirmed secret messsage out_seq_no " << message->out_seq_no());

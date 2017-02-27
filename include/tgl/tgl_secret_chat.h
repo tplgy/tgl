@@ -104,18 +104,7 @@ struct tgl_secret_chat_private;
 
 class tgl_secret_chat: public std::enable_shared_from_this<tgl_secret_chat> {
 public:
-    tgl_secret_chat();
-    tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id);
-    tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id,
-                    int32_t admin, int32_t date, int32_t ttl, int32_t layer,
-                    int32_t in_seq_no, int32_t out_seq_no,
-                    int32_t encr_root, int32_t encr_param_version,
-                    tgl_secret_chat_state state, tgl_secret_chat_exchange_state exchange_state,
-                    int64_t exchange_id,
-                    const unsigned char* key, size_t key_length,
-                    const unsigned char* encr_prime, size_t encr_prime_length,
-                    const unsigned char* g_key, size_t g_key_length,
-                    const unsigned char* exchange_key, size_t exchange_key_length);
+    explicit tgl_secret_chat(std::unique_ptr<tgl_secret_chat_private>&&);
     ~tgl_secret_chat();
 
     enum class qos { real_time, normal };

@@ -25,6 +25,7 @@
 #include "structures.h"
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_update_callback.h"
+#include "tgl_secret_chat_private.h"
 
 query_messages_request_encryption::query_messages_request_encryption(
         const std::shared_ptr<tgl_secret_chat>& secret_chat,
@@ -36,12 +37,29 @@ query_messages_request_encryption::query_messages_request_encryption(
 
 void query_messages_request_encryption::on_answer(void* D)
 {
-    std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat(
+    auto ua = get_user_agent();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        if (m_callback) {
+            m_callback(false, nullptr);
+        }
+        return;
+    }
+
+    std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat(ua.get(),
             static_cast<tl_ds_encrypted_chat*>(D));
-    tgl_state::instance()->callback()->secret_chat_update(secret_chat);
+
+    if (!secret_chat) {
+        if (m_callback) {
+            m_callback(false, secret_chat);
+        }
+        return;
+    }
+
+    ua->callback()->secret_chat_update(secret_chat);
 
     if (m_callback) {
-        m_callback(secret_chat && secret_chat->state() != tgl_secret_chat_state::deleted, secret_chat);
+        m_callback(secret_chat->state() != tgl_secret_chat_state::deleted, secret_chat);
     }
 }
 

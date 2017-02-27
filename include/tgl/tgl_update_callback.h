@@ -22,7 +22,6 @@
 #ifndef __TGL_UPDATE_CALLBACK__
 #define __TGL_UPDATE_CALLBACK__
 
-#include "tgl.h"
 #include "tgl_connection_status.h"
 #include "tgl_message.h"
 #include "tgl_secret_chat.h"
@@ -41,6 +40,22 @@ struct tgl_channel;
 struct tgl_channel_participant;
 struct tgl_user_status;
 struct tgl_user;
+
+enum class tgl_user_update_type: int8_t {
+    firstname = 0,
+    lastname,
+    username,
+    phone,
+    blocked
+};
+
+enum class tgl_user_status_type {
+    offline,
+    online,
+    recently,
+    last_week,
+    last_month,
+};
 
 class tgl_update_callback {
 public:

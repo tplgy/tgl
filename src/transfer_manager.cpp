@@ -81,11 +81,6 @@ private:
     std::function<void(bool)> m_callback;
 };
 
-std::shared_ptr<tgl_transfer_manager> tgl_transfer_manager::create_default_impl(const std::string& download_dir)
-{
-    return std::make_shared<transfer_manager>(download_dir);
-}
-
 bool transfer_manager::file_exists(const tgl_file_location &location) const
 {
     std::string path = get_file_path(location.access_hash());
@@ -101,6 +96,15 @@ std::string transfer_manager::get_file_path(int64_t secret) const
 
 void transfer_manager::upload_avatar_end(const std::shared_ptr<upload_task>& u, const std::function<void(bool)>& callback)
 {
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        if (callback) {
+            callback(false);
+        }
+        return;
+    }
+
     if (u->avatar > 0) {
         auto q = std::make_shared<query_send_msgs>(callback);
         if (u->to_id.peer_type == tgl_peer_type::channel) {
@@ -130,7 +134,7 @@ void transfer_manager::upload_avatar_end(const std::shared_ptr<upload_task>& u, 
         }
         q->out_i32(CODE_input_photo_crop_auto);
 
-        q->execute(tgl_state::instance()->active_client());
+        q->execute(ua->active_client());
     } else {
         auto q = std::make_shared<query_set_photo>(callback);
         q->out_i32(CODE_photos_upload_profile_photo);
@@ -150,13 +154,20 @@ void transfer_manager::upload_avatar_end(const std::shared_ptr<upload_task>& u, 
         q->out_i32(CODE_input_geo_point_empty);
         q->out_i32(CODE_input_photo_crop_auto);
 
-        q->execute(tgl_state::instance()->active_client());
+        q->execute(ua->active_client());
     }
 }
 
 
 void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_task>& u)
 {
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        u->set_status(tgl_upload_status::failed);
+        return;
+    }
+
     auto extra = std::make_shared<messages_send_extra>();
     extra->id = u->message_id;
     auto q = std::make_shared<query_send_msgs>(extra,
@@ -167,12 +178,12 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_
     auto message = std::make_shared<tgl_message>();
     message->permanent_id = u->message_id;
     message->to_id = u->to_id;
-    message->from_id = tgl_state::instance()->our_id();
+    message->from_id = ua->our_id();
     q->set_message(message);
 
     q->out_i32(CODE_messages_send_media);
     q->out_i32((u->reply ? 1 : 0));
-    q->out_input_peer(u->to_id);
+    q->out_input_peer(ua.get(), u->to_id);
     if (u->reply) {
         q->out_i32(u->reply);
     }
@@ -258,15 +269,22 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_
 
     q->out_i64(extra->id);
 
-    q->execute(tgl_state::instance()->active_client());
+    q->execute(ua->active_client());
 }
 
 void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<upload_task>& u)
 {
-    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(u->to_id);
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        u->set_status(tgl_upload_status::failed);
+        return;
+    }
+
+    std::shared_ptr<tgl_secret_chat> secret_chat = ua->secret_chat_for_id(u->to_id);
     assert(secret_chat);
 
-    tgl_peer_id_t from_id = tgl_state::instance()->our_id();
+    tgl_peer_id_t from_id = ua->our_id();
     int64_t date = tgl_get_system_time();
     std::shared_ptr<tgl_message> message = std::make_shared<tgl_message>(secret_chat,
             u->message_id,
@@ -282,7 +300,7 @@ void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<upload_ta
                 u->set_status(success ? tgl_upload_status::succeeded : tgl_upload_status::failed);
             });
 
-    q->execute(tgl_state::instance()->active_client());
+    q->execute(ua->active_client());
 }
 
 void transfer_manager::upload_end(const std::shared_ptr<upload_task>& u)
@@ -357,6 +375,14 @@ void transfer_manager::upload_part_finished(const std::shared_ptr<upload_task>& 
 
 void transfer_manager::upload_part(const std::shared_ptr<upload_task>& u)
 {
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        u->set_status(tgl_upload_status::failed);
+        upload_end(u);
+        return;
+    }
+
     auto offset = u->part_num * MAX_PART_SIZE;
     u->running_parts.insert(u->part_num);
     auto q = std::make_shared<query_upload_file_part>(u, std::bind(&transfer_manager::upload_part_finished,
@@ -405,12 +431,20 @@ void transfer_manager::upload_part(const std::shared_ptr<upload_task>& u)
     if (offset != u->size) {
         assert(MAX_PART_SIZE == read_size);
     }
-    q->execute(tgl_state::instance()->active_client());
+    q->execute(ua->active_client());
 }
 
 void transfer_manager::upload_thumb(const std::shared_ptr<upload_task>& u)
 {
-    TGL_NOTICE("upload_thumb " << u->thumb.size() << " bytes @ " << u->thumb_width << "x" << u->thumb_height);
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        u->set_status(tgl_upload_status::failed);
+        upload_end(u);
+        return;
+    }
+
+    TGL_DEBUG("upload_thumb " << u->thumb.size() << " bytes @ " << u->thumb_width << "x" << u->thumb_height);
 
     if (u->thumb.size() > MAX_PART_SIZE) {
         TGL_ERROR("the thumnail size of " << u->thumb.size() << " is larger than the maximum part size of " << MAX_PART_SIZE);
@@ -429,7 +463,7 @@ void transfer_manager::upload_thumb(const std::shared_ptr<upload_task>& u)
     q->out_i32(0);
     q->out_string(reinterpret_cast<char*>(u->thumb.data()), u->thumb.size());
 
-    q->execute(tgl_state::instance()->active_client());
+    q->execute(ua->active_client());
 }
 
 
@@ -440,7 +474,7 @@ void transfer_manager::upload_document(const tgl_input_peer_t& to_id,
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
 {
-    TGL_NOTICE("upload_document " << document->file_name << " with size " << document->file_size
+    TGL_DEBUG("upload_document " << document->file_name << " with size " << document->file_size
             << " and dimension " << document->width << "x" << document->height);
 
     auto u = std::make_shared<upload_task>();
@@ -455,6 +489,14 @@ void transfer_manager::upload_document(const tgl_input_peer_t& to_id,
     static constexpr int MAX_PARTS = 3000; // How do we get this number?
     if (((u->size + MAX_PART_SIZE - 1) / MAX_PART_SIZE) > MAX_PARTS) {
         TGL_ERROR("file is too big");
+        u->set_status(tgl_upload_status::failed);
+        upload_end(u);
+        return;
+    }
+
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
         u->set_status(tgl_upload_status::failed);
         upload_end(u);
         return;
@@ -496,9 +538,9 @@ void transfer_manager::upload_document(const tgl_input_peer_t& to_id,
 
     if (!u->is_encrypted() && thumb_size > 0) {
         upload_thumb(u);
-        upload_multiple_parts(u, tgl_state::instance()->active_client()->max_connections() - 1);
+        upload_multiple_parts(u, ua->active_client()->max_connections() - 1);
     } else {
-        upload_multiple_parts(u, tgl_state::instance()->active_client()->max_connections());
+        upload_multiple_parts(u, ua->active_client()->max_connections());
     }
 }
 
@@ -549,11 +591,20 @@ void transfer_manager::upload_profile_photo(const std::string& file_name, int32_
         const tgl_read_callback& read_callback,
         const tgl_upload_part_done_callback& done_callback)
 {
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        if (callback) {
+            callback(false);
+        }
+        return;
+    }
+
     auto document = std::make_shared<tgl_upload_document>();
     document->type = tgl_document_type::image;
     document->file_name = file_name;
     document->file_size = file_size;
-    upload_document(tgl_input_peer_t::from_peer_id(tgl_state::instance()->our_id()),
+    upload_document(tgl_input_peer_t::from_peer_id(ua->our_id()),
             0 /* message_id */,
             -1 /* avatar */,
             0 /* reply */,
@@ -724,6 +775,15 @@ void transfer_manager::download_part(const std::shared_ptr<download_task>& d)
 {
     TGL_DEBUG("download_part from offset " << d->offset << "(file size " << d->size << ")");
 
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        d->set_status(tgl_download_status::failed);
+        d->running_parts.clear();
+        download_end(d);
+        return;
+    }
+
     if (!d->offset) {
         std::string path = get_file_path(d->location.access_hash());
         if (!d->ext.empty()) {
@@ -752,7 +812,7 @@ void transfer_manager::download_part(const std::shared_ptr<download_task>& d)
     q->out_i32(MAX_PART_SIZE);
     d->offset += MAX_PART_SIZE;
 
-    q->execute(tgl_state::instance()->client_at(d->location.dc()));
+    q->execute(ua->client_at(d->location.dc()));
 }
 
 void transfer_manager::download_by_file_location(int64_t download_id,
@@ -775,6 +835,15 @@ void transfer_manager::download_by_file_location(int64_t download_id,
         return;
     }
 
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        if (callback) {
+            callback(tgl_download_status::failed, std::string(), 0);
+        }
+        return;
+    }
+
     TGL_DEBUG("download_file_location - file_size: " << file_size);
 
     auto d = std::make_shared<download_task>(download_id, file_size, file_location);
@@ -784,7 +853,7 @@ void transfer_manager::download_by_file_location(int64_t download_id,
     if (file_size <= 0) { // It's likely for avatar which doesn't have a file size
         download_part(d);
     } else {
-        download_multiple_parts(d, tgl_state::instance()->client_at(d->location.dc())->max_connections());
+        download_multiple_parts(d, ua->client_at(d->location.dc())->max_connections());
     }
 }
 
@@ -794,6 +863,15 @@ void transfer_manager::download_document(int64_t download_id,
 {
     if (m_downloads.count(download_id)) {
         TGL_ERROR("duplicate download id " << download_id);
+        if (callback) {
+            callback(tgl_download_status::failed, std::string(), 0);
+        }
+        return;
+    }
+
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
         if (callback) {
             callback(tgl_download_status::failed, std::string(), 0);
         }
@@ -814,7 +892,7 @@ void transfer_manager::download_document(int64_t download_id,
         d->ext = tgl_extension_by_mime_type(document->mime_type);
     }
     d->set_status(tgl_download_status::waiting);
-    download_multiple_parts(d, tgl_state::instance()->client_at(d->location.dc())->max_connections());
+    download_multiple_parts(d, ua->client_at(d->location.dc())->max_connections());
 }
 
 void transfer_manager::cancel_download(int64_t download_id)

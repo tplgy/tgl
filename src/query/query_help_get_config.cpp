@@ -34,9 +34,14 @@ void query_help_get_config::on_answer(void* DS)
 {
     tl_ds_config* DS_C = static_cast<tl_ds_config*>(DS);
 
-    int count = DS_LVAL(DS_C->dc_options->cnt);
-    for (int i = 0; i < count; ++i) {
-        fetch_dc_option(DS_C->dc_options->data[i]);
+    bool success = true;
+    if (auto ua = get_user_agent()) {
+        int32_t count = DS_LVAL(DS_C->dc_options->cnt);
+        for (int32_t i = 0; i < count; ++i) {
+            ua->fetch_dc_option(DS_C->dc_options->data[i]);
+        }
+    } else {
+        success = false;
     }
 
     int max_chat_size = DS_LVAL(DS_C->chat_size_max);
@@ -44,7 +49,7 @@ void query_help_get_config::on_answer(void* DS)
     TGL_DEBUG("chat_size = " << max_chat_size << ", bcast_size = " << max_bcast_size);
 
     if (m_callback) {
-        m_callback(true);
+        m_callback(success);
     }
 }
 

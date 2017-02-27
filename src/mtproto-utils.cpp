@@ -24,7 +24,6 @@
 #include "crypto/tgl_crypto_bn.h"
 #include "mtproto-utils.h"
 #include "portable_endian.h"
-#include "tgl/tgl.h"
 #include "tgl/tgl_log.h"
 #include "tools.h"
 
@@ -36,9 +35,9 @@ inline static unsigned long long gcd(unsigned long long a, unsigned long long b)
     return b ? gcd(b, a % b) : a;
 }
 
-inline static int check_prime(TGLC_bn* p)
+inline static int check_prime(TGLC_bn_ctx* ctx, TGLC_bn* p)
 {
-    int r = TGLC_bn_is_prime(p, /* "use default" */ 0, 0, tgl_state::instance()->bn_ctx()->ctx, 0);
+    int r = TGLC_bn_is_prime(p, /* "use default" */ 0, 0, ctx, 0);
     check_crypto_result(r >= 0);
     return r;
 }
@@ -48,7 +47,7 @@ inline static int check_prime(TGLC_bn* p)
 
 
 // Checks that(p,g) is acceptable pair for DH
-int tglmp_check_DH_params(TGLC_bn* p, int g)
+int tglmp_check_DH_params(TGLC_bn_ctx* ctx, TGLC_bn* p, int g)
 {
     if (g < 2 || g > 7) {
         return -1;
@@ -62,7 +61,7 @@ int tglmp_check_DH_params(TGLC_bn* p, int g)
     std::unique_ptr<TGLC_bn, TGLC_bn_deleter> dh_g(TGLC_bn_new());
 
     check_crypto_result(TGLC_bn_set_word(dh_g.get(), 4 * g));
-    check_crypto_result(TGLC_bn_mod(t.get(), p, dh_g.get(), tgl_state::instance()->bn_ctx()->ctx));
+    check_crypto_result(TGLC_bn_mod(t.get(), p, dh_g.get(), ctx));
     int x = TGLC_bn_get_word(t.get());
     assert(x >= 0 && x < 4 * g);
 
@@ -97,14 +96,14 @@ int tglmp_check_DH_params(TGLC_bn* p, int g)
         break;
     }
 
-    if (res < 0 || !check_prime(p)) {
+    if (res < 0 || !check_prime(ctx, p)) {
         return -1;
     }
 
     std::unique_ptr<TGLC_bn, TGLC_bn_deleter> b(TGLC_bn_new());
     check_crypto_result(TGLC_bn_set_word(b.get(), 2));
-    check_crypto_result(TGLC_bn_div(t.get(), 0, p, b.get(), tgl_state::instance()->bn_ctx()->ctx));
-    if (!check_prime(t.get())) {
+    check_crypto_result(TGLC_bn_div(t.get(), 0, p, b.get(), ctx));
+    if (!check_prime(ctx, t.get())) {
         res = -1;
     }
     return res;

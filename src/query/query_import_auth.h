@@ -36,16 +36,23 @@ public:
 
     virtual void on_answer(void* D) override
     {
+        auto ua = get_user_agent();
+
         tl_ds_auth_authorization* DS_U = static_cast<tl_ds_auth_authorization*>(D);
-        tglf_fetch_alloc_user(DS_U->user);
+
+        if (ua) {
+            tglf_fetch_alloc_user(ua.get(), DS_U->user);
+        }
 
         assert(m_client);
-        TGL_NOTICE("auth imported from DC " << tgl_state::instance()->active_client()->id() << " to DC " << m_client->id());
 
-        tgl_state::instance()->set_dc_logged_in(m_client->id());
+        if (ua) {
+            TGL_DEBUG("auth imported from DC " << ua->active_client()->id() << " to DC " << m_client->id());
+            ua->set_dc_logged_in(m_client->id());
+        }
 
         if (m_callback) {
-            m_callback(true);
+            m_callback(!!ua);
         }
     }
 

@@ -36,7 +36,16 @@ query_messages_accept_encryption::query_messages_accept_encryption(const std::sh
 
 void query_messages_accept_encryption::on_answer(void* D)
 {
-    std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat(
+    auto ua = get_user_agent();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        if (m_callback) {
+            m_callback(false, nullptr);
+        }
+        return;
+    }
+
+    std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat(ua.get(),
             static_cast<tl_ds_encrypted_chat*>(D));
 
     if (secret_chat && secret_chat->state() == tgl_secret_chat_state::ok) {

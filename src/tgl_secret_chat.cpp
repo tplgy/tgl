@@ -35,56 +35,19 @@
 #include "query/query_messages_send_encrypted_action.h"
 #include "query/query_messages_send_encrypted_message.h"
 #include "tgl_secret_chat_private.h"
-#include "tgl/tgl.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_unconfirmed_secret_message_storage.h"
 #include "tgl/tgl_update_callback.h"
 #include "tools.h"
 #include "unconfirmed_secret_message.h"
+#include "user_agent.h"
 
 constexpr double REQUEST_RESEND_DELAY = 1.0; // seconds
 constexpr double HOLE_TTL = 3.0; // seconds
 
-tgl_secret_chat::tgl_secret_chat()
-    : d(std::make_unique<tgl_secret_chat_private>())
+tgl_secret_chat::tgl_secret_chat(std::unique_ptr<tgl_secret_chat_private>&& d)
+    : d(std::move(d))
 {
-}
-
-tgl_secret_chat::tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id)
-    : tgl_secret_chat()
-{
-    d->m_id = tgl_input_peer_t(tgl_peer_type::enc_chat, chat_id, access_hash);
-    d->m_user_id = user_id;
-}
-
-tgl_secret_chat::tgl_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id,
-        int32_t admin, int32_t date, int32_t ttl, int32_t layer,
-        int32_t in_seq_no, int32_t out_seq_no,
-        int32_t encr_root, int32_t encr_param_version,
-        tgl_secret_chat_state state, tgl_secret_chat_exchange_state exchange_state,
-        int64_t exchange_id,
-        const unsigned char* key, size_t key_length,
-        const unsigned char* encr_prime, size_t encr_prime_length,
-        const unsigned char* g_key, size_t g_key_length,
-        const unsigned char* exchange_key, size_t exchange_key_length)
-    : tgl_secret_chat(chat_id, access_hash, user_id)
-{
-    d->m_exchange_id = exchange_id;
-    d->m_admin_id = admin;
-    d->m_date = date;
-    d->m_ttl = ttl;
-    d->m_layer = layer;
-    d->m_in_seq_no = in_seq_no;
-    d->m_out_seq_no = out_seq_no;
-    d->m_encr_root = encr_root;
-    d->m_encr_param_version = encr_param_version;
-    d->m_state = state;
-    d->m_exchange_state = exchange_state;
-    assert(key_length == key_size());
-    private_facet()->set_key(key);
-    private_facet()->set_encr_prime(encr_prime, encr_prime_length);
-    private_facet()->set_g_key(g_key, g_key_length);
-    private_facet()->set_exchange_key(exchange_key, exchange_key_length);
 }
 
 tgl_secret_chat::~tgl_secret_chat()
@@ -186,20 +149,6 @@ tgl_secret_chat_exchange_state tgl_secret_chat::exchange_state() const
     return d->m_exchange_state;
 }
 
-void tgl_secret_chat_private_facet::set_key(const unsigned char* key)
-{
-    TGLC_sha1(key, key_size(), d->m_key_sha);
-    memcpy(d->m_key, key, key_size());
-}
-
-void tgl_secret_chat_private_facet::set_encr_prime(const unsigned char* prime, size_t length)
-{
-    d->m_encr_prime.resize(length);
-    d->m_encr_prime_bn.reset(new tgl_bn(TGLC_bn_new()));
-    std::copy(prime, prime + length, d->m_encr_prime.begin());
-    TGLC_bn_bin2bn(d->m_encr_prime.data(), length, d->m_encr_prime_bn->bn);
-}
-
 bool tgl_secret_chat_private_facet::create_keys_end()
 {
     assert(!encr_prime().empty());
@@ -212,10 +161,15 @@ bool tgl_secret_chat_private_facet::create_keys_end()
         return false;
     }
 
+    auto ua = d->m_user_agent.lock();
+    if (!ua) {
+        return false;
+    }
+
     TGLC_bn* p = encr_prime_bn()->bn;
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(this->key(), tgl_secret_chat::key_size(), 0));
-    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_b.get(), a.get(), p, tgl_state::instance()->bn_ctx()->ctx));
+    check_crypto_result(TGLC_bn_mod_exp(r.get(), g_b.get(), a.get(), p, ua->bn_ctx()->ctx));
 
     std::vector<unsigned char> key(tgl_secret_chat::key_size(), 0);
 
@@ -232,13 +186,19 @@ bool tgl_secret_chat_private_facet::create_keys_end()
     return true;
 }
 
-void tgl_secret_chat_private_facet::set_dh_params(int32_t root, unsigned char prime[], int32_t version)
+void tgl_secret_chat_private_facet::set_dh_params(int32_t root, unsigned char* prime, int32_t version)
 {
+    auto ua = d->m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        return;
+    }
+
     d->m_encr_root = root;
     set_encr_prime(prime, 256);
     d->m_encr_param_version = version;
 
-    auto res = tglmp_check_DH_params(encr_prime_bn()->bn, encr_root());
+    auto res = tglmp_check_DH_params(ua->bn_ctx()->ctx, encr_prime_bn()->bn, encr_root());
     TGL_ASSERT_UNUSED(res, res >= 0);
 }
 
@@ -275,18 +235,6 @@ const unsigned char* tgl_secret_chat::exchange_key() const
     return reinterpret_cast<const unsigned char*>(d->m_exchange_key);
 }
 
-void tgl_secret_chat_private_facet::set_g_key(const unsigned char* g_key, size_t length)
-{
-    d->m_g_key.resize(length);
-    memcpy(d->m_g_key.data(), g_key, length);
-}
-
-void tgl_secret_chat_private_facet::set_exchange_key(const unsigned char* exchange_key, size_t length)
-{
-    assert(length == sizeof(d->m_exchange_key));
-    memcpy(d->m_exchange_key, exchange_key, sizeof(d->m_exchange_key));
-}
-
 void tgl_secret_chat_private_facet::set_state(const tgl_secret_chat_state& new_state)
 {
     if (d->m_state == tgl_secret_chat_state::waiting && new_state == tgl_secret_chat_state::ok) {
@@ -316,8 +264,8 @@ void tgl_secret_chat_private_facet::message_received(const secret_message& m,
     TGL_DEBUG("secret message received: in_seq_no = " << raw_in_seq_no / 2 << " out_seq_no = " << raw_out_seq_no / 2);
 
     if (raw_in_seq_no >= 0 && raw_out_seq_no >= 0) {
-        if ((raw_out_seq_no & 1) != 1 - (admin_id() == tgl_state::instance()->our_id().peer_id) ||
-            (raw_in_seq_no & 1) != (admin_id() == tgl_state::instance()->our_id().peer_id)) {
+        if ((raw_out_seq_no & 1) != 1 - (admin_id() == d->m_our_id.peer_id) ||
+            (raw_in_seq_no & 1) != (admin_id() == d->m_our_id.peer_id)) {
             TGL_WARNING("bad secret message admin, dropping");
             return;
         }
@@ -368,16 +316,22 @@ void tgl_secret_chat_private_facet::load_unconfirmed_incoming_messages_if_needed
         return;
     }
 
+    auto ua = d->m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        return;
+    }
+
     d->m_unconfirmed_incoming_messages_loaded = true;
-    auto storage = tgl_state::instance()->unconfirmed_secret_message_storage();
+    auto storage = ua->unconfirmed_secret_message_storage();
     d->m_unconfirmed_incoming_messages.clear();
     auto unconfirmed_messages = storage->load_messages_by_out_seq_no(id().peer_id, in_seq_no() + 1, -1, false);
     tgl_peer_id_t from_id = tgl_peer_id_t(tgl_peer_type::user, user_id());
     for (const auto& unconfirmed_message: unconfirmed_messages) {
         const auto& blobs = unconfirmed_message->blobs();
         secret_message m;
-        m.raw_in_seq_no = unconfirmed_message->in_seq_no() * 2 + (admin_id() != tgl_state::instance()->our_id().peer_id);
-        m.raw_out_seq_no = unconfirmed_message->out_seq_no() * 2 + (admin_id() == tgl_state::instance()->our_id().peer_id);
+        m.raw_in_seq_no = unconfirmed_message->in_seq_no() * 2 + (admin_id() != d->m_our_id.peer_id);
+        m.raw_out_seq_no = unconfirmed_message->out_seq_no() * 2 + (admin_id() == d->m_our_id.peer_id);
         if (!blobs.empty()) {
             if (blobs.size() != 2 && blobs.size() != 1) {
                 TGL_WARNING("invalid unconfirmed incoming serecet message, skipping");
@@ -400,8 +354,14 @@ void tgl_secret_chat_private_facet::load_unconfirmed_outgoing_messages_if_needed
         return;
     }
 
+    auto ua = d->m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        return;
+    }
+
     d->m_unconfirmed_outgoing_messages_loaded = true;
-    auto storage = tgl_state::instance()->unconfirmed_secret_message_storage();
+    auto storage = ua->unconfirmed_secret_message_storage();
     d->m_unconfirmed_outgoing_seq_numbers.clear();
     d->m_unconfirmed_outgoing_message_ids.clear();
     auto unconfirmed_messages = storage->load_messages_by_out_seq_no(id().peer_id, 0, out_seq_no(), true);
@@ -417,6 +377,12 @@ void tgl_secret_chat_private_facet::load_unconfirmed_outgoing_messages_if_needed
 void tgl_secret_chat_private_facet::queue_unconfirmed_incoming_message(const secret_message& m,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message)
 {
+    auto ua = d->m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        return;
+    }
+
     assert(m.raw_out_seq_no >= 0);
     int32_t out_seq_no = m.raw_out_seq_no / 2;
     assert(out_seq_no > in_seq_no());
@@ -424,13 +390,13 @@ void tgl_secret_chat_private_facet::queue_unconfirmed_incoming_message(const sec
     load_unconfirmed_incoming_messages_if_needed();
 
     if (unconfirmed_message) {
-        tgl_state::instance()->unconfirmed_secret_message_storage()->store_message(unconfirmed_message);
+        ua->unconfirmed_secret_message_storage()->store_message(unconfirmed_message);
     }
     d->m_unconfirmed_incoming_messages.emplace(out_seq_no, m);
 
     if (!d->m_skip_hole_timer) {
         std::weak_ptr<tgl_secret_chat> weak_secret_chat(shared_from_this());
-        d->m_skip_hole_timer = tgl_state::instance()->timer_factory()->create_timer([=] {
+        d->m_skip_hole_timer = ua->timer_factory()->create_timer([=] {
             auto secret_chat = weak_secret_chat.lock();
             if (!secret_chat) {
                 return;
@@ -454,7 +420,7 @@ void tgl_secret_chat_private_facet::queue_unconfirmed_incoming_message(const sec
 
     if (!d->m_fill_hole_timer) {
         std::weak_ptr<tgl_secret_chat> weak_secret_chat(shared_from_this());
-        d->m_fill_hole_timer = tgl_state::instance()->timer_factory()->create_timer([=] {
+        d->m_fill_hole_timer = ua->timer_factory()->create_timer([=] {
             auto secret_chat = weak_secret_chat.lock();
             if (!secret_chat) {
                 return;
@@ -506,8 +472,10 @@ tgl_secret_chat_private_facet::dequeue_unconfirmed_incoming_messages(const secre
 void tgl_secret_chat_private_facet::queue_unconfirmed_outgoing_message(
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message)
 {
-    auto storage = tgl_state::instance()->unconfirmed_secret_message_storage();
-    storage->store_message(unconfirmed_message);
+    if (auto ua = d->m_user_agent.lock()) {
+        auto storage = ua->unconfirmed_secret_message_storage();
+        storage->store_message(unconfirmed_message);
+    }
     d->m_unconfirmed_outgoing_seq_numbers.emplace(unconfirmed_message->message_id(), unconfirmed_message->out_seq_no());
     d->m_unconfirmed_outgoing_message_ids.emplace(unconfirmed_message->out_seq_no(), unconfirmed_message->message_id());
 }
@@ -527,7 +495,8 @@ tgl_secret_chat_private_facet::first_hole() const
 
 void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_message>& messages)
 {
-    if (messages.empty()) {
+    auto ua = d->m_user_agent.lock();
+    if (messages.empty() || !ua) {
         return;
     }
 
@@ -538,7 +507,7 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
             continue;
         }
 
-        if (m.raw_out_seq_no >= 0 && message->from_id.peer_id != tgl_state::instance()->our_id().peer_id) {
+        if (m.raw_out_seq_no >= 0 && message->from_id.peer_id != d->m_our_id.peer_id) {
             message->seq_no = m.raw_out_seq_no / 2;
         }
         auto action_type = message->action ? message->action->type() : tgl_message_action_type::none;
@@ -596,15 +565,15 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
 
     if (peer_raw_in_seq_no >= 0 && peer_raw_out_seq_no >= 0) {
         set_in_seq_no(peer_raw_out_seq_no / 2 + 1);
-        tgl_state::instance()->callback()->secret_chat_update(shared_from_this());
+        ua->callback()->secret_chat_update(shared_from_this());
     }
 
     if (messages_to_deliver.size()) {
-        tgl_state::instance()->callback()->new_messages(messages_to_deliver);
+        ua->callback()->new_messages(messages_to_deliver);
     }
 
     if (peer_raw_in_seq_no >= 0 && peer_raw_out_seq_no >= 0) {
-        auto storage = tgl_state::instance()->unconfirmed_secret_message_storage();
+        auto storage = ua->unconfirmed_secret_message_storage();
         int32_t peer_in_seq_no = peer_raw_in_seq_no / 2;
         int32_t peer_out_seq_no = peer_raw_out_seq_no / 2;
         if (peer_in_seq_no > 0) {
@@ -866,21 +835,21 @@ void tgl_secret_chat_private_facet::imbue_encrypted_message(const tl_ds_encrypte
         return;
     }
 
-    std::shared_ptr<tgl_secret_chat> secret_chat = tgl_state::instance()->secret_chat_for_id(DS_LVAL(DS_EM->chat_id));
-    if (!secret_chat || secret_chat->state() != tgl_secret_chat_state::ok) {
-        TGL_WARNING("encrypted message to unknown chat, dropping");
-        return;
-    }
-
-    auto message_pair = secret_chat->private_facet()->fetch_message(DS_EM, true);
-    secret_chat->private_facet()->message_received(message_pair.first, message_pair.second);
+    auto message_pair = fetch_message(DS_EM, true);
+    message_received(message_pair.first, message_pair.second);
 }
 
 void tgl_secret_chat_private_facet::incoming_messages_deleted(const std::vector<int64_t>& message_ids)
 {
+    auto ua = d->m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        return;
+    }
+
     load_unconfirmed_incoming_messages_if_needed();
 
-    const auto& storage = tgl_state::instance()->unconfirmed_secret_message_storage();
+    const auto& storage = ua->unconfirmed_secret_message_storage();
     for (int64_t id : message_ids) {
         bool is_unconfirmed = false;
         for (auto& it: d->m_unconfirmed_incoming_messages) {
@@ -901,7 +870,7 @@ void tgl_secret_chat_private_facet::incoming_messages_deleted(const std::vector<
             }
         }
         if (!is_unconfirmed) {
-            tgl_state::instance()->callback()->message_deleted(id, this->id());
+            ua->callback()->message_deleted(id, this->id());
         }
     }
 }
@@ -909,8 +878,13 @@ void tgl_secret_chat_private_facet::incoming_messages_deleted(const std::vector<
 void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<tgl_message>& message,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
 {
-    if (state() != tgl_secret_chat_state::ok) {
-        TGL_WARNING("secret chat " << id().peer_id << " is not in ok state");
+    auto ua = d->m_user_agent.lock();
+    if (state() != tgl_secret_chat_state::ok || !ua) {
+        if (!ua) {
+            TGL_ERROR("the user agent has gone");
+        } else {
+            TGL_ERROR("secret chat " << id().peer_id << " is not in ok state");
+        }
         if (callback) {
             callback(false, nullptr);
         }
@@ -945,8 +919,8 @@ void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<tgl_messa
         }
     }
 
-    tgl_state::instance()->callback()->new_messages({message});
-    q->execute(tgl_state::instance()->active_client());
+    ua->callback()->new_messages({message});
+    q->execute(ua->active_client());
 }
 
 void tgl_secret_chat_private_facet::send_action(const tl_ds_decrypted_message_action& action,
@@ -969,7 +943,7 @@ void tgl_secret_chat_private_facet::send_action(const tl_ds_decrypted_message_ac
 
     auto message = std::make_shared<tgl_message>(shared_from_this(),
             message_id,
-            tgl_state::instance()->our_id(),
+            d->m_our_id,
             &date,
             std::string(),
             nullptr,
@@ -990,15 +964,13 @@ void tgl_secret_chat_private_facet::send_location(double latitude, double longit
 
     int64_t date = tgl_get_system_time();
 
-    tgl_peer_id_t from_id = tgl_state::instance()->our_id();
-
     int64_t message_id = 0;
     while (!message_id) {
         tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
     }
     auto message = std::make_shared<tgl_message>(shared_from_this(),
             message_id,
-            from_id,
+            d->m_our_id,
             &date,
             std::string(),
             &TDSM,
@@ -1016,9 +988,12 @@ void tgl_secret_chat_private_facet::send_layer()
     int layer = TGL_ENCRYPTED_LAYER;
     action.layer = &layer;
 
+    std::weak_ptr<user_agent> weak_ua = d->m_user_agent;
     send_action(action, 0, [=](bool success, const std::shared_ptr<tgl_message>& msg) {
         if (success) {
-            tgl_state::instance()->callback()->secret_chat_update(shared_from_this());
+            if (auto ua = weak_ua.lock()) {
+                ua->callback()->secret_chat_update(shared_from_this());
+            }
         }
     });
 }
@@ -1026,19 +1001,30 @@ void tgl_secret_chat_private_facet::send_layer()
 void tgl_secret_chat_private_facet::mark_messages_read(int32_t max_time,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
 {
+    auto ua = d->m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        if (callback) {
+            callback(false, nullptr);
+        }
+        return;
+    }
+
     auto q = std::make_shared<query_mark_read_encr>(shared_from_this(), max_time, callback);
     q->out_i32(CODE_messages_read_encrypted_history);
     q->out_i32(CODE_input_encrypted_chat);
     q->out_i32(id().peer_id);
     q->out_i64(id().access_hash);
     q->out_i32(max_time); // FIXME
-    q->execute(tgl_state::instance()->active_client());
+    q->execute(ua->active_client());
 }
 
 void tgl_secret_chat_private_facet::set_deleted()
 {
     set_state(tgl_secret_chat_state::deleted);
-    tgl_state::instance()->callback()->secret_chat_update(shared_from_this());
+    if (auto ua = d->m_user_agent.lock()) {
+        ua->callback()->secret_chat_update(shared_from_this());
+    }
 }
 
 void tgl_secret_chat_private_facet::delete_message(int64_t message_id,
@@ -1076,12 +1062,18 @@ void tgl_secret_chat_private_facet::resend_messages(int32_t start_seq_no, int32_
         return;
     }
 
+    auto ua = d->m_user_agent.lock();
+    if (!ua) {
+        TGL_ERROR("the user agent has gone");
+        return;
+    }
+
     TGL_DEBUG("trying to resend range [" << start_seq_no << "," << end_seq_no << "]");
 
     auto queries = query_messages_send_encrypted_base::create_by_out_seq_no(shared_from_this(), start_seq_no, end_seq_no);
 
     for (const auto& q: queries) {
-        q->execute(tgl_state::instance()->active_client());
+        q->execute(ua->active_client());
     }
 }
 

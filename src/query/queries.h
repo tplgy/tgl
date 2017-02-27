@@ -61,22 +61,6 @@ private:
     std::shared_ptr<tgl_message> m_message;
 };
 
-void tglq_query_ack(int64_t id);
-int tglq_query_error(tgl_in_buffer* in, int64_t id);
-int tglq_query_result(tgl_in_buffer* in, int64_t id);
-void tglq_query_restart(int64_t id);
-
-double get_double_time(void);
-
 void tgl_do_bind_temp_key(const std::shared_ptr<mtproto_client>& client, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id);
-void tgl_do_get_channel_difference(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback);
-void tgl_do_lookup_state();
-void tgl_do_set_client_logged_out(const std::shared_ptr<mtproto_client>& client, bool success);
-void tgl_do_check_password(const std::function<void(bool success)>& callback);
-
-void tglq_regen_query(int64_t id);
-void tglq_query_delete(int64_t id);
-
-void fetch_dc_option(const tl_ds_dc_option* DS_DO);
 
 #endif

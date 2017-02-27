@@ -2231,8 +2231,6 @@ void gen_fetch_header (void) {
   printf ("#include <stdio.h>\n");
 
   printf ("struct tgl_in_buffer;\n");
-  printf ("struct tgl_state;\n");
-  printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
   int i, j;
   for (i = 0; i < tn; i++) {
@@ -2552,8 +2550,6 @@ void gen_fetch_ds_header (void) {
   printf ("#include <stdio.h>\n");
 
   printf ("struct tgl_in_buffer;\n");
-  printf ("struct tgl_state;\n");
-  //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
   int i, j;
   for (i = 0; i < tn; i++) {
@@ -2609,8 +2605,6 @@ void gen_free_ds_header (void) {
   printf ("#include <stdio.h>\n");
 
   printf ("struct tgl_in_buffer;\n");
-  printf ("struct tgl_state;\n");
-  //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
   int i, j;
   for (i = 0; i < tn; i++) {
@@ -2662,8 +2656,6 @@ void gen_store_ds_header (void) {
   printf ("#include <stdio.h>\n");
 
   printf ("struct tgl_in_buffer;\n");
-  printf ("struct tgl_state;\n");
-  //printf ("char *tglf_extf_fetch (struct tgl_state *TLS, struct paramed_type *T);\n");
 
   int i, j;
   for (i = 0; i < tn; i++) {

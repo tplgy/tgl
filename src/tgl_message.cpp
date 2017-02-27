@@ -96,7 +96,7 @@ tgl_message::tgl_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         tglf_fetch_encrypted_message_file(this->media, file);
     }
 
-    this->set_outgoing(from_id.peer_id == tgl_state::instance()->our_id().peer_id);
+    this->set_outgoing(from_id.peer_id == secret_chat->private_facet()->our_id().peer_id);
 
     if (action && !this->is_outgoing() && this->action && this->action->type() == tgl_message_action_type::notify_layer) {
         // FIXME is following right?

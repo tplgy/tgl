@@ -28,6 +28,7 @@
 #include "mtproto_client.h"
 #include "tgl/tgl_connection_status.h"
 #include "tgl/tgl_peer_id.h"
+#include "user_agent.h"
 
 #include <memory>
 #include <string>
@@ -109,10 +110,10 @@ public:
         m_serializer->out_random(length);
     }
 
-    void out_peer_id(const tgl_peer_id_t& id, int64_t access_hash);
-    void out_input_peer(const tgl_input_peer_t& id);
+    void out_peer_id(const user_agent* ua, const tgl_peer_id_t& id, int64_t access_hash);
+    void out_input_peer(const user_agent* ua, const tgl_input_peer_t& id);
 
-    void out_header();
+    void out_header(const user_agent* ua);
 
     const std::string& name() const { return m_name; }
     int64_t session_id() const { return m_session_id; }
@@ -134,13 +135,14 @@ public:
     virtual void sent() { }
 
     bool ack_received() const { return m_ack_received; }
+    void clear_timers();
 
 protected:
     void timeout_within(double seconds);
     void retry_within(double seconds);
+    std::shared_ptr<user_agent> get_user_agent() const;
 
 private:
-    friend void tglq_query_delete(int64_t id);
     virtual void connection_status_changed(tgl_connection_status status) override final;
     bool is_force() const { return m_exec_option == execution_option::FORCE; }
     bool is_login() const { return m_exec_option == execution_option::LOGIN; }
@@ -148,7 +150,6 @@ private:
     void timeout_alarm();
     bool check_logging_out();
     bool check_pending(bool transfer_auth = false);
-    void clear_timers();
     bool is_in_the_same_session() const;
     bool send();
     void on_answer_internal(void* DS);

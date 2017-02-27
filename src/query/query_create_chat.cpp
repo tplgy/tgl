@@ -21,7 +21,7 @@
 
 #include "query_create_chat.h"
 
-#include "updates.h"
+#include "updater.h"
 
 query_create_chat::query_create_chat(const std::function<void(int32_t chat_id)>& callback, bool is_channel)
     : query(is_channel ? "create channel" : "create chat", TYPE_TO_PARAM(updates))
@@ -32,7 +32,10 @@ query_create_chat::query_create_chat(const std::function<void(int32_t chat_id)>&
 void query_create_chat::on_answer(void* D)
 {
     tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
-    tglu_work_any_updates(DS_U, nullptr);
+
+    if (auto ua = get_user_agent()) {
+        ua->updater().work_any_updates(DS_U, nullptr);
+    }
 
     int32_t chat_id = 0;
     if (DS_U->magic == CODE_updates && DS_U->chats && DS_U->chats->cnt && *DS_U->chats->cnt == 1) {

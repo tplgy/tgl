@@ -16,9 +16,11 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
-#include "updates.h"
+
+#include "updater.h"
+
 #include "auto/auto.h"
 #include "auto/auto-types.h"
 #include "auto/auto-fetch-ds.h"
@@ -26,18 +28,18 @@
 #include "mtproto-common.h"
 #include "query/queries.h"
 #include "structures.h"
-#include "tgl/tgl.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_secret_chat.h"
-#include "tgl/tgl_queries.h"
 #include "tgl/tgl_update_callback.h"
 #include "tgl_secret_chat_private.h"
+#include "user_agent.h"
 
-#include <assert.h>
+#include <cassert>
 
-bool tgl_check_pts_diff(int32_t pts, int32_t pts_count) {
+bool updater::check_pts_diff(int32_t pts, int32_t pts_count)
+{
     TGL_DEBUG("pts = " << pts << ", pts_count = " << pts_count);
-    if (!tgl_state::instance()->pts()) {
+    if (!m_user_agent.pts()) {
         return true;
     }
 
@@ -46,16 +48,16 @@ bool tgl_check_pts_diff(int32_t pts, int32_t pts_count) {
         return true;
     }
 
-    if (pts < tgl_state::instance()->pts() + pts_count) {
+    if (pts < m_user_agent.pts() + pts_count) {
         TGL_NOTICE("duplicate message with pts=" << pts);
         return false;
     }
-    if (pts > tgl_state::instance()->pts() + pts_count) {
-        TGL_NOTICE("hole in pts: pts = "<< pts <<", count = "<< pts_count <<", cur_pts = "<< tgl_state::instance()->pts());
-        tgl_do_get_difference(false, nullptr);
+    if (pts > m_user_agent.pts() + pts_count) {
+        TGL_NOTICE("hole in pts: pts = "<< pts <<", count = "<< pts_count <<", cur_pts = "<< m_user_agent.pts());
+        m_user_agent.get_difference(false, nullptr);
         return false;
     }
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         TGL_DEBUG("update during get_difference. pts = " << pts);
         return false;
     }
@@ -63,25 +65,25 @@ bool tgl_check_pts_diff(int32_t pts, int32_t pts_count) {
     return true;
 }
 
-static bool tgl_check_qts_diff(int32_t qts, int32_t qts_count)
+bool updater::check_qts_diff(int32_t qts, int32_t qts_count)
 {
-    TGL_NOTICE("qts = " << qts << ", qts_count = " << qts_count);
-    if (qts < tgl_state::instance()->qts() + qts_count) {
-        TGL_NOTICE("duplicate message (qts = " << qts << ", count = " << qts_count << ", cur_qts = " << tgl_state::instance()->qts() << ")");
+    TGL_DEBUG("qts = " << qts << ", qts_count = " << qts_count);
+    if (qts < m_user_agent.qts() + qts_count) {
+        TGL_NOTICE("duplicate message (qts = " << qts << ", count = " << qts_count << ", cur_qts = " << m_user_agent.qts() << ")");
         // Better off getting difference to corret our qts. Our locally qts could be invalid if we
         // got logged out and we didn't know about it. Even if it is a real dup we will ignore
         // the duplicated message because secret chat itself have its own sequence number.
-        tgl_do_get_difference(false, nullptr);
+        m_user_agent.get_difference(false, nullptr);
         return false;
     }
 
-    if (qts > tgl_state::instance()->qts() + qts_count) {
-        TGL_NOTICE("hole in qts (qts = " << qts << ", count = " << qts_count << ", cur_qts = " << tgl_state::instance()->qts() << ")");
-        tgl_do_get_difference(false, nullptr);
+    if (qts > m_user_agent.qts() + qts_count) {
+        TGL_NOTICE("hole in qts (qts = " << qts << ", count = " << qts_count << ", cur_qts = " << m_user_agent.qts() << ")");
+        m_user_agent.get_difference(false, nullptr);
         return false;
     }
 
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         TGL_WARNING("update during get_difference. qts = " << qts);
         return false;
     }
@@ -90,7 +92,7 @@ static bool tgl_check_qts_diff(int32_t qts, int32_t qts_count)
     return true;
 }
 
-static bool tgl_check_channel_pts_diff(const tgl_peer_id_t& channel_id, int32_t pts, int32_t pts_count)
+bool updater::check_channel_pts_diff(const tgl_peer_id_t& channel_id, int32_t pts, int32_t pts_count)
 {
     // TODO: remember channel pts
 #if 0
@@ -98,7 +100,7 @@ static bool tgl_check_channel_pts_diff(const tgl_peer_id_t& channel_id, int32_t 
     if (!E->pts) {
       return true;
     }
-    //assert(tgl_state::instance()->pts);
+    //assert(m_user_agent.pts());
     if (pts < E->pts + pts_count) {
       TGL_NOTICE("duplicate message with pts=" << pts);
       return false;
@@ -117,25 +119,25 @@ static bool tgl_check_channel_pts_diff(const tgl_peer_id_t& channel_id, int32_t 
     return true;
 }
 
-static bool tglu_check_seq_diff(int32_t seq)
+bool updater::check_seq_diff(int32_t seq)
 {
     if (!seq) {
         TGL_DEBUG("seq = " << seq << " is ok");
         return true;
     }
 
-    if (tgl_state::instance()->seq()) {
-        if (seq <= tgl_state::instance()->seq()) {
+    if (m_user_agent.seq()) {
+        if (seq <= m_user_agent.seq()) {
             TGL_NOTICE("duplicate message with seq = " << seq);
             return false;
         }
 
-        if (seq > tgl_state::instance()->seq() + 1) {
-            TGL_NOTICE("hole in seq (seq = " << seq <<", cur_seq = " << tgl_state::instance()->seq() << ")");
-            tgl_do_get_difference(false, nullptr);
+        if (seq > m_user_agent.seq() + 1) {
+            TGL_NOTICE("hole in seq (seq = " << seq <<", cur_seq = " << m_user_agent.seq() << ")");
+            m_user_agent.get_difference(false, nullptr);
             return false;
         }
-        if (tgl_state::instance()->is_diff_locked()) {
+        if (m_user_agent.is_diff_locked()) {
             TGL_DEBUG("update during get_difference, seq = " << seq);
             return false;
         }
@@ -146,22 +148,22 @@ static bool tglu_check_seq_diff(int32_t seq)
     }
 }
 
-void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
+void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         TGL_WARNING("update during get_difference, dropping update");
         return;
     }
 
     if (mode == tgl_update_mode::check_and_update_consistency
             && DS_U->pts
-            && !tgl_check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
+            && !check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
         return;
     }
 
     if (mode == tgl_update_mode::check_and_update_consistency
             && DS_U->qts
-            && !tgl_check_qts_diff(DS_LVAL(DS_U->qts), 1)) {
+            && !check_qts_diff(DS_LVAL(DS_U->qts), 1)) {
         return;
     }
 
@@ -178,22 +180,22 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
 
         tgl_peer_id_t channel = tgl_peer_id_t(tgl_peer_type::channel, channel_id);
         if (mode == tgl_update_mode::check_and_update_consistency
-                && !tgl_check_channel_pts_diff(channel, DS_LVAL(DS_U->channel_pts), DS_LVAL(DS_U->channel_pts_count))) {
+                && !check_channel_pts_diff(channel, DS_LVAL(DS_U->channel_pts), DS_LVAL(DS_U->channel_pts_count))) {
             return;
         }
     }
 
     switch (DS_U->magic) {
     case CODE_update_new_message:
-        if (auto message = tglf_fetch_alloc_message(DS_U->message)) {
-            tgl_state::instance()->callback()->new_messages({message});
+        if (auto message = tglf_fetch_alloc_message(&m_user_agent, DS_U->message)) {
+            m_user_agent.callback()->new_messages({message});
         }
         break;
     case CODE_update_message_id:
         if (auto message = std::static_pointer_cast<tgl_message>(extra)) {
-            tgl_state::instance()->callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), message->to_id);
+            m_user_agent.callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), message->to_id);
         } else {
-            tgl_state::instance()->callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), tgl_input_peer_t());
+            m_user_agent.callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), tgl_input_peer_t());
         }
         break;
     case CODE_update_user_typing:
@@ -201,7 +203,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             //tgl_peer_id_t id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
             //tgl_peer_t* U = tgl_peer_get(id);
             enum tgl_typing_status status = tglf_fetch_typing(DS_U->action);
-            tgl_state::instance()->callback()->typing_status_changed(DS_LVAL(DS_U->user_id), DS_LVAL(DS_U->user_id), tgl_peer_type::user, status);
+            m_user_agent.callback()->typing_status_changed(DS_LVAL(DS_U->user_id), DS_LVAL(DS_U->user_id), tgl_peer_type::user, status);
         }
         break;
     case CODE_update_chat_user_typing:
@@ -209,13 +211,13 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL(DS_U->chat_id));
             tgl_peer_id_t id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
             enum tgl_typing_status status = tglf_fetch_typing(DS_U->action);
-            tgl_state::instance()->callback()->typing_status_changed(id.peer_id, chat_id.peer_id, tgl_peer_type::chat, status);
+            m_user_agent.callback()->typing_status_changed(id.peer_id, chat_id.peer_id, tgl_peer_type::chat, status);
         }
         break;
     case CODE_update_user_status:
         {
             tgl_user_status status = tglf_fetch_user_status(DS_U->status);
-            tgl_state::instance()->callback()->status_notification(DS_LVAL(DS_U->user_id), status);
+            m_user_agent.callback()->status_notification(DS_LVAL(DS_U->user_id), status);
         }
         break;
     case CODE_update_user_name:
@@ -225,14 +227,14 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             updates.emplace(tgl_user_update_type::username, DS_STDSTR(DS_U->username));
             updates.emplace(tgl_user_update_type::firstname, DS_STDSTR(DS_U->first_name));
             updates.emplace(tgl_user_update_type::lastname, DS_STDSTR(DS_U->last_name));
-            tgl_state::instance()->callback()->user_update(user_id, updates);
+            m_user_agent.callback()->user_update(user_id, updates);
         }
         break;
     case CODE_update_user_photo:
         if (DS_U->photo) {
             tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
             tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
-            tgl_state::instance()->callback()->avatar_update(DS_LVAL(DS_U->user_id), tgl_peer_type::user, photo_small, photo_big);
+            m_user_agent.callback()->avatar_update(DS_LVAL(DS_U->user_id), tgl_peer_type::user, photo_small, photo_big);
         }
         break;
     case CODE_update_delete_messages:
@@ -240,7 +242,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         if (DS_U->messages) {
             int count = DS_LVAL(DS_U->messages->cnt);
             for (int i = 0; i < count; ++i) {
-                tgl_state::instance()->callback()->message_deleted(**(DS_U->messages->data + i));
+                m_user_agent.callback()->message_deleted(**(DS_U->messages->data + i));
             }
         }
         break;
@@ -267,43 +269,43 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
                 participants.push_back(participant);
             }
             if (participants.size()) {
-                tgl_state::instance()->callback()->chat_update_participants(chat_id.peer_id, participants);
+                m_user_agent.callback()->chat_update_participants(chat_id.peer_id, participants);
             }
         }
         break;
     case CODE_update_contact_registered:
-        tgl_state::instance()->callback()->user_registered(DS_LVAL(DS_U->user_id));
+        m_user_agent.callback()->user_registered(DS_LVAL(DS_U->user_id));
         break;
     case CODE_update_contact_link:
         break;
     case CODE_update_new_authorization:
-        tgl_state::instance()->callback()->new_authorization(DS_U->device->data, DS_U->location->data);
+        m_user_agent.callback()->new_authorization(DS_U->device->data, DS_U->location->data);
         break;
     /*
     case CODE_update_new_geo_chat_message:
         break;
     */
     case CODE_update_new_encrypted_message:
-        tgl_secret_chat_private_facet::imbue_encrypted_message(DS_U->encr_message);
+        work_encrypted_message(DS_U->encr_message);
         break;
     case CODE_update_encryption:
-        if (auto secret_chat = tglf_fetch_alloc_encrypted_chat(DS_U->encr_chat)) {
-            tgl_state::instance()->callback()->secret_chat_update(secret_chat);
+        if (auto secret_chat = tglf_fetch_alloc_encrypted_chat(&m_user_agent, DS_U->encr_chat)) {
+            m_user_agent.callback()->secret_chat_update(secret_chat);
             if (secret_chat->state() == tgl_secret_chat_state::ok) {
                 secret_chat->private_facet()->send_layer();
             }
         }
         break;
     case CODE_update_encrypted_chat_typing:
-        if (auto secret_chat = tgl_state::instance()->secret_chat_for_id(DS_LVAL(DS_U->chat_id))) {
-            tgl_state::instance()->callback()->typing_status_changed(secret_chat->user_id(), DS_LVAL(DS_U->chat_id),
+        if (auto secret_chat = m_user_agent.secret_chat_for_id(DS_LVAL(DS_U->chat_id))) {
+            m_user_agent.callback()->typing_status_changed(secret_chat->user_id(), DS_LVAL(DS_U->chat_id),
                     tgl_peer_type::enc_chat, tgl_typing_status::typing);
         }
         break;
     case CODE_update_encrypted_messages_read:
         {
             tgl_peer_id_t id(tgl_peer_type::enc_chat, DS_LVAL(DS_U->chat_id));
-            tgl_state::instance()->callback()->messages_mark_read_out(id, DS_LVAL(DS_U->max_date));
+            m_user_agent.callback()->messages_mark_read_out(id, DS_LVAL(DS_U->max_date));
         }
         break;
     case CODE_update_chat_participant_add:
@@ -317,7 +319,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             participant->user_id = user_id.peer_id;
             participant->inviter_id = inviter_id.peer_id;
             participant->date = tgl_get_system_time();
-            tgl_state::instance()->callback()->chat_update_participants(chat_id.peer_id, { participant });
+            m_user_agent.callback()->chat_update_participants(chat_id.peer_id, { participant });
         }
         break;
     case CODE_update_chat_participant_delete:
@@ -327,14 +329,14 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
             //int version = DS_LVAL(DS_U->version);
 
             //bl_do_chat_del_user(C->id, version, user_id.peer_id);
-            tgl_state::instance()->callback()->chat_delete_user(chat_id.peer_id, user_id.peer_id);
+            m_user_agent.callback()->chat_delete_user(chat_id.peer_id, user_id.peer_id);
         }
         break;
     case CODE_update_dc_options:
         {
             int count = DS_LVAL(DS_U->dc_options->cnt);
             for (int i = 0; i < count; ++i) {
-                fetch_dc_option(DS_U->dc_options->data[i]);
+                m_user_agent.fetch_dc_option(DS_U->dc_options->data[i]);
             }
         }
         break;
@@ -345,7 +347,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
 
             std::map<tgl_user_update_type, std::string> updates;
             updates.emplace(tgl_user_update_type::blocked, blocked ? "Yes" : "No");
-            tgl_state::instance()->callback()->user_update(peer_id, updates);
+            m_user_agent.callback()->user_update(peer_id, updates);
         }
         break;
     case CODE_update_notify_settings:
@@ -382,70 +384,59 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
                     break;
             }
             if (peer_type != tgl_peer_type::unknown && peer_id != 0) {
-                TGL_NOTICE("update_notify_settings, peer_id " << peer_id << " type " << static_cast<int32_t>(peer_type) << "; mute until " << mute_until
+                TGL_DEBUG("update_notify_settings, peer_id " << peer_id << " type " << static_cast<int32_t>(peer_type) << "; mute until " << mute_until
                            << " show previews " << show_previews << " sound " << notification_sound);
-                tgl_state::instance()->callback()->update_notification_settings(peer_id, peer_type, mute_until,
+                m_user_agent.callback()->update_notification_settings(peer_id, peer_type, mute_until,
                         show_previews, notification_sound, event_mask);
             }
         }
         break;
     case CODE_update_service_notification:
-        TGL_NOTICE("notification " << DS_STDSTR(DS_U->type) << ":" << DS_STDSTR(DS_U->message_text));
-        tgl_state::instance()->callback()->notification(DS_STDSTR(DS_U->type), DS_STDSTR(DS_U->message_text));
+        TGL_DEBUG("notification " << DS_STDSTR(DS_U->type) << ":" << DS_STDSTR(DS_U->message_text));
+        m_user_agent.callback()->notification(DS_STDSTR(DS_U->type), DS_STDSTR(DS_U->message_text));
         break;
     case CODE_update_privacy:
-        TGL_NOTICE("privacy change update");
+        TGL_DEBUG("privacy change update");
         break;
     case CODE_update_user_phone:
         {
             int32_t peer_id = DS_LVAL(DS_U->user_id);
             std::map<tgl_user_update_type, std::string> updates;
             updates.emplace(tgl_user_update_type::phone, DS_STDSTR(DS_U->phone));
-            tgl_state::instance()->callback()->user_update(peer_id, updates);
+            m_user_agent.callback()->user_update(peer_id, updates);
         }
         break;
     case CODE_update_read_history_inbox:
         {
             tgl_peer_id_t id = tglf_fetch_peer_id(DS_U->peer);
-            tgl_state::instance()->callback()->messages_mark_read_in(id, DS_LVAL(DS_U->max_id));
+            m_user_agent.callback()->messages_mark_read_in(id, DS_LVAL(DS_U->max_id));
         }
         break;
     case CODE_update_read_history_outbox:
         {
             tgl_peer_id_t id = tglf_fetch_peer_id(DS_U->peer);
-            tgl_state::instance()->callback()->messages_mark_read_out(id, DS_LVAL(DS_U->max_id));
+            m_user_agent.callback()->messages_mark_read_out(id, DS_LVAL(DS_U->max_id));
         }
         break;
     case CODE_update_web_page: {
         auto media = std::make_shared<tgl_message_media_webpage>();
         media->webpage = tglf_fetch_alloc_webpage(DS_U->webpage);
-        tgl_state::instance()->callback()->messages_media_update(media);
+        m_user_agent.callback()->messages_media_update(media);
         break;
     }
-    /*
-    case CODE_update_msg_update:
-        {
-          struct tgl_message* M = tgl_message_get(DS_LVAL(DS_U->id));
-          if (M) {
-            //bl_do_msg_update(TLS, M->id);
-            tgl_state::instance()->callback.new_msg(M);
-          }
-        }
-        break;
-    */
     case CODE_update_read_messages_contents:
         break;
     case CODE_update_channel_too_long:
-        tgl_do_get_channel_difference(tgl_input_peer_t(tgl_peer_type::channel, DS_LVAL(DS_U->channel_id), 0), nullptr);
+        m_user_agent.get_channel_difference(tgl_input_peer_t(tgl_peer_type::channel, DS_LVAL(DS_U->channel_id), 0), nullptr);
         break;
     case CODE_update_channel:
-        tgl_do_get_channel_difference(tgl_input_peer_t(tgl_peer_type::channel, DS_LVAL(DS_U->channel_id), 0), nullptr);
+        m_user_agent.get_channel_difference(tgl_input_peer_t(tgl_peer_type::channel, DS_LVAL(DS_U->channel_id), 0), nullptr);
         break;
     case CODE_update_channel_group:
         break;
     case CODE_update_new_channel_message:
-        if (auto message = tglf_fetch_alloc_message(DS_U->message)) {
-            tgl_state::instance()->callback()->new_messages({message});
+        if (auto message = tglf_fetch_alloc_message(&m_user_agent, DS_U->message)) {
+            m_user_agent.callback()->new_messages({message});
         }
         break;
     case CODE_update_read_channel_inbox:
@@ -476,10 +467,10 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
     }
 
     if (DS_U->pts) {
-        tgl_state::instance()->set_pts(DS_LVAL(DS_U->pts));
+        m_user_agent.set_pts(DS_LVAL(DS_U->pts));
     }
     if (DS_U->qts) {
-        tgl_state::instance()->set_qts(DS_LVAL(DS_U->qts));
+        m_user_agent.set_qts(DS_LVAL(DS_U->qts));
     }
     if (DS_U->channel_pts) {
 #if 0 // FIXME
@@ -498,32 +489,32 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
     }
 }
 
-void tglu_work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
+void updater::work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         return;
     }
 
     if (mode == tgl_update_mode::check_and_update_consistency
-            && !tglu_check_seq_diff(DS_LVAL(DS_U->seq))) {
+            && !check_seq_diff(DS_LVAL(DS_U->seq))) {
         return;
     }
 
     if (DS_U->users) {
         for (int i = 0; i < DS_LVAL(DS_U->users->cnt); ++i) {
-            tglf_fetch_alloc_user(DS_U->users->data[i]);
+            tglf_fetch_alloc_user(&m_user_agent, DS_U->users->data[i]);
         }
     }
 
     if (DS_U->chats) {
         for (int i = 0; i < DS_LVAL(DS_U->chats->cnt); ++i) {
-            tglf_fetch_alloc_chat(DS_U->chats->data[i]);
+            tglf_fetch_alloc_chat(&m_user_agent, DS_U->chats->data[i]);
         }
     }
 
     if (DS_U->updates) {
         for (int i = 0; i < DS_LVAL(DS_U->updates->cnt); ++i) {
-            tglu_work_update(DS_U->updates->data[i], extra, mode);
+            work_update(DS_U->updates->data[i], extra, mode);
         }
     }
 
@@ -532,31 +523,31 @@ void tglu_work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& e
         return;
     }
 
-    tgl_state::instance()->set_date(DS_LVAL(DS_U->date));
-    tgl_state::instance()->set_seq(DS_LVAL(DS_U->seq));
+    m_user_agent.set_date(DS_LVAL(DS_U->date));
+    m_user_agent.set_seq(DS_LVAL(DS_U->seq));
 }
 
-static void tglu_work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mode mode)
+void updater::work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         return;
     }
 
     if (mode == tgl_update_mode::check_and_update_consistency
-            && !tglu_check_seq_diff(DS_LVAL(DS_U->seq_start))) {
+            && !check_seq_diff(DS_LVAL(DS_U->seq_start))) {
         return;
     }
 
     for (int i = 0; i < DS_LVAL(DS_U->users->cnt); ++i) {
-        tglf_fetch_alloc_user(DS_U->users->data[i]);
+        tglf_fetch_alloc_user(&m_user_agent, DS_U->users->data[i]);
     }
 
     for (int i = 0; i < DS_LVAL(DS_U->chats->cnt); ++i) {
-        tglf_fetch_alloc_chat(DS_U->chats->data[i]);
+        tglf_fetch_alloc_chat(&m_user_agent, DS_U->chats->data[i]);
     }
 
     for (int i = 0; i < DS_LVAL(DS_U->updates->cnt); ++i) {
-        tglu_work_update(DS_U->updates->data[i], nullptr, mode);
+        work_update(DS_U->updates->data[i], nullptr, mode);
     }
 
     if (mode != tgl_update_mode::check_and_update_consistency) {
@@ -564,25 +555,25 @@ static void tglu_work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mod
         return;
     }
 
-    tgl_state::instance()->set_date(DS_LVAL(DS_U->date));
-    tgl_state::instance()->set_seq(DS_LVAL(DS_U->seq));
+    m_user_agent.set_date(DS_LVAL(DS_U->date));
+    m_user_agent.set_seq(DS_LVAL(DS_U->seq));
 }
 
-void tglu_work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mode mode)
+void updater::work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         return;
     }
 
     if (mode == tgl_update_mode::check_and_update_consistency
-            && !tgl_check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
+            && !check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
         return;
     }
 
-    auto message = tglf_fetch_alloc_message_short(DS_U);
-    tgl_state::instance()->callback()->new_messages({message});
+    auto message = tglf_fetch_alloc_message_short(&m_user_agent, DS_U);
+    m_user_agent.callback()->new_messages({message});
 
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         return;
     }
 
@@ -591,47 +582,25 @@ void tglu_work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mode m
         return;
     }
 
-    tgl_state::instance()->set_pts(DS_LVAL(DS_U->pts));
+    m_user_agent.set_pts(DS_LVAL(DS_U->pts));
 }
 
-void tglu_work_update_short_chat_message(const tl_ds_updates* DS_U, tgl_update_mode mode)
+void updater::work_update_short_chat_message(const tl_ds_updates* DS_U, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         return;
     }
 
     if (mode == tgl_update_mode::check_and_update_consistency
-            && !tgl_check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
+            && !check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
         return;
     }
 
     if (auto message = tglf_fetch_alloc_message_short_chat(DS_U)) {
-        tgl_state::instance()->callback()->new_messages({message});
+        m_user_agent.callback()->new_messages({message});
     }
 
-    if (tgl_state::instance()->is_diff_locked()) {
-        return;
-    }
-
-#if 0
-    assert(M);
-    if (1) {
-        //bl_do_msg_update(&M->permanent_id);
-        tgl_state::instance()->callback()->new_message(M);
-    }
-#endif
-
-    if (mode != tgl_update_mode::check_and_update_consistency) {
-        assert(mode == tgl_update_mode::dont_check_and_update_consistency);
-        return;
-    }
-
-    tgl_state::instance()->set_pts(DS_LVAL(DS_U->pts));
-}
-
-static void tglu_work_updates_too_long(const tl_ds_updates* DS_U, tgl_update_mode mode)
-{
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         return;
     }
 
@@ -640,35 +609,49 @@ static void tglu_work_updates_too_long(const tl_ds_updates* DS_U, tgl_update_mod
         return;
     }
 
-    TGL_NOTICE("updates too long, getting difference ...");
-    tgl_do_get_difference(false, nullptr);
+    m_user_agent.set_pts(DS_LVAL(DS_U->pts));
 }
 
-static void tglu_work_update_short(const tl_ds_updates* DS_U, tgl_update_mode mode)
+void updater::work_updates_too_long(const tl_ds_updates* DS_U, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         return;
     }
 
-    tglu_work_update(DS_U->update, nullptr, mode);
+    if (mode != tgl_update_mode::check_and_update_consistency) {
+        assert(mode == tgl_update_mode::dont_check_and_update_consistency);
+        return;
+    }
+
+    TGL_DEBUG("updates too long, getting difference ...");
+    m_user_agent.get_difference(false, nullptr);
 }
 
-static void tglu_work_update_short_sent_message(const tl_ds_updates* DS_U,
+void updater::work_update_short(const tl_ds_updates* DS_U, tgl_update_mode mode)
+{
+    if (m_user_agent.is_diff_locked()) {
+        return;
+    }
+
+    work_update(DS_U->update, nullptr, mode);
+}
+
+void updater::work_update_short_sent_message(const tl_ds_updates* DS_U,
         const std::shared_ptr<void>& extra, tgl_update_mode mode)
 {
     if (mode == tgl_update_mode::check_and_update_consistency
             && DS_U->pts
-            && !tgl_check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
+            && !check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
         return;
     }
 
     if (std::shared_ptr<tgl_message> message = std::static_pointer_cast<tgl_message>(extra)) {
-        auto new_message = tglf_fetch_alloc_message_short(DS_U);
+        auto new_message = tglf_fetch_alloc_message_short(&m_user_agent, DS_U);
         if (new_message->media) {
             message->media = new_message->media;
-            tgl_state::instance()->callback()->new_messages({message});
+            m_user_agent.callback()->new_messages({message});
         }
-        tgl_state::instance()->callback()->message_sent(message->permanent_id, new_message->permanent_id, new_message->date, message->to_id);
+        m_user_agent.callback()->message_sent(message->permanent_id, new_message->permanent_id, new_message->date, message->to_id);
     }
 
     if (mode != tgl_update_mode::check_and_update_consistency) {
@@ -677,44 +660,44 @@ static void tglu_work_update_short_sent_message(const tl_ds_updates* DS_U,
     }
 
     if (DS_U->pts) {
-        tgl_state::instance()->set_pts(DS_LVAL(DS_U->pts));
+        m_user_agent.set_pts(DS_LVAL(DS_U->pts));
     }
 }
 
-void tglu_work_any_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
+void updater::work_any_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
 {
-    if (tgl_state::instance()->is_diff_locked()) {
+    if (m_user_agent.is_diff_locked()) {
         return;
     }
 
     switch (DS_U->magic) {
     case CODE_updates_too_long:
-        tglu_work_updates_too_long(DS_U, mode);
+        work_updates_too_long(DS_U, mode);
         return;
     case CODE_update_short_message:
-        tglu_work_update_short_message(DS_U, mode);
+        work_update_short_message(DS_U, mode);
         return;
     case CODE_update_short_chat_message:
-        tglu_work_update_short_chat_message(DS_U, mode);
+        work_update_short_chat_message(DS_U, mode);
         return;
     case CODE_update_short:
-        tglu_work_update_short(DS_U, mode);
+        work_update_short(DS_U, mode);
         return;
     case CODE_updates_combined:
-        tglu_work_updates_combined(DS_U, mode);
+        work_updates_combined(DS_U, mode);
         return;
     case CODE_updates:
-        tglu_work_updates(DS_U, extra, mode);
+        work_updates(DS_U, extra, mode);
         return;
     case CODE_update_short_sent_message:
-        tglu_work_update_short_sent_message(DS_U, extra, mode);
+        work_update_short_sent_message(DS_U, extra, mode);
         return;
     default:
         assert(false);
     }
 }
 
-void tglu_work_any_updates(tgl_in_buffer* in)
+void updater::work_any_updates(tgl_in_buffer* in)
 {
     paramed_type type = TYPE_TO_PARAM(updates);
     tl_ds_updates* DS_U = fetch_ds_type_updates(in, &type);
@@ -723,6 +706,17 @@ void tglu_work_any_updates(tgl_in_buffer* in)
         return;
     }
 
-    tglu_work_any_updates(DS_U, nullptr, tgl_update_mode::check_and_update_consistency);
+    work_any_updates(DS_U, nullptr, tgl_update_mode::check_and_update_consistency);
     free_ds_type_updates(DS_U, &type);
+}
+
+void updater::work_encrypted_message(const tl_ds_encrypted_message* DS_EM)
+{
+    std::shared_ptr<tgl_secret_chat> secret_chat = m_user_agent.secret_chat_for_id(DS_LVAL(DS_EM->chat_id));
+    if (!secret_chat || secret_chat->state() != tgl_secret_chat_state::ok) {
+        TGL_WARNING("encrypted message to unknown chat, dropping");
+        return;
+    }
+
+    secret_chat->private_facet()->imbue_encrypted_message(DS_EM);
 }

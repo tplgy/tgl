@@ -22,12 +22,12 @@
 #ifndef __TGL_SECRET_CHAT_PRIVATE_H__
 #define __TGL_SECRET_CHAT_PRIVATE_H__
 
-#include "tgl/tgl.h"
-
 #include "crypto/tgl_crypto_bn.h"
+#include "crypto/tgl_crypto_sha.h"
 #include "tgl/tgl_message.h"
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_timer.h"
+#include "user_agent.h"
 
 #include <algorithm>
 #include <cassert>
@@ -42,6 +42,8 @@ static constexpr int32_t TGL_ENCRYPTED_LAYER = 17;
 class query;
 class tgl_unconfirmed_secret_message;
 
+struct tl_ds_encrypted_message;
+
 struct secret_message {
     std::shared_ptr<tgl_message> message;
     int32_t raw_in_seq_no = -1;
@@ -53,6 +55,7 @@ struct tgl_secret_chat_private {
     int32_t m_exchange_key[64];
     std::vector<unsigned char> m_g_key;
     tgl_input_peer_t m_id;
+    tgl_peer_id_t m_our_id;
     int64_t m_exchange_id;
     int64_t m_exchange_key_fingerprint;
     int32_t m_user_id;
@@ -78,6 +81,7 @@ struct tgl_secret_chat_private {
     std::map<int32_t, int64_t> m_unconfirmed_outgoing_message_ids;
     std::shared_ptr<tgl_timer> m_fill_hole_timer;
     std::shared_ptr<tgl_timer> m_skip_hole_timer;
+    std::weak_ptr<user_agent> m_user_agent;
     int64_t m_last_depending_query_id;
     bool m_unconfirmed_incoming_messages_loaded;
     bool m_unconfirmed_outgoing_messages_loaded;
@@ -88,6 +92,7 @@ struct tgl_secret_chat_private {
         : m_temp_key_fingerprint(0)
         , m_g_key()
         , m_id()
+        , m_our_id()
         , m_exchange_id(0)
         , m_exchange_key_fingerprint(0)
         , m_user_id(0)
@@ -114,14 +119,43 @@ struct tgl_secret_chat_private {
         memset(m_key_sha, 0, sizeof(m_key_sha));
         memset(m_exchange_key, 0, sizeof(m_exchange_key));
     }
+
+    void set_key(const unsigned char* key)
+    {
+        auto key_size = tgl_secret_chat::key_size();
+        TGLC_sha1(key, key_size, m_key_sha);
+        memcpy(m_key, key, key_size);
+    }
+
+    void set_encr_prime(const unsigned char* prime, size_t length)
+    {
+        m_encr_prime.resize(length);
+        m_encr_prime_bn.reset(new tgl_bn(TGLC_bn_new()));
+        memcpy(m_encr_prime.data(), prime, length);
+        TGLC_bn_bin2bn(m_encr_prime.data(), length, m_encr_prime_bn->bn);
+    }
+
+    void set_g_key(const unsigned char* g_key, size_t length)
+    {
+        m_g_key.resize(length);
+        memcpy(m_g_key.data(), g_key, length);
+    }
+
+    void set_exchange_key(const unsigned char* exchange_key, size_t length)
+    {
+        assert(length == sizeof(m_exchange_key));
+        memcpy(m_exchange_key, exchange_key, sizeof(m_exchange_key));
+    }
+
 };
 
 // This is a private facet. Don't add any thing (like data member, virtual functions etc)
 // that changes the memory layout.
 class tgl_secret_chat_private_facet: public tgl_secret_chat {
 public:
+    const std::weak_ptr<user_agent>& weak_user_agent() const { return d->m_user_agent; }
     bool create_keys_end();
-    void set_dh_params(int32_t root, unsigned char prime[], int32_t version);
+    void set_dh_params(int32_t root, unsigned char* prime, int32_t version);
     const std::shared_ptr<query>& last_depending_query() const { return d->m_last_depending_query; }
     void set_last_depending_query(const std::shared_ptr<query>& q) { d->m_last_depending_query = q; }
     void set_layer(int32_t layer) { d->m_layer = layer; }
@@ -129,10 +163,10 @@ public:
     void set_out_seq_no(int32_t out_seq_no) { d->m_out_seq_no = out_seq_no; }
     void set_in_seq_no(int32_t in_seq_no) { d->m_in_seq_no = in_seq_no; }
     const tgl_bn* encr_prime_bn() const { return d->m_encr_prime_bn.get(); }
-    void set_encr_prime(const unsigned char* prime, size_t length);
-    void set_key(const unsigned char* key);
-    void set_g_key(const unsigned char* g_key, size_t length);
-    void set_exchange_key(const unsigned char* exchange_key, size_t length);
+    void set_encr_prime(const unsigned char* prime, size_t length) { d->set_encr_prime(prime, length); }
+    void set_key(const unsigned char* key) { d->set_key(key); }
+    void set_g_key(const unsigned char* g_key, size_t length) { d->set_g_key(g_key, length); }
+    void set_exchange_key(const unsigned char* exchange_key, size_t length) { d->set_exchange_key(exchange_key, length); }
     void set_access_hash(int64_t access_hash) { d->m_id.access_hash = access_hash; }
     void set_date(int64_t date) { d->m_date = date; }
     void set_admin_id(int32_t admin_id) { d->m_admin_id = admin_id; }
@@ -141,10 +175,13 @@ public:
     int64_t temp_key_fingerprint() const { return d->m_temp_key_fingerprint; }
     void set_temp_key_fingerprint(int64_t fingerprint) { d->m_temp_key_fingerprint = fingerprint; }
     std::pair<int32_t, int32_t> first_hole() const;
-    int32_t raw_in_seq_no() const { return in_seq_no() * 2 + (admin_id() != tgl_state::instance()->our_id().peer_id); }
-    int32_t raw_out_seq_no() const { return out_seq_no() * 2 + (admin_id() == tgl_state::instance()->our_id().peer_id); }
+    int32_t raw_in_seq_no() const { return in_seq_no() * 2 + (admin_id() != d->m_our_id.peer_id); }
+    int32_t raw_out_seq_no() const { return out_seq_no() * 2 + (admin_id() == d->m_our_id.peer_id); }
     int64_t last_depending_query_id() const { return d->m_last_depending_query_id; }
     void set_last_depending_query_id(int64_t query_id) { d->m_last_depending_query_id = query_id; }
+    const tgl_peer_id_t& our_id() { return d->m_our_id; }
+
+    void imbue_encrypted_message(const tl_ds_encrypted_message*);
 
     void queue_unconfirmed_outgoing_message(const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
 
@@ -171,8 +208,6 @@ public:
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
 
     void set_deleted();
-
-    static void imbue_encrypted_message(const tl_ds_encrypted_message*);
 
     void request_key_exchange();
     void accept_key_exchange(int64_t exchange_id, const std::vector<unsigned char>& ga);

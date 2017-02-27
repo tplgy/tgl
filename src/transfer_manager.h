@@ -31,13 +31,15 @@ class download_task;
 class query_download_file_part;
 class query_upload_file_part;
 class upload_task;
+class user_agent;
 struct tl_ds_upload_file;
 
 class transfer_manager: public std::enable_shared_from_this<transfer_manager>, public tgl_transfer_manager
 {
 public:
-    transfer_manager(const std::string& download_directory)
-        : m_download_directory(download_directory)
+    transfer_manager(const std::weak_ptr<user_agent>& weak_ua, const std::string& download_directory)
+        : m_user_agent(weak_ua)
+        , m_download_directory(download_directory)
     { }
 
     virtual std::string download_directory() const override { return m_download_directory; }
@@ -101,9 +103,11 @@ private:
     void download_part(const std::shared_ptr<download_task>&);
     void download_end(const std::shared_ptr<download_task>&);
 
+private:
+    std::weak_ptr<user_agent> m_user_agent;
+    std::string m_download_directory;
     std::map<int64_t, std::shared_ptr<download_task>> m_downloads;
     std::map<int64_t, std::shared_ptr<upload_task>> m_uploads;
-    std::string m_download_directory;
 };
 
 static constexpr size_t BIG_FILE_THRESHOLD = 10 * 1024 * 1024;

@@ -80,7 +80,6 @@ set(GENERATED_TGL_HEADERS
 )
 
 set(PUBLIC_HEADERS
-    include/tgl/tgl.h
     include/tgl/tgl_bot.h
     include/tgl/tgl_channel.h
     include/tgl/tgl_chat.h
@@ -99,7 +98,7 @@ set(PUBLIC_HEADERS
     include/tgl/tgl_online_status_observer.h
     include/tgl/tgl_peer_id.h
     include/tgl/tgl_privacy_rule.h
-    include/tgl/tgl_queries.h
+    include/tgl/tgl_query_api.h
     include/tgl/tgl_secret_chat.h
     include/tgl/tgl_secure_random.h
     include/tgl/tgl_timer.h
@@ -109,6 +108,7 @@ set(PUBLIC_HEADERS
     include/tgl/tgl_unconfirmed_secret_message.h
     include/tgl/tgl_unconfirmed_secret_message_storage.h
     include/tgl/tgl_user.h
+    include/tgl/tgl_user_agent.h
     include/tgl/tgl_value.h
 )
 
@@ -152,8 +152,9 @@ set(PRIVATE_HEADERS
     src/tools.h
     src/transfer_manager.h
     src/unconfirmed_secret_message.h
-    src/updates.h
+    src/updater.h
     src/upload_task.h
+    src/user_agent.h
 )
 
 set(GENERATED_TGL_SOURCES
@@ -184,7 +185,6 @@ set(SOURCES
     src/query/query_upload_file_part.cpp
     src/secret_chat_encryptor.cpp
     src/structures.cpp
-    src/tgl.cpp
     src/tgl_log.cpp
     src/tgl_mime_type.cpp
     src/tgl_message.cpp
@@ -193,8 +193,9 @@ set(SOURCES
     src/transfer_manager.cpp
     src/tools.cpp
     src/unconfirmed_secret_message.cpp
-    src/updates.cpp
+    src/updater.cpp
     src/upload_task.cpp
+    src/user_agent.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})

@@ -150,8 +150,6 @@ using tgl_upload_part_done_callback = std::function<void()>;
 class tgl_transfer_manager
 {
 public:
-    static std::shared_ptr<tgl_transfer_manager> create_default_impl(const std::string& download_directory);
-
     virtual ~tgl_transfer_manager() { }
 
     virtual std::string download_directory() const = 0;

@@ -25,6 +25,9 @@
 #include <memory>
 
 #include "tgl_connection_status.h"
+#include "tgl_online_status.h"
+#include "tgl_online_status_observer.h"
+#include "tgl_timer.h"
 
 class tgl_connection;
 
@@ -36,6 +39,11 @@ public:
     virtual void connection_status_changed(const std::shared_ptr<tgl_connection>& c) = 0;
     virtual bool try_rpc_execute(const std::shared_ptr<tgl_connection>& c) = 0;
     virtual void ping() = 0;
+    virtual tgl_online_status online_status() const = 0;
+    virtual bool ipv6_enabled() const = 0;
+    virtual std::shared_ptr<tgl_timer_factory> timer_factory() const = 0;
+    virtual void add_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer) = 0;
+    virtual void remove_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer) = 0;
 };
 
 #endif

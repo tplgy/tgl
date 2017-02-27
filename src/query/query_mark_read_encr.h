@@ -42,11 +42,14 @@ public:
 
     virtual void on_answer(void*) override
     {
-        if (tgl_state::instance()->callback()) {
-            tgl_state::instance()->callback()->messages_mark_read_in(tgl_peer_id_t::from_input_peer(m_secret_chat->id()), m_max_time);
+        bool success = true;
+        if (auto ua = get_user_agent()) {
+            ua->callback()->messages_mark_read_in(tgl_peer_id_t::from_input_peer(m_secret_chat->id()), m_max_time);
+        } else {
+            success = false;
         }
         if (m_callback) {
-            m_callback(true, nullptr);
+            m_callback(success, nullptr);
         }
     }
 

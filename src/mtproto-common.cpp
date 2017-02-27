@@ -25,7 +25,6 @@
 #include "auto/auto.h"
 #include "crypto/tgl_crypto_rand.h"
 #include "crypto/tgl_crypto_sha.h"
-#include "tgl/tgl.h"
 #include "tgl/tgl_log.h"
 #include "tools.h"
 
@@ -224,7 +223,7 @@ ssize_t tgl_fetch_bignum(tgl_in_buffer* in, TGLC_bn* x)
     return l;
 }
 
-int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC_bn* N, TGLC_bn* E)
+int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, TGLC_bn* N, TGLC_bn* E)
 {
     int pad = (255000 - from_len - 32) % 255 + 32;
     int chunks = (from_len + pad) / 255;
@@ -244,7 +243,7 @@ int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC
     assert(y);
     for (int i = 0; i < chunks; i++) {
         TGLC_bn_bin2bn(reinterpret_cast<const unsigned char*>(from), 255, x.get());
-        result = TGLC_bn_mod_exp(y.get(), x.get(), E, N, tgl_state::instance()->bn_ctx()->ctx);
+        result = TGLC_bn_mod_exp(y.get(), x.get(), E, N, ctx);
         TGL_ASSERT_UNUSED(result, result == 1);
         unsigned l = 256 - TGLC_bn_num_bytes(y.get());
         assert(l <= 256);
@@ -256,7 +255,7 @@ int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC
     return chunks * 256;
 }
 
-int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC_bn* N, TGLC_bn* D)
+int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, TGLC_bn* N, TGLC_bn* D)
 {
     if (from_len < 0 || from_len > 0x1000 || (from_len & 0xff)) {
         return -1;
@@ -271,7 +270,7 @@ int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC
     assert(y.get());
     for (int i = 0; i < chunks; i++) {
         TGLC_bn_bin2bn(reinterpret_cast<const unsigned char*>(from), 256, x.get());
-        auto result = TGLC_bn_mod_exp(y.get(), x.get(), D, N, tgl_state::instance()->bn_ctx()->ctx);
+        auto result = TGLC_bn_mod_exp(y.get(), x.get(), D, N, ctx);
         TGL_ASSERT_UNUSED(result, result == 1);
         int l = TGLC_bn_num_bytes(y.get());
         if (l > 255) {

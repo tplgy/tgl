@@ -26,6 +26,7 @@
 #include "tgl/tgl_mtproto_client.h"
 #include "tgl/tgl_dc.h"
 #include "tgl_session.h"
+#include "user_agent.h"
 
 #include <array>
 #include <cassert>
@@ -49,7 +50,7 @@ class mtproto_client: public std::enable_shared_from_this<mtproto_client>
         , public tgl_mtproto_client
         , public tgl_dc {
 public:
-    explicit mtproto_client(int32_t id);
+    explicit mtproto_client(const std::weak_ptr<user_agent>& ua, int32_t id);
 
     class connection_status_observer {
     public:
@@ -77,6 +78,11 @@ public:
     virtual void connection_status_changed(const std::shared_ptr<tgl_connection>& c) override;
     virtual bool try_rpc_execute(const std::shared_ptr<tgl_connection>& c) override;
     virtual void ping() override;
+    virtual tgl_online_status online_status() const override;
+    virtual std::shared_ptr<tgl_timer_factory> timer_factory() const override;
+    virtual bool ipv6_enabled() const override;
+    virtual void add_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer) override;
+    virtual void remove_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer) override;
 
     // From tgl_dc
     virtual bool is_logged_in() const override { return m_logged_in; }
@@ -149,8 +155,10 @@ public:
 
     size_t max_connections() const;
 
+    const std::weak_ptr<user_agent>& weak_user_agent() const { return m_user_agent; }
+
 private:
-    void connected();
+    void connected(bool pfs_enabled, int32_t temp_key_expire_time);
     void configured(bool success);
     void reset_temp_authorization();
     void cleanup_timer_expired();
@@ -163,9 +171,9 @@ private:
     void send_req_pq_packet();
     void send_req_pq_temp_packet();
     int encrypt_inner_temp(const int32_t* msg, int msg_ints, void* data, int64_t msg_id);
-    void send_req_dh_packet(TGLC_bn* pq, bool temp_key);
-    void send_dh_params(TGLC_bn* dh_prime, TGLC_bn* g_a, int g, bool temp_key);
-    void bind_temp_auth_key();
+    void send_req_dh_packet(TGLC_bn_ctx* ctx, TGLC_bn* pq, bool temp_key, int32_t temp_key_expire_time);
+    void send_dh_params(TGLC_bn_ctx* ctx, TGLC_bn* dh_prime, TGLC_bn* g_a, int g, bool temp_key);
+    void bind_temp_auth_key(int32_t temp_key_expire_time);
     void init_enc_msg(encrypted_message& enc_msg, bool useful);
     void init_enc_msg_inner_temp(encrypted_message& enc_msg, int64_t msg_id);
     void restart_authorization(bool temp_key);
@@ -176,6 +184,10 @@ private:
     int work_bad_server_salt(tgl_in_buffer* in);
     int work_rpc_result(tgl_in_buffer* in, int64_t msg_id);
     int work_pong(tgl_in_buffer* in);
+    int work_bad_msg_notification(tgl_in_buffer* in);
+    int work_msgs_ack(tgl_in_buffer* in, int64_t msg_id);
+    int query_error(tgl_in_buffer* in, int64_t id);
+    int query_result(tgl_in_buffer* in, int64_t id);
     void insert_msg_id(int64_t id);
     void calculate_auth_key_id(bool temp_key);
     bool rpc_execute(const std::shared_ptr<tgl_connection>& c, int op, int len);
@@ -183,6 +195,9 @@ private:
     bool process_dh_answer(const char* packet, int len, bool temp_key);
     bool process_auth_complete(const char* packet, int len, bool temp_key);
     bool process_rpc_message(encrypted_message* enc, int len);
+    void regen_query(int64_t msg_id);
+    void restart_query(int64_t msg_id);
+    void ack_query(int64_t msg_id);
 
     int64_t send_message(const int32_t* message, size_t message_ints)
     {
@@ -197,10 +212,11 @@ private:
     int64_t send_message_impl(const int32_t* msg, size_t msg_ints,
             int64_t msg_id_override, bool force_send, bool useful, bool allow_secondary_connections, bool count_work_load);
 
-    std::shared_ptr<worker> select_best_worker(bool allow_secondary_workers);
+    std::shared_ptr<worker> select_best_worker(const user_agent* ua, bool allow_secondary_workers);
     void worker_job_done(int64_t id);
 
 private:
+    std::weak_ptr<user_agent> m_user_agent;
     int32_t m_id;
     state m_state;
     std::shared_ptr<tgl_session> m_session;

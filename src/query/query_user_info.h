@@ -36,7 +36,15 @@ public:
 
     virtual void on_answer(void* D) override
     {
-        std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user_full(static_cast<tl_ds_user_full*>(D));
+        auto ua = get_user_agent();
+        if (!ua) {
+            if (m_callback) {
+                m_callback(false, nullptr);
+            }
+            return;
+        }
+
+        std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user_full(ua.get(), static_cast<tl_ds_user_full*>(D));
         if (m_callback) {
             m_callback(true, user);
         }
