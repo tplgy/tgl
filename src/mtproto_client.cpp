@@ -214,15 +214,6 @@ bool mtproto_client::try_rpc_execute(const std::shared_ptr<tgl_connection>& c)
 
 #define MAX_RESPONSE_SIZE        (1L << 24)
 
-/*
- *
- *        UNAUTHORIZED (DH KEY EXCHANGE) PROTOCOL PART
- *
- */
-
-//
-// Used in unauthorized part of protocol
-//
 void mtproto_client::rpc_send_packet(const char* data, size_t len)
 {
     struct {
@@ -276,12 +267,6 @@ static int rpc_send_message(const std::shared_ptr<tgl_connection>& c, void* data
     return 1;
 }
 
-//
-// State machine. See description at
-// https://core.telegram.org/mtproto/auth_key
-//
-
-
 static int check_unauthorized_header(tgl_in_buffer* in)
 {
     if (in->end - in->ptr < 5) {
@@ -302,8 +287,6 @@ static int check_unauthorized_header(tgl_in_buffer* in)
     return 0;
 }
 
-/* {{{ REQ_PQ */
-// req_pq#60469778 nonce:int128 = ResPQ
 void mtproto_client::send_req_pq_packet()
 {
     assert(m_state == state::init);
@@ -320,7 +303,6 @@ void mtproto_client::send_req_pq_packet()
     m_state = state::reqpq_sent;
 }
 
-// req_pq#60469778 nonce:int128 = ResPQ
 void mtproto_client::send_req_pq_temp_packet()
 {
     assert(m_state == state::authorized);
@@ -335,12 +317,7 @@ void mtproto_client::send_req_pq_temp_packet()
 
     m_state = state::reqpq_sent_temp;
 }
-/* }}} */
 
-/* {{{ REQ DH */
-// req_DH_params#d712e4be nonce:int128 server_nonce:int128 p:string q:string public_key_fingerprint:long encrypted_data:string = Server_DH_Params;
-// p_q_inner_data#83c95aec pq:string p:string q:string nonce:int128 server_nonce:int128 new_nonce:int256 = P_Q_inner_data;
-// p_q_inner_data_temp#3c6a84d4 pq:string p:string q:string nonce:int128 server_nonce:int128 new_nonce:int256 expires_in:int = P_Q_inner_data;
 void mtproto_client::send_req_dh_packet(TGLC_bn* pq, bool temp_key)
 {
     std::unique_ptr<TGLC_bn, TGLC_bn_deleter> p(TGLC_bn_new());
@@ -391,11 +368,7 @@ void mtproto_client::send_req_dh_packet(TGLC_bn* pq, bool temp_key)
     TGL_DEBUG("sending request dh (temp_key=" << std::boolalpha << temp_key << ") to DC " << m_id);
     rpc_send_packet(s.char_data(), s.char_size());
 }
-/* }}} */
 
-/* {{{ SEND DH PARAMS */
-// set_client_DH_params#f5045f1f nonce:int128 server_nonce:int128 encrypted_data:string = Set_client_DH_params_answer;
-// client_DH_inner_data#6643b654 nonce:int128 server_nonce:int128 retry_id:long g_b:string = Client_DH_Inner_Data
 void mtproto_client::send_dh_params(TGLC_bn* dh_prime, TGLC_bn* g_a, int g, bool temp_key)
 {
     mtprotocol_serializer s;
@@ -452,10 +425,7 @@ void mtproto_client::send_dh_params(TGLC_bn* dh_prime, TGLC_bn* g_a, int g, bool
     TGL_DEBUG("sending dh parameters (temp_key=" << std::boolalpha << temp_key << ") to DC " << m_id);
     rpc_send_packet(s.char_data(), s.char_size());
 }
-/* }}} */
 
-/* {{{ RECV RESPQ */
-// resPQ#05162463 nonce:int128 server_nonce:int128 pq:string server_public_key_fingerprints:Vector long = ResPQ
 bool mtproto_client::process_respq_answer(const char* packet, int len, bool temp_key)
 {
     assert(!(len & 3));
@@ -513,12 +483,7 @@ bool mtproto_client::process_respq_answer(const char* packet, int len, bool temp
 
     return true;
 }
-/* }}} */
 
-/* {{{ RECV DH */
-// server_DH_params_fail#79cb045d nonce:int128 server_nonce:int128 new_nonce_hash:int128 = Server_DH_Params;
-// server_DH_params_ok#d0e8075c nonce:int128 server_nonce:int128 encrypted_answer:string = Server_DH_Params;
-// server_DH_inner_data#b5890dba nonce:int128 server_nonce:int128 g:int dh_prime:string g_a:string server_time:int = Server_DH_inner_data;
 bool mtproto_client::process_dh_answer(const char* packet, int len, bool temp_key)
 {
     assert(!(len & 3));
@@ -642,7 +607,6 @@ bool mtproto_client::process_dh_answer(const char* packet, int len, bool temp_ke
 
     return true;
 }
-/* }}} */
 
 void mtproto_client::create_temp_auth_key()
 {
@@ -659,11 +623,6 @@ void mtproto_client::restart_authorization(bool temp_key)
     }
 }
 
-/* {{{ RECV AUTH COMPLETE */
-
-// dh_gen_ok#3bcbf734 nonce:int128 server_nonce:int128 new_nonce_hash1:int128 = Set_client_DH_params_answer;
-// dh_gen_retry#46dc1fb9 nonce:int128 server_nonce:int128 new_nonce_hash2:int128 = Set_client_DH_params_answer;
-// dh_gen_fail#a69dae02 nonce:int128 server_nonce:int128 new_nonce_hash3:int128 = Set_client_DH_params_answer;
 bool mtproto_client::process_auth_complete(const char* packet, int len, bool temp_key)
 {
     assert(!(len & 3));
@@ -757,7 +716,6 @@ bool mtproto_client::process_auth_complete(const char* packet, int len, bool tem
 
     return true;
 }
-/* }}} */
 
 void mtproto_client::bind_temp_auth_key()
 {
@@ -792,12 +750,6 @@ void mtproto_client::bind_temp_auth_key()
     m_temp_auth_key_bind_query_id = msg_id;
     tgl_do_bind_temp_key(shared_from_this(), rand, expires, data, len, msg_id);
 }
-
-/*
- *
- *                AUTHORIZED (MAIN) PROTOCOL PART
- *
- */
 
 double mtproto_client::get_server_time()
 {
@@ -845,7 +797,6 @@ void mtproto_client::init_enc_msg_inner_temp(encrypted_message& enc_msg, int64_t
     enc_msg.msg_id = msg_id;
     enc_msg.seq_no = 0;
 };
-
 
 static int aes_encrypt_message(unsigned char* key, struct encrypted_message* enc)
 {
@@ -1019,7 +970,6 @@ int mtproto_client::work_container(tgl_in_buffer* in, int64_t msg_id)
     int32_t n = fetch_i32(in);
     for (int32_t i = 0; i < n; i++) {
         int64_t id = fetch_i64(in);
-        //int seqno = fetch_i32();
         fetch_i32(in); // seq_no
         if (id & 1) {
             if (!m_session) {
@@ -1347,9 +1297,7 @@ bool mtproto_client::process_rpc_message(encrypted_message* enc, int len)
         m_server_salt = enc->server_salt;
     }
 
-    //assert(enc->msg_id > server_last_msg_id && (enc->msg_id & 3) == 1);
     TGL_DEBUG("received mesage id " << enc->msg_id);
-    //server_last_msg_id = enc->msg_id;
 
     assert(l >= (MINSZ - UNENCSZ) + 8);
 
@@ -1486,8 +1434,8 @@ void mtproto_client::connected()
         }
         break;
     default:
-        TGL_DEBUG("c_state = " << m_state);
-        m_state = state::init; // previous connection was reset
+        TGL_DEBUG("client state = " << m_state);
+        m_state = state::init;
         send_req_pq_packet();
         break;
     }
@@ -1547,7 +1495,6 @@ void mtproto_client::send_all_acks()
 void mtproto_client::insert_msg_id(int64_t id)
 {
     if (!m_session || !m_session->ev) {
-        // The session has been cleared.
         return;
     }
 
