@@ -236,6 +236,7 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         }
         break;
     case CODE_update_delete_messages:
+    case CODE_update_delete_channel_messages:
         if (DS_U->messages) {
             int count = DS_LVAL(DS_U->messages->cnt);
             for (int i = 0; i < count; ++i) {
@@ -448,8 +449,6 @@ void tglu_work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& ext
         }
         break;
     case CODE_update_read_channel_inbox:
-        break;
-    case CODE_update_delete_channel_messages:
         break;
     case CODE_update_channel_message_views:
         break;
