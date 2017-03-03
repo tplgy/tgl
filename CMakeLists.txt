@@ -126,7 +126,6 @@ set(PRIVATE_HEADERS
     src/mtproto_client.h
     src/mtproto-common.h
     src/mtproto-utils.h
-    src/query/queries.h
     src/query/query.h
     src/query/query_bind_temp_auth_key.h
     src/query/query_create_chat.h
@@ -143,6 +142,7 @@ set(PRIVATE_HEADERS
     src/query/query_messages_send_encrypted_base.h
     src/query/query_messages_send_encrypted_file.h
     src/query/query_messages_send_encrypted_message.h
+    src/query/query_send_messages.h
     src/query/query_upload_file_part.h
     src/query/query_user_info.h
     src/secret_chat_encryptor.h
@@ -183,6 +183,7 @@ set(SOURCES
     src/query/query_messages_send_encrypted_base.cpp
     src/query/query_messages_send_encrypted_file.cpp
     src/query/query_messages_send_encrypted_message.cpp
+    src/query/query_send_messages.cpp
     src/query/query_upload_file_part.cpp
     src/secret_chat_encryptor.cpp
     src/structures.cpp

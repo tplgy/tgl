@@ -30,9 +30,9 @@
 #include "download_task.h"
 #include "mtproto_client.h"
 #include "mtproto-common.h"
-#include "query/queries.h"
 #include "query/query_download_file_part.h"
 #include "query/query_messages_send_encrypted_file.h"
+#include "query/query_send_messages.h"
 #include "query/query_upload_file_part.h"
 #include "secret_chat_encryptor.h"
 #include "tools.h"
@@ -106,7 +106,7 @@ void transfer_manager::upload_avatar_end(const std::shared_ptr<upload_task>& u, 
     }
 
     if (u->avatar > 0) {
-        auto q = std::make_shared<query_send_msgs>(callback);
+        auto q = std::make_shared<query_send_messages>(callback);
         if (u->to_id.peer_type == tgl_peer_type::channel) {
             q->out_i32(CODE_channels_edit_photo);
             q->out_i32(CODE_input_channel);
@@ -170,7 +170,7 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_
 
     auto extra = std::make_shared<messages_send_extra>();
     extra->id = u->message_id;
-    auto q = std::make_shared<query_send_msgs>(extra,
+    auto q = std::make_shared<query_send_messages>(extra,
             [=](bool success, const std::shared_ptr<tgl_message>& message) {
                 u->set_status(success ? tgl_upload_status::succeeded : tgl_upload_status::failed);
             });

@@ -16,22 +16,18 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
 
-#ifndef __QUERIES_H__
-#define __QUERIES_H__
+#pragma once
 
-#include "mtproto-common.h"
 #include "query.h"
-#include "structures.h"
 #include "tgl/tgl_message.h"
 
 #include <cstdint>
-#include <exception>
 #include <memory>
+#include <functional>
 #include <string>
-#include <string.h>
 #include <vector>
 
 struct messages_send_extra {
@@ -41,14 +37,14 @@ struct messages_send_extra {
     std::vector<int64_t> message_ids;
 };
 
-class query_send_msgs: public query
+class query_send_messages: public query
 {
 public:
-    query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
+    query_send_messages(const std::shared_ptr<messages_send_extra>& extra,
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback);
-    query_send_msgs(const std::shared_ptr<messages_send_extra>& extra,
+    query_send_messages(const std::shared_ptr<messages_send_extra>& extra,
             const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& multi_callback);
-    explicit query_send_msgs(const std::function<void(bool)>& bool_callback);
+    explicit query_send_messages(const std::function<void(bool)>& bool_callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     void set_message(const std::shared_ptr<tgl_message>& message);
@@ -60,5 +56,3 @@ private:
     std::function<void(bool)> m_bool_callback;
     std::shared_ptr<tgl_message> m_message;
 };
-
-#endif

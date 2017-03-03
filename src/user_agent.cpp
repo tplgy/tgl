@@ -39,7 +39,6 @@
 #include "tgl_secret_chat_private.h"
 #include "tgl_session.h"
 #include "transfer_manager.h"
-#include "query/queries.h"
 #include "query/query.h"
 
 #include <assert.h>

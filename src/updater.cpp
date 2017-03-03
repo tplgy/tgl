@@ -26,7 +26,6 @@
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "mtproto-common.h"
-#include "query/queries.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_secret_chat.h"

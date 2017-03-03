@@ -22,7 +22,6 @@
 #include "query_help_get_config.h"
 
 #include "auto/auto-fetch-ds.h"
-#include "queries.h"
 
 query_help_get_config::query_help_get_config(const std::function<void(bool)>& callback)
     : query("get config", TYPE_TO_PARAM(config))
