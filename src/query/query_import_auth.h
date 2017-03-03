@@ -22,7 +22,12 @@
 #ifndef __TGL_QUERY_IMPORT_AUTH_H__
 #define __TGL_QUERY_IMPORT_AUTH_H__
 
+#include "mtproto_client.h"
 #include "query.h"
+#include "structures.h"
+
+#include <functional>
+#include <memory>
 
 class query_import_auth: public query
 {

@@ -61,6 +61,4 @@ private:
     std::shared_ptr<tgl_message> m_message;
 };
 
-void tgl_do_bind_temp_key(const std::shared_ptr<mtproto_client>& client, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id);
-
 #endif

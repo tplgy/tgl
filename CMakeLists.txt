@@ -128,6 +128,7 @@ set(PRIVATE_HEADERS
     src/mtproto-utils.h
     src/query/queries.h
     src/query/query.h
+    src/query/query_bind_temp_auth_key.h
     src/query/query_create_chat.h
     src/query/query_download_file_part.h
     src/query/query_export_auth.h

@@ -32,7 +32,7 @@
 #include "crypto/tgl_crypto_sha.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
-#include "query/queries.h"
+#include "query/query_bind_temp_auth_key.h"
 #include "query/query_export_auth.h"
 #include "query/query_help_get_config.h"
 #include "structures.h"
@@ -746,9 +746,11 @@ void mtproto_client::bind_temp_auth_key(int32_t temp_key_expire_time)
 
     mtprotocol_serializer s;
     s.out_i32(CODE_bind_auth_key_inner);
-    int64_t rand;
-    tgl_secure_random(reinterpret_cast<unsigned char*>(&rand), 8);
-    s.out_i64(rand);
+    int64_t nonce = 0;
+    while (!nonce) {
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&nonce), sizeof(nonce));
+    }
+    s.out_i64(nonce);
     s.out_i64(m_temp_auth_key_id);
     s.out_i64(m_auth_key_id);
 
@@ -763,7 +765,15 @@ void mtproto_client::bind_temp_auth_key(int32_t temp_key_expire_time)
     memset(data, 0, sizeof(data));
     int len = encrypt_inner_temp(s.i32_data(), s.i32_size(), data, msg_id);
     m_temp_auth_key_bind_query_id = msg_id;
-    tgl_do_bind_temp_key(shared_from_this(), rand, expires, data, len, msg_id);
+
+    auto q = std::make_shared<query_bind_temp_auth_key>(shared_from_this(), msg_id);
+    q->out_i32(CODE_auth_bind_temp_auth_key);
+    q->out_i64(auth_key_id());
+    q->out_i64(nonce);
+    q->out_i32(expires);
+    q->out_string(reinterpret_cast<const char*>(data), len);
+    q->execute(shared_from_this(), query::execution_option::FORCE);
+    assert(q->msg_id() == msg_id);
 }
 
 double mtproto_client::get_server_time()

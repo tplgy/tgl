@@ -3954,62 +3954,6 @@ void user_agent::set_client_logged_out(const std::shared_ptr<mtproto_client>& fr
     set_qts(0, true);
 }
 
-class query_bind_temp_auth_key: public query
-{
-public:
-    query_bind_temp_auth_key(const std::shared_ptr<mtproto_client>& client, int64_t message_id)
-        : query("bind temp auth key", TYPE_TO_PARAM(bool), message_id)
-        , m_client(client)
-    { }
-
-    virtual void on_answer(void*) override
-    {
-        m_client->set_bound();
-        TGL_DEBUG("bind temp auth key successfully for DC " << m_client->id());
-        m_client->configure();
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_WARNING("bind temp auth key error " << error_code << " " << error_string << " for DC " << m_client->id());
-        if (error_code == 400) {
-            m_client->restart_temp_authorization();
-        }
-        return 0;
-    }
-
-    virtual void on_timeout() override
-    {
-        TGL_WARNING("bind timed out for DC " << m_client->id());
-        m_client->restart_temp_authorization();
-    }
-
-    virtual bool should_retry_on_timeout() const override
-    {
-        return false;
-    }
-
-    virtual bool should_retry_after_recover_from_error() const override
-    {
-        return false;
-    }
-
-private:
-    std::shared_ptr<mtproto_client> m_client;
-};
-
-void tgl_do_bind_temp_key(const std::shared_ptr<mtproto_client>& client, int64_t nonce, int32_t expires_at, void* data, int len, int64_t msg_id)
-{
-    auto q = std::make_shared<query_bind_temp_auth_key>(client, msg_id);
-    q->out_i32(CODE_auth_bind_temp_auth_key);
-    q->out_i64(client->auth_key_id());
-    q->out_i64(nonce);
-    q->out_i32(expires_at);
-    q->out_string((char*)data, len);
-    q->execute(client, query::execution_option::FORCE);
-    assert(q->msg_id() == msg_id);
-}
-
 class query_update_status: public query
 {
 public:
