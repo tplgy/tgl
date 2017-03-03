@@ -3402,7 +3402,7 @@ public:
             success = false;
         }
         if (m_callback) {
-            m_callback(false);
+            m_callback(success);
         }
     }
 

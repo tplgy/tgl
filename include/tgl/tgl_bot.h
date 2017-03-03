@@ -23,6 +23,7 @@
 #define __TGL_BOT_H__
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 

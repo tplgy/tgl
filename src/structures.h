@@ -21,7 +21,8 @@
 #ifndef __STRUCTURES_H__
 #define __STRUCTURES_H__
 
-#include <assert.h>
+#include <cassert>
+#include <memory>
 
 #include "auto/auto-types.h"
 #include "tools.h"
