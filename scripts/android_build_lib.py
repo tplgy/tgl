@@ -7,13 +7,13 @@ import os
 import build_lib
 
 def get_ndk_dir():
-    if "ANDROID_HOME" in os.environ:
-        ndk_dir = os.path.join(os.environ["ANDROID_HOME"], "ndk-bundle")
+    if "ANDROID_NDK_HOME" in os.environ:
+        ndk_dir = os.environ["ANDROID_NDK_HOME"]
         if os.path.exists(ndk_dir):
             return ndk_dir
 
-    if "ANDROID_NDK_ROOT" in os.environ:
-        ndk_dir = os.environ["ANDROID_NDK_ROOT"]
+    if "ANDROID_HOME" in os.environ:
+        ndk_dir = os.path.join(os.environ["ANDROID_HOME"], "ndk-bundle")
         if os.path.exists(ndk_dir):
             return ndk_dir
 
