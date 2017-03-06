@@ -223,7 +223,7 @@ ssize_t tgl_fetch_bignum(tgl_in_buffer* in, TGLC_bn* x)
     return l;
 }
 
-int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, TGLC_bn* N, TGLC_bn* E)
+int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, const TGLC_bn* N, const TGLC_bn* E)
 {
     int pad = (255000 - from_len - 32) % 255 + 32;
     int chunks = (from_len + pad) / 255;
@@ -255,7 +255,7 @@ int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC
     return chunks * 256;
 }
 
-int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, TGLC_bn* N, TGLC_bn* D)
+int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, const TGLC_bn* N, const TGLC_bn* D)
 {
     if (from_len < 0 || from_len > 0x1000 || (from_len & 0xff)) {
         return -1;

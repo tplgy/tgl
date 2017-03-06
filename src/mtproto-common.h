@@ -381,8 +381,8 @@ static inline ssize_t in_remaining(struct tgl_in_buffer* in)
     return 4 * (in->end - in->ptr);
 }
 
-int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, TGLC_bn* N, TGLC_bn* E);
-int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, TGLC_bn* N, TGLC_bn* D);
+int tgl_pad_rsa_encrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, const TGLC_bn* N, const TGLC_bn* E);
+int tgl_pad_rsa_decrypt(const char* from, int from_len, char* to, int size, TGLC_bn_ctx* ctx, const TGLC_bn* N, const TGLC_bn* D);
 
 static inline int tgl_pad_rsa_encrypt_dest_buffer_size(int src_buffer_size)
 {
