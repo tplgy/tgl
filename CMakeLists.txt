@@ -127,12 +127,42 @@ set(PRIVATE_HEADERS
     src/mtproto-common.h
     src/mtproto-utils.h
     src/query/query.h
+    src/query/query_add_contacts.h
+    src/query/query_block_or_unblock_user.h
     src/query/query_bind_temp_auth_key.h
+    src/query/query_channel_get_participant.h
+    src/query/query_channels_get_participants.h
+    src/query/query_channels_set_about.h
+    src/query/query_check_password.h
+    src/query/query_check_username.h
     src/query/query_create_chat.h
+    src/query/query_delete_contact.h
+    src/query/query_delete_message.h
     src/query/query_download_file_part.h
     src/query/query_export_auth.h
+    src/query/query_export_card.h
+    src/query/query_export_chat_link.h
+    src/query/query_get_and_check_password.h
+    src/query/query_get_and_set_password.h
+    src/query/query_get_blocked_users.h
+    src/query/query_get_channel_difference.h
+    src/query/query_get_channel_info.h
+    src/query/query_get_chat_info.h
+    src/query/query_get_contacts.h
+    src/query/query_get_dialogs.h
+    src/query/query_get_difference.h
+    src/query/query_get_history.h
+    src/query/query_get_messages.h
+    src/query/query_get_notify_settings.h
+    src/query/query_get_privacy_rules.h
+    src/query/query_get_state.h
+    src/query/query_get_tos.h
     src/query/query_help_get_config.h
     src/query/query_import_auth.h
+    src/query/query_import_card.h
+    src/query/query_logout.h
+    src/query/query_lookup_state.h
+    src/query/query_mark_message_read.h
     src/query/query_mark_read_encr.h
     src/query/query_messages_accept_encryption.h
     src/query/query_messages_discard_encryption.h
@@ -142,7 +172,23 @@ set(PRIVATE_HEADERS
     src/query/query_messages_send_encrypted_base.h
     src/query/query_messages_send_encrypted_file.h
     src/query/query_messages_send_encrypted_message.h
+    src/query/query_msg_send.h
+    src/query/query_phone_call.h
+    src/query/query_register_device.h
+    src/query/query_resolve_username.h
+    src/query/query_search_contact.h
+    src/query/query_search_message.h
+    src/query/query_send_change_code.h
+    src/query/query_send_code.h
+    src/query/query_send_inline_query_to_bot.h
     src/query/query_send_messages.h
+    src/query/query_send_typing.h
+    src/query/query_set_password.h
+    src/query/query_set_phone.h
+    src/query/query_set_profile_name.h
+    src/query/query_sign_in.h
+    src/query/query_update_notify_settings.h
+    src/query/query_update_status.h
     src/query/query_upload_file_part.h
     src/query/query_user_info.h
     src/secret_chat_encryptor.h
@@ -171,10 +217,21 @@ set(SOURCES
     src/mtproto-common.cpp
     src/mtproto-utils.cpp
     src/download_task.cpp
-    src/query/queries.cpp
     src/query/query.cpp
+    src/query/query_channel_get_participant.cpp
+    src/query/query_channels_get_participants.cpp
     src/query/query_create_chat.cpp
     src/query/query_download_file_part.cpp
+    src/query/query_get_and_check_password.cpp
+    src/query/query_get_and_set_password.cpp
+    src/query/query_get_blocked_users.cpp
+    src/query/query_get_channel_difference.cpp
+    src/query/query_get_dialogs.cpp
+    src/query/query_get_difference.cpp
+    src/query/query_get_history.cpp
+    src/query/query_get_messages.cpp
+    src/query/query_get_privacy_rules.cpp
+    src/query/query_get_tos.cpp
     src/query/query_help_get_config.cpp
     src/query/query_messages_accept_encryption.cpp
     src/query/query_messages_get_dh_config.cpp
@@ -183,6 +240,9 @@ set(SOURCES
     src/query/query_messages_send_encrypted_base.cpp
     src/query/query_messages_send_encrypted_file.cpp
     src/query/query_messages_send_encrypted_message.cpp
+    src/query/query_search_message.cpp
+    src/query/query_send_change_code.cpp
+    src/query/query_send_inline_query_to_bot.cpp
     src/query/query_send_messages.cpp
     src/query/query_upload_file_part.cpp
     src/secret_chat_encryptor.cpp

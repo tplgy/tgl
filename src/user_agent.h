@@ -18,8 +18,7 @@
     Copyright Vitaly Valtman 2014-2015
     Copyright Topology LP 2016-2017
 */
-#ifndef __USER_AGENT_H__
-#define __USER_AGENT_H__
+#pragma once
 
 #include "tgl/tgl_connection_status.h"
 #include "tgl/tgl_online_status.h"
@@ -370,5 +369,3 @@ private:
     std::map<int64_t/*msg_id*/, std::shared_ptr<query>> m_active_queries;
     std::set<std::weak_ptr<tgl_online_status_observer>, std::owner_less<std::weak_ptr<tgl_online_status_observer>>> m_online_status_observers;
 };
-
-#endif
