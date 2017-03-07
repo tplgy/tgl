@@ -73,9 +73,9 @@ static inline void RSA_get0_key(const RSA *r, const BIGNUM **n, const BIGNUM **e
 inline static TGLC_rsa* TGLC_rsa_new(unsigned long e, int n_bytes, const unsigned char* n)
 {
     RSA* ret = RSA_new();
-    ret->e = TGLC_bn_new();
-    TGLC_bn_set_word(ret->e, e);
-    RSA_set0_key(ret, TGLC_bn_bin2bn(n, n_bytes, nullptr), ret->e, nullptr);
+    TGLC_bn* e_tglcbn = TGLC_bn_new();
+    TGLC_bn_set_word(e_tglcbn, e);
+    RSA_set0_key(ret, TGLC_bn_bin2bn(n, n_bytes, nullptr), e_tglcbn, nullptr);
     return ret;
 }
 
