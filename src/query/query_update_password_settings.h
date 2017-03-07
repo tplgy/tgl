@@ -27,11 +27,11 @@
 #include <functional>
 #include <string>
 
-class query_set_password: public query
+class query_update_password_settings: public query
 {
 public:
-    explicit query_set_password(const std::function<void(bool)>& callback)
-        : query("set password", TYPE_TO_PARAM(bool))
+    explicit query_update_password_settings(const std::function<void(bool)>& callback)
+        : query("update password settings", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

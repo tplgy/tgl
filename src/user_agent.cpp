@@ -82,7 +82,6 @@
 #include "query/query_send_inline_query_to_bot.h"
 #include "query/query_send_messages.h"
 #include "query/query_send_typing.h"
-#include "query/query_set_password.h"
 #include "query/query_set_phone.h"
 #include "query/query_set_profile_name.h"
 #include "query/query_sign_in.h"
@@ -260,12 +259,12 @@ void user_agent::set_dc_option(bool is_v6, int id, const std::string& ip, int po
     }
 }
 
-void user_agent::set_dc_logged_in(int dc_id)
+void user_agent::set_dc_logged_in(int dc_id, bool logged_in)
 {
     TGL_DEBUG("set signed " << dc_id);
     assert(dc_id > 0 && dc_id <= MAX_DC_ID);
     auto client = m_clients[dc_id];
-    client->set_logged_in();
+    client->set_logged_in(logged_in);
     m_callback->dc_updated(client);
 }
 
@@ -1864,9 +1863,9 @@ void user_agent::export_channel_link(const tgl_input_peer_t& id,
     q->execute(active_client());
 }
 
-void user_agent::set_password(const std::string& hint, const std::function<void(bool success)>& callback)
+void user_agent::update_password_settings(const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_get_and_set_password>(hint, callback);
+    auto q = std::make_shared<query_get_and_set_password>(callback);
     q->out_i32(CODE_account_get_password);
     q->execute(active_client());
 }
@@ -1901,14 +1900,14 @@ void user_agent::password_got(const std::string& current_salt, const std::string
         q->out_string("");
     }
 
-    q->execute(active_client());
+    q->execute(active_client(), query::execution_option::LOGIN);
 }
 
 void user_agent::check_password(const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_get_and_check_password>(callback);
     q->out_i32(CODE_account_get_password);
-    q->execute(active_client());
+    q->execute(active_client(), query::execution_option::LOGIN);
 }
 
 void user_agent::send_broadcast(const std::vector<tgl_input_peer_t>& peers, const std::string& text,

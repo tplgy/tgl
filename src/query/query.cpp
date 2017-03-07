@@ -347,29 +347,7 @@ int query::handle_error(int error_code, const std::string& error_string)
             break;
         case 401:
             if (error_string == "SESSION_PASSWORD_NEEDED") {
-                if (!ua->is_password_locked()) {
-                    ua->set_password_locked(true);
-                    auto shared_this = shared_from_this();
-                    ua->check_password([=](bool success) {
-                        if (!success) {
-                            return;
-                        }
-                        TGL_DEBUG("check password callback");
-                        ua->set_dc_logged_in(ua->active_client()->id());
-                        auto user_info_q = std::make_shared<query_user_info>(nullptr);
-                        user_info_q->out_i32(CODE_users_get_full_user);
-                        user_info_q->out_i32(CODE_input_user_self);
-                        user_info_q->execute(ua->active_client());
-                        if (const auto& client = this->client()) {
-                            client->add_pending_query(shared_this);
-                            client->send_pending_queries();
-                        }
-                    });
-                }
-                if (should_retry_after_recover_from_error()) {
-                    should_retry = true;
-                }
-                error_handled = true;
+                error_handled = handle_session_password_needed(should_retry);
             } else if (error_string == "AUTH_KEY_UNREGISTERED" || error_string == "AUTH_KEY_INVALID") {
                 ua->set_client_logged_out(m_client, true);
                 ua->login();
@@ -422,6 +400,35 @@ int query::handle_error(int error_code, const std::string& error_string)
     }
 
     return on_error_internal(error_code, error_string);
+}
+
+bool query::handle_session_password_needed(bool& should_retry)
+{
+    auto ua = get_user_agent();
+    if (!ua) {
+        return false;
+    }
+
+    ua->set_dc_logged_in(ua->active_client()->id(), false);
+    should_retry = true;
+
+    if (ua->is_password_locked()) {
+        return true;
+    }
+
+    ua->set_password_locked(true);
+
+    ua->check_password([=](bool success) {
+        if (!success) {
+            return;
+        }
+        ua->set_dc_logged_in(ua->active_client()->id());
+        auto q = std::make_shared<query_user_info>(nullptr);
+        q->out_i32(CODE_users_get_full_user);
+        q->out_i32(CODE_input_user_self);
+        q->execute(ua->active_client());
+    });
+    return true;
 }
 
 void query::retry_within(double seconds)

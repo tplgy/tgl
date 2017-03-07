@@ -138,6 +138,7 @@ public:
     void clear_timers();
 
 protected:
+    virtual bool handle_session_password_needed(bool& should_retry);
     void timeout_within(double seconds);
     void retry_within(double seconds);
     std::shared_ptr<user_agent> get_user_agent() const;

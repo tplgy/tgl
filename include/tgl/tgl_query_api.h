@@ -52,8 +52,11 @@ public:
             const std::string& lang_code,
             const std::function<void(bool success)>& callback) = 0;
 
-    // Sets account password. The user will be requested to type his current password and new password (twice)
-    virtual void set_password(const std::string& hint, const std::function<void(bool success)>& callback) = 0;
+    // Set password if there is no password: the API user will get tgl_update_callback::get_value() callback with tgl_value::new_password.
+    // Change password if there is password: the API user will get tgl_update_callback::get_value() callback with tgl_value::current_and_new_password.
+    // Turn off password if there is password: the API user will get tgl_update_callback::get_value() callback with tgl_value::current_and_new_password
+    // and it is expected to pass the empty new password to turn password off.
+    virtual void update_password_settings(const std::function<void(bool success)>& callback) = 0;
 
     // If 0 is passed as message_id this function returns a non-zero int64_t as message id.
     // Otherwise it uses the message_id passed in and returns it. The message id can be changed

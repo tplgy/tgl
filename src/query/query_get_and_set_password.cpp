@@ -22,7 +22,7 @@
 #include "query_get_and_set_password.h"
 
 #include "crypto/tgl_crypto_sha.h"
-#include "query_set_password.h"
+#include "query_update_password_settings.h"
 #include "tgl/tgl_update_callback.h"
 
 struct change_password_state {
@@ -55,7 +55,7 @@ static void tgl_do_act_set_password(const std::shared_ptr<user_agent>& ua,
         return;
     }
 
-    auto q = std::make_shared<query_set_password>(callback);
+    std::shared_ptr<query> q = std::make_shared<query_update_password_settings>(callback);
     q->out_i32(CODE_account_update_password_settings);
 
     if (current_password.size() && current_salt.size()) {
@@ -89,26 +89,35 @@ static void tgl_do_act_set_password(const std::shared_ptr<user_agent>& ua,
 
         q->out_string(d, l);
         q->out_string((const char *)shab, 32);
-        q->out_string(hint.c_str(), hint.size());
+        q->out_std_string(hint);
     } else {
-        q->out_i32(0);
+        q->out_i32(1);
+        q->out_string("");
+        q->out_string("");
+        q->out_string("");
     }
 
     q->execute(ua->active_client());
 }
 
 static void tgl_on_new_pwd(const std::shared_ptr<change_password_state>& state,
-        const std::string& new_password, const std::string& confirm_password)
+        const std::string& new_password, const std::string& confirm_password, const std::string& new_hint)
 {
     auto ua = state->weak_user_agent.lock();
+    if (!ua) {
+        if (state->callback) {
+            state->callback(false);
+        }
+        return;
+    }
 
     state->new_password = new_password;
+    state->hint = new_hint;
+
     if (state->new_password != confirm_password) {
         TGL_ERROR("passwords do not match");
-        if (ua) {
-            ua->callback()->get_value(std::make_shared<tgl_value_new_password>(
-                    std::bind(tgl_on_new_pwd, state, std::placeholders::_1, std::placeholders::_2)));
-        }
+        ua->callback()->get_value(std::make_shared<tgl_value_new_password>(
+                std::bind(tgl_on_new_pwd, state, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
         return;
     }
 
@@ -121,17 +130,9 @@ static void tgl_on_new_pwd(const std::shared_ptr<change_password_state>& state,
             state->callback);
 }
 
-static void tgl_on_old_pwd(const std::shared_ptr<change_password_state>& state,
-        const std::string& current_password, const std::string& new_password, const std::string& confirm_password)
-{
-    state->current_password = current_password;
-    tgl_on_new_pwd(state, new_password, confirm_password);
-}
-
-query_get_and_set_password::query_get_and_set_password(const std::string& hint,
+query_get_and_set_password::query_get_and_set_password(
         const std::function<void(bool)>& callback)
     : query("get and set password", TYPE_TO_PARAM(account_password))
-    , m_hint(hint)
     , m_callback(callback)
 { }
 
@@ -149,30 +150,25 @@ void query_get_and_set_password::on_answer(void* D)
     tl_ds_account_password* DS_AP = static_cast<tl_ds_account_password*>(D);
     std::shared_ptr<change_password_state> state = std::make_shared<change_password_state>();
 
-    if (DS_AP->current_salt && DS_AP->current_salt->data) {
-        state->current_salt = std::string(DS_AP->current_salt->data, DS_AP->current_salt->len);
-    }
-    if (DS_AP->new_salt && DS_AP->new_salt->data) {
-        state->new_salt = std::string(DS_AP->new_salt->data, DS_AP->new_salt->len);
-    }
-
-    if (!m_hint.empty()) {
-        state->hint = m_hint;
-    }
+    state->current_salt = DS_STDSTR(DS_AP->current_salt);
+    state->new_salt = DS_STDSTR(DS_AP->new_salt);
+    state->hint = DS_STDSTR(DS_AP->hint);
 
     state->callback = m_callback;
     state->weak_user_agent = ua;
 
     if (DS_AP->magic == CODE_account_no_password) {
         ua->callback()->get_value(std::make_shared<tgl_value_new_password>(
-                std::bind(tgl_on_new_pwd, state, std::placeholders::_1, std::placeholders::_2)));
+                std::bind(tgl_on_new_pwd, state, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
     } else {
-        // FIXME: pass hint up?
-        //char s[512];
-        //memset(s, 0, sizeof(s));
-        //snprintf(s, sizeof(s) - 1, "old password (hint %.*s): ", DS_RSTR(DS_AP->hint));
         ua->callback()->get_value(std::make_shared<tgl_value_current_and_new_password>(
-                std::bind(tgl_on_old_pwd, state, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
+            [=](const std::string& current_password,
+                    const std::string& new_password,
+                    const std::string& confirm_password,
+                    const std::string& new_hint) {
+                state->current_password = current_password;
+                tgl_on_new_pwd(state, new_password, confirm_password, new_hint);
+            }, state->hint));
     }
 }
 

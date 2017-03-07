@@ -116,10 +116,17 @@ private:
 class tgl_value_new_password: public tgl_value
 {
 public:
-    using acceptor = std::function<void(const std::string& new_password, const std::string& confirm_password)>;
+    using acceptor = std::function<void(const std::string& new_password,
+            const std::string& confirm_password,
+            const std::string& new_hint)>;
     explicit tgl_value_new_password(const acceptor& a): m_acceptor(a) { }
     virtual tgl_value_type type() const override { return tgl_value_type::new_password; }
-    void accept(const std::string& new_password, const std::string& confirm_password) { m_acceptor(new_password, confirm_password); }
+    void accept(const std::string& new_password,
+            const std::string& confirm_password,
+            const std::string& new_hint)
+    {
+        m_acceptor(new_password, confirm_password, new_hint);
+    }
 private:
     acceptor m_acceptor;
 };
@@ -127,12 +134,25 @@ private:
 class tgl_value_current_and_new_password: public tgl_value
 {
 public:
-    using acceptor = std::function<void(const std::string& current_password, const std::string& new_password, const std::string& confirm_password)>;
-    explicit tgl_value_current_and_new_password(const acceptor& a): m_acceptor(a) { }
-    virtual tgl_value_type type() const override { return tgl_value_type::current_password; }
-    void accept(const std::string& current_password, const std::string& new_password, const std::string& confirm_password) { m_acceptor(current_password, new_password, confirm_password); }
+    using acceptor = std::function<void(const std::string& current_password,
+            const std::string& new_password,
+            const std::string& confirm_password,
+            const std::string& new_hint)>;
+    tgl_value_current_and_new_password(const acceptor& a, const std::string& old_hint)
+            : m_acceptor(a), m_old_hint(old_hint)
+    { }
+    virtual tgl_value_type type() const override { return tgl_value_type::current_and_new_password; }
+    const std::string& old_hint() const { return m_old_hint; }
+    void accept(const std::string& current_password,
+            const std::string& new_password,
+            const std::string& confirm_password,
+            const std::string& new_hint)
+    {
+        m_acceptor(current_password, new_password, confirm_password, new_hint);
+    }
 private:
     acceptor m_acceptor;
+    std::string m_old_hint;
 };
 
 class tgl_value_current_password: public tgl_value

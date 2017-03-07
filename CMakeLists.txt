@@ -183,11 +183,11 @@ set(PRIVATE_HEADERS
     src/query/query_send_inline_query_to_bot.h
     src/query/query_send_messages.h
     src/query/query_send_typing.h
-    src/query/query_set_password.h
     src/query/query_set_phone.h
     src/query/query_set_profile_name.h
     src/query/query_sign_in.h
     src/query/query_update_notify_settings.h
+    src/query/query_update_password_settings.h
     src/query/query_update_status.h
     src/query/query_upload_file_part.h
     src/query/query_user_info.h
@@ -244,6 +244,7 @@ set(SOURCES
     src/query/query_send_change_code.cpp
     src/query/query_send_inline_query_to_bot.cpp
     src/query/query_send_messages.cpp
+    src/query/query_sign_in.cpp
     src/query/query_upload_file_part.cpp
     src/secret_chat_encryptor.cpp
     src/structures.cpp

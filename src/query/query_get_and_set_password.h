@@ -30,12 +30,11 @@
 class query_get_and_set_password: public query
 {
 public:
-    query_get_and_set_password(const std::string& hint,
+    explicit query_get_and_set_password(
             const std::function<void(bool)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 
 private:
-    std::string m_hint;
     std::function<void(bool)> m_callback;
 };

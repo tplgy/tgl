@@ -69,7 +69,7 @@ public:
 
     virtual void set_dc_auth_key(int dc_id, const char* key, size_t key_length) override; 
     virtual void set_dc_option(bool is_v6, int id, const std::string& ip, int port) override;
-    virtual void set_dc_logged_in(int dc_id) override;
+    virtual void set_dc_logged_in(int dc_id) override { set_dc_logged_in(dc_id, true); }
     virtual void set_active_dc(int dc_id) override;
 
     virtual void set_our_id(int32_t id) override;
@@ -123,7 +123,7 @@ public:
             bool app_sandbox,
             const std::string& lang_code,
             const std::function<void(bool success)>& callback) override;
-    virtual void set_password(const std::string& hint, const std::function<void(bool success)>& callback) override;
+    virtual void update_password_settings(const std::function<void(bool success)>& callback) override;
     virtual int64_t send_text_message(const tgl_input_peer_t& peer_id, const std::string& text, int64_t message_id = 0,
             int32_t reply_id = 0, bool disable_preview = false, bool post_as_channel_message = false,
             bool send_as_secret_chat_service_message = false,
@@ -295,6 +295,8 @@ public:
     void check_password(const std::function<void(bool success)>& callback);
     void set_client_logged_out(const std::shared_ptr<mtproto_client>& from_client, bool success);
     void fetch_dc_option(const tl_ds_dc_option* DS_DO);
+
+    void set_dc_logged_in(int dc_id, bool logged_in);
 
     // FIXME: merge with remove_query
     void delete_query(int64_t id);
