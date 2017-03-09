@@ -75,7 +75,7 @@ public:
     virtual void mark_messages_read(bool is_outgoing, const tgl_peer_id_t& chat, int64_t message_id_or_max_time) = 0;
     virtual void messages_media_update(const std::shared_ptr<tgl_message_media>& msg_media) = 0;
     virtual void get_value(const std::shared_ptr<tgl_value>& value) = 0;
-    virtual void logged_in() = 0;
+    virtual void logged_in(bool success) = 0;
     virtual void logged_out(bool success) = 0;
     virtual void started() = 0;
     virtual void typing_status_changed(int32_t user_id, int32_t chat_id, tgl_peer_type chat_type, enum tgl_typing_status status) = 0;
@@ -99,7 +99,6 @@ public:
     virtual void user_status_update(struct tgl_user* U) = 0;
     virtual void dc_updated(const std::shared_ptr<tgl_dc>& dc) = 0;
     virtual void active_dc_changed(int32_t new_dc_id) = 0;
-    virtual void on_failed_login() = 0;
     virtual void connection_status_changed(tgl_connection_status status) = 0;
     virtual ~tgl_update_callback() { }
 };

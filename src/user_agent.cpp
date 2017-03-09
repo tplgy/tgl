@@ -2123,7 +2123,7 @@ void user_agent::export_all_auth()
 
 void user_agent::signed_in()
 {
-    callback()->logged_in();
+    callback()->logged_in(true);
     export_all_auth();
     if (!is_started()) {
         set_started(true);
@@ -2260,7 +2260,7 @@ void user_agent::sign_in_phone(const std::string& phone)
         ua->set_phone_number_input_locked(false);
 
         if (!success) {
-            ua->callback()->on_failed_login();
+            ua->callback()->logged_in(false);
             ua->callback()->get_value(std::make_shared<tgl_value_phone_number>(
                     [weak_ua](const std::string& phone) {
                         if (auto ua = weak_ua.lock()) {
