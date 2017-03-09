@@ -241,7 +241,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         if (DS_U->messages) {
             int count = DS_LVAL(DS_U->messages->cnt);
             for (int i = 0; i < count; ++i) {
-                m_user_agent.callback()->message_deleted(**(DS_U->messages->data + i));
+                m_user_agent.callback()->message_deleted(**(DS_U->messages->data + i), tgl_input_peer_t());
             }
         }
         break;
