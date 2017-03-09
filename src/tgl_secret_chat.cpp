@@ -569,7 +569,7 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
     }
 
     if (messages_to_deliver.size()) {
-        ua->callback()->new_messages(messages_to_deliver);
+        ua->callback()->new_or_update_messages(messages_to_deliver);
     }
 
     if (peer_raw_in_seq_no >= 0 && peer_raw_out_seq_no >= 0) {
@@ -919,7 +919,7 @@ void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<tgl_messa
         }
     }
 
-    ua->callback()->new_messages({message});
+    ua->callback()->new_or_update_messages({message});
     q->execute(ua->active_client());
 }
 

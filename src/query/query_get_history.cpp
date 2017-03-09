@@ -56,7 +56,7 @@ void query_get_history::on_answer(void* D)
             message->set_history(true);
             m_messages.push_back(message);
         }
-        ua->callback()->new_messages(m_messages);
+        ua->callback()->new_or_update_messages(m_messages);
     }
 
 #if 0

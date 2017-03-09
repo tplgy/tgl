@@ -16,11 +16,10 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_UPDATE_CALLBACK__
-#define __TGL_UPDATE_CALLBACK__
+#pragma once
 
 #include "tgl_connection_status.h"
 #include "tgl_message.h"
@@ -62,7 +61,8 @@ public:
     virtual void qts_changed(int32_t new_value) = 0;
     virtual void pts_changed(int32_t new_value) = 0;
     virtual void date_changed(int64_t new_value) = 0;
-    virtual void new_messages(const std::vector<std::shared_ptr<tgl_message>>& msgs) = 0;
+
+    virtual void new_or_update_messages(const std::vector<std::shared_ptr<tgl_message>>& msgs) = 0;
 
     // The chat parameter in message_id_updated(), message_sent() and message_deleted() could
     // be empty when it's unknown. The API user is expected to figure out the chat in this case
@@ -102,5 +102,3 @@ public:
     virtual void connection_status_changed(tgl_connection_status status) = 0;
     virtual ~tgl_update_callback() { }
 };
-
-#endif

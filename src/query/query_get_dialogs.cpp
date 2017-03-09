@@ -70,7 +70,7 @@ void query_get_dialogs::on_answer(void* D)
     for (int i = 0; i < DS_LVAL(DS_MD->messages->cnt); i++) {
         new_messages.push_back(tglf_fetch_alloc_message(ua.get(), DS_MD->messages->data[i]));
     }
-    ua->callback()->new_messages(new_messages);
+    ua->callback()->new_or_update_messages(new_messages);
 
     TGL_DEBUG("dl_size = " << dl_size << ", total = " << m_state->peers.size());
 

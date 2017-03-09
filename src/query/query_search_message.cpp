@@ -54,7 +54,7 @@ void query_search_message::on_answer(void* D)
     for (int i = 0; i < n; i++) {
         m_state->messages.push_back(tglf_fetch_alloc_message(ua.get(), DS_MM->messages->data[i]));
     }
-    ua->callback()->new_messages(m_state->messages);
+    ua->callback()->new_or_update_messages(m_state->messages);
     m_state->offset += n;
     m_state->limit -= n;
     if (m_state->limit + m_state->offset >= DS_LVAL(DS_MM->count)) {

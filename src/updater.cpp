@@ -187,7 +187,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
     switch (DS_U->magic) {
     case CODE_update_new_message:
         if (auto message = tglf_fetch_alloc_message(&m_user_agent, DS_U->message)) {
-            m_user_agent.callback()->new_messages({message});
+            m_user_agent.callback()->new_or_update_messages({message});
         }
         break;
     case CODE_update_message_id:
@@ -435,7 +435,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         break;
     case CODE_update_new_channel_message:
         if (auto message = tglf_fetch_alloc_message(&m_user_agent, DS_U->message)) {
-            m_user_agent.callback()->new_messages({message});
+            m_user_agent.callback()->new_or_update_messages({message});
         }
         break;
     case CODE_update_read_channel_inbox:
@@ -570,7 +570,7 @@ void updater::work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mo
     }
 
     auto message = tglf_fetch_alloc_message_short(&m_user_agent, DS_U);
-    m_user_agent.callback()->new_messages({message});
+    m_user_agent.callback()->new_or_update_messages({message});
 
     if (m_user_agent.is_diff_locked()) {
         return;
@@ -596,7 +596,7 @@ void updater::work_update_short_chat_message(const tl_ds_updates* DS_U, tgl_upda
     }
 
     if (auto message = tglf_fetch_alloc_message_short_chat(DS_U)) {
-        m_user_agent.callback()->new_messages({message});
+        m_user_agent.callback()->new_or_update_messages({message});
     }
 
     if (m_user_agent.is_diff_locked()) {
@@ -648,7 +648,7 @@ void updater::work_update_short_sent_message(const tl_ds_updates* DS_U,
         auto new_message = tglf_fetch_alloc_message_short(&m_user_agent, DS_U);
         if (new_message->media) {
             message->media = new_message->media;
-            m_user_agent.callback()->new_messages({message});
+            m_user_agent.callback()->new_or_update_messages({message});
         }
         m_user_agent.callback()->message_sent(message->permanent_id, new_message->permanent_id, new_message->date, message->to_id);
     }

@@ -727,7 +727,7 @@ static void send_message(const std::shared_ptr<user_agent>& ua, const std::share
         }
     }
 
-    ua->callback()->new_messages({M});
+    ua->callback()->new_or_update_messages({M});
     q->execute(ua->active_client());
 }
 
@@ -1937,7 +1937,7 @@ void user_agent::send_broadcast(const std::vector<tgl_input_peer_t>& peers, cons
 
         auto msg = std::make_shared<tgl_message>(message_id, our_id(), peers[i], nullptr, nullptr, &date, text, &TDSM, nullptr, 0, nullptr);
         msg->set_unread(true).set_outgoing(true).set_pending(true);
-        m_callback->new_messages({msg});
+        m_callback->new_or_update_messages({msg});
     }
 
     auto q = std::make_shared<query_send_messages>(E, callback);
