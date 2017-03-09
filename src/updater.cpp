@@ -304,7 +304,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
     case CODE_update_encrypted_messages_read:
         {
             tgl_peer_id_t id(tgl_peer_type::enc_chat, DS_LVAL(DS_U->chat_id));
-            m_user_agent.callback()->messages_mark_read_out(id, DS_LVAL(DS_U->max_date));
+            m_user_agent.callback()->mark_messages_read(true, id, DS_LVAL(DS_U->max_date));
         }
         break;
     case CODE_update_chat_participant_add:
@@ -408,13 +408,13 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
     case CODE_update_read_history_inbox:
         {
             tgl_peer_id_t id = tglf_fetch_peer_id(DS_U->peer);
-            m_user_agent.callback()->messages_mark_read_in(id, DS_LVAL(DS_U->max_id));
+            m_user_agent.callback()->mark_messages_read(false, id, DS_LVAL(DS_U->max_id));
         }
         break;
     case CODE_update_read_history_outbox:
         {
             tgl_peer_id_t id = tglf_fetch_peer_id(DS_U->peer);
-            m_user_agent.callback()->messages_mark_read_out(id, DS_LVAL(DS_U->max_id));
+            m_user_agent.callback()->mark_messages_read(true, id, DS_LVAL(DS_U->max_id));
         }
         break;
     case CODE_update_web_page: {

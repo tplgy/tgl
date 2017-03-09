@@ -44,7 +44,7 @@ public:
     {
         bool success = true;
         if (auto ua = get_user_agent()) {
-            ua->callback()->messages_mark_read_in(tgl_peer_id_t::from_input_peer(m_secret_chat->id()), m_max_time);
+            ua->callback()->mark_messages_read(false, tgl_peer_id_t::from_input_peer(m_secret_chat->id()), m_max_time);
         } else {
             success = false;
         }

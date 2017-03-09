@@ -72,8 +72,7 @@ public:
     virtual void message_sent(int64_t old_message_id, int64_t new_message_id, int64_t new_date, const tgl_input_peer_t& chat) = 0;
     virtual void message_deleted(int64_t message_id, const tgl_input_peer_t& chat) = 0;
 
-    virtual void messages_mark_read_in(tgl_peer_id_t peer, int64_t msg_id_or_max_time) = 0;
-    virtual void messages_mark_read_out(tgl_peer_id_t peer, int64_t msg_id_or_max_time) = 0;
+    virtual void mark_messages_read(bool is_outgoing, const tgl_peer_id_t& chat, int64_t message_id_or_max_time) = 0;
     virtual void messages_media_update(const std::shared_ptr<tgl_message_media>& msg_media) = 0;
     virtual void get_value(const std::shared_ptr<tgl_value>& value) = 0;
     virtual void logged_in() = 0;

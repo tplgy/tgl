@@ -47,7 +47,7 @@ public:
             if (m_callback) {
                 m_callback(true);
             }
-            // FIXME: should we call messages_mark_read_in() callback? What should we pass for msg_id?
+            // FIXME: should we call mark_messages_read() callback for incoming message? What should we pass for msg_id?
             return;
         }
 
@@ -57,7 +57,7 @@ public:
             if (ua->updater().check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count))) {
                 ua->set_pts(DS_LVAL(DS_MAM->pts));
             }
-            ua->callback()->messages_mark_read_in(tgl_peer_id_t::from_input_peer(m_id), DS_LVAL(DS_MAM->pts));
+            ua->callback()->mark_messages_read(false, tgl_peer_id_t::from_input_peer(m_id), DS_LVAL(DS_MAM->pts));
         }
 
         if (m_callback) {
