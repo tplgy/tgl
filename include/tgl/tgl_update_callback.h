@@ -62,7 +62,9 @@ public:
     virtual void pts_changed(int32_t new_value) = 0;
     virtual void date_changed(int64_t new_value) = 0;
 
-    virtual void new_or_update_messages(const std::vector<std::shared_ptr<tgl_message>>& msgs) = 0;
+    // Note that it is only the TGL point of view about whether messages are *new* or *update*
+    virtual void new_messages(const std::vector<std::shared_ptr<tgl_message>>& messages) = 0;
+    virtual void update_messages(const std::vector<std::shared_ptr<tgl_message>>& messages) = 0;
 
     // The chat parameter in message_id_updated(), message_sent() and message_deleted() could
     // be empty when it's unknown. The API user is expected to figure out the chat in this case

@@ -51,7 +51,7 @@ void query_messages_send_encrypted_base::on_answer(void* D)
         tglf_fetch_encrypted_message_file(m_message->media, DS_MSEM->file);
     }
 
-    ua->callback()->new_or_update_messages({m_message});
+    ua->callback()->update_messages({m_message});
 
     if (m_callback) {
         m_callback(!!ua, m_message);
@@ -76,7 +76,7 @@ int query_messages_send_encrypted_base::on_error(int error_code, const std::stri
     if (m_message) {
         m_message->set_pending(false).set_send_failed(true);
         if (auto ua = get_user_agent()) {
-            ua->callback()->new_or_update_messages({m_message});
+            ua->callback()->update_messages({m_message});
         }
     }
     return 0;
@@ -107,7 +107,7 @@ void query_messages_send_encrypted_base::will_send()
     m_secret_chat->private_facet()->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
     if (auto ua = get_user_agent()) {
         ua->callback()->secret_chat_update(m_secret_chat);
-        ua->callback()->new_or_update_messages({m_message});
+        ua->callback()->update_messages({m_message});
     }
 }
 
@@ -155,7 +155,7 @@ void query_messages_send_encrypted_base::construct_message(int64_t message_id, i
     }
     m_message->set_unread(true).set_pending(true);
     if (auto ua = get_user_agent()) {
-        ua->callback()->new_or_update_messages({m_message});
+        ua->callback()->update_messages({m_message});
     }
 }
 

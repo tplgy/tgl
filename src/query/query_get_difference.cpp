@@ -71,7 +71,7 @@ void query_get_difference::on_answer(void* D)
         for (int i = 0; i < message_count; i++) {
             messages.push_back(tglf_fetch_alloc_message(ua.get(), DS_UD->new_messages->data[i]));
         }
-        ua->callback()->new_or_update_messages(messages);
+        ua->callback()->new_messages(messages);
         messages.clear();
 
         int encrypted_message_count = DS_LVAL(DS_UD->new_encrypted_messages->cnt);

@@ -62,7 +62,7 @@ void query_get_messages::on_answer(void* D)
     for (int i = 0; i < DS_LVAL(DS_MM->messages->cnt); i++) {
         messages.push_back(tglf_fetch_alloc_message(ua.get(), DS_MM->messages->data[i]));
     }
-    ua->callback()->new_or_update_messages(messages);
+    ua->callback()->new_messages(messages);
     if (m_multi_callback) {
         assert(!m_single_callback);
         m_multi_callback(true, messages);

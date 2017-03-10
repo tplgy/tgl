@@ -63,7 +63,7 @@ public:
         }
 
         if (auto ua = get_user_agent()) {
-            ua->callback()->new_or_update_messages({m_message});
+            ua->callback()->update_messages({m_message});
         }
         return 0;
     }
