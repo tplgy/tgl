@@ -420,7 +420,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
     case CODE_update_web_page: {
         auto media = std::make_shared<tgl_message_media_webpage>();
         media->webpage = tglf_fetch_alloc_webpage(DS_U->webpage);
-        m_user_agent.callback()->messages_media_update(media);
+        m_user_agent.callback()->message_media_webpage_updated(media);
         break;
     }
     case CODE_update_read_messages_contents:
