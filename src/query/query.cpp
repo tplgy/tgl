@@ -69,7 +69,7 @@ bool query::send()
         return false;
     }
     if (is_logout()) {
-        m_client->set_logout_query_id(msg_id());
+        m_client->set_logout_query(shared_from_this());
     }
     ua->add_query(shared_from_this());
     m_session_id = m_client->session()->session_id;

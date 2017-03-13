@@ -134,10 +134,10 @@ public:
     bool is_bound() const { return m_bound; }
     void set_bound(bool b = true) { m_bound = b; }
 
-    int64_t logout_query_id() const { return m_logout_query_id; }
-    void set_logout_query_id(int64_t id) { m_logout_query_id = id; }
+    const std::shared_ptr<query>& logout_query() const { return m_logout_query; }
+    void set_logout_query(const std::shared_ptr<query>& q) { m_logout_query = q; }
 
-    bool is_logging_out() const { return m_logout_query_id != 0; }
+    bool is_logging_out() const { return !!m_logout_query; }
 
     void set_auth_key(const unsigned char* key, size_t length);
 
@@ -217,6 +217,8 @@ private:
     std::shared_ptr<worker> select_best_worker(const user_agent* ua, bool allow_secondary_workers);
     void worker_job_done(int64_t id);
 
+    void clear_bind_temp_auth_key_query();
+
 private:
     std::weak_ptr<user_agent> m_user_agent;
     int32_t m_id;
@@ -229,7 +231,6 @@ private:
     std::array<unsigned char, 32> m_new_nonce;
     int64_t m_auth_key_id;
     int64_t m_temp_auth_key_id;
-    int64_t m_temp_auth_key_bind_query_id;
     int64_t m_server_salt;
 
     int64_t m_server_time_delta;
@@ -241,12 +242,14 @@ private:
     std::vector<std::pair<std::string, int>> m_ipv4_options;
 
     size_t m_active_queries;
-    int64_t m_logout_query_id;
     bool m_authorized;
     bool m_logged_in;
     bool m_configured;
     bool m_bound;
     std::list<std::shared_ptr<query>> m_pending_queries;
+
+    std::shared_ptr<query> m_logout_query;
+    std::shared_ptr<query> m_bind_temp_auth_key_query;
 
     std::shared_ptr<tgl_timer> m_session_cleanup_timer;
     std::shared_ptr<tgl_rsa_key> m_rsa_key;

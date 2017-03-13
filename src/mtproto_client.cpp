@@ -122,13 +122,11 @@ mtproto_client::mtproto_client(const std::weak_ptr<user_agent>& ua, int32_t id)
     , m_state(state::init)
     , m_auth_key_id(0)
     , m_temp_auth_key_id(0)
-    , m_temp_auth_key_bind_query_id(0)
     , m_server_salt(0)
     , m_server_time_delta(0)
     , m_server_time_udelta(0)
     , m_auth_transfer_in_process(false)
     , m_active_queries(0)
-    , m_logout_query_id(0)
     , m_authorized(false)
     , m_logged_in(false)
     , m_configured(false)
@@ -730,6 +728,21 @@ bool mtproto_client::process_auth_complete(const char* packet, int len, bool tem
     return true;
 }
 
+void mtproto_client::clear_bind_temp_auth_key_query()
+{
+    if (!m_bind_temp_auth_key_query) {
+        return;
+    }
+
+    m_bind_temp_auth_key_query->clear_timers();
+    if (auto ua = m_user_agent.lock()) {
+        if (m_bind_temp_auth_key_query->msg_id()) {
+            ua->remove_query(m_bind_temp_auth_key_query);
+        }
+    }
+    m_bind_temp_auth_key_query = nullptr;
+}
+
 void mtproto_client::bind_temp_auth_key(int32_t temp_key_expire_time)
 {
     if (!m_session) {
@@ -737,11 +750,8 @@ void mtproto_client::bind_temp_auth_key(int32_t temp_key_expire_time)
         return;
     }
 
-    if (m_temp_auth_key_bind_query_id) {
-        if (auto ua = m_user_agent.lock()) {
-            ua->delete_query(m_temp_auth_key_bind_query_id);
-        }
-    }
+    clear_bind_temp_auth_key_query();
+
     int64_t msg_id = generate_next_msg_id();
 
     mtprotocol_serializer s;
@@ -764,9 +774,10 @@ void mtproto_client::bind_temp_auth_key(int32_t temp_key_expire_time)
     int data[1000];
     memset(data, 0, sizeof(data));
     int len = encrypt_inner_temp(s.i32_data(), s.i32_size(), data, msg_id);
-    m_temp_auth_key_bind_query_id = msg_id;
 
     auto q = std::make_shared<query_bind_temp_auth_key>(shared_from_this(), msg_id);
+    m_bind_temp_auth_key_query = q;
+
     q->out_i32(CODE_auth_bind_temp_auth_key);
     q->out_i64(auth_key_id());
     q->out_i64(nonce);
@@ -1679,12 +1690,7 @@ void mtproto_client::reset_authorization()
 
 void mtproto_client::reset_temp_authorization()
 {
-    if (m_temp_auth_key_bind_query_id) {
-        if (auto ua = m_user_agent.lock()) {
-            ua->delete_query(m_temp_auth_key_bind_query_id);
-        }
-        m_temp_auth_key_bind_query_id = 0;
-    }
+    clear_bind_temp_auth_key_query();
     m_rsa_key = nullptr;
     memset(m_temp_auth_key.data(), 0, m_temp_auth_key.size());
     memset(m_nonce.data(), 0, m_nonce.size());

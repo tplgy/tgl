@@ -302,9 +302,6 @@ public:
 
     void set_dc_logged_in(int dc_id, bool logged_in);
 
-    // FIXME: merge with remove_query
-    void delete_query(int64_t id);
-
     void bytes_sent(size_t bytes);
     void bytes_received(size_t bytes);
 

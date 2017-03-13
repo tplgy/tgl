@@ -199,20 +199,6 @@ void user_agent::shut_down()
     m_secret_chats.clear();
 }
 
-void user_agent::delete_query(int64_t id)
-{
-    std::shared_ptr<query> q = get_query(id);
-    if (!q) {
-        return;
-    }
-
-    q->clear_timers();
-
-    if (id) {
-        remove_query(q);
-    }
-}
-
 void user_agent::set_dc_auth_key(int dc_id, const char* key, size_t key_length)
 {
     assert(dc_id > 0 && dc_id <= MAX_DC_ID);
@@ -2125,8 +2111,12 @@ void user_agent::upgrade_group(const tgl_peer_id_t& id, const std::function<void
 void user_agent::set_client_logged_out(const std::shared_ptr<mtproto_client>& from_client, bool success)
 {
     if (from_client->is_logging_out()) {
-        delete_query(from_client->logout_query_id());
-        from_client->set_logout_query_id(0);
+        auto q = from_client->logout_query();
+        q->clear_timers();
+        if (q->msg_id()) {
+            remove_query(q);
+        }
+        from_client->set_logout_query(nullptr);
     }
 
     if (!success) {
@@ -2141,8 +2131,12 @@ void user_agent::set_client_logged_out(const std::shared_ptr<mtproto_client>& fr
             client->clear_session();
         }
         if (client->is_logging_out()) {
-            delete_query(client->logout_query_id());
-            client->set_logout_query_id(0);
+            auto q = from_client->logout_query();
+            q->clear_timers();
+            if (q->msg_id()) {
+                remove_query(q);
+            }
+            from_client->set_logout_query(nullptr);
         }
         client->set_logged_in(false);
     }
