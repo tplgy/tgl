@@ -25,6 +25,7 @@
 #include "tgl_online_status.h"
 #include "tgl_online_status_observer.h"
 #include "tgl_query_api.h"
+#include "tgl_net.h"
 #include "tgl_secret_chat.h"
 
 #include <cstdint>
@@ -106,6 +107,8 @@ public:
             const unsigned char* encr_prime, size_t encr_prime_length,
             const unsigned char* g_key, size_t g_key_length,
             const unsigned char* exchange_key, size_t exchange_key_length) = 0;
+
+    virtual tgl_net_stats get_net_stats(bool reset_after_get = true) = 0;
 };
 
 #endif

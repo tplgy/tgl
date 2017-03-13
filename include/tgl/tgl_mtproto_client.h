@@ -44,6 +44,8 @@ public:
     virtual std::shared_ptr<tgl_timer_factory> timer_factory() const = 0;
     virtual void add_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer) = 0;
     virtual void remove_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer) = 0;
+    virtual void bytes_sent(size_t bytes) = 0;
+    virtual void bytes_received(size_t bytes) = 0;
 };
 
 #endif

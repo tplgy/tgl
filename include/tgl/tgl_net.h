@@ -16,16 +16,22 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
-#ifndef __TGL_NET_H__
-#define __TGL_NET_H__
+#pragma once
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 #include <vector>
 
 #include "tgl_connection_status.h"
+
+struct tgl_net_stats
+{
+    int64_t bytes_sent;
+    int64_t bytes_received;
+};
 
 class tgl_connection {
 public:
@@ -52,5 +58,3 @@ public:
 
     virtual ~tgl_connection_factory() { }
 };
-
-#endif

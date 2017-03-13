@@ -173,6 +173,8 @@ user_agent::user_agent()
     , m_seq(0)
     , m_app_id(0)
     , m_temp_key_expire_time(0)
+    , m_bytes_sent(0)
+    , m_bytes_received(0)
     , m_is_started(false)
     , m_test_mode(false)
     , m_pfs_enabled(false)
@@ -2554,4 +2556,26 @@ void user_agent::create_secret_chat(const tgl_input_peer_t& user_id, int32_t new
     q->out_i32(0);
     q->out_i32(256);
     q->execute(active_client());
+}
+
+void user_agent::bytes_sent(size_t bytes)
+{
+    m_bytes_sent += bytes;
+}
+
+void user_agent::bytes_received(size_t bytes)
+{
+    m_bytes_received += bytes;
+}
+
+tgl_net_stats user_agent::get_net_stats(bool reset_after_get)
+{
+    tgl_net_stats stats;
+    stats.bytes_sent = m_bytes_sent;
+    stats.bytes_received = m_bytes_received;
+    if (reset_after_get) {
+        m_bytes_sent = 0;
+        m_bytes_received = 0;
+    }
+    return stats;
 }

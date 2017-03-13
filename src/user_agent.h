@@ -112,6 +112,8 @@ public:
             const unsigned char* encr_prime, size_t encr_prime_length,
             const unsigned char* g_key, size_t g_key_length,
             const unsigned char* exchange_key, size_t exchange_key_length) override;
+
+    virtual tgl_net_stats get_net_stats(bool reset_after_get = true) override;
     // == tgl_user_agent ==
 
     // == tgl_query_api ==
@@ -309,6 +311,9 @@ public:
     void password_got(const std::string& current_salt, const std::string& password,
             const std::function<void(bool)>& callback);
 
+    void bytes_sent(size_t bytes);
+    void bytes_received(size_t bytes);
+
 private:
     void state_lookup_timeout();
     std::shared_ptr<mtproto_client> allocate_client(int id);
@@ -339,6 +344,9 @@ private:
 
     int32_t m_app_id;
     int32_t m_temp_key_expire_time;
+
+    uint64_t m_bytes_sent;
+    uint64_t m_bytes_received;
 
     bool m_is_started;
     bool m_test_mode;

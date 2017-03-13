@@ -1923,3 +1923,17 @@ void mtproto_client::remove_online_status_observer(const std::weak_ptr<tgl_onlin
         ua->remove_online_status_observer(observer);
     }
 }
+
+void mtproto_client::bytes_sent(size_t bytes)
+{
+    if (auto ua = m_user_agent.lock()) {
+        ua->bytes_sent(bytes);
+    }
+}
+
+void mtproto_client::bytes_received(size_t bytes)
+{
+    if (auto ua = m_user_agent.lock()) {
+        ua->bytes_received(bytes);
+    }
+}

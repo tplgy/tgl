@@ -83,6 +83,8 @@ public:
     virtual bool ipv6_enabled() const override;
     virtual void add_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer) override;
     virtual void remove_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer) override;
+    virtual void bytes_sent(size_t bytes) override;
+    virtual void bytes_received(size_t bytes) override;
 
     // From tgl_dc
     virtual bool is_logged_in() const override { return m_logged_in; }
