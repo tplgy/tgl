@@ -18,8 +18,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_CONNECTION_STATUS_H__
-#define __TGL_CONNECTION_STATUS_H__
+#pragma once
 
 #include <cassert>
 #include <iostream>
@@ -54,5 +53,3 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_connection_status s
     os << to_string(status);
     return os;
 }
-
-#endif

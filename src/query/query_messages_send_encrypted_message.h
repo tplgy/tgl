@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_MESSAGES_SEND_ENCRYPTED_MESSAGE_H__
-#define __TGL_QUERY_MESSAGES_SEND_ENCRYPTED_MESSAGE_H__
+#pragma once
 
 #include "query_messages_send_encrypted_base.h"
 
@@ -41,5 +40,3 @@ public:
 
     virtual void assemble() override;
 };
-
-#endif

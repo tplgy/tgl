@@ -81,8 +81,7 @@ def generate_constants_header():
     scheme_file.seek(0, os.SEEK_SET)
 
     f = open(os.path.join("auto", "constants.h"), "w")
-    f.write("#ifndef __TGL_CONSTANTS_H__\n")
-    f.write("#define __TGL_CONSTANTS_H__\n")
+    f.write("#pragma once\n")
 
     for line in scheme_file:
         list = line.strip().split("#")
@@ -93,8 +92,6 @@ def generate_constants_header():
             continue
         name = re.sub(r"[A-Z.]+", lambda pattern: transform(pattern), list[0])
         f.write("#define CODE_" + name + " 0x" + code_list[0] + "\n")
-
-    f.write("#endif\n")
 
 def concatenate_small_files(file_names, out_file_name):
     out_file = open(out_file_name, "w")

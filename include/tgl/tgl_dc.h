@@ -18,8 +18,8 @@
     Copyright Vitaly Valtman 2014-2015
     Copyright Topology LP 2016
 */
-#ifndef __TGL_DC_H__
-#define __TGL_DC_H__
+
+#pragma once
 
 #include <array>
 #include <stdint.h>
@@ -39,5 +39,3 @@ public:
     virtual double time_difference() const = 0;
     virtual ~tgl_dc() { }
 };
-
-#endif

@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef TGL_FILE_LOCATION
-#define TGL_FILE_LOCATION
+#pragma once
 
 #include <cstdint>
 
@@ -53,5 +52,3 @@ private:
     int64_t m_volume; // == id in documents
     int64_t m_secret; // == access hash for documents
 };
-
-#endif // TGL_FILE_LOCATION

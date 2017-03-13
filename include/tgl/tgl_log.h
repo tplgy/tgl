@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_LOG_H__
-#define __TGL_LOG_H__
+#pragma once
 
 #include <cassert>
 #include <functional>
@@ -80,6 +79,4 @@ constexpr int32_t basename_index(const char* const path, const int32_t index = 0
 
 #if defined(__SIZEOF_INT128__)
 std::ostream& operator<<(std::ostream& s, __int128 i);
-#endif
-
 #endif

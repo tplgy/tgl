@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TRANSFER_MANAGER_H__
-#define __TRANSFER_MANAGER_H__
+#pragma once
 
 #include "tgl/tgl_transfer_manager.h"
 
@@ -111,5 +110,3 @@ private:
 };
 
 static constexpr size_t BIG_FILE_THRESHOLD = 10 * 1024 * 1024;
-
-#endif

@@ -18,8 +18,7 @@
     Copyright Ben Wiederhake 2015
 */
 
-#ifndef __TGL_CRYPTO_BN_H__
-#define __TGL_CRYPTO_BN_H__
+#pragma once
 
 #include <openssl/bn.h>
 
@@ -175,5 +174,3 @@ struct tgl_bn_context {
     }
     TGLC_bn_ctx* ctx;
 };
-
-#endif

@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_VALUE_H__
-#define __TGL_VALUE_H__
+#pragma once
 
 #include <cassert>
 #include <iostream>
@@ -176,5 +175,3 @@ public:
 private:
     acceptor m_acceptor;
 };
-
-#endif

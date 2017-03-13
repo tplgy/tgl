@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TOOLS_H__
-#define __TOOLS_H__
+#pragma once
 
 #include "crypto/tgl_crypto_err.h"
 
@@ -96,5 +95,3 @@ static inline std::string tgl_binary_to_hex(const char* buffer, size_t length)
 
     return std::string(result.data(), result.size());
 }
-
-#endif

@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_USER_INFO_H__
-#define __TGL_QUERY_USER_INFO_H__
+#pragma once
 
 #include "query.h"
 #include "structures.h"
@@ -62,5 +61,3 @@ public:
 private:
     std::function<void(bool, const std::shared_ptr<tgl_user>&)> m_callback;
 };
-
-#endif

@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_EXPORT_AUTH_H__
-#define __TGL_QUERY_EXPORT_AUTH_H__
+#pragma once
 
 #include "query.h"
 #include "query_import_auth.h"
@@ -76,5 +75,3 @@ private:
     std::shared_ptr<mtproto_client> m_client;
     std::function<void(bool)> m_callback;
 };
-
-#endif

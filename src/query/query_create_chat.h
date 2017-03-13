@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_CREATE_CHAT_H__
-#define __TGL_QUERY_CREATE_CHAT_H__
+#pragma once
 
 #include "query.h"
 
@@ -38,5 +37,3 @@ public:
 private:
     std::function<void(int32_t)> m_callback;
 };
-
-#endif

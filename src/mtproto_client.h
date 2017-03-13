@@ -17,10 +17,10 @@
 
     Copyright Nikolay Durov, Andrey Lopatin 2012-2013
               Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
-#ifndef __MTPROTO_CLIENT_H__
-#define __MTPROTO_CLIENT_H__
+
+#pragma once
 
 #include "crypto/tgl_crypto_bn.h"
 #include "tgl/tgl_mtproto_client.h"
@@ -252,5 +252,3 @@ private:
     std::shared_ptr<tgl_rsa_key> m_rsa_key;
     std::set<std::weak_ptr<connection_status_observer>, std::owner_less<std::weak_ptr<connection_status_observer>>> m_connection_status_observers;
 };
-
-#endif

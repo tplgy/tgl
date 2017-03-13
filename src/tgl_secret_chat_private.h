@@ -16,11 +16,10 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_SECRET_CHAT_PRIVATE_H__
-#define __TGL_SECRET_CHAT_PRIVATE_H__
+#pragma once
 
 #include "crypto/tgl_crypto_bn.h"
 #include "crypto/tgl_crypto_sha.h"
@@ -239,5 +238,3 @@ inline tgl_secret_chat_private_facet* tgl_secret_chat::private_facet()
 {
     return static_cast<tgl_secret_chat_private_facet*>(this);
 }
-
-#endif

@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_CHAT_H__
-#define __TGL_CHAT_H__
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -88,5 +87,3 @@ struct tgl_chat {
         , forbidden(false)
     { }
 };
-
-#endif

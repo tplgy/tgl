@@ -8,8 +8,7 @@
  * Commit was: 1eca2ab34f2301b9641aa73d1016b951fff3fc39
  * Re-published at https://github.com/BenWiederhake/portable-endian.h to provide a means to submit patches and report issues. */
 
-#ifndef PORTABLE_ENDIAN_H__
-#define PORTABLE_ENDIAN_H__
+#pragma once
 
 #if (defined(_WIN16) || defined(_WIN32) || defined(_WIN64)) && !defined(__WINDOWS__)
 
@@ -116,7 +115,5 @@
 #else
 
 #	error platform not supported
-
-#endif
 
 #endif

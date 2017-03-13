@@ -17,10 +17,10 @@
 
     Copyright Nikolay Durov, Andrey Lopatin 2012-2013
               Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
-#ifndef __TGL_MTPROTO_CLIENT_H__
-#define __TGL_MTPROTO_CLIENT_H__
+
+#pragma once
 
 #include <memory>
 
@@ -47,5 +47,3 @@ public:
     virtual void bytes_sent(size_t bytes) = 0;
     virtual void bytes_received(size_t bytes) = 0;
 };
-
-#endif

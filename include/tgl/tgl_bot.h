@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_BOT_H__
-#define __TGL_BOT_H__
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -39,5 +38,3 @@ struct tgl_bot_info {
     std::vector<std::shared_ptr<tgl_bot_command>> commands;
     tgl_bot_info(): version(0) { }
 };
-
-#endif

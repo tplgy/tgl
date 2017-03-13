@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_H__
-#define __TGL_QUERY_H__
+#pragma once
 
 #include "auto/auto.h"
 #include "auto/auto-types.h"
@@ -171,5 +170,3 @@ private:
     std::shared_ptr<tgl_timer> m_retry_timer;
     std::shared_ptr<mtproto_client> m_client;
 };
-
-#endif

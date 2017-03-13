@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_SECRET_CHAT_H__
-#define __TGL_SECRET_CHAT_H__
+#pragma once
 
 #include "tgl_peer_id.h"
 
@@ -148,5 +147,3 @@ private:
     friend class tgl_secret_chat_private_facet;
     std::unique_ptr<tgl_secret_chat_private> d;
 };
-
-#endif

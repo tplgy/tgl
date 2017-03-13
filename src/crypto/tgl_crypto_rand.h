@@ -18,8 +18,7 @@
     Copyright Ben Wiederhake 2015
 */
 
-#ifndef __TGL_CRYPTO_RAND_H__
-#define __TGL_CRYPTO_RAND_H__
+#pragma once
 
 #include <openssl/rand.h>
 
@@ -37,5 +36,3 @@ inline static int TGLC_rand_pseudo_bytes(unsigned char* buf, int num)
 {
     return RAND_pseudo_bytes(buf, num);
 }
-
-#endif

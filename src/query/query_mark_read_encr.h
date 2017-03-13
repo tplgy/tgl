@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_MARK_READ_ENCR_H__
-#define __TGL_QUERY_MARK_READ_ENCR_H__
+#pragma once
 
 #include "query.h"
 
@@ -73,5 +72,3 @@ private:
     int32_t m_max_time;
     std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
 };
-
-#endif

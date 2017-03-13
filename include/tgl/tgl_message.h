@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_MESSAGE_H__
-#define __TGL_MESSAGE_H__
+#pragma once
 
 #include "tgl_message_action.h"
 #include "tgl_message_entity.h"
@@ -114,5 +113,3 @@ private:
     static constexpr size_t index_history = 6;
     std::bitset<32> m_flags;
 };
-
-#endif

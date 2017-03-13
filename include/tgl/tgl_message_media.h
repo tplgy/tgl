@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_MESSAGE_MEDIA_H__
-#define __TGL_MESSAGE_MEDIA_H__
+#pragma once
 
 #include "tgl_file_location.h"
 
@@ -227,5 +226,3 @@ struct tgl_message_media_audio: public tgl_message_media {
     std::shared_ptr<tgl_document> document;
     std::string caption;
 };
-
-#endif

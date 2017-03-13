@@ -18,8 +18,7 @@
     Copyright Ben Wiederhake 2015
 */
 
-#ifndef __TGL_CRYPTO_RSA_PEM_H__
-#define __TGL_CRYPTO_RSA_PEM_H__
+#pragma once
 
 #include "tgl_crypto_bn.h"
 
@@ -105,5 +104,3 @@ inline static TGLC_rsa* TGLC_pem_read_RSAPublicKey(const char* pem)
     BIO_free(bufio);
     return res;
 }
-
-#endif

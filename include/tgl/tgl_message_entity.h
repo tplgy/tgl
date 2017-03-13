@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_MESSAGE_ENTITY_H__
-#define __TGL_MESSAGE_ENTITY_H__
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -50,5 +49,3 @@ struct tgl_message_entity {
         , length(0)
     { }
 };
-
-#endif

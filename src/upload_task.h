@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_UPLOAD_TASK_H__
-#define __TGL_UPLOAD_TASK_H__
+#pragma once
 
 #include "tgl/tgl_peer_id.h"
 #include "tgl/tgl_transfer_manager.h"
@@ -87,5 +86,3 @@ public:
 private:
     bool m_cancel_requested;
 };
-
-#endif

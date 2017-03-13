@@ -16,11 +16,10 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_API_H__
-#define __TGL_QUERY_API_H__
+#pragma once
 
 #include "tgl_channel.h"
 #include "tgl_chat.h"
@@ -299,5 +298,3 @@ public:
                     const std::vector<int64_t>& last_msg_ids,
                     const std::vector<int>& unread_count)>& callback) = 0;
 };
-
-#endif

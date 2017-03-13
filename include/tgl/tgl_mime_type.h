@@ -19,13 +19,10 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_MIME_TYPE_H__
-#define __TGL_MIME_TYPE_H__
+#pragma once
 
 #include <string>
 
 std::string tgl_mime_type_by_filename(const std::string& filename);
 std::string tgl_mime_type_by_extension(const std::string& extension);
 std::string tgl_extension_by_mime_type(const std::string& mime_type);
-
-#endif

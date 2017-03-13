@@ -18,8 +18,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_ONLINE_STATUS_H__
-#define __TGL_ONLINE_STATUS_H__
+#pragma once
 
 #include <cassert>
 #include <iostream>
@@ -52,5 +51,3 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_online_status statu
     os << to_string(status);
     return os;
 }
-
-#endif

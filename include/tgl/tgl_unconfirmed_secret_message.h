@@ -18,8 +18,7 @@
     Copyright Topology LP 2017
 */
 
-#ifndef __TGL_UNCONFIRMED_SECRET_MESSAGE_H__
-#define __TGL_UNCONFIRMED_SECRET_MESSAGE_H__
+#pragma once
 
 #include <memory>
 #include <stdint.h>
@@ -43,5 +42,3 @@ public:
     static std::shared_ptr<tgl_unconfirmed_secret_message> create_default_impl(int64_t message_id,
             int64_t date, int32_t chat_id, int32_t in_seq_no, int32_t out_seq_no, bool is_out_going, uint32_t construtor_code);
 };
-
-#endif

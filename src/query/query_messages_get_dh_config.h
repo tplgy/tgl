@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_MESSAGES_GET_DH_CONFIG_H__
-#define __TGL_QUERY_MESSAGES_GET_DH_CONFIG_H__
+#pragma once
 
 #include "query.h"
 
@@ -52,5 +51,3 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_final_callback;
     double m_timeout;
 };
-
-#endif

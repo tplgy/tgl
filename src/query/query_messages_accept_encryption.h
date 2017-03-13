@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_MESSAGES_ACCEPT_ENCRYPTION_H__
-#define __TGL_QUERY_MESSAGES_ACCEPT_ENCRYPTION_H__
+#pragma once
 
 #include "query.h"
 
@@ -38,5 +37,3 @@ private:
     std::shared_ptr<tgl_secret_chat> m_secret_chat;
     std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_callback;
 };
-
-#endif

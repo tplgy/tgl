@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_SECRET_CHAT_ENCRYPTOR_H__
-#define __TGL_SECRET_CHAT_ENCRYPTOR_H__
+#pragma once
 
 #include <memory>
 
@@ -45,5 +44,3 @@ private:
     std::shared_ptr<mtprotocol_serializer> m_serializer;
     size_t m_encr_base;
 };
-
-#endif

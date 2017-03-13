@@ -18,9 +18,6 @@
     Copyright Ben Wiederhake 2015
 */
 
-#ifndef __TGL_SECURE_RANDOM_H__
-#define __TGL_SECURE_RANDOM_H__
+#pragma once
 
 void tgl_secure_random(unsigned char* result, int length);
-
-#endif

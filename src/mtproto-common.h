@@ -19,8 +19,8 @@
               Vitaly Valtman 2013-2015
     Copyright Topology LP 2016
 */
-#ifndef __MTPROTO_COMMON_H__
-#define __MTPROTO_COMMON_H__
+
+#pragma once
 
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_bn.h"
@@ -408,5 +408,3 @@ static inline int tgl_pad_aes_decrypt_dest_buffer_size(int src_buffer_size)
     assert(src_buffer_size > 0);
     return src_buffer_size;
 }
-
-#endif

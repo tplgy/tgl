@@ -18,8 +18,7 @@
     Copyright Ben Wiederhake 2015
 */
 
-#ifndef __TGL_CRYPTO_SHA_H__
-#define __TGL_CRYPTO_SHA_H__
+#pragma once
 
 #include <openssl/sha.h>
 
@@ -34,5 +33,3 @@ inline static void TGLC_sha256(const unsigned char* d, size_t n, unsigned char* 
 {
     SHA256(d, n, md);
 }
-
-#endif

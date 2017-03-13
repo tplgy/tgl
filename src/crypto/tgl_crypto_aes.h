@@ -18,8 +18,7 @@
     Copyright Ben Wiederhake 2015
 */
 
-#ifndef __TGL_CRYPTO_AES_H__
-#define __TGL_CRYPTO_AES_H__
+#pragma once
 
 #include <openssl/aes.h>
 
@@ -46,5 +45,3 @@ inline static void TGLC_aes_ige_encrypt(const unsigned char* in, unsigned char* 
 {
     AES_ige_encrypt(in, out, length, key, ivec, enc);
 }
-
-#endif

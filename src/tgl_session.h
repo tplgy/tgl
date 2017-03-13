@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_SESSION_H__
-#define __TGL_SESSION_H__
+#pragma once
 
 #include "tgl/tgl_timer.h"
 
@@ -61,5 +60,3 @@ struct tgl_session {
 
     void clear();
 };
-
-#endif

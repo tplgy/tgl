@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_UPLOAD_FILE_PART_H__
-#define __TGL_QUERY_UPLOAD_FILE_PART_H__
+#pragma once
 
 #include "query.h"
 #include "transfer_manager.h"
@@ -48,5 +47,3 @@ private:
     std::shared_ptr<upload_task> m_upload;
     std::function<void(bool success)> m_callback;
 };
-
-#endif

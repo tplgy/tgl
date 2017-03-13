@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_DOWNLOAD_FILE_PART_H__
-#define __TGL_QUERY_DOWNLOAD_FILE_PART_H__
+#pragma once
 
 #include "query.h"
 
@@ -46,5 +45,3 @@ private:
     std::shared_ptr<download_task> m_download;
     std::function<void(const tl_ds_upload_file*)> m_callback;
 };
-
-#endif

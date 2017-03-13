@@ -18,8 +18,7 @@
     Copyright Ben Wiederhake 2015
 */
 
-#ifndef __TGL_CRYPTO_ERR_H__
-#define __TGL_CRYPTO_ERR_H__
+#pragma once
 
 #include <openssl/err.h>
 
@@ -29,5 +28,3 @@ inline static void TGLC_err_print_errors_fp(FILE* fp)
 {
     ERR_print_errors_fp(fp);
 }
-
-#endif

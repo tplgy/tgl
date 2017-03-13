@@ -2431,8 +2431,7 @@ void gen_autocomplete_source (void) {
 }
 
 void gen_types_header (void) {
-  printf ("#ifndef __AUTO_TYPES_H__\n");
-  printf ("#define __AUTO_TYPES_H__\n");
+  printf ("#pragma once\n");
   printf ("#include \"auto/auto.h\"\n");
 
   printf ("struct tgl_in_buffer;\n");
@@ -2494,8 +2493,6 @@ void gen_types_header (void) {
     }
     printf ("};\n");
   }
-
-  printf ("#endif\n");
 }
 
 void gen_types_source (void) {

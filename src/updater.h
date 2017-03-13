@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_UPDATER_H__
-#define __TGL_UPDATER_H__
+#pragma once
 
 #include <memory>
 
@@ -67,5 +66,3 @@ private:
 private:
     user_agent& m_user_agent;
 };
-
-#endif

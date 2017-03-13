@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_USER_H__
-#define __TGL_USER_H__
+#pragma once
 
 #include "tgl_file_location.h"
 #include "tgl_peer_id.h"
@@ -92,5 +91,3 @@ private:
     bool m_deleted;
     bool m_official;
 };
-
-#endif

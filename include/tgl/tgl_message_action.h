@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_MESSAGE_ACTION_H__
-#define __TGL_MESSAGE_ACTION_H__
+#pragma once
 
 #include "tgl_message_media.h"
 #include "tgl_typing_status.h"
@@ -215,5 +214,3 @@ struct tgl_message_action_opaque_message: public tgl_message_action {
     virtual tgl_message_action_type type() override { return tgl_message_action_type::opaque_message; }
     std::string message;
 };
-
-#endif

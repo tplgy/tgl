@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_CHANNEL_H__
-#define __TGL_CHANNEL_H__
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -59,5 +58,3 @@ struct tgl_channel: public tgl_chat {
         , diff_locked(false)
     { }
 };
-
-#endif

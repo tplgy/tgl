@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_TYPING_STATUS_H__
-#define __TGL_TYPING_STATUS_H__
+#pragma once
 
 #include <cassert>
 #include <iostream>
@@ -76,5 +75,3 @@ inline std::ostream& operator<<(std::ostream& os, tgl_typing_status status)
     os << to_string(status);
     return os;
 }
-
-#endif

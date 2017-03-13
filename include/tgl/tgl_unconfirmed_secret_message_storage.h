@@ -18,8 +18,7 @@
     Copyright Topology LP 2017
 */
 
-#ifndef __TGL_UNCONFIRMED_SECRET_MESSAGE_STORAGE_H__
-#define __TGL_UNCONFIRMED_SECRET_MESSAGE_STORAGE_H__
+#pragma once
 
 #include "tgl_unconfirmed_secret_message.h"
 
@@ -40,5 +39,3 @@ public:
 
     virtual void remove_messages_by_out_seq_no(int32_t chat_id, int32_t seq_no_start, int32_t seq_no_end, bool is_out_going) = 0;
 };
-
-#endif

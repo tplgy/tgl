@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_HELP_GET_CONFIG_H__
-#define __TGL_QUERY_HELP_GET_CONFIG_H__
+#pragma once
 
 #include "query.h"
 
@@ -35,5 +34,3 @@ public:
 private:
     std::function<void(bool)> m_callback;
 };
-
-#endif

@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_USER_AGENT_H__
-#define __TGL_USER_AGENT_H__
+#pragma once
 
 #include "tgl_online_status.h"
 #include "tgl_online_status_observer.h"
@@ -110,5 +109,3 @@ public:
 
     virtual tgl_net_stats get_net_stats(bool reset_after_get = true) = 0;
 };
-
-#endif

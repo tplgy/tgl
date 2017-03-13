@@ -19,13 +19,12 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __AUTO_H__
-#define __AUTO_H__
+#pragma once
 
-#include <assert.h>
+#include <cassert>
 #include <cstdint>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 #include <string>
 
 struct tl_type_descr {
@@ -70,6 +69,4 @@ static inline void *memdup (const void *d, int len) {
 #define DS_BVAL(x) ((x) && ((x)->magic == CODE_bool_true))
 #define DS_BOOL(x) ((x) ? true : false)
 
-void tgl_paramed_type_free (struct paramed_type *P);
-
-#endif
+void tgl_paramed_type_free(struct paramed_type *P);

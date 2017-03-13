@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __QUERY_MESSAGES_SEND_ENCRYPTED_FILE__
-#define __QUERY_MESSAGES_SEND_ENCRYPTED_FILE__
+#pragma once
 
 #include "query_messages_send_encrypted_base.h"
 
@@ -58,5 +57,3 @@ private:
     std::shared_ptr<upload_task> m_upload;
     std::unique_ptr<decrypted_message_media> m_message_media;
 };
-
-#endif

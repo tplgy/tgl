@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_TIMER_H__
-#define __TGL_TIMER_H__
+#pragma once
 
 #include <memory>
 #include <functional>
@@ -37,5 +36,3 @@ public:
     virtual std::shared_ptr<tgl_timer> create_timer(const std::function<void()>& cb) = 0;
     virtual ~tgl_timer_factory() { }
 };
-
-#endif

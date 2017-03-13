@@ -18,8 +18,7 @@
     Copyright Topology LP 2017
 */
 
-#ifndef __UNCONFIRMED_SECRET_MESSAGE_H__
-#define __UNCONFIRMED_SECRET_MESSAGE_H__
+#pragma once
 
 #include "tgl/tgl_unconfirmed_secret_message.h"
 
@@ -62,5 +61,3 @@ private:
     bool m_is_out_going;
     std::vector<std::string> m_blobs;
 };
-
-#endif

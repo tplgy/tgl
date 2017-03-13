@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_TRANSFER_MANAGER_H__
-#define __TGL_TRANSFER_MANAGER_H__
+#pragma once
 
 #include "tgl_file_location.h"
 #include "tgl_peer_id.h"
@@ -198,5 +197,3 @@ public:
 
     virtual bool is_downloading_file(int64_t download_id) const = 0;
 };
-
-#endif

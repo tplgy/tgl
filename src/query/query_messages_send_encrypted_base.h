@@ -19,8 +19,7 @@
     Copyright Topology LP 2016-2017
 */
 
-#ifndef __TGL_QUERY_MESSAGES_SEND_ENCRYPTED_BASE_H__
-#define __TGL_QUERY_MESSAGES_SEND_ENCRYPTED_BASE_H__
+#pragma once
 
 #include <exception>
 #include <functional>
@@ -76,5 +75,3 @@ protected:
 private:
     std::shared_ptr<tgl_unconfirmed_secret_message> m_unconfirmed_message;
 };
-
-#endif

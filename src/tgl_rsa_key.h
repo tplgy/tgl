@@ -19,8 +19,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_RSA_KEY_H__
-#define __TGL_RSA_KEY_H__
+#pragma once
 
 #include <cassert>
 #include <cstdint>
@@ -68,5 +67,3 @@ private:
     std::unique_ptr<TGLC_rsa, RSA_deleter> m_public_key;
     int64_t m_fingerprint;
 };
-
-#endif

@@ -18,8 +18,7 @@
     Copyright Topology LP 2016
 */
 
-#ifndef __TGL_ONLINE_STATUS_OBSERVER_H__
-#define __TGL_ONLINE_STATUS_OBSERVER_H__
+#pragma once
 
 #include "tgl_online_status.h"
 
@@ -29,5 +28,3 @@ public:
     virtual void on_online_status_changed(tgl_online_status status) = 0;
     virtual ~tgl_online_status_observer() { }
 };
-
-#endif
