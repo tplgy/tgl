@@ -29,8 +29,8 @@
 
 struct tgl_net_stats
 {
-    int64_t bytes_sent;
-    int64_t bytes_received;
+    uint64_t bytes_sent;
+    uint64_t bytes_received;
 };
 
 class tgl_connection {
