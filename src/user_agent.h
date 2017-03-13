@@ -305,14 +305,6 @@ public:
     // FIXME: merge with remove_query
     void delete_query(int64_t id);
 
-    // FIXME: move these to private
-    void signed_in();
-    void call_me(const std::string& phone, const std::string& hash,
-            const std::function<void(bool)>& callback);
-    void sign_in_phone(const std::string& phone_number);
-    void password_got(const std::string& current_salt, const std::string& password,
-            const std::function<void(bool)>& callback);
-
     void bytes_sent(size_t bytes);
     void bytes_received(size_t bytes);
 
@@ -320,6 +312,7 @@ private:
     void state_lookup_timeout();
     std::shared_ptr<mtproto_client> allocate_client(int id);
     void sign_in();
+    void signed_in();
     void export_all_auth();
     void send_code(const std::string& phone, const std::function<void(bool, bool, const std::string&)>& callback);
     void send_code_result(const std::string& phone,
@@ -330,6 +323,7 @@ private:
             const std::string& code, tgl_login_action action);
     void register_me(const std::string& phone, const std::string& hash,
             bool register_user, const std::string& first_name, const std::string& last_name);
+    void sign_in_phone(const std::string& phone_number);
     void sign_up_code(const std::string& phone, const std::string& hash,
             const std::string& first_name, const std::string& last_name, const std::string& code, tgl_login_action action);
     void lookup_state();
@@ -345,6 +339,10 @@ private:
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
             std::array<unsigned char, 256>& random,
             const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback);
+    void call_me(const std::string& phone, const std::string& hash,
+            const std::function<void(bool)>& callback);
+    void password_got(const std::string& current_salt, const std::string& password,
+            const std::function<void(bool)>& callback);
 
 private:
     friend class tgl_user_agent;

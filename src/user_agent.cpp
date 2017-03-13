@@ -1914,7 +1914,35 @@ void user_agent::password_got(const std::string& current_salt, const std::string
 
 void user_agent::check_password(const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_get_and_check_password>(callback);
+    std::weak_ptr<user_agent> weak_ua = shared_from_this();
+    auto q = std::make_shared<query_get_and_check_password>([weak_ua, callback](const tl_ds_account_password* DS_AP) {
+        auto ua = weak_ua.lock();
+        if (!ua || !DS_AP) {
+            if (ua) {
+                ua->set_password_locked(false);
+            }
+            if (callback) {
+                callback(false);
+            }
+            return;
+        }
+
+        if (DS_AP->magic == CODE_account_no_password) {
+            ua->set_password_locked(false);
+            return;
+        }
+
+        std::string current_salt = DS_STDSTR(DS_AP->current_salt);
+        ua->callback()->get_value(std::make_shared<tgl_value_current_password>(
+            [weak_ua, current_salt, callback](const std::string& password) {
+                if (auto ua = weak_ua.lock()) {
+                    ua->password_got(current_salt, password, callback);
+                } else if (callback) {
+                    callback(false);
+                }
+            }));
+    });
+
     q->out_i32(CODE_account_get_password);
     q->execute(active_client(), query::execution_option::LOGIN);
 }
