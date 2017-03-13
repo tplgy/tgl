@@ -334,6 +334,18 @@ private:
             const std::string& first_name, const std::string& last_name, const std::string& code, tgl_login_action action);
     void lookup_state();
 
+    void send_text_message(const std::shared_ptr<tgl_message>& message, bool disable_preview,
+            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+    void mark_encrypted_message_read(const tgl_input_peer_t& id, int32_t max_time,
+            const std::function<void(bool success)>& callback);
+    void send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            std::array<unsigned char, 256>& random,
+            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback);
+    void send_create_encr_chat(const tgl_input_peer_t& user_id,
+            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            std::array<unsigned char, 256>& random,
+            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback);
+
 private:
     friend class tgl_user_agent;
     tgl_online_status m_online_status;
