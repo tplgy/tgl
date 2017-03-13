@@ -186,6 +186,7 @@ set(PRIVATE_HEADERS
     src/query/query_set_phone.h
     src/query/query_set_profile_name.h
     src/query/query_sign_in.h
+    src/query/query_unregister_device.h
     src/query/query_update_notify_settings.h
     src/query/query_update_password_settings.h
     src/query/query_update_status.h
@@ -245,6 +246,7 @@ set(SOURCES
     src/query/query_send_inline_query_to_bot.cpp
     src/query/query_send_messages.cpp
     src/query/query_sign_in.cpp
+    src/query/query_unregister_device.cpp
     src/query/query_upload_file_part.cpp
     src/secret_chat_encryptor.cpp
     src/structures.cpp

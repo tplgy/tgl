@@ -85,6 +85,7 @@
 #include "query/query_set_phone.h"
 #include "query/query_set_profile_name.h"
 #include "query/query_sign_in.h"
+#include "query/query_unregister_device.h"
 #include "query/query_update_notify_settings.h"
 #include "query/query_update_status.h"
 #include "query/query_user_info.h"
@@ -182,6 +183,7 @@ user_agent::user_agent()
     , m_diff_locked(false)
     , m_password_locked(false)
     , m_phone_number_input_locked(false)
+    , m_device_token_type(0)
     , m_bn_ctx(std::make_unique<tgl_bn_context>(TGLC_bn_ctx_new()))
     , m_updater(std::make_unique<class updater>(*this))
 {
@@ -630,13 +632,23 @@ void user_agent::logout()
     }
 
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
-    auto q = std::make_shared<query_logout>([=](bool success) {
-        if (auto ua = weak_ua.lock()) {
-            ua->callback()->logged_out(success);
-        }
-    });
-    q->out_i32(CODE_auth_log_out);
-    q->execute(dc, query::execution_option::LOGOUT);
+    auto do_logout = [=] {
+        auto q = std::make_shared<query_logout>([=](bool success) {
+            if (auto ua = weak_ua.lock()) {
+                ua->callback()->logged_out(success);
+            }
+        });
+        q->out_i32(CODE_auth_log_out);
+        q->execute(dc, query::execution_option::LOGOUT);
+    };
+
+    if (m_device_token_type && !m_device_token.empty()) {
+        unregister_device(m_device_token_type, m_device_token, [=](bool) {
+            do_logout();
+        });
+    } else {
+        do_logout();
+    }
 }
 
 void user_agent::update_contact_list(const std::function<void(bool, const std::vector<std::shared_ptr<tgl_user>>&)>& callback)
@@ -2046,7 +2058,7 @@ void user_agent::get_terms_of_service(const std::function<void(bool success, con
     q->execute(active_client());
 }
 
-void user_agent::register_device(int token_type, const std::string& token,
+void user_agent::register_device(int32_t token_type, const std::string& token,
         const std::string& device_model,
         const std::string& system_version,
         const std::string& app_version,
@@ -2054,6 +2066,9 @@ void user_agent::register_device(int token_type, const std::string& token,
         const std::string& lang_code,
         const std::function<void(bool success)>& callback)
 {
+    m_device_token_type = token_type;
+    m_device_token = token;
+
     auto q = std::make_shared<query_register_device>(callback);
     q->out_i32(CODE_account_register_device);
     q->out_i32(token_type);
@@ -2063,6 +2078,16 @@ void user_agent::register_device(int token_type, const std::string& token,
     q->out_std_string(app_version);
     q->out_i32(app_sandbox? CODE_bool_true : CODE_bool_false);
     q->out_std_string(lang_code);
+    q->execute(active_client());
+}
+
+void user_agent::unregister_device(int32_t token_type, const std::string& token,
+        const std::function<void(bool success)>& callback)
+{
+    auto q = std::make_shared<query_unregister_device>(callback);
+    q->out_i32(CODE_account_unregister_device);
+    q->out_i32(token_type);
+    q->out_std_string(token);
     q->execute(active_client());
 }
 

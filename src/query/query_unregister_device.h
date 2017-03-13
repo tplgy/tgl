@@ -15,8 +15,7 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-    Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016-2017
+    Copyright Topology LP 2017
 */
 
 #pragma once
@@ -27,29 +26,20 @@
 #include <functional>
 #include <string>
 
-class query_register_device: public query
+class query_unregister_device: public query
 {
 public:
-    explicit query_register_device(const std::function<void(bool)>& callback)
-        : query("register device", TYPE_TO_PARAM(bool))
+    explicit query_unregister_device(const std::function<void(bool)>& callback)
+        : query("unregister device", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 
-    virtual void on_answer(void* D) override
-    {
-        if (m_callback) {
-            m_callback(true);
-        }
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-        if (m_callback) {
-            m_callback(false);
-        }
-        return 0;
-    }
+    virtual void on_answer(void* D) override;
+    virtual int on_error(int error_code, const std::string& error_string) override;
+    virtual void on_timeout() override;
+    virtual double timeout_interval() const override;
+    virtual bool should_retry_on_timeout() const override;
+    virtual void will_be_pending() override;
 
 private:
     std::function<void(bool)> m_callback;

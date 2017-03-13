@@ -118,12 +118,14 @@ public:
 
     // == tgl_query_api ==
     virtual void get_terms_of_service(const std::function<void(bool success, const std::string&)>& callback) override;
-    virtual void register_device(int token_type, const std::string& token,
+    virtual void register_device(int32_t token_type, const std::string& token,
             const std::string& device_model,
             const std::string& system_version,
             const std::string& app_version,
             bool app_sandbox,
             const std::string& lang_code,
+            const std::function<void(bool success)>& callback) override;
+    virtual void unregister_device(int32_t token_type, const std::string& token,
             const std::function<void(bool success)>& callback) override;
     virtual void update_password_settings(const std::function<void(bool success)>& callback) override;
     virtual int64_t send_text_message(const tgl_input_peer_t& peer_id, const std::string& text, int64_t message_id = 0,
@@ -355,6 +357,9 @@ private:
     bool m_diff_locked;
     bool m_password_locked;
     bool m_phone_number_input_locked;
+
+    int32_t m_device_token_type;
+    std::string m_device_token;
 
     std::string m_app_version;
     std::string m_app_hash;

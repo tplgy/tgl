@@ -44,12 +44,15 @@ public:
     virtual void get_terms_of_service(const std::function<void(bool success, const std::string&)>& callback) = 0;
 
     // Registers the device for push notifications
-    virtual void register_device(int token_type, const std::string& token,
+    virtual void register_device(int32_t token_type, const std::string& token,
             const std::string& device_model,
             const std::string& system_version,
             const std::string& app_version,
             bool app_sandbox,
             const std::string& lang_code,
+            const std::function<void(bool success)>& callback) = 0;
+
+    virtual void unregister_device(int32_t token_type, const std::string& token,
             const std::function<void(bool success)>& callback) = 0;
 
     // Set password if there is no password: the API user will get tgl_update_callback::get_value() callback with tgl_value::new_password.
