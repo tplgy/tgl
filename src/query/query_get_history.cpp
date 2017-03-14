@@ -23,6 +23,7 @@
 
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
+#include "user.h"
 
 query_get_history::query_get_history(const tgl_input_peer_t& id, int limit, int offset, int max_id,
         const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback)
@@ -42,16 +43,16 @@ void query_get_history::on_answer(void* D)
     tl_ds_messages_messages* DS_MM = static_cast<tl_ds_messages_messages*>(D);
 
     if (auto ua = get_user_agent()) {
-        int n = DS_LVAL(DS_MM->chats->cnt);
-        for (int i = 0; i < n; i++) {
+        int32_t n = DS_LVAL(DS_MM->chats->cnt);
+        for (int32_t i = 0; i < n; i++) {
             tglf_fetch_alloc_chat(ua.get(), DS_MM->chats->data[i]);
         }
         n = DS_LVAL(DS_MM->users->cnt);
-        for (int i = 0; i < n; i++) {
-            tglf_fetch_alloc_user(ua.get(), DS_MM->users->data[i]);
+        for (int32_t i = 0; i < n; i++) {
+            ua->user_fetched(std::make_shared<user>(DS_MM->users->data[i]));
         }
         n = DS_LVAL(DS_MM->messages->cnt);
-        for (int i = 0; i < n; i++) {
+        for (int32_t i = 0; i < n; i++) {
             auto message = tglf_fetch_alloc_message(ua.get(), DS_MM->messages->data[i]);
             message->set_history(true);
             m_messages.push_back(message);

@@ -37,6 +37,7 @@
 #include "tgl/tgl_user.h"
 #include "tgl_secret_chat_private.h"
 #include "updater.h"
+#include "user.h"
 #include "user_agent.h"
 
 #include <algorithm>
@@ -149,91 +150,6 @@ tgl_user_status tglf_fetch_user_status(const tl_ds_user_status* DS_US)
         assert(false);
     }
     return new_status;
-}
-
-std::shared_ptr<tgl_user> tglf_fetch_alloc_user(user_agent* ua, const tl_ds_user* DS_U, bool invoke_callback)
-{
-    if (!DS_U) {
-        return nullptr;
-    }
-
-    if (DS_U->magic == CODE_user_empty) {
-      return nullptr;
-    }
-
-    tgl_input_peer_t user_id(tgl_peer_type::user, DS_LVAL(DS_U->id), DS_LVAL(DS_U->access_hash));
-
-    std::shared_ptr<tgl_user> user = std::make_shared<tgl_user>();
-    user->id = user_id;
-
-    //int flags = user->flags;
-    int32_t flags = DS_LVAL(DS_U->flags);
-
-    if (flags & (1 << 10)) {
-        ua->set_our_id(user_id.peer_id);
-        user->set_self(true);
-    } else {
-        user->set_self(false);
-    }
-
-    user->set_contact(flags & (1 << 11));
-    user->set_mutual_contact(flags & (1 << 12));
-    user->set_bot(flags & (1 << 14));
-
-    /*
-    if (DS_LVAL(DS_U->flags) & (1 << 15)) {
-        flags |= TGLUF_BOT_FULL_ACCESS;
-    }
-
-    if (DS_LVAL(DS_U->flags) & (1 << 16)) {
-        flags |= TGLUF_BOT_NO_GROUPS;
-    }*/
-
-    user->set_official(flags & (1 << 17));
-
-    user->firstname = DS_STDSTR(DS_U->first_name);
-    user->lastname = DS_STDSTR(DS_U->last_name);
-    user->username = DS_STDSTR(DS_U->username);
-    user->phone = DS_STDSTR(DS_U->phone);
-    user->status = tglf_fetch_user_status(DS_U->status);
-
-    if (DS_LVAL(DS_U->flags) & (1 << 13)) {
-        ua->callback()->user_deleted(user_id.peer_id);
-        return user;
-    } else {
-        if (invoke_callback) {
-            ua->callback()->new_user(user);
-        }
-
-        if (DS_U->photo && invoke_callback) {
-            tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
-            tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
-            ua->callback()->avatar_update(user_id.peer_id, user_id.peer_type, photo_small, photo_big);
-        }
-        return user;
-    }
-}
-
-std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(user_agent* ua, const tl_ds_user_full* DS_UF)
-{
-    if (!DS_UF) {
-        return nullptr;
-    }
-
-    auto user = tglf_fetch_alloc_user(ua, DS_UF->user);
-    if (!user) {
-        return nullptr;
-    }
-
-    user->set_blocked(DS_BVAL(DS_UF->blocked));
-
-    if (DS_UF->user->photo) {
-        tgl_file_location photo_big = tglf_fetch_file_location(DS_UF->user->photo->photo_big);
-        tgl_file_location photo_small = tglf_fetch_file_location(DS_UF->user->photo->photo_small);
-        ua->callback()->avatar_update(user->id.peer_id, user->id.peer_type,photo_small, photo_big);
-    }
-
-    return user;
 }
 
 inline static void str_to_256(unsigned char* dst, const char* src, int src_len)
@@ -435,8 +351,8 @@ std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full(user_agent* ua, const tl_ds
     }
 
     if (DS_MCF->users) {
-        for (int i = 0; i < DS_LVAL(DS_MCF->users->cnt); i++) {
-            tglf_fetch_alloc_user(ua, DS_MCF->users->data[i]);
+        for (int32_t i = 0; i < DS_LVAL(DS_MCF->users->cnt); i++) {
+            ua->user_fetched(std::make_shared<user>(DS_MCF->users->data[i]));
         }
     }
 
@@ -550,8 +466,8 @@ std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(user_agent* ua, const
     }
 
     if (DS_MCF->users) {
-        for (int i = 0; i < DS_LVAL(DS_MCF->users->cnt); i++) {
-            tglf_fetch_alloc_user(ua, DS_MCF->users->data[i]);
+        for (int32_t i = 0; i < DS_LVAL(DS_MCF->users->cnt); i++) {
+            ua->user_fetched(std::make_shared<user>(DS_MCF->users->data[i]));
         }
     }
 

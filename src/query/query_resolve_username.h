@@ -24,6 +24,7 @@
 #include "query.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
+#include "user.h"
 
 #include <functional>
 #include <string>
@@ -40,8 +41,8 @@ public:
     {
         tl_ds_contacts_resolved_peer* DS_CRU = static_cast<tl_ds_contacts_resolved_peer*>(D);
         if (auto ua = get_user_agent()) {
-            for (int i = 0; i < DS_LVAL(DS_CRU->users->cnt); i++) {
-                tglf_fetch_alloc_user(ua.get(), DS_CRU->users->data[i]);
+            for (int32_t i = 0; i < DS_LVAL(DS_CRU->users->cnt); i++) {
+                ua->user_fetched(std::make_shared<user>(DS_CRU->users->data[i]));
             }
             for (int i = 0; i < DS_LVAL(DS_CRU->chats->cnt); i++) {
                 tglf_fetch_alloc_chat(ua.get(), DS_CRU->chats->data[i]);

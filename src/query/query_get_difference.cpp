@@ -23,6 +23,7 @@
 
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
+#include "user.h"
 
 query_get_difference::query_get_difference(const std::function<void(bool)>& callback)
     : query("get difference", TYPE_TO_PARAM(updates_difference))
@@ -55,8 +56,8 @@ void query_get_difference::on_answer(void* D)
             m_callback(true);
         }
     } else {
-        for (int i = 0; i < DS_LVAL(DS_UD->users->cnt); i++) {
-            tglf_fetch_alloc_user(ua.get(), DS_UD->users->data[i]);
+        for (int32_t i = 0; i < DS_LVAL(DS_UD->users->cnt); i++) {
+            ua->user_fetched(std::make_shared<user>(DS_UD->users->data[i]));
         }
         for (int i = 0; i < DS_LVAL(DS_UD->chats->cnt); i++) {
             tglf_fetch_alloc_chat(ua.get(), DS_UD->chats->data[i]);

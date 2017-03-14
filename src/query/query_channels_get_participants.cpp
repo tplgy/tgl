@@ -23,6 +23,7 @@
 
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
+#include "user.h"
 
 query_channels_get_participants::query_channels_get_participants(const std::shared_ptr<channel_get_participants_state>& state,
         const std::function<void(bool)>& callback)
@@ -36,8 +37,8 @@ void query_channels_get_participants::on_answer(void* D)
     tl_ds_channels_channel_participants* DS_CP = static_cast<tl_ds_channels_channel_participants*>(D);
     auto ua = m_state->weak_user_agent.lock();
     if (ua) {
-        for (int i = 0; i < DS_LVAL(DS_CP->users->cnt); i++) {
-            tglf_fetch_alloc_user(ua.get(), DS_CP->users->data[i]);
+        for (int32_t i = 0; i < DS_LVAL(DS_CP->users->cnt); i++) {
+            ua->user_fetched(std::make_shared<user>(DS_CP->users->data[i]));
         }
     }
 

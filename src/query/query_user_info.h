@@ -23,12 +23,12 @@
 
 #include "query.h"
 #include "structures.h"
-#include "tgl/tgl_user.h"
+#include "user.h"
 
 class query_user_info: public query
 {
 public:
-    explicit query_user_info(const std::function<void(bool, const std::shared_ptr<tgl_user>&)>& callback)
+    explicit query_user_info(const std::function<void(bool, const std::shared_ptr<user>&)>& callback)
         : query("user info", TYPE_TO_PARAM(user_full))
         , m_callback(callback)
     { }
@@ -43,9 +43,15 @@ public:
             return;
         }
 
-        std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user_full(ua.get(), static_cast<tl_ds_user_full*>(D));
+        auto DS_UF = static_cast<tl_ds_user_full*>(D);
+        std::shared_ptr<user> u;
+        if (DS_UF->user && DS_UF->user->magic != CODE_user_empty) {
+            u = std::make_shared<user>(DS_UF);
+            ua->user_fetched(u);
+        }
+
         if (m_callback) {
-            m_callback(true, user);
+            m_callback(!!u, u);
         }
     }
 
@@ -59,5 +65,5 @@ public:
     }
 
 private:
-    std::function<void(bool, const std::shared_ptr<tgl_user>&)> m_callback;
+    std::function<void(bool, const std::shared_ptr<user>&)> m_callback;
 };

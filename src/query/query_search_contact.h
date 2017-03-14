@@ -24,6 +24,7 @@
 #include "query.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
+#include "user.h"
 
 #include <functional>
 #include <string>
@@ -44,7 +45,7 @@ public:
         std::vector<std::shared_ptr<tgl_chat>> chats;
         if (auto ua = get_user_agent()) {
             for (int i = 0; i < DS_LVAL(DS_CRU->users->cnt); i++) {
-                users.push_back(tglf_fetch_alloc_user(ua.get(), DS_CRU->users->data[i], false));
+                users.push_back(std::make_shared<user>(DS_CRU->users->data[i]));
             }
             for (int i = 0; i < DS_LVAL(DS_CRU->chats->cnt); i++) {
                 chats.push_back(tglf_fetch_alloc_chat(ua.get(), DS_CRU->chats->data[i], false));

@@ -591,7 +591,7 @@ void user_agent::call_me(const std::string& phone, const std::string& hash,
 void user_agent::send_code_result(const std::string& phone,
         const std::string& hash,
         const std::string& code,
-        const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback)
+        const std::function<void(bool success, const std::shared_ptr<user>&)>& callback)
 {
     auto q = std::make_shared<query_sign_in>(callback);
     q->out_i32(CODE_auth_sign_in);
@@ -2203,7 +2203,7 @@ void user_agent::sign_in_code(const std::string& phone, const std::string& hash,
         return;
     }
 
-    send_code_result(phone, hash, code, [weak_ua, try_again](bool success, const std::shared_ptr<tgl_user>&) {
+    send_code_result(phone, hash, code, [weak_ua, try_again](bool success, const std::shared_ptr<user>&) {
         TGL_DEBUG("sign in result: " << std::boolalpha << success);
         auto ua = weak_ua.lock();
         if (!ua) {
@@ -2238,7 +2238,7 @@ void user_agent::sign_up_code(const std::string& phone, const std::string& hash,
         return;
     }
 
-    auto q = std::make_shared<query_sign_in>([weak_ua, try_again](bool success, const std::shared_ptr<tgl_user>&) {
+    auto q = std::make_shared<query_sign_in>([weak_ua, try_again](bool success, const std::shared_ptr<user>&) {
         auto ua = weak_ua.lock();
         if (!ua) {
             TGL_ERROR("the user agent has gone");
@@ -2624,4 +2624,20 @@ tgl_net_stats user_agent::get_net_stats(bool reset_after_get)
         m_bytes_received = 0;
     }
     return stats;
+}
+
+void user_agent::user_fetched(const std::shared_ptr<user>& u)
+{
+    if (u->is_self()) {
+        set_our_id(u->id().peer_id);
+    }
+
+    if (u->is_deleted()) {
+        m_callback->user_deleted(u->id().peer_id);
+    } else {
+        m_callback->new_user(u);
+        if (!u->photo_small().empty() || !u->photo_big().empty()) {
+            m_callback->avatar_update(u->id().peer_id, u->id().peer_type, u->photo_small(), u->photo_big());
+        }
+    }
 }

@@ -29,10 +29,12 @@
 #include <memory>
 #include <string>
 
+class user;
+
 class query_sign_in: public query
 {
 public:
-    explicit query_sign_in(const std::function<void(bool, const std::shared_ptr<struct tgl_user>&)>& callback);
+    explicit query_sign_in(const std::function<void(bool, const std::shared_ptr<user>&)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     virtual void on_timeout() override;
@@ -44,5 +46,5 @@ private:
     virtual bool handle_session_password_needed(bool& should_retry) override;
 
 private:
-    std::function<void(bool, const std::shared_ptr<struct tgl_user>&)> m_callback;
+    std::function<void(bool, const std::shared_ptr<user>&)> m_callback;
 };

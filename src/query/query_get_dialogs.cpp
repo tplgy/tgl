@@ -23,6 +23,7 @@
 
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
+#include "user.h"
 
 query_get_dialogs::query_get_dialogs(const std::shared_ptr<get_dialogs_state>& state,
         const std::function<void(bool, const std::vector<tgl_peer_id_t>&, const std::vector<int64_t>&, const std::vector<int>&)>& callback)
@@ -50,7 +51,7 @@ void query_get_dialogs::on_answer(void* D)
     }
 
     for (int i = 0; i < DS_LVAL(DS_MD->users->cnt); i++) {
-        tglf_fetch_alloc_user(ua.get(), DS_MD->users->data[i]);
+        ua->user_fetched(std::make_shared<user>(DS_MD->users->data[i]));
     }
 
     for (int i = 0; i < dl_size; i++) {

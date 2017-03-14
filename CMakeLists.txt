@@ -206,6 +206,7 @@ set(PRIVATE_HEADERS
     src/unconfirmed_secret_message.h
     src/updater.h
     src/upload_task.h
+    src/user.h
     src/user_agent.h
 )
 
@@ -265,6 +266,7 @@ set(SOURCES
     src/unconfirmed_secret_message.cpp
     src/updater.cpp
     src/upload_task.cpp
+    src/user.cpp
     src/user_agent.cpp
 )
 

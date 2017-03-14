@@ -25,6 +25,7 @@
 #include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_update_callback.h"
+#include "user.h"
 
 #include <functional>
 #include <string>
@@ -46,7 +47,9 @@ public:
         if (auto ua = get_user_agent()) {
             int32_t n = DS_LVAL(DS_CIC->users->cnt);
             for (int32_t i = 0; i < n; i++) {
-                users.push_back(tglf_fetch_alloc_user(ua.get(), DS_CIC->users->data[i])->id.peer_id);
+                auto u = std::make_shared<user>(DS_CIC->users->data[i]);
+                ua->user_fetched(u);
+                users.push_back(u->id().peer_id);
             }
         } else {
             success = false;

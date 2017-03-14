@@ -23,6 +23,7 @@
 
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
+#include "user.h"
 
 query_get_channel_difference::query_get_channel_difference(const std::shared_ptr<tgl_channel>& channel,
         const std::function<void(bool)>& callback)
@@ -54,7 +55,7 @@ void query_get_channel_difference::on_answer(void* D)
         }
     } else {
         for (int i = 0; i < DS_LVAL(DS_UD->users->cnt); i++) {
-            tglf_fetch_alloc_user(ua.get(), DS_UD->users->data[i]);
+            ua->user_fetched(std::make_shared<user>(DS_UD->users->data[i]));
         }
 
         for (int i = 0; i < DS_LVAL(DS_UD->chats->cnt); i++) {

@@ -23,6 +23,7 @@
 
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
+#include "user.h"
 
 query_get_blocked_users::query_get_blocked_users(const std::function<void(std::vector<int32_t>)>& callback)
     : query("get blocked users", TYPE_TO_PARAM(contacts_blocked))
@@ -37,10 +38,10 @@ void query_get_blocked_users::on_answer(void* D)
         if (DS_T->blocked && DS_T->users) {
             int n = DS_LVAL(DS_T->blocked->cnt);
             for (int i = 0; i < n; ++i) {
-                blocked_contacts.push_back(DS_LVAL(DS_T->blocked->data[i]->user_id));
-                auto user = tglf_fetch_alloc_user(ua.get(), DS_T->users->data[i], false);
-                user->set_blocked(true);
-                ua->callback()->new_user(user);
+                auto u = std::make_shared<user>(DS_T->users->data[i]);
+                u->set_blocked(true);
+                blocked_contacts.push_back(u->id().peer_id);
+                ua->user_fetched(u);
             }
         }
     }

@@ -24,6 +24,7 @@
 #include "mtproto_client.h"
 #include "query.h"
 #include "structures.h"
+#include "user.h"
 
 #include <functional>
 #include <memory>
@@ -42,10 +43,10 @@ public:
     {
         auto ua = get_user_agent();
 
-        tl_ds_auth_authorization* DS_U = static_cast<tl_ds_auth_authorization*>(D);
+        tl_ds_auth_authorization* DS_AA = static_cast<tl_ds_auth_authorization*>(D);
 
         if (ua) {
-            tglf_fetch_alloc_user(ua.get(), DS_U->user);
+            ua->user_fetched(std::make_shared<user>(DS_AA->user));
         }
 
         assert(m_client);

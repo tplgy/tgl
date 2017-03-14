@@ -64,7 +64,6 @@ void query_get_privacy_rules::on_answer(void* D)
             privacy_rules.push_back(std::make_pair(tgl_rule, users));
         }
     }
-    //std::shared_ptr<tgl_user> user = tglf_fetch_alloc_user(static_cast<tl_ds_user*>(D));
     if (m_callback) {
         m_callback(true, privacy_rules);
     }

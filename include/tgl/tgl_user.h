@@ -24,11 +24,7 @@
 #include "tgl_file_location.h"
 #include "tgl_peer_id.h"
 
-#include <memory>
 #include <string>
-
-class tgl_timer;
-struct tgl_message;
 
 enum class tgl_user_online_status: int32_t {
     unknown = 0,
@@ -45,49 +41,22 @@ struct tgl_user_status {
     tgl_user_status(): online(tgl_user_online_status::unknown), when(0) { }
 };
 
-struct tgl_user {
-    tgl_input_peer_t id;
-    struct tgl_user_status status;
-    std::string username;
-    std::string firstname;
-    std::string lastname;
-    std::string phone;
-
-    tgl_user()
-        : m_contact(false)
-        , m_mutual_contact(false)
-        , m_blocked(false)
-        , m_blocked_confirmed(false)
-        , m_self(false)
-        , m_bot(false)
-        , m_deleted(false)
-        , m_official(false)
-    { }
-
-    bool is_contact() const { return m_contact; }
-    bool is_mutual_contact() const { return m_mutual_contact; }
-    bool is_blocked() const { return m_blocked; }
-    bool is_blocked_confirmed() const { return m_blocked_confirmed; }
-    bool is_self() const { return m_self; }
-    bool is_bot() const { return m_bot; }
-    bool is_deleted() const { return m_deleted; }
-    bool is_official() const { return m_official; }
-
-    tgl_user& set_contact(bool b) { m_contact = b; return *this; }
-    tgl_user& set_mutual_contact(bool b) { m_mutual_contact = b; return *this; }
-    tgl_user& set_blocked(bool b) { m_blocked = b; m_blocked_confirmed = true; return *this; }
-    tgl_user& set_self(bool b) { m_self = b; return *this; }
-    tgl_user& set_bot(bool b) { m_bot = b; return *this; }
-    tgl_user& set_deleted(bool b) { m_deleted = b; return *this; }
-    tgl_user& set_official(bool b) { m_official = b; return *this; }
-
-private:
-    bool m_contact;
-    bool m_mutual_contact;
-    bool m_blocked;
-    bool m_blocked_confirmed;
-    bool m_self;
-    bool m_bot;
-    bool m_deleted;
-    bool m_official;
+class tgl_user
+{
+public:
+    virtual ~tgl_user() { }
+    virtual const tgl_input_peer_t& id() = 0;
+    virtual const tgl_user_status& status() = 0;
+    virtual const std::string& user_name() = 0;
+    virtual const std::string& first_name() = 0;
+    virtual const std::string& last_name() = 0;
+    virtual const std::string& phone_number() = 0;
+    virtual bool is_contact() const = 0;
+    virtual bool is_mutual_contact() const = 0;
+    virtual bool is_blocked() const = 0;
+    virtual bool is_blocked_confirmed() const = 0;
+    virtual bool is_self() const = 0;
+    virtual bool is_bot() const = 0;
+    virtual bool is_deleted() const = 0;
+    virtual bool is_official() const = 0;
 };

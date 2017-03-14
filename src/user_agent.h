@@ -27,6 +27,7 @@
 #include "tgl/tgl_user_agent.h"
 #include "tgl/tgl_value.h"
 #include "updater.h"
+#include "user.h"
 
 #include <cassert>
 #include <cstdint>
@@ -38,15 +39,13 @@
 #include <string.h>
 #include <vector>
 
-class query;
-struct tgl_user;
 struct tl_ds_dc_option;
+struct tgl_bn_context;
 
 class mtproto_client;
-
+class query;
 class tgl_rsa_key;
 class tgl_timer;
-struct tgl_bn_context;
 
 class user_agent: public std::enable_shared_from_this<user_agent>, public tgl_user_agent
 {
@@ -168,11 +167,11 @@ public:
             const std::function<void(int32_t chat_id)>& callback) override;
     virtual void export_chat_link(const tgl_peer_id_t& id, const std::function<void(bool success, const std::string& link)>& callback) override;
     virtual void import_chat_link(const std::string& link, const std::function<void(bool success)>& callback) override;
-    virtual void get_user_info(const tgl_input_peer_t& id, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback) override;
+    virtual void get_user_info(const tgl_input_peer_t& id, const std::function<void(bool success, const std::shared_ptr<tgl_user>&)>& callback) override;
     virtual void add_contacts(const std::vector<std::tuple<std::string, std::string, std::string>>& contacts,
             bool replace, const std::function<void(bool success, const std::vector<int32_t>& user_ids)>& callback) override;
     virtual void delete_contact(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback) override;
-    virtual void import_card(int size, int* card, const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback) override;
+    virtual void import_card(int size, int* card, const std::function<void(bool success, const std::shared_ptr<tgl_user>&)>& callback) override;
     virtual void block_user(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback) override;
     virtual void unblock_user(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback) override;
     virtual void get_blocked_users(const std::function<void(std::vector<int32_t>)>& callback) override;
@@ -305,6 +304,8 @@ public:
     void bytes_sent(size_t bytes);
     void bytes_received(size_t bytes);
 
+    void user_fetched(const std::shared_ptr<user>& u);
+
 private:
     void state_lookup_timeout();
     std::shared_ptr<mtproto_client> allocate_client(int id);
@@ -315,7 +316,7 @@ private:
     void send_code_result(const std::string& phone,
             const std::string& hash,
             const std::string& code,
-            const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback);
+            const std::function<void(bool success, const std::shared_ptr<user>&)>& callback);
     void sign_in_code(const std::string& phone, const std::string& hash,
             const std::string& code, tgl_login_action action);
     void register_me(const std::string& phone, const std::string& hash,

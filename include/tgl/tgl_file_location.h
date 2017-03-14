@@ -31,6 +31,7 @@ struct tgl_file_location {
         , m_secret(0)
     { }
 
+    bool empty() const { return m_dc <= 0; }
     int32_t dc() const { return m_dc; }
     void set_dc(int d) { m_dc = d; }
 

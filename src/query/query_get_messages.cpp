@@ -23,6 +23,7 @@
 
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
+#include "user.h"
 
 query_get_messages::query_get_messages(const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback)
     : query("get messages (single)", TYPE_TO_PARAM(messages_messages))
@@ -52,8 +53,8 @@ void query_get_messages::on_answer(void* D)
     }
 
     tl_ds_messages_messages* DS_MM = static_cast<tl_ds_messages_messages*>(D);
-    for (int i = 0; i < DS_LVAL(DS_MM->users->cnt); i++) {
-        tglf_fetch_alloc_user(ua.get(), DS_MM->users->data[i]);
+    for (int32_t i = 0; i < DS_LVAL(DS_MM->users->cnt); i++) {
+        ua->user_fetched(std::make_shared<user>(DS_MM->users->data[i]));
     }
     for (int i = 0; i < DS_LVAL(DS_MM->chats->cnt); i++) {
         tglf_fetch_alloc_chat(ua.get(), DS_MM->chats->data[i]);

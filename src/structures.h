@@ -35,8 +35,6 @@
 
 class user_agent;
 
-std::shared_ptr<tgl_user> tglf_fetch_alloc_user(user_agent* ua, const tl_ds_user* DS_U, bool invoke_callbacks = true);
-std::shared_ptr<tgl_user> tglf_fetch_alloc_user_full(user_agent* ua, const tl_ds_user_full* DS_U);
 std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(user_agent* ua, const tl_ds_chat* DS_C, bool invoke_callbacks = true);
 std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full(user_agent* ua, const tl_ds_messages_chat_full* DS_MCF);
 std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel(user_agent* ua, const tl_ds_chat* DS_C, bool invoke_callbacks = true);

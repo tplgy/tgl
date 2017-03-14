@@ -24,6 +24,7 @@
 #include "query.h"
 #include "tgl/tgl_log.h"
 #include "structures.h"
+#include "user.h"
 
 #include <functional>
 #include <string>
@@ -39,7 +40,7 @@ public:
     virtual void on_answer(void* D) override
     {
         if (auto ua = get_user_agent()) {
-            tglf_fetch_alloc_user(ua.get(), static_cast<tl_ds_user*>(D));
+            ua->user_fetched(std::make_shared<user>(static_cast<tl_ds_user*>(D)));
         }
 
         if (m_callback) {

@@ -24,6 +24,7 @@
 #include "query.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
+#include "user.h"
 
 #include <functional>
 #include <memory>
@@ -45,7 +46,7 @@ public:
         std::vector<std::shared_ptr<tgl_user>> users;
         if (auto ua = get_user_agent()) {
             for (int i = 0; i < n; i++) {
-                users.push_back(tglf_fetch_alloc_user(ua.get(), DS_CC->users->data[i]));
+                ua->user_fetched(std::make_shared<user>(DS_CC->users->data[i]));
             }
         }
         if (m_callback) {

@@ -22,8 +22,9 @@
 #include "query_sign_in.h"
 
 #include "query_user_info.h"
+#include "user.h"
 
-query_sign_in::query_sign_in(const std::function<void(bool, const std::shared_ptr<struct tgl_user>&)>& callback)
+query_sign_in::query_sign_in(const std::function<void(bool, const std::shared_ptr<user>&)>& callback)
     : query("sign in", TYPE_TO_PARAM(auth_authorization))
     , m_callback(callback)
 { }
@@ -32,13 +33,14 @@ void query_sign_in::on_answer(void* D)
 {
     TGL_DEBUG("sign_in_on_answer");
     tl_ds_auth_authorization* DS_AA = static_cast<tl_ds_auth_authorization*>(D);
-    std::shared_ptr<struct tgl_user> user;
+    std::shared_ptr<user> u;
     if (auto ua = get_user_agent()) {
-        user = tglf_fetch_alloc_user(ua.get(), DS_AA->user);
+        u = std::make_shared<user>(DS_AA->user);
+        ua->user_fetched(u);
         ua->set_dc_logged_in(ua->active_client()->id());
     }
     if (m_callback) {
-        m_callback(!!user, user);
+        m_callback(!!u, u);
     }
 }
 
@@ -102,9 +104,9 @@ bool query_sign_in::handle_session_password_needed(bool& should_retry)
             return;
         }
         ua->set_dc_logged_in(ua->active_client()->id());
-        auto q = std::make_shared<query_user_info>([this, shared_this](bool success, const std::shared_ptr<tgl_user>& user) {
+        auto q = std::make_shared<query_user_info>([this, shared_this](bool success, const std::shared_ptr<user>& u) {
             if (m_callback) {
-                m_callback(success, user);
+                m_callback(success, u);
             }
         });
         q->out_i32(CODE_users_get_full_user);

@@ -31,6 +31,7 @@
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_update_callback.h"
 #include "tgl_secret_chat_private.h"
+#include "user.h"
 #include "user_agent.h"
 
 #include <cassert>
@@ -500,8 +501,8 @@ void updater::work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void
     }
 
     if (DS_U->users) {
-        for (int i = 0; i < DS_LVAL(DS_U->users->cnt); ++i) {
-            tglf_fetch_alloc_user(&m_user_agent, DS_U->users->data[i]);
+        for (int32_t i = 0; i < DS_LVAL(DS_U->users->cnt); ++i) {
+            m_user_agent.user_fetched(std::make_shared<user>(DS_U->users->data[i]));
         }
     }
 
@@ -537,8 +538,8 @@ void updater::work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mode m
         return;
     }
 
-    for (int i = 0; i < DS_LVAL(DS_U->users->cnt); ++i) {
-        tglf_fetch_alloc_user(&m_user_agent, DS_U->users->data[i]);
+    for (int32_t i = 0; i < DS_LVAL(DS_U->users->cnt); ++i) {
+        m_user_agent.user_fetched(std::make_shared<user>(DS_U->users->data[i]));
     }
 
     for (int i = 0; i < DS_LVAL(DS_U->chats->cnt); ++i) {
