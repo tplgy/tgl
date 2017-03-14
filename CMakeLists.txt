@@ -112,6 +112,10 @@ set(PUBLIC_HEADERS
     include/tgl/tgl_value.h
 )
 
+set(PUBLIC_IMPL_HEADERS
+    include/tgl/impl/tgl_net_base.h
+)
+
 set(PRIVATE_HEADERS
     ${GENERATED_TGL_HEADERS}
     src/auto/auto.h
@@ -214,10 +218,11 @@ set(GENERATED_TGL_SOURCES
 
 set(SOURCES
     ${GENERATED_TGL_SOURCES}
+    src/download_task.cpp
     src/mtproto_client.cpp
     src/mtproto-common.cpp
     src/mtproto-utils.cpp
-    src/download_task.cpp
+    src/net/tgl_net_base.cpp
     src/query/query.cpp
     src/query/query_channel_get_participant.cpp
     src/query/query_channels_get_participants.cpp
@@ -263,7 +268,7 @@ set(SOURCES
     src/user_agent.cpp
 )
 
-add_library(${PROJECT_NAME} SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
+add_library(${PROJECT_NAME} SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PUBLIC_IMPL_HEADERS} ${PRIVATE_HEADERS})
 
 target_link_libraries(${PROJECT_NAME}
     ${Boost_LIBRARIES}
@@ -292,4 +297,5 @@ add_custom_command(
 )
 
 install(FILES ${PUBLIC_HEADERS} DESTINATION include/tgl)
+install(FILES ${PUBLIC_IMPL_HEADERS} DESTINATION include/tgl/impl)
 install(TARGETS tplgy_tgl DESTINATION lib)
