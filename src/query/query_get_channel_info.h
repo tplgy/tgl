@@ -22,7 +22,6 @@
 #pragma once
 
 #include "query.h"
-#include "structures.h"
 #include "tgl/tgl_log.h"
 
 #include <functional>
@@ -31,29 +30,9 @@
 class query_get_channel_info: public query
 {
 public:
-    explicit query_get_channel_info(const std::function<void(bool)>& callback)
-        : query("channel info", TYPE_TO_PARAM(messages_chat_full))
-        , m_callback(callback)
-    { }
-
-    virtual void on_answer(void* D) override
-    {
-        if (auto ua = get_user_agent()) {
-            tglf_fetch_alloc_channel_full(ua.get(), static_cast<tl_ds_messages_chat_full*>(D));
-        }
-        if (m_callback) {
-            m_callback(true);
-        }
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-        if (m_callback) {
-            m_callback(false);
-        }
-        return 0;
-    }
+    explicit query_get_channel_info(const std::function<void(bool)>& callback);
+    virtual void on_answer(void* D) override;
+    virtual int on_error(int error_code, const std::string& error_string) override;
 
 private:
     std::function<void(bool)> m_callback;

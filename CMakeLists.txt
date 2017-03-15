@@ -237,6 +237,8 @@ set(SOURCES
     src/query/query_get_and_set_password.cpp
     src/query/query_get_blocked_users.cpp
     src/query/query_get_channel_difference.cpp
+    src/query/query_get_channel_info.cpp
+    src/query/query_get_chat_info.cpp
     src/query/query_get_dialogs.cpp
     src/query/query_get_difference.cpp
     src/query/query_get_history.cpp
