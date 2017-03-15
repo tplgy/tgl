@@ -861,7 +861,7 @@ void transfer_manager::download_by_file_location(int64_t download_id,
 }
 
 void transfer_manager::download_document(int64_t download_id,
-        const std::shared_ptr<tgl_document>& document,
+        const std::shared_ptr<tgl_download_document>& document,
         const tgl_download_callback& callback)
 {
     if (m_downloads.count(download_id)) {

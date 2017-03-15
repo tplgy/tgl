@@ -49,7 +49,7 @@ public:
     virtual std::string get_file_path(int64_t secret) const override;
     virtual void download_by_file_location(int64_t download_id, const tgl_file_location& location,
             int32_t file_size, const tgl_download_callback& callback) override;
-    virtual void download_document(int64_t download_id, const std::shared_ptr<tgl_document>& document,
+    virtual void download_document(int64_t download_id, const std::shared_ptr<tgl_download_document>& document,
             const tgl_download_callback& callback) override;
     virtual void cancel_download(int64_t download_id) override;
     virtual void upload_document(const tgl_input_peer_t& to_id, int64_t message_id,

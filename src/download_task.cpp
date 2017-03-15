@@ -45,7 +45,7 @@ download_task::download_task(int64_t id, int32_t size, const tgl_file_location& 
 {
 }
 
-download_task::download_task(int64_t id, const std::shared_ptr<tgl_document>& document)
+download_task::download_task(int64_t id, const std::shared_ptr<tgl_download_document>& document)
     : id(id)
     , offset(0)
     , downloaded_bytes(0)
@@ -72,19 +72,18 @@ download_task::~download_task()
     memset(key.data(), 0, key.size());
 }
 
-void download_task::init_from_document(const std::shared_ptr<tgl_document>& document)
+void download_task::init_from_document(const std::shared_ptr<tgl_download_document>& document)
 {
     if (document->is_encrypted()) {
         type = CODE_input_encrypted_file_location;
-        auto encr_document = std::static_pointer_cast<tgl_encr_document>(document);
-        iv = std::move(encr_document->iv);
-        key = std::move(encr_document->key);
+        iv = std::move(document->iv);
+        key = std::move(document->key);
         unsigned char md5[16];
         unsigned char str[64];
         memcpy(str, key.data(), 32);
         memcpy(str + 32, iv.data(), 32);
         TGLC_md5(str, 64, md5);
-        if (encr_document->key_fingerprint != ((*(int *)md5) ^ (*(int *)(md5 + 4)))) {
+        if (document->key_fingerprint != ((*(int *)md5) ^ (*(int *)(md5 + 4)))) {
             valid = false;
             return;
         }

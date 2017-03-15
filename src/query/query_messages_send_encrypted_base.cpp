@@ -21,6 +21,7 @@
 
 #include "query_messages_send_encrypted_base.h"
 
+#include "document.h"
 #include "query_messages_send_encrypted_action.h"
 #include "query_messages_send_encrypted_file.h"
 #include "query_messages_send_encrypted_message.h"
@@ -50,8 +51,9 @@ void query_messages_send_encrypted_base::on_answer(void* D)
         m_message->date = *DS_MSEM->date;
     }
 
-    if(DS_MSEM->file) {
-        tglf_fetch_encrypted_message_file(m_message->media, DS_MSEM->file);
+    if(DS_MSEM->file && DS_MSEM->file->magic == CODE_encrypted_file && m_message->media->type() == tgl_message_media_type::document) {
+        auto doc = std::static_pointer_cast<tgl_message_media_document>(m_message->media)->document;
+        std::static_pointer_cast<document>(doc)->update(DS_MSEM->file);
     }
 
     ua->callback()->update_messages({m_message});

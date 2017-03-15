@@ -45,7 +45,6 @@ tgl_peer_id_t tglf_fetch_peer_id(const tl_ds_peer* DS_P);
 std::shared_ptr<tgl_message_media> tglf_fetch_message_media(const tl_ds_message_media* DS_MM);
 std::shared_ptr<tgl_message_action> tglf_fetch_message_action(const tl_ds_message_action* DS_MA);
 
-void tglf_fetch_encrypted_message_file(const std::shared_ptr<tgl_message_media>& M, const tl_ds_encrypted_file* DS_EF);
 std::shared_ptr<tgl_message_media> tglf_fetch_message_media_encrypted(const tl_ds_decrypted_message_media* DS_DMM);
 std::shared_ptr<tgl_message_action> tglf_fetch_message_action_encrypted(const tl_ds_decrypted_message_action* DS_DMA);
 
@@ -65,6 +64,7 @@ std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W
 std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info(const tl_ds_bot_info* DS_BI);
 std::shared_ptr<tgl_message_reply_markup> tglf_fetch_alloc_reply_markup(const tl_ds_reply_markup* DS_RM);
 void tglf_fetch_message_entities(const std::shared_ptr<tgl_message>& M, const tl_ds_vector* DS);
+std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const tl_ds_photo_size* DS_PS);
 
 }
 }

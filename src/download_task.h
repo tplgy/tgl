@@ -87,14 +87,14 @@ public:
     // ---
 
     download_task(int64_t id, int32_t size, const tgl_file_location& location);
-    download_task(int64_t id, const std::shared_ptr<tgl_document>& document);
+    download_task(int64_t id, const std::shared_ptr<tgl_download_document>& document);
     ~download_task();
     void set_status(tgl_download_status status);
     void request_cancel() { m_cancel_requested = true; }
     bool check_cancelled();
 
 private:
-    void init_from_document(const std::shared_ptr<tgl_document>& document);
+    void init_from_document(const std::shared_ptr<tgl_download_document>& document);
 
 private:
     bool m_cancel_requested;

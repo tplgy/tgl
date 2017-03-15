@@ -32,8 +32,6 @@
 #include <string>
 #include <vector>
 
-struct tgl_document;
-
 enum class tgl_download_status
 {
     waiting,
@@ -117,28 +115,31 @@ enum class tgl_upload_option
 
 struct tgl_upload_document
 {
-    tgl_document_type type;
-    bool is_animated;
-    size_t file_size;
-    int32_t width;
-    int32_t height;
-    int32_t duration;
-    int32_t thumb_width;
-    int32_t thumb_height;
+    tgl_document_type type = tgl_document_type::unknown;
+    bool is_animated = false;
+    size_t file_size = 0;
+    int32_t width = 0;
+    int32_t height = 0;
+    int32_t duration = 0;
+    int32_t thumb_width = 0;
+    int32_t thumb_height = 0;
     std::string file_name;
     std::string caption;
     std::vector<uint8_t> thumb_data;
+};
 
-    tgl_upload_document()
-        : type(tgl_document_type::unknown)
-        , is_animated(false)
-        , file_size(0)
-        , width(0)
-        , height(0)
-        , duration(0)
-        , thumb_width(0)
-        , thumb_height(0)
-    { }
+struct tgl_download_document
+{
+    tgl_document_type type = tgl_document_type::unknown;
+    int64_t id = 0;
+    int64_t access_hash = 0;
+    int32_t size = 0;
+    int32_t dc_id = 0;
+    int32_t key_fingerprint = 0;
+    std::string mime_type;
+    std::vector<unsigned char> key;
+    std::vector<unsigned char> iv;
+    bool is_encrypted() const { return key_fingerprint != 0 && !key.empty() && !iv.empty(); }
 };
 
 using tgl_download_callback = std::function<void(tgl_download_status, const std::string& file_name, int64_t downloaded_bytes)>;
@@ -161,7 +162,7 @@ public:
     virtual void download_by_file_location(int64_t download_id, const tgl_file_location& location,
             int32_t file_size, const tgl_download_callback& callback) = 0;
 
-    virtual void download_document(int64_t download_id, const std::shared_ptr<tgl_document>& document,
+    virtual void download_document(int64_t download_id, const std::shared_ptr<tgl_download_document>& document,
             const tgl_download_callback& callback) = 0;
 
     virtual void cancel_download(int64_t download_id) = 0;

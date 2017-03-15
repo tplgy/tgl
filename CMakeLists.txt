@@ -85,6 +85,7 @@ set(PUBLIC_HEADERS
     include/tgl/tgl_chat.h
     include/tgl/tgl_connection_status.h
     include/tgl/tgl_dc.h
+    include/tgl/tgl_document.h
     include/tgl/tgl_file_location.h
     include/tgl/tgl_log.h
     include/tgl/tgl_message.h
@@ -128,6 +129,7 @@ set(PRIVATE_HEADERS
     src/crypto/tgl_crypto_rsa_pem.h
     src/crypto/tgl_crypto_sha.h
     src/crypto/tgl_crypto_rand.h
+    src/document.h
     src/download_task.h
     src/mtproto_client.h
     src/mtproto-common.h
@@ -223,6 +225,7 @@ set(SOURCES
     ${GENERATED_TGL_SOURCES}
     src/channel.cpp
     src/chat.cpp
+    src/document.cpp
     src/download_task.cpp
     src/mtproto_client.cpp
     src/mtproto-common.cpp

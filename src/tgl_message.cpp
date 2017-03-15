@@ -1,6 +1,7 @@
 #include "tgl/tgl_message.h"
 
 #include "auto/constants.h"
+#include "document.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_secret_chat.h"
@@ -94,8 +95,9 @@ tgl_message::tgl_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         assert(!this->is_service());
     }
 
-    if (file) {
-        tglf_fetch_encrypted_message_file(this->media, file);
+    if (file && file->magic == CODE_encrypted_file && this->media->type() == tgl_message_media_type::document) {
+        auto doc = std::static_pointer_cast<tgl_message_media_document>(this->media)->document;
+        std::static_pointer_cast<document>(doc)->update(file);
     }
 
     this->set_outgoing(from_id.peer_id == secret_chat->private_facet()->our_id().peer_id);

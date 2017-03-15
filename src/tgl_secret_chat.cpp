@@ -786,7 +786,8 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, const tgl_peer_i
     }
 
     if (construct_unconfirmed_message && unconfirmed_message && file && m.message->media
-            && m.message->media->type() == tgl_message_media_type::document_encr) {
+            && m.message->media->type() == tgl_message_media_type::document
+            && std::static_pointer_cast<tgl_message_media_document>(m.message->media)->document->is_encrypted()) {
         mtprotocol_serializer s;
         s.out_i32(CODE_encrypted_file);
         s.out_i64(DS_LVAL(file->id));

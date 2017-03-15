@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "tgl_document.h"
 #include "tgl_file_location.h"
 
 #include <cstdint>
@@ -35,29 +36,10 @@ enum class tgl_message_media_type {
     geo,
     contact,
     unsupported,
-    //photo_encr,
-    //video_encr,
-    //audio_encr,
-    document_encr,
     webpage,
     venue,
     video,
     audio,
-};
-
-struct tgl_photo_size {
-    std::string type;
-    struct tgl_file_location loc;
-    int32_t w;
-    int32_t h;
-    int32_t size;
-    //char* data;
-    //std::vector<char> data;
-    tgl_photo_size()
-        : w(0)
-        , h(0)
-        , size(0)
-    { }
 };
 
 struct tgl_geo {
@@ -69,68 +51,14 @@ struct tgl_geo {
 struct tgl_photo {
     int64_t id;
     int64_t access_hash;
-    //int32_t user_id;
     int32_t date;
     std::string caption;
-    //struct tgl_geo geo;
     std::vector<std::shared_ptr<tgl_photo_size>> sizes;
     tgl_photo()
         : id(0)
         , access_hash(0)
         , date(0)
     { }
-};
-
-enum class tgl_document_type {
-    unknown,
-    image,
-    sticker,
-    audio,
-    video,
-};
-
-struct tgl_document {
-    int64_t id;
-    int64_t access_hash;
-    //int32_t user_id;
-    int32_t date;
-    int32_t size;
-    int32_t dc_id;
-    int32_t w;
-    int32_t h;
-    int32_t duration;
-    tgl_document_type type;
-    bool is_animated;
-    std::shared_ptr<tgl_photo_size> thumb;
-    std::string caption;
-    std::string mime_type;
-    std::string file_name;
-
-    tgl_document()
-        : id(0)
-        , access_hash(0)
-        , date(0)
-        , size(0)
-        , dc_id(0)
-        , w(0)
-        , h(0)
-        , duration(0)
-        , type(tgl_document_type::unknown)
-        , is_animated(false)
-    { }
-
-    virtual bool is_encrypted() const { return false; }
-};
-
-struct tgl_encr_document: public tgl_document {
-    std::vector<unsigned char> key;
-    std::vector<unsigned char> iv;
-    std::vector<char> thumb_data;
-    int32_t thumb_width;
-    int32_t thumb_height;
-    int32_t key_fingerprint;
-    tgl_encr_document() : thumb_width(0), thumb_height(0), key_fingerprint(0) { }
-    virtual bool is_encrypted() const override { return true; }
 };
 
 struct tgl_webpage {
@@ -194,11 +122,6 @@ struct tgl_message_media_contact: public tgl_message_media {
 
 struct tgl_message_media_unsupported: public tgl_message_media {
     virtual tgl_message_media_type type() override { return tgl_message_media_type::unsupported; }
-};
-
-struct tgl_message_media_document_encr: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type::document_encr; }
-    std::shared_ptr<tgl_encr_document> encr_document;
 };
 
 struct tgl_message_media_webpage: public tgl_message_media {

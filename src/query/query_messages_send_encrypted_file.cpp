@@ -26,6 +26,7 @@
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"
 #include "crypto/tgl_crypto_md5.h"
+#include "document.h"
 #include "secret_chat_encryptor.h"
 #include "tgl/tgl_mime_type.h"
 #include "transfer_manager.h"
@@ -110,24 +111,26 @@ void query_messages_send_encrypted_file::set_message_media(const tl_ds_decrypted
 {
     m_message->set_decrypted_message_media(DS_DMM);
 
-    if (m_message->media->type() == tgl_message_media_type::document_encr) {
-        if (auto encr_document = std::static_pointer_cast<tgl_message_media_document_encr>(m_message->media)->encr_document) {
+    if (m_message->media->type() == tgl_message_media_type::document) {
+        auto media = std::static_pointer_cast<tgl_message_media_document>(m_message->media);
+        auto document = std::static_pointer_cast<class document>(media->document);
+        if (document && document->is_encrypted()) {
             const auto& u = m_upload;
             if (u->is_image() || u->as_photo) {
-                encr_document->type = tgl_document_type::image;
+                document->set_type(tgl_document_type::image);
                 if (u->is_animated()) {
-                    encr_document->is_animated = true;
+                    document->set_animated(true);
                 } else {
-                    encr_document->is_animated = false;
+                    document->set_animated(false);
                 }
             } else if (u->is_video()) {
-                encr_document->type = tgl_document_type::video;
+                document->set_type(tgl_document_type::video);
             } else if (u->is_audio()) {
-                encr_document->type = tgl_document_type::audio;
+                document->set_type(tgl_document_type::audio);
             } else if (u->is_sticker()) {
-                encr_document->type = tgl_document_type::sticker;
+                document->set_type(tgl_document_type::sticker);
             } else {
-                encr_document->type = tgl_document_type::unknown;
+                document->set_type(tgl_document_type::unknown);
             }
         }
     }
