@@ -20,14 +20,13 @@
 */
 #pragma once
 
+#include "chat.h"
 #include "tgl/tgl_connection_status.h"
 #include "tgl/tgl_online_status.h"
 #include "tgl/tgl_peer_id.h"
 #include "tgl/tgl_query_api.h"
 #include "tgl/tgl_user_agent.h"
 #include "tgl/tgl_value.h"
-#include "updater.h"
-#include "user.h"
 
 #include <cassert>
 #include <cstdint>
@@ -42,10 +41,14 @@
 struct tl_ds_dc_option;
 struct tgl_bn_context;
 
+class channel;
+class chat;
 class mtproto_client;
 class query;
 class tgl_rsa_key;
 class tgl_timer;
+class updater;
+class user;
 
 class user_agent: public std::enable_shared_from_this<user_agent>, public tgl_user_agent
 {
@@ -305,6 +308,7 @@ public:
     void bytes_received(size_t bytes);
 
     void user_fetched(const std::shared_ptr<user>& u);
+    void chat_fetched(const std::shared_ptr<chat>& c);
 
 private:
     void state_lookup_timeout();

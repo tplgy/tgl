@@ -35,10 +35,8 @@
 
 class user_agent;
 
-std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat(user_agent* ua, const tl_ds_chat* DS_C, bool invoke_callbacks = true);
-std::shared_ptr<tgl_chat> tglf_fetch_alloc_chat_full(user_agent* ua, const tl_ds_messages_chat_full* DS_MCF);
-std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel(user_agent* ua, const tl_ds_chat* DS_C, bool invoke_callbacks = true);
-std::shared_ptr<tgl_channel> tglf_fetch_alloc_channel_full(user_agent* ua, const tl_ds_messages_chat_full* DS_MCF);
+void tglf_fetch_alloc_chat_full(user_agent* ua, const tl_ds_messages_chat_full* DS_MCF);
+void tglf_fetch_alloc_channel_full(user_agent* ua, const tl_ds_messages_chat_full* DS_MCF);
 std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(user_agent* ua, const tl_ds_encrypted_chat* DS_EC);
 std::shared_ptr<tgl_message> tglf_fetch_alloc_message(user_agent* ua, const tl_ds_message* DS_M);
 tgl_peer_id_t tglf_fetch_peer_id(const tl_ds_peer* DS_P);

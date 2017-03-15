@@ -42,6 +42,7 @@
 #include "tgl/tgl_net.h"
 #include "tgl/tgl_timer.h"
 #include "tgl/tgl_update_callback.h"
+#include "updater.h"
 #include "user_agent.h"
 
 #include <algorithm>

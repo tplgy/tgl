@@ -21,6 +21,7 @@
 
 #include "query_get_messages.h"
 
+#include "chat.h"
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
@@ -56,8 +57,8 @@ void query_get_messages::on_answer(void* D)
     for (int32_t i = 0; i < DS_LVAL(DS_MM->users->cnt); i++) {
         ua->user_fetched(std::make_shared<user>(DS_MM->users->data[i]));
     }
-    for (int i = 0; i < DS_LVAL(DS_MM->chats->cnt); i++) {
-        tglf_fetch_alloc_chat(ua.get(), DS_MM->chats->data[i]);
+    for (int32_t i = 0; i < DS_LVAL(DS_MM->chats->cnt); i++) {
+        ua->chat_fetched(chat::create(DS_MM->chats->data[i]));
     }
 
     for (int i = 0; i < DS_LVAL(DS_MM->messages->cnt); i++) {

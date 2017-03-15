@@ -31,12 +31,12 @@
 #include <memory>
 #include <utility>
 
+class tgl_channel;
+class tgl_chat;
 class tgl_dc;
 class tgl_user;
 
-struct tgl_chat;
 struct tgl_chat_participant;
-struct tgl_channel;
 struct tgl_channel_participant;
 struct tgl_user_status;
 

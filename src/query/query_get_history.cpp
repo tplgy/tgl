@@ -21,6 +21,7 @@
 
 #include "query_get_history.h"
 
+#include "chat.h"
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
@@ -45,7 +46,7 @@ void query_get_history::on_answer(void* D)
     if (auto ua = get_user_agent()) {
         int32_t n = DS_LVAL(DS_MM->chats->cnt);
         for (int32_t i = 0; i < n; i++) {
-            tglf_fetch_alloc_chat(ua.get(), DS_MM->chats->data[i]);
+            ua->chat_fetched(chat::create(DS_MM->chats->data[i]));
         }
         n = DS_LVAL(DS_MM->users->cnt);
         for (int32_t i = 0; i < n; i++) {

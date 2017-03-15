@@ -21,8 +21,10 @@
 
 #include "query_get_difference.h"
 
+#include "chat.h"
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
+#include "updater.h"
 #include "user.h"
 
 query_get_difference::query_get_difference(const std::function<void(bool)>& callback)
@@ -59,8 +61,8 @@ void query_get_difference::on_answer(void* D)
         for (int32_t i = 0; i < DS_LVAL(DS_UD->users->cnt); i++) {
             ua->user_fetched(std::make_shared<user>(DS_UD->users->data[i]));
         }
-        for (int i = 0; i < DS_LVAL(DS_UD->chats->cnt); i++) {
-            tglf_fetch_alloc_chat(ua.get(), DS_UD->chats->data[i]);
+        for (int32_t i = 0; i < DS_LVAL(DS_UD->chats->cnt); i++) {
+            ua->chat_fetched(chat::create(DS_UD->chats->data[i]));
         }
 
         for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {

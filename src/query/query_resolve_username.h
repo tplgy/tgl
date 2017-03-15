@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "chat.h"
 #include "query.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
@@ -44,8 +45,8 @@ public:
             for (int32_t i = 0; i < DS_LVAL(DS_CRU->users->cnt); i++) {
                 ua->user_fetched(std::make_shared<user>(DS_CRU->users->data[i]));
             }
-            for (int i = 0; i < DS_LVAL(DS_CRU->chats->cnt); i++) {
-                tglf_fetch_alloc_chat(ua.get(), DS_CRU->chats->data[i]);
+            for (int32_t i = 0; i < DS_LVAL(DS_CRU->chats->cnt); i++) {
+                ua->chat_fetched(chat::create(DS_CRU->chats->data[i]));
             }
         }
         if (m_callback) {

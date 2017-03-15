@@ -25,6 +25,7 @@
 #include "auto/auto-types.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
+#include "chat.h"
 #include "mtproto-common.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
@@ -507,8 +508,8 @@ void updater::work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void
     }
 
     if (DS_U->chats) {
-        for (int i = 0; i < DS_LVAL(DS_U->chats->cnt); ++i) {
-            tglf_fetch_alloc_chat(&m_user_agent, DS_U->chats->data[i]);
+        for (int32_t i = 0; i < DS_LVAL(DS_U->chats->cnt); ++i) {
+            m_user_agent.chat_fetched(chat::create(DS_U->chats->data[i]));
         }
     }
 
@@ -542,8 +543,8 @@ void updater::work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mode m
         m_user_agent.user_fetched(std::make_shared<user>(DS_U->users->data[i]));
     }
 
-    for (int i = 0; i < DS_LVAL(DS_U->chats->cnt); ++i) {
-        tglf_fetch_alloc_chat(&m_user_agent, DS_U->chats->data[i]);
+    for (int32_t i = 0; i < DS_LVAL(DS_U->chats->cnt); ++i) {
+        m_user_agent.chat_fetched(chat::create(DS_U->chats->data[i]));
     }
 
     for (int i = 0; i < DS_LVAL(DS_U->updates->cnt); ++i) {

@@ -45,6 +45,10 @@ user::user(const tl_ds_user* DS_U)
     , m_deleted(false)
     , m_official(false)
 {
+    if (!DS_U || DS_U->magic == CODE_user_empty) {
+        return;
+    }
+
     int32_t flags = DS_LVAL(DS_U->flags);
 
     set_self(flags & (1 << 10));

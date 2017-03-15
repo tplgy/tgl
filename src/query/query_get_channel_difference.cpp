@@ -21,14 +21,16 @@
 
 #include "query_get_channel_difference.h"
 
+#include "chat.h"
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
+#include "updater.h"
 #include "user.h"
 
-query_get_channel_difference::query_get_channel_difference(const std::shared_ptr<tgl_channel>& channel,
+query_get_channel_difference::query_get_channel_difference(const std::shared_ptr<channel>& c,
         const std::function<void(bool)>& callback)
     : query("get channel difference", TYPE_TO_PARAM(updates_channel_difference))
-    , m_channel(channel)
+    , m_channel(c)
     , m_callback(callback)
 { }
 
@@ -36,8 +38,8 @@ void query_get_channel_difference::on_answer(void* D)
 {
     tl_ds_updates_channel_difference* DS_UD = static_cast<tl_ds_updates_channel_difference*>(D);
 
-    assert(m_channel->diff_locked);
-    m_channel->diff_locked = false;
+    assert(m_channel->is_diff_locked());
+    m_channel->set_diff_locked(false);
 
     auto ua = get_user_agent();
     if (!ua) {
@@ -59,7 +61,7 @@ void query_get_channel_difference::on_answer(void* D)
         }
 
         for (int i = 0; i < DS_LVAL(DS_UD->chats->cnt); i++) {
-            tglf_fetch_alloc_chat(ua.get(), DS_UD->chats->data[i]);
+            ua->chat_fetched(chat::create(DS_UD->chats->data[i]));
         }
 
         for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
@@ -78,7 +80,7 @@ void query_get_channel_difference::on_answer(void* D)
                 m_callback(true);
             }
         } else {
-            ua->get_channel_difference(m_channel->id, m_callback);
+            ua->get_channel_difference(m_channel->id(), m_callback);
         }
     }
 }

@@ -58,6 +58,8 @@ public:
     const tgl_file_location& photo_big() const { return m_photo_big; }
     const tgl_file_location& photo_small() const { return m_photo_small; }
 
+    bool empty() const { return m_id.empty(); }
+
 private:
     tgl_input_peer_t m_id;
     struct tgl_user_status m_status;

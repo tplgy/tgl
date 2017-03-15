@@ -16,7 +16,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
 
 #pragma once
@@ -40,21 +40,12 @@ struct tgl_channel_participant: public tgl_chat_participant
     bool is_editor;
 };
 
-struct tgl_channel: public tgl_chat {
-    int32_t admins_count;
-    int32_t kicked_count;
-    int32_t pts;
-    bool official;
-    bool broadcast;
-    bool diff_locked;
-    std::string about;
-
-    tgl_channel()
-        : admins_count(0)
-        , kicked_count(0)
-        , pts(0)
-        , official(false)
-        , broadcast(false)
-        , diff_locked(false)
-    { }
+class tgl_channel: virtual public tgl_chat
+{
+public:
+    virtual ~tgl_channel() { }
+    virtual int32_t admins_count() const = 0;
+    virtual int32_t kicked_count() const = 0;
+    virtual bool is_official() const = 0;
+    virtual bool is_broadcast() const = 0;
 };

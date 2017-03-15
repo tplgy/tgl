@@ -55,6 +55,8 @@ struct tgl_input_peer_t {
         return tgl_input_peer_t(tgl_peer_type::user, 777000, 0);
     }
 
+    bool empty() const { return peer_type == tgl_peer_type::unknown && peer_id == 0 && access_hash == 0; }
+
     static tgl_input_peer_t from_peer_id(const tgl_peer_id_t& id);
 };
 
@@ -74,6 +76,8 @@ struct tgl_peer_id_t {
     tgl_peer_id_t(tgl_peer_type peer_type, int32_t peer_id)
         : peer_type(peer_type), peer_id(peer_id)
     {}
+
+    bool empty() const { return peer_type == tgl_peer_type::unknown && peer_id == 0; }
 
     static tgl_peer_id_t from_input_peer(const tgl_input_peer_t& input_peer)
     {

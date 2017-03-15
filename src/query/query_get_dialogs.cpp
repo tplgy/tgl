@@ -21,6 +21,7 @@
 
 #include "query_get_dialogs.h"
 
+#include "chat.h"
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
@@ -47,7 +48,7 @@ void query_get_dialogs::on_answer(void* D)
     int dl_size = DS_LVAL(DS_MD->dialogs->cnt);
 
     for (int i = 0; i < DS_LVAL(DS_MD->chats->cnt); i++) {
-        tglf_fetch_alloc_chat(ua.get(), DS_MD->chats->data[i]);
+        ua->chat_fetched(chat::create(DS_MD->chats->data[i]));
     }
 
     for (int i = 0; i < DS_LVAL(DS_MD->users->cnt); i++) {

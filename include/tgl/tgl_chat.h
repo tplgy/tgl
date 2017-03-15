@@ -23,7 +23,6 @@
 
 #include <cstdint>
 #include <string>
-#include <vector>
 
 #include "tgl_file_location.h"
 #include "tgl_peer_id.h"
@@ -50,40 +49,27 @@ struct tgl_chat_participant{
     { }
 };
 
-struct tgl_chat {
-    tgl_input_peer_t id;
-    int64_t date;
-    int32_t participants_count;
-    bool creator;
-    bool kicked;
-    bool left;
-    bool admins_enabled;
-    bool deactivated;
-    bool admin;
-    bool editor;
-    bool moderator;
-    bool verified;
-    bool megagroup;
-    bool restricted;
-    bool forbidden;
-    std::string username;
-    tgl_file_location photo_big;
-    tgl_file_location photo_small;
-    std::string title;
-    tgl_chat()
-        : date(0)
-        , participants_count(0)
-        , creator(false)
-        , kicked(false)
-        , left(false)
-        , admins_enabled(false)
-        , deactivated(false)
-        , admin(false)
-        , editor(false)
-        , moderator(false)
-        , verified(false)
-        , megagroup(false)
-        , restricted(false)
-        , forbidden(false)
-    { }
+class tgl_chat
+{
+public:
+    virtual ~tgl_chat() { }
+    virtual const tgl_input_peer_t& id() const = 0;
+    virtual int64_t date() const = 0;
+    virtual int32_t participants_count() const = 0;
+    virtual bool is_creator() const = 0;
+    virtual bool is_kicked() const = 0;
+    virtual bool is_left() const = 0;
+    virtual bool is_admins_enabled() const = 0;
+    virtual bool is_deactivated() const = 0;
+    virtual bool is_admin() const = 0;
+    virtual bool is_editor() const = 0;
+    virtual bool is_moderator() const = 0;
+    virtual bool is_verified() const = 0;
+    virtual bool is_mega_group() const = 0;
+    virtual bool is_restricted() const = 0;
+    virtual bool is_forbidden() const = 0;
+    virtual const std::string& title() const = 0;
+    virtual const std::string& user_name() const = 0;
+    virtual const tgl_file_location& photo_big() const = 0;
+    virtual const tgl_file_location& photo_small() const = 0;
 };

@@ -21,6 +21,8 @@
 
 #include "query_send_messages.h"
 
+#include "updater.h"
+
 query_send_messages::query_send_messages(const std::shared_ptr<messages_send_extra>& extra,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback)
     : query("send messages (single)", TYPE_TO_PARAM(updates))

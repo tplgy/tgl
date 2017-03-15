@@ -27,6 +27,8 @@
 #include "auto/auto-skip.h"
 #include "auto/auto-types.h"
 #include "auto/constants.h"
+#include "channel.h"
+#include "chat.h"
 #include "crypto/tgl_crypto_bn.h"
 #include "crypto/tgl_crypto_md5.h"
 #include "crypto/tgl_crypto_rand.h"
@@ -107,6 +109,7 @@
 #include "tools.h"
 #include "transfer_manager.h"
 #include "updater.h"
+#include "user.h"
 
 #include <algorithm>
 #include <cassert>
@@ -1506,33 +1509,33 @@ void user_agent::get_difference(bool sync_from_start, const std::function<void(b
 void user_agent::get_channel_difference(const tgl_input_peer_t& channel_id,
         const std::function<void(bool success)>& callback)
 {
-    std::shared_ptr<struct tgl_channel> channel = std::make_shared<struct tgl_channel>();
-    channel->id = channel_id;
+    std::shared_ptr<channel> c = channel::create_bare(channel_id);
 
-    if (!channel->pts) {
+    // FIXME: apparently this function doesn't work. We need to at least pass channel pts in.
+    if (!c->pts()) {
         if (callback) {
             callback(false);
         }
         return;
     }
 
-    if (channel->diff_locked) {
-        TGL_WARNING("channel " << channel->id.peer_id << " diff locked");
+    if (c->is_diff_locked()) {
+        TGL_WARNING("channel " << c->id().peer_id << " diff locked");
         if (callback) {
             callback(false);
         }
         return;
     }
-    channel->diff_locked = true;
+    c->set_diff_locked(true);
 
-    auto q = std::make_shared<query_get_channel_difference>(channel, callback);
+    auto q = std::make_shared<query_get_channel_difference>(c, callback);
     q->out_header(this);
     q->out_i32(CODE_updates_get_channel_difference);
     q->out_i32(CODE_input_channel);
-    q->out_i32(channel->id.peer_id);
-    q->out_i64(channel->id.access_hash);
+    q->out_i32(c->id().peer_id);
+    q->out_i64(c->id().access_hash);
     q->out_i32(CODE_channel_messages_filter_empty);
-    q->out_i32(channel->pts);
+    q->out_i32(c->pts());
     q->out_i32(100);
     q->execute(active_client());
 }
@@ -2628,6 +2631,10 @@ tgl_net_stats user_agent::get_net_stats(bool reset_after_get)
 
 void user_agent::user_fetched(const std::shared_ptr<user>& u)
 {
+    if (u->empty()) {
+        return;
+    }
+
     if (u->is_self()) {
         set_our_id(u->id().peer_id);
     }
@@ -2636,8 +2643,21 @@ void user_agent::user_fetched(const std::shared_ptr<user>& u)
         m_callback->user_deleted(u->id().peer_id);
     } else {
         m_callback->new_user(u);
-        if (!u->photo_small().empty() || !u->photo_big().empty()) {
-            m_callback->avatar_update(u->id().peer_id, u->id().peer_type, u->photo_small(), u->photo_big());
-        }
+        m_callback->avatar_update(u->id().peer_id, u->id().peer_type, u->photo_small(), u->photo_big());
     }
+}
+
+void user_agent::chat_fetched(const std::shared_ptr<chat>& c)
+{
+    if (c->empty()) {
+        return;
+    }
+
+    if (c->is_channel()) {
+        m_callback->channel_update(std::static_pointer_cast<channel>(c));
+    } else {
+        m_callback->chat_update(c);
+    }
+
+    m_callback->avatar_update(c->id().peer_id, c->id().peer_type, c->photo_big(), c->photo_small());
 }

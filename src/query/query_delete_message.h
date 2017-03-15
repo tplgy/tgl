@@ -25,6 +25,7 @@
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_peer_id.h"
 #include "tgl/tgl_update_callback.h"
+#include "updater.h"
 
 #include <functional>
 #include <string>

@@ -21,8 +21,8 @@
 
 #pragma once
 
+#include "channel.h"
 #include "query.h"
-#include "tgl/tgl_channel.h"
 #include "tgl/tgl_log.h"
 
 #include <functional>
@@ -31,12 +31,12 @@
 class query_get_channel_difference: public query
 {
 public:
-    query_get_channel_difference(const std::shared_ptr<tgl_channel>& channel,
+    query_get_channel_difference(const std::shared_ptr<channel>& c,
             const std::function<void(bool)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 
 private:
-    std::shared_ptr<tgl_channel> m_channel;
+    std::shared_ptr<channel> m_channel;
     std::function<void(bool)> m_callback;
 };

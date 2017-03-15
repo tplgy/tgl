@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "chat.h"
 #include "query.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
@@ -48,7 +49,7 @@ public:
                 users.push_back(std::make_shared<user>(DS_CRU->users->data[i]));
             }
             for (int i = 0; i < DS_LVAL(DS_CRU->chats->cnt); i++) {
-                chats.push_back(tglf_fetch_alloc_chat(ua.get(), DS_CRU->chats->data[i], false));
+                chats.push_back(chat::create(DS_CRU->chats->data[i]));
             }
         }
         if (m_callback) {

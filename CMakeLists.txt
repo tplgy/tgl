@@ -119,6 +119,8 @@ set(PUBLIC_IMPL_HEADERS
 set(PRIVATE_HEADERS
     ${GENERATED_TGL_HEADERS}
     src/auto/auto.h
+    src/channel.h
+    src/chat.h
     src/crypto/tgl_crypto_aes.h
     src/crypto/tgl_crypto_bn.h
     src/crypto/tgl_crypto_err.h
@@ -219,6 +221,8 @@ set(GENERATED_TGL_SOURCES
 
 set(SOURCES
     ${GENERATED_TGL_SOURCES}
+    src/channel.cpp
+    src/chat.cpp
     src/download_task.cpp
     src/mtproto_client.cpp
     src/mtproto-common.cpp
