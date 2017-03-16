@@ -25,6 +25,9 @@
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 query_get_blocked_users::query_get_blocked_users(const std::function<void(std::vector<int32_t>)>& callback)
     : query("get blocked users", TYPE_TO_PARAM(contacts_blocked))
     , m_callback(callback)
@@ -57,4 +60,7 @@ int query_get_blocked_users::on_error(int error_code, const std::string& error_s
         m_callback({});
     }
     return 0;
+}
+
+}
 }

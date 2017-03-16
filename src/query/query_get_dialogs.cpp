@@ -26,6 +26,9 @@
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 query_get_dialogs::query_get_dialogs(const std::shared_ptr<get_dialogs_state>& state,
         const std::function<void(bool, const std::vector<tgl_peer_id_t>&, const std::vector<int64_t>&, const std::vector<int>&)>& callback)
     : query("get dialogs", TYPE_TO_PARAM(messages_dialogs))
@@ -140,4 +143,7 @@ void tgl_do_get_dialog_list(const std::shared_ptr<get_dialogs_state>& state,
         q->out_i32(state->limit - state->peers.size());
     }
     q->execute(ua->active_client());
+}
+
+}
 }

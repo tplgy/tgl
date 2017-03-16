@@ -30,6 +30,9 @@
 #include <string>
 #include <vector>
 
+namespace tgl {
+namespace impl {
+
 class query_get_history: public query
 {
 public:
@@ -48,3 +51,6 @@ private:
 #endif
     std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)> m_callback;
 };
+
+}
+}

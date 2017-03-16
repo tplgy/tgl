@@ -30,6 +30,9 @@
 #include <string>
 #include <vector>
 
+namespace tgl {
+namespace impl {
+
 struct messages_send_extra {
     bool multi = false;
     int64_t id = 0;
@@ -56,3 +59,6 @@ private:
     std::function<void(bool)> m_bool_callback;
     std::shared_ptr<tgl_message> m_message;
 };
+
+}
+}

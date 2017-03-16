@@ -27,6 +27,9 @@
 #include <cstring>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 struct tl_type_descr {
   unsigned name;
   const char *id;
@@ -70,3 +73,6 @@ static inline void *memdup (const void *d, int len) {
 #define DS_BOOL(x) ((x) ? true : false)
 
 void tgl_paramed_type_free(struct paramed_type *P);
+
+}
+}

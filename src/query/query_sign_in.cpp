@@ -24,6 +24,9 @@
 #include "query_user_info.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 query_sign_in::query_sign_in(const std::function<void(bool, const std::shared_ptr<user>&)>& callback)
     : query("sign in", TYPE_TO_PARAM(auth_authorization))
     , m_callback(callback)
@@ -114,4 +117,7 @@ bool query_sign_in::handle_session_password_needed(bool& should_retry)
         q->execute(ua->active_client());
     });
     return true;
+}
+
+}
 }

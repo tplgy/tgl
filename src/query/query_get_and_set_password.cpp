@@ -25,6 +25,9 @@
 #include "query_update_password_settings.h"
 #include "tgl/tgl_update_callback.h"
 
+namespace tgl {
+namespace impl {
+
 struct change_password_state {
     std::string current_password;
     std::string new_password;
@@ -179,4 +182,7 @@ int query_get_and_set_password::on_error(int error_code, const std::string& erro
         m_callback(false);
     }
     return 0;
+}
+
+}
 }

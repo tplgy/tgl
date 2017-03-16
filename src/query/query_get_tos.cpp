@@ -21,6 +21,9 @@
 
 #include "query_get_tos.h"
 
+namespace tgl {
+namespace impl {
+
 query_get_tos::query_get_tos(const std::function<void(bool, const std::string&)>& callback)
     : query("get tos", TYPE_TO_PARAM(help_terms_of_service))
     , m_callback(callback)
@@ -82,4 +85,7 @@ int query_get_tos::on_error(int error_code, const std::string& error_string)
         m_callback(false, std::string());
     }
     return 0;
+}
+
+}
 }

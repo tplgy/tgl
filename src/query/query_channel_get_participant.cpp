@@ -23,6 +23,9 @@
 
 #include "tgl/tgl_update_callback.h"
 
+namespace tgl {
+namespace impl {
+
 query_channel_get_participant::query_channel_get_participant(int32_t channel_id, const std::function<void(bool)>& callback)
     : query("channel get participant", TYPE_TO_PARAM(channels_channel_participant))
     , m_channel_id(channel_id)
@@ -71,4 +74,7 @@ int query_channel_get_participant::on_error(int error_code, const std::string& e
         m_callback(false);
     }
     return 0;
+}
+
+}
 }

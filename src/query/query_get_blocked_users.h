@@ -28,6 +28,9 @@
 #include <string>
 #include <vector>
 
+namespace tgl {
+namespace impl {
+
 class query_get_blocked_users: public query
 {
 public:
@@ -38,3 +41,6 @@ public:
 private:
     std::function<void(std::vector<int32_t>)> m_callback;
 };
+
+}
+}

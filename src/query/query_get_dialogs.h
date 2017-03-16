@@ -32,6 +32,9 @@
 #include <string>
 #include <vector>
 
+namespace tgl {
+namespace impl {
+
 struct get_dialogs_state {
     std::vector<tgl_peer_id_t> peers;
     std::vector<int64_t> last_message_ids;
@@ -63,3 +66,6 @@ private:
 // FIXME: better organize this.
 void tgl_do_get_dialog_list(const std::shared_ptr<get_dialogs_state>& state,
         const std::function<void(bool, const std::vector<tgl_peer_id_t>&, const std::vector<int64_t>&, const std::vector<int>&)>& callback);
+
+}
+}

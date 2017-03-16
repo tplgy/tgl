@@ -25,6 +25,9 @@
 
 class tgl_secret_chat;
 
+namespace tgl {
+namespace impl {
+
 class query_messages_accept_encryption: public query
 {
 public:
@@ -37,3 +40,6 @@ private:
     std::shared_ptr<tgl_secret_chat> m_secret_chat;
     std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_callback;
 };
+
+}
+}

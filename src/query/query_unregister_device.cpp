@@ -20,6 +20,9 @@
 
 #include "query_unregister_device.h"
 
+namespace tgl {
+namespace impl {
+
 void query_unregister_device::on_answer(void*)
 {
     if (m_callback) {
@@ -58,4 +61,7 @@ bool query_unregister_device::should_retry_on_timeout() const
 void query_unregister_device::will_be_pending()
 {
     timeout_within(timeout_interval());
+}
+
+}
 }

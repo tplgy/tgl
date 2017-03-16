@@ -111,6 +111,9 @@
 
 #define MAX_PROTO_MESSAGE_INTS	1048576
 
+namespace tgl {
+namespace impl {
+
 void tgl_prng_seed(const char* password_filename, int password_length);
 int tgl_serialize_bignum(const TGLC_bn* b, char* buffer, int maxlen);
 int64_t tgl_do_compute_rsa_key_fingerprint(const TGLC_rsa* key);
@@ -407,4 +410,7 @@ static inline int tgl_pad_aes_decrypt_dest_buffer_size(int src_buffer_size)
 {
     assert(src_buffer_size > 0);
     return src_buffer_size;
+}
+
+}
 }

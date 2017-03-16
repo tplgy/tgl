@@ -26,6 +26,9 @@
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 query_get_messages::query_get_messages(const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback)
     : query("get messages (single)", TYPE_TO_PARAM(messages_messages))
     , m_single_callback(single_callback)
@@ -90,4 +93,7 @@ int query_get_messages::on_error(int error_code, const std::string& error_string
         m_single_callback(false, nullptr);
     }
     return 0;
+}
+
+}
 }

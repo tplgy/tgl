@@ -29,6 +29,9 @@
 #include <functional>
 #include <memory>
 
+namespace tgl {
+namespace impl {
+
 class query_import_auth: public query
 {
 public:
@@ -74,3 +77,6 @@ private:
     std::shared_ptr<mtproto_client> m_client;
     std::function<void(bool)> m_callback;
 };
+
+}
+}

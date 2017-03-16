@@ -24,6 +24,10 @@
 #include <memory>
 
 class tgl_secret_chat;
+
+namespace tgl {
+namespace impl {
+
 class mtprotocol_serializer;
 
 class secret_chat_encryptor
@@ -44,3 +48,6 @@ private:
     std::shared_ptr<mtprotocol_serializer> m_serializer;
     size_t m_encr_base;
 };
+
+}
+}

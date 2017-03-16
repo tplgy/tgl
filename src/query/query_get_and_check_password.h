@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 struct tl_ds_account_password;
 
 class query_get_and_check_password: public query
@@ -39,3 +42,6 @@ public:
 private:
     std::function<void(const tl_ds_account_password*)> m_callback;
 };
+
+}
+}

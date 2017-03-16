@@ -23,6 +23,9 @@
 
 #include "tgl/tgl_chat.h"
 
+namespace tgl {
+namespace impl {
+
 struct tl_ds_chat;
 
 class chat: virtual public tgl_chat
@@ -81,3 +84,6 @@ protected:
     tgl_file_location m_photo_big;
     tgl_file_location m_photo_small;
 };
+
+}
+}

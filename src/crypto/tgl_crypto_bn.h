@@ -25,6 +25,9 @@
 #include <cassert>
 #include <ostream>
 
+namespace tgl {
+namespace impl {
+
 typedef BN_CTX TGLC_bn_ctx;
 typedef BIGNUM TGLC_bn;
 
@@ -174,3 +177,6 @@ struct tgl_bn_context {
     }
     TGLC_bn_ctx* ctx;
 };
+
+}
+}

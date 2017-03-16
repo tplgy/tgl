@@ -27,6 +27,9 @@
 
 class tgl_secret_chat;
 
+namespace tgl {
+namespace impl {
+
 class query_messages_get_dh_config: public query
 {
 public:
@@ -51,3 +54,6 @@ private:
     std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_final_callback;
     double m_timeout;
 };
+
+}
+}

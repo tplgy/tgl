@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_export_chat_link: public query
 {
 public:
@@ -59,3 +62,6 @@ public:
 private:
     std::function<void(bool, const std::string&)> m_callback;
 };
+
+}
+}

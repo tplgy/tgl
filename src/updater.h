@@ -23,13 +23,17 @@
 
 #include <memory>
 
+struct tgl_peer_id_t;
+
+namespace tgl {
+namespace impl {
+
 class user_agent;
 
 struct tl_ds_encrypted_message;
 struct tl_ds_updates;
 struct tl_ds_update;
 struct tgl_in_buffer;
-struct tgl_peer_id_t;
 
 enum class tgl_update_mode {
     check_and_update_consistency,
@@ -66,3 +70,6 @@ private:
 private:
     user_agent& m_user_agent;
 };
+
+}
+}

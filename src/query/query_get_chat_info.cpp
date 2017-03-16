@@ -25,6 +25,9 @@
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 query_get_chat_info::query_get_chat_info(const std::function<void(bool)>& callback)
     : query("chat info", TYPE_TO_PARAM(messages_chat_full))
     , m_callback(callback)
@@ -95,4 +98,7 @@ int query_get_chat_info::on_error(int error_code, const std::string& error_strin
         m_callback(false);
     }
     return 0;
+}
+
+}
 }

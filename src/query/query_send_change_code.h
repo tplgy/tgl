@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 struct change_phone_state {
     std::string phone;
     std::string hash;
@@ -49,3 +52,6 @@ private:
 
 //FIXME: better organize this.
 void tgl_set_phone_number_cb(const std::shared_ptr<change_phone_state>& state, bool success, const std::string& hash);
+
+}
+}

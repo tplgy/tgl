@@ -27,6 +27,9 @@
 #include "updater.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 query_get_channel_difference::query_get_channel_difference(const std::shared_ptr<channel>& c,
         const std::function<void(bool)>& callback)
     : query("get channel difference", TYPE_TO_PARAM(updates_channel_difference))
@@ -56,21 +59,21 @@ void query_get_channel_difference::on_answer(void* D)
             m_callback(true);
         }
     } else {
-        for (int i = 0; i < DS_LVAL(DS_UD->users->cnt); i++) {
+        for (int32_t i = 0; i < DS_LVAL(DS_UD->users->cnt); i++) {
             ua->user_fetched(std::make_shared<user>(DS_UD->users->data[i]));
         }
 
-        for (int i = 0; i < DS_LVAL(DS_UD->chats->cnt); i++) {
+        for (int32_t i = 0; i < DS_LVAL(DS_UD->chats->cnt); i++) {
             ua->chat_fetched(chat::create(DS_UD->chats->data[i]));
         }
 
-        for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
+        for (int32_t i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
             ua->updater().work_update(DS_UD->other_updates->data[i], nullptr, tgl_update_mode::dont_check_and_update_consistency);
         }
 
         int message_count = DS_LVAL(DS_UD->new_messages->cnt);
         std::vector<std::shared_ptr<tgl_message>> messages;
-        for (int i = 0; i < message_count; i++) {
+        for (int32_t i = 0; i < message_count; i++) {
             messages.push_back(tglf_fetch_alloc_message(ua.get(), DS_UD->new_messages->data[i]));
         }
         ua->callback()->new_messages(messages);
@@ -92,4 +95,7 @@ int query_get_channel_difference::on_error(int error_code, const std::string& er
         m_callback(false);
     }
     return 0;
+}
+
+}
 }

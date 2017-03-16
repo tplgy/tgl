@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 struct channel_get_participants_state {
     tgl_input_peer_t channel_id;
     std::vector<std::shared_ptr<tgl_channel_participant>> participants;
@@ -52,3 +55,6 @@ private:
 //FIXME: better organize this.
 void tgl_do_get_channel_participants(const std::shared_ptr<struct channel_get_participants_state>& state,
         const std::function<void(bool)>& callback);
+
+}
+}

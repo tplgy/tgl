@@ -6,6 +6,8 @@
 #include "tgl/tgl_secret_chat.h"
 #include "tgl_secret_chat_private.h"
 
+using namespace tgl::impl;
+
 tgl_message::tgl_message()
     : server_id(0)
     , random_id(0)

@@ -29,6 +29,9 @@
 #include "auto/constants.h"
 #include "structures.h"
 
+namespace tgl {
+namespace impl {
+
 user::user(const tl_ds_user* DS_U)
     : m_id(tgl_peer_type::user, DS_LVAL(DS_U->id), DS_LVAL(DS_U->access_hash))
     , m_status(tglf_fetch_user_status(DS_U->status))
@@ -82,4 +85,7 @@ user::user(const tl_ds_user_full* DS_UF)
     : user(DS_UF->user)
 {
     set_blocked(DS_BVAL(DS_UF->blocked));
+}
+
+}
 }

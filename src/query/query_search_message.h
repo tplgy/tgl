@@ -30,6 +30,9 @@
 #include <string>
 #include <vector>
 
+namespace tgl {
+namespace impl {
+
 struct msg_search_state {
     msg_search_state(const tgl_input_peer_t& id, int from, int to, int limit, int offset, const std::string &query) :
         id(id), from(from), to(to), limit(limit), offset(offset), query(query) {}
@@ -60,3 +63,6 @@ private:
 //FIXME: better organize this.
 void tgl_do_msg_search(const std::shared_ptr<msg_search_state>& state,
         const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback);
+
+}
+}

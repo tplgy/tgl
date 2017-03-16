@@ -28,6 +28,9 @@
 #include <cstdio> /* FILE */
 #include <cstring>
 
+namespace tgl {
+namespace impl {
+
 typedef RSA TGLC_rsa;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -103,4 +106,7 @@ inline static TGLC_rsa* TGLC_pem_read_RSAPublicKey(const char* pem)
     RSA* res = PEM_read_bio_RSAPublicKey(bufio, nullptr, 0, nullptr);
     BIO_free(bufio);
     return res;
+}
+
+}
 }

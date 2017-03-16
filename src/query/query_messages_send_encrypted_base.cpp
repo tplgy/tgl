@@ -28,6 +28,9 @@
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_unconfirmed_secret_message_storage.h"
 
+namespace tgl {
+namespace impl {
+
 void query_messages_send_encrypted_base::on_answer(void* D)
 {
     assert(m_message);
@@ -197,4 +200,7 @@ query_messages_send_encrypted_base::create_by_out_seq_no(const std::shared_ptr<t
     TGL_DEBUG("reconstructed " << queries.size() << " queries from unconfirmed secret messageis of range ["
             << out_seq_no_start << "," << out_seq_no_end << "]");
     return queries;
+}
+
+}
 }

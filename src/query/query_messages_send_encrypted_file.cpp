@@ -34,6 +34,9 @@
 #include <boost/filesystem.hpp>
 #include <cstring>
 
+namespace tgl {
+namespace impl {
+
 struct query_messages_send_encrypted_file::decrypted_message_media {
     explicit decrypted_message_media(tgl_in_buffer in)
         : decrypted_message_media_type(TYPE_TO_PARAM(decrypted_message_media))
@@ -229,4 +232,7 @@ void query_messages_send_encrypted_file::on_answer(void* D)
     }
 
     query_messages_send_encrypted_base::on_answer(D);
+}
+
+}
 }

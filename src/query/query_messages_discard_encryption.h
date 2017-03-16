@@ -24,6 +24,9 @@
 #include "query.h"
 #include "tgl/tgl_secret_chat.h"
 
+namespace tgl {
+namespace impl {
+
 class query_messages_discard_encryption: public query
 {
 public:
@@ -55,3 +58,6 @@ private:
     std::shared_ptr<tgl_secret_chat> m_secret_chat;
     std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_callback;
 };
+
+}
+}

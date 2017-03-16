@@ -27,6 +27,9 @@
 #include <memory>
 #include <functional>
 
+namespace tgl {
+namespace impl {
+
 class mtproto_client;
 
 class query_export_auth: public query
@@ -75,3 +78,6 @@ private:
     std::shared_ptr<mtproto_client> m_client;
     std::function<void(bool)> m_callback;
 };
+
+}
+}

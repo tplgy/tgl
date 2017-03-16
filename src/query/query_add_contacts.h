@@ -30,6 +30,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_add_contacts: public query
 {
 public:
@@ -71,3 +74,6 @@ public:
 private:
     std::function<void(bool, const std::vector<int>&)> m_callback;
 };
+
+}
+}

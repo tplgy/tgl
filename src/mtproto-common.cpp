@@ -53,6 +53,8 @@
 #define O_BINARY 0
 #endif
 
+namespace {
+
 #ifndef WIN32
 static int get_random_bytes(unsigned char* buf, int n)
 {
@@ -121,6 +123,11 @@ static __inline__ uint64_t rdtsc(void)
     return ((uint64_t) lo) | (((uint64_t) hi) << 32);
 }
 #endif
+
+}
+
+namespace tgl {
+namespace impl {
 
 void tgl_prng_seed(const char* password_filename, int password_length)
 {
@@ -381,4 +388,7 @@ int tgl_pad_aes_decrypt(const TGLC_aes_key* aes_key, unsigned char aes_iv[32],
     }
     TGLC_aes_ige_encrypt(const_cast<unsigned char*>(from), to, from_len, aes_key, aes_iv, 0);
     return from_len;
+}
+
+}
 }

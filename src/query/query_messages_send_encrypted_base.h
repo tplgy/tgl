@@ -36,6 +36,9 @@
 #include "tgl/tgl_update_callback.h"
 #include "tgl_secret_chat_private.h"
 
+namespace tgl {
+namespace impl {
+
 class query_messages_send_encrypted_base: public query {
 public:
     query_messages_send_encrypted_base(const std::string& name,
@@ -75,3 +78,6 @@ protected:
 private:
     std::shared_ptr<tgl_unconfirmed_secret_message> m_unconfirmed_message;
 };
+
+}
+}

@@ -34,6 +34,9 @@
 
 #include <zlib.h>
 
+namespace tgl {
+namespace impl {
+
 int tgl_inflate(const void* input, int ilen, void* output, int olen)
 {
     z_stream strm;
@@ -57,9 +60,12 @@ int tgl_inflate(const void* input, int ilen, void* output, int olen)
     return total_out;
 }
 
+}
+}
+
 void tgl_secure_random(unsigned char* s, int l)
 {
-    if (TGLC_rand_bytes(s, l) <= 0) {
+    if (tgl::impl::TGLC_rand_bytes(s, l) <= 0) {
         /*if (allow_weak_random) {
           TGLC_rand_pseudo_bytes(s, l);
         } else {*/

@@ -22,6 +22,9 @@
 
 #include <openssl/rand.h>
 
+namespace tgl {
+namespace impl {
+
 inline static void TGLC_rand_add(const void* buf, int num, double entropy)
 {
     RAND_add(buf, num, entropy);
@@ -35,4 +38,7 @@ inline static int TGLC_rand_bytes(unsigned char* buf, int num)
 inline static int TGLC_rand_pseudo_bytes(unsigned char* buf, int num)
 {
     return RAND_pseudo_bytes(buf, num);
+}
+
+}
 }

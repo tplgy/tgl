@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_get_privacy_rules : public query
 {
 public:
@@ -37,3 +40,6 @@ public:
 private:
     std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)> m_callback;
 };
+
+}
+}

@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_check_username: public query
 {
 public:
@@ -63,3 +66,6 @@ public:
 private:
     std::function<void(int)> m_callback;
 };
+
+}
+}

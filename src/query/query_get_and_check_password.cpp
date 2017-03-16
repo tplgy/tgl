@@ -23,6 +23,9 @@
 
 #include "tgl/tgl_update_callback.h"
 
+namespace tgl {
+namespace impl {
+
 query_get_and_check_password::query_get_and_check_password(const std::function<void(const tl_ds_account_password*)>& callback)
     : query("get and check password", TYPE_TO_PARAM(account_password))
     , m_callback(callback)
@@ -42,4 +45,7 @@ int query_get_and_check_password::on_error(int error_code, const std::string& er
         m_callback(nullptr);
     }
     return 0;
+}
+
+}
 }

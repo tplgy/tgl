@@ -149,6 +149,42 @@ tgl_secret_chat_exchange_state tgl_secret_chat::exchange_state() const
     return d->m_exchange_state;
 }
 
+const std::vector<unsigned char>& tgl_secret_chat::encr_prime() const
+{
+    return d->m_encr_prime;
+}
+
+int64_t tgl_secret_chat::key_fingerprint() const
+{
+    int64_t fingerprint;
+    // Telegram secret chat key fingerprints are the last 64 bits of SHA1(key)
+    memcpy(&fingerprint, d->m_key_sha + 12, 8);
+    return fingerprint;
+}
+
+const unsigned char* tgl_secret_chat::key() const
+{
+    return d->m_key;
+}
+
+const unsigned char* tgl_secret_chat::key_sha() const
+{
+    return d->m_key_sha;
+}
+
+const std::vector<unsigned char>& tgl_secret_chat::g_key() const
+{
+    return d->m_g_key;
+}
+
+const unsigned char* tgl_secret_chat::exchange_key() const
+{
+    return reinterpret_cast<const unsigned char*>(d->m_exchange_key);
+}
+
+namespace tgl {
+namespace impl {
+
 bool tgl_secret_chat_private_facet::create_keys_end()
 {
     assert(!encr_prime().empty());
@@ -200,39 +236,6 @@ void tgl_secret_chat_private_facet::set_dh_params(int32_t root, unsigned char* p
 
     auto res = tglmp_check_DH_params(ua->bn_ctx()->ctx, encr_prime_bn()->bn, encr_root());
     TGL_ASSERT_UNUSED(res, res >= 0);
-}
-
-const std::vector<unsigned char>& tgl_secret_chat::encr_prime() const
-{
-    return d->m_encr_prime;
-}
-
-int64_t tgl_secret_chat::key_fingerprint() const
-{
-    int64_t fingerprint;
-    // Telegram secret chat key fingerprints are the last 64 bits of SHA1(key)
-    memcpy(&fingerprint, d->m_key_sha + 12, 8);
-    return fingerprint;
-}
-
-const unsigned char* tgl_secret_chat::key() const
-{
-    return d->m_key;
-}
-
-const unsigned char* tgl_secret_chat::key_sha() const
-{
-    return d->m_key_sha;
-}
-
-const std::vector<unsigned char>& tgl_secret_chat::g_key() const
-{
-    return d->m_g_key;
-}
-
-const unsigned char* tgl_secret_chat::exchange_key() const
-{
-    return reinterpret_cast<const unsigned char*>(d->m_exchange_key);
 }
 
 void tgl_secret_chat_private_facet::set_state(const tgl_secret_chat_state& new_state)
@@ -1106,4 +1109,7 @@ void tgl_secret_chat_private_facet::abort_key_exchange()
 {
     assert(false);
     exit(2);
+}
+
+}
 }

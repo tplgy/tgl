@@ -31,6 +31,9 @@
 #include <limits>
 #include <random>
 
+namespace tgl {
+namespace impl {
+
 int tgl_inflate(const void* input, int ilen, void* output, int olen);
 
 static inline void check_crypto_result(int r)
@@ -94,4 +97,7 @@ static inline std::string tgl_binary_to_hex(const char* buffer, size_t length)
     }
 
     return std::string(result.data(), result.size());
+}
+
+}
 }

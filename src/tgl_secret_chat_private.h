@@ -36,10 +36,14 @@
 #include <utility>
 #include <vector>
 
+class tgl_unconfirmed_secret_message;
+
+namespace tgl {
+namespace impl {
+
 static constexpr int32_t TGL_ENCRYPTED_LAYER = 17;
 
 class query;
-class tgl_unconfirmed_secret_message;
 
 struct tl_ds_encrypted_message;
 
@@ -234,7 +238,10 @@ private:
     void resend_messages(int32_t start_seq_no, int32_t end_seq_no);
 };
 
-inline tgl_secret_chat_private_facet* tgl_secret_chat::private_facet()
+}
+}
+
+inline tgl::impl::tgl_secret_chat_private_facet* tgl_secret_chat::private_facet()
 {
-    return static_cast<tgl_secret_chat_private_facet*>(this);
+    return static_cast<tgl::impl::tgl_secret_chat_private_facet*>(this);
 }

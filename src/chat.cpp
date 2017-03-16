@@ -32,6 +32,9 @@
 
 #include <cassert>
 
+namespace tgl {
+namespace impl {
+
 std::shared_ptr<chat> chat::create(const tl_ds_chat* DS_C)
 {
     if (!DS_C) {
@@ -100,4 +103,7 @@ chat::chat(const tl_ds_chat* DS_C)
     }
 
     assert(DS_C->magic == CODE_chat);
+}
+
+}
 }

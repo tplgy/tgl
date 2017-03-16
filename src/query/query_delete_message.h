@@ -30,6 +30,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_delete_message: public query
 {
 public:
@@ -71,3 +74,6 @@ private:
     int64_t m_message_id;
     std::function<void(bool)> m_callback;
 };
+
+}
+}

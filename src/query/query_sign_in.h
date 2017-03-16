@@ -29,6 +29,9 @@
 #include <memory>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class user;
 
 class query_sign_in: public query
@@ -48,3 +51,6 @@ private:
 private:
     std::function<void(bool, const std::shared_ptr<user>&)> m_callback;
 };
+
+}
+}

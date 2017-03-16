@@ -30,6 +30,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_search_contact: public query
 {
 public:
@@ -70,3 +73,6 @@ private:
     std::function<void(const std::vector<std::shared_ptr<tgl_user>>&,
             const std::vector<std::shared_ptr<tgl_chat>>&)> m_callback;
 };
+
+}
+}

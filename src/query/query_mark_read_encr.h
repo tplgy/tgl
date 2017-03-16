@@ -26,6 +26,9 @@
 #include "tgl_secret_chat_private.h"
 #include "tgl/tgl_update_callback.h"
 
+namespace tgl {
+namespace impl {
+
 class query_mark_read_encr: public query
 {
 public:
@@ -72,3 +75,6 @@ private:
     int32_t m_max_time;
     std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
 };
+
+}
+}

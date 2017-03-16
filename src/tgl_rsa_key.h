@@ -29,6 +29,9 @@
 #include "crypto/tgl_crypto_rsa_pem.h"
 #include "mtproto-common.h"
 
+namespace tgl {
+namespace impl {
+
 class tgl_rsa_key
 {
 public:
@@ -67,3 +70,6 @@ private:
     std::unique_ptr<TGLC_rsa, RSA_deleter> m_public_key;
     int64_t m_fingerprint;
 };
+
+}
+}

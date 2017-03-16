@@ -26,6 +26,9 @@
 #include "structures.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 query_search_message::query_search_message(const std::shared_ptr<msg_search_state>& state,
         const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback)
     : query("messages search", TYPE_TO_PARAM(messages_messages))
@@ -120,4 +123,7 @@ void tgl_do_msg_search(const std::shared_ptr<msg_search_state>& state,
         q->out_i32(state->limit);
     }
     q->execute(ua->active_client());
+}
+
+}
 }

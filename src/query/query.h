@@ -34,6 +34,9 @@
 
 class tgl_timer;
 
+namespace tgl {
+namespace impl {
+
 class query: public std::enable_shared_from_this<query>, public mtproto_client::connection_status_observer
 {
 public:
@@ -170,3 +173,6 @@ private:
     std::shared_ptr<tgl_timer> m_retry_timer;
     std::shared_ptr<mtproto_client> m_client;
 };
+
+}
+}

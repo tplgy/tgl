@@ -22,6 +22,9 @@
 
 #include "tgl/tgl_unconfirmed_secret_message.h"
 
+namespace tgl {
+namespace impl {
+
 class unconfirmed_secret_message: public tgl_unconfirmed_secret_message {
 public:
     unconfirmed_secret_message(int64_t message_id, int64_t date, int32_t chat_id,
@@ -61,3 +64,6 @@ private:
     bool m_is_out_going;
     std::vector<std::string> m_blobs;
 };
+
+}
+}

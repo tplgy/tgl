@@ -23,6 +23,6 @@
 std::shared_ptr<tgl_unconfirmed_secret_message> tgl_unconfirmed_secret_message::create_default_impl(int64_t message_id,
         int64_t date, int32_t chat_id, int32_t in_seq_no, int32_t out_seq_no, bool is_out_going, uint32_t constructor_code)
 {
-    return std::make_shared<unconfirmed_secret_message>(
+    return std::make_shared<tgl::impl::unconfirmed_secret_message>(
         message_id, date, chat_id, in_seq_no, out_seq_no, is_out_going, constructor_code);
 }

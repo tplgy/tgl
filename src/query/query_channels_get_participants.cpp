@@ -25,6 +25,9 @@
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 query_channels_get_participants::query_channels_get_participants(const std::shared_ptr<channel_get_participants_state>& state,
         const std::function<void(bool)>& callback)
     : query("channels get participants", TYPE_TO_PARAM(channels_channel_participants))
@@ -123,4 +126,7 @@ void tgl_do_get_channel_participants(const std::shared_ptr<struct channel_get_pa
     q->out_i32(state->offset);
     q->out_i32(state->limit);
     q->execute(ua->active_client());
+}
+
+}
 }

@@ -39,8 +39,12 @@
 
 class tgl_connection;
 class tgl_mtproto_client;
-class tgl_rsa_key;
 class tgl_timer;
+
+namespace tgl {
+namespace impl {
+
+class tgl_rsa_key;
 class query;
 
 struct encrypted_message;
@@ -255,3 +259,6 @@ private:
     std::shared_ptr<tgl_rsa_key> m_rsa_key;
     std::set<std::weak_ptr<connection_status_observer>, std::owner_less<std::weak_ptr<connection_status_observer>>> m_connection_status_observers;
 };
+
+}
+}

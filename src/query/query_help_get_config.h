@@ -23,6 +23,9 @@
 
 #include "query.h"
 
+namespace tgl {
+namespace impl {
+
 class query_help_get_config: public query
 {
 public:
@@ -34,3 +37,6 @@ public:
 private:
     std::function<void(bool)> m_callback;
 };
+
+}
+}

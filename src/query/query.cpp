@@ -28,6 +28,9 @@
 #include "tgl/tgl_timer.h"
 #include "user_agent.h"
 
+namespace tgl {
+namespace impl {
+
 constexpr int32_t TGL_SCHEME_LAYER = 45;
 constexpr int TGL_MAX_DC_NUM = 100;
 
@@ -597,4 +600,7 @@ std::shared_ptr<user_agent> query::get_user_agent() const
         ua = m_client->weak_user_agent().lock();
     }
     return ua;
+}
+
+}
 }

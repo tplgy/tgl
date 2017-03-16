@@ -23,6 +23,9 @@
 
 #include "updater.h"
 
+namespace tgl {
+namespace impl {
+
 query_send_messages::query_send_messages(const std::shared_ptr<messages_send_extra>& extra,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback)
     : query("send messages (single)", TYPE_TO_PARAM(updates))
@@ -118,4 +121,7 @@ int query_send_messages::on_error(int error_code, const std::string& error_strin
 void query_send_messages::set_message(const std::shared_ptr<tgl_message>& message)
 {
     m_message = message;
+}
+
+}
 }

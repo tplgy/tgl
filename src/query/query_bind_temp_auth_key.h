@@ -29,6 +29,9 @@
 #include <cstdint>
 #include <memory>
 
+namespace tgl {
+namespace impl {
+
 class query_bind_temp_auth_key: public query
 {
 public:
@@ -72,3 +75,6 @@ public:
 private:
     std::shared_ptr<mtproto_client> m_client;
 };
+
+}
+}

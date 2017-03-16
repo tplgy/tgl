@@ -38,6 +38,11 @@
 #include <string.h>
 #include <vector>
 
+class tgl_timer;
+
+namespace tgl {
+namespace impl {
+
 struct tl_ds_dc_option;
 struct tgl_bn_context;
 
@@ -46,7 +51,6 @@ class chat;
 class mtproto_client;
 class query;
 class tgl_rsa_key;
-class tgl_timer;
 class updater;
 class user;
 
@@ -396,3 +400,6 @@ private:
     std::map<int64_t/*msg_id*/, std::shared_ptr<query>> m_active_queries;
     std::set<std::weak_ptr<tgl_online_status_observer>, std::owner_less<std::weak_ptr<tgl_online_status_observer>>> m_online_status_observers;
 };
+
+}
+}

@@ -23,6 +23,9 @@
 
 #include "query.h"
 
+namespace tgl {
+namespace impl {
+
 class download_task;
 struct tl_ds_upload_file;
 
@@ -45,3 +48,6 @@ private:
     std::shared_ptr<download_task> m_download;
     std::function<void(const tl_ds_upload_file*)> m_callback;
 };
+
+}
+}

@@ -30,6 +30,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_resolve_username: public query
 {
 public:
@@ -66,3 +69,6 @@ public:
 private:
     std::function<void(bool)> m_callback;
 };
+
+}
+}

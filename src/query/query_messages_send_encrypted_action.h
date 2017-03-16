@@ -23,6 +23,9 @@
 
 #include "query_messages_send_encrypted_base.h"
 
+namespace tgl {
+namespace impl {
+
 class query_messages_send_encrypted_action: public query_messages_send_encrypted_base
 {
 public:
@@ -41,3 +44,6 @@ public:
 
     virtual void assemble() override;
 };
+
+}
+}

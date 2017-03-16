@@ -98,12 +98,17 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_secret_chat_exchang
     return os;
 }
 
+// FIXME
+namespace tgl {
+namespace impl {
 class tgl_secret_chat_private_facet;
 struct tgl_secret_chat_private;
+}
+}
 
 class tgl_secret_chat: public std::enable_shared_from_this<tgl_secret_chat> {
 public:
-    explicit tgl_secret_chat(std::unique_ptr<tgl_secret_chat_private>&&);
+    explicit tgl_secret_chat(std::unique_ptr<tgl::impl::tgl_secret_chat_private>&&);
     ~tgl_secret_chat();
 
     enum class qos { real_time, normal };
@@ -141,9 +146,9 @@ public:
     static size_t key_sha_size() { return 20; }
     static size_t exchange_key_size() { return 256; }
 
-    tgl_secret_chat_private_facet* private_facet();
+    tgl::impl::tgl_secret_chat_private_facet* private_facet();
 
 private:
-    friend class tgl_secret_chat_private_facet;
-    std::unique_ptr<tgl_secret_chat_private> d;
+    friend class tgl::impl::tgl_secret_chat_private_facet;
+    std::unique_ptr<tgl::impl::tgl_secret_chat_private> d;
 };

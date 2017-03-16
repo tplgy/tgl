@@ -27,6 +27,9 @@
 #include "tgl/tgl_update_callback.h"
 #include "tgl_secret_chat_private.h"
 
+namespace tgl {
+namespace impl {
+
 query_messages_request_encryption::query_messages_request_encryption(
         const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
@@ -94,4 +97,7 @@ bool query_messages_request_encryption::should_retry_on_timeout() const
 void query_messages_request_encryption::will_be_pending()
 {
     timeout_within(timeout_interval());
+}
+
+}
 }

@@ -24,6 +24,9 @@
 #include "query_set_phone.h"
 #include "tgl/tgl_update_callback.h"
 
+namespace tgl {
+namespace impl {
+
 query_send_change_code::query_send_change_code(const std::function<void(bool, const std::string&)>& callback)
     : query("send change phone code", TYPE_TO_PARAM(account_sent_change_phone_code))
     , m_callback(callback)
@@ -105,4 +108,7 @@ void tgl_set_phone_number_cb(const std::shared_ptr<change_phone_state>& state, b
     state->hash = hash;
     ua->callback()->get_value(std::make_shared<tgl_value_login_code>(
             std::bind(tgl_set_number_code, state, std::placeholders::_1, std::placeholders::_2)));
+}
+
+}
 }

@@ -31,6 +31,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_mark_message_read: public query
 {
 public:
@@ -83,3 +86,6 @@ private:
     tgl_input_peer_t m_id;
     std::function<void(bool)> m_callback;
 };
+
+}
+}

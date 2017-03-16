@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_get_state: public query
 {
 public:
@@ -67,3 +70,6 @@ public:
 private:
     std::function<void(bool)> m_callback;
 };
+
+}
+}

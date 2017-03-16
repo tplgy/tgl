@@ -25,6 +25,9 @@
 #include "auto/auto-types.h"
 #include "tgl_secret_chat_private.h"
 
+namespace tgl {
+namespace impl {
+
 query_messages_get_dh_config::query_messages_get_dh_config(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::function<void(const std::shared_ptr<tgl_secret_chat>&,
                 std::array<unsigned char, 256>& random,
@@ -123,4 +126,7 @@ void query_messages_get_dh_config::will_be_pending()
     if (m_timeout > 0) {
         timeout_within(timeout_interval());
     }
+}
+
+}
 }

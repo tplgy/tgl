@@ -23,6 +23,9 @@
 
 #include "auto/auto-fetch-ds.h"
 
+namespace tgl {
+namespace impl {
+
 query_help_get_config::query_help_get_config(const std::function<void(bool)>& callback)
     : query("get config", TYPE_TO_PARAM(config))
     , m_callback(callback)
@@ -64,4 +67,7 @@ int query_help_get_config::on_error(int error_code, const std::string& error_str
 double query_help_get_config::timeout_interval() const
 {
     return 1;
+}
+
+}
 }

@@ -21,6 +21,9 @@
 
 #include "query_upload_file_part.h"
 
+namespace tgl {
+namespace impl {
+
 query_upload_file_part::query_upload_file_part(const std::shared_ptr<upload_task>& u,
         const std::function<void(bool success)>& callback)
     : query("upload part", TYPE_TO_PARAM(bool))
@@ -90,4 +93,7 @@ bool query_upload_file_part::upload_finished() const
     return m_upload->status == tgl_upload_status::succeeded
             || m_upload->status == tgl_upload_status::failed
             || m_upload->status == tgl_upload_status::cancelled;
+}
+
+}
 }

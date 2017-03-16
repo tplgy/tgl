@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_get_notify_settings: public query
 {
 public:
@@ -58,3 +61,6 @@ public:
 private:
     std::function<void(bool, int32_t)> m_callback;
 };
+
+}
+}

@@ -48,6 +48,9 @@
 #include <string.h>
 #include <strings.h>
 
+namespace tgl {
+namespace impl {
+
 enum tgl_typing_status tglf_fetch_typing(const tl_ds_send_message_action* DS_SMA)
 {
     if (!DS_SMA) {
@@ -1064,4 +1067,6 @@ std::shared_ptr<tgl_message_reply_markup> tglf_fetch_alloc_reply_markup(const tl
 
     return reply_markup;
 }
-/* }}} */
+
+}
+}

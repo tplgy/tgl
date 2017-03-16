@@ -23,6 +23,9 @@
 
 #include "query.h"
 
+namespace tgl {
+namespace impl {
+
 class query_create_chat: public query
 {
 public:
@@ -37,3 +40,6 @@ public:
 private:
     std::function<void(int32_t)> m_callback;
 };
+
+}
+}

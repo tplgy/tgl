@@ -26,6 +26,9 @@
 #include "tgl_secret_chat_private.h"
 #include "tgl/tgl_secret_chat.h"
 
+namespace tgl {
+namespace impl {
+
 query_messages_accept_encryption::query_messages_accept_encryption(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
     : query("send encrypted (chat accept)", TYPE_TO_PARAM(encrypted_chat))
@@ -72,4 +75,7 @@ int query_messages_accept_encryption::on_error(int error_code, const std::string
         m_callback(false, m_secret_chat);
     }
     return 0;
+}
+
+}
 }

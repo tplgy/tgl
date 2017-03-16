@@ -132,7 +132,7 @@ std::shared_ptr<tgl_user_agent> tgl_user_agent::create(
 {
     auto ua = std::make_shared<user_agent>();
 
-    ua->m_transfer_manager = std::make_shared<class transfer_manager>(ua, download_dir);
+    ua->m_transfer_manager = std::make_shared<tgl::impl::transfer_manager>(ua, download_dir);
     ua->m_app_id = app_id;
     ua->m_app_hash = app_hash;
     ua->m_app_version = app_version;
@@ -141,7 +141,7 @@ std::shared_ptr<tgl_user_agent> tgl_user_agent::create(
     ua->m_lang_code = lang_code;
     ua->m_temp_key_expire_time = 7200; // seconds
 
-    tgl_prng_seed(nullptr, 0);
+    tgl::impl::tgl_prng_seed(nullptr, 0);
 
     for (const auto& raw_key: rsa_keys) {
         ua->add_rsa_key(raw_key);
@@ -168,6 +168,9 @@ std::shared_ptr<tgl_user_agent> tgl_user_agent::create(
 
     return ua;
 }
+
+namespace tgl {
+namespace impl {
 
 user_agent::user_agent()
     : m_online_status(tgl_online_status::not_online)
@@ -2660,4 +2663,7 @@ void user_agent::chat_fetched(const std::shared_ptr<chat>& c)
     }
 
     m_callback->avatar_update(c->id().peer_id, c->id().peer_type, c->photo_big(), c->photo_small());
+}
+
+}
 }

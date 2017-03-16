@@ -21,6 +21,9 @@
 
 #include "query_get_privacy_rules.h"
 
+namespace tgl {
+namespace impl {
+
 query_get_privacy_rules::query_get_privacy_rules(const std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)>& callback)
     : query("set phone", TYPE_TO_PARAM(account_privacy_rules))
     , m_callback(callback)
@@ -76,4 +79,7 @@ int query_get_privacy_rules::on_error(int error_code, const std::string& error_s
         m_callback(false, {});
     }
     return 0;
+}
+
+}
 }

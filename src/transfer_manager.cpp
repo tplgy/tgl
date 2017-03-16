@@ -46,6 +46,9 @@
 #include <boost/filesystem.hpp>
 #include <limits>
 
+namespace tgl {
+namespace impl {
+
 static constexpr size_t MAX_PART_SIZE = 512 * 1024;
 
 class query_set_photo: public query
@@ -925,4 +928,7 @@ bool transfer_manager::is_uploading_file(int64_t message_id) const
 bool transfer_manager::is_downloading_file(int64_t download_id) const
 {
     return m_downloads.count(download_id);
+}
+
+}
 }

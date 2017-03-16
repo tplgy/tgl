@@ -28,6 +28,10 @@
 
 class tgl_secret_chat;
 struct tgl_message;
+
+namespace tgl {
+namespace impl {
+
 struct tl_ds_decrypted_message_media;
 class upload_task;
 
@@ -57,3 +61,6 @@ private:
     std::shared_ptr<upload_task> m_upload;
     std::unique_ptr<decrypted_message_media> m_message_media;
 };
+
+}
+}

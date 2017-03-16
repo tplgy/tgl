@@ -31,6 +31,9 @@
 
 #include <cassert>
 
+namespace tgl {
+namespace impl {
+
 std::shared_ptr<channel> channel::create_bare(const tgl_input_peer_t& id)
 {
     std::shared_ptr<channel> c(new channel(nullptr));
@@ -67,4 +70,7 @@ channel::channel(const tl_ds_chat* DS_C)
     m_is_broadcast = flags & 32;
     m_is_official = flags & 128;
     m_is_mega_group = flags & 256;
+}
+
+}
 }

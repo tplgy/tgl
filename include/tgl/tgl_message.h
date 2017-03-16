@@ -38,12 +38,23 @@ struct tgl_message_reply_markup {
 };
 
 class tgl_secret_chat;
+
+// FIXME
+namespace tgl {
+namespace impl {
+
 struct tl_ds_message_media;
 struct tl_ds_message_action;
 struct tl_ds_reply_markup;
 struct tl_ds_decrypted_message_media;
 struct tl_ds_decrypted_message_action;
 struct tl_ds_encrypted_file;
+
+}
+}
+
+// FIXME
+using namespace tgl::impl;
 
 struct tgl_message {
     int64_t server_id;

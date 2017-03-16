@@ -23,6 +23,9 @@
 
 #include <cstring>
 
+namespace tgl {
+namespace impl {
+
 upload_task::upload_task()
     : size(0)
     , uploaded_bytes(0)
@@ -69,4 +72,7 @@ bool upload_task::check_cancelled()
     }
     set_status(tgl_upload_status::cancelled);
     return true;
+}
+
+}
 }

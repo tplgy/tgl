@@ -26,6 +26,9 @@
 #include <memory>
 #include <map>
 
+namespace tgl {
+namespace impl {
+
 class download_task;
 class query_download_file_part;
 class query_upload_file_part;
@@ -110,3 +113,6 @@ private:
 };
 
 static constexpr size_t BIG_FILE_THRESHOLD = 10 * 1024 * 1024;
+
+}
+}

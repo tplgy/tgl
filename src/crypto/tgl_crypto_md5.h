@@ -24,7 +24,13 @@
 
 #include <cstddef> /* size_t */
 
+namespace tgl {
+namespace impl {
+
 inline static void TGLC_md5(const unsigned char* d, size_t n, unsigned char* md)
 {
     MD5(d, n, md);
+}
+
+}
 }

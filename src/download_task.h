@@ -33,6 +33,9 @@
 #include <unordered_set>
 #include <vector>
 
+namespace tgl {
+namespace impl {
+
 class download_data {
 public:
     download_data()
@@ -96,3 +99,6 @@ private:
 private:
     bool m_cancel_requested;
 };
+
+}
+}

@@ -29,6 +29,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_import_card: public query
 {
 public:
@@ -61,3 +64,6 @@ public:
 private:
     std::function<void(bool, const std::shared_ptr<tgl_user>&)> m_callback;
 };
+
+}
+}

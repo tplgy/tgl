@@ -30,8 +30,12 @@
 #include <unordered_set>
 #include <vector>
 
-class query_upload_file_part;
 struct tgl_message;
+
+namespace tgl {
+namespace impl {
+
+class query_upload_file_part;
 
 class upload_task {
 public:
@@ -86,3 +90,6 @@ public:
 private:
     bool m_cancel_requested;
 };
+
+}
+}

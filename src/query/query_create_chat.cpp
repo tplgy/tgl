@@ -23,6 +23,9 @@
 
 #include "updater.h"
 
+namespace tgl {
+namespace impl {
+
 query_create_chat::query_create_chat(const std::function<void(int32_t chat_id)>& callback, bool is_channel)
     : query(is_channel ? "create channel" : "create chat", TYPE_TO_PARAM(updates))
     , m_callback(callback)
@@ -81,4 +84,7 @@ bool query_create_chat::should_retry_on_timeout() const
 void query_create_chat::will_be_pending()
 {
     timeout_within(timeout_interval());
+}
+
+}
 }

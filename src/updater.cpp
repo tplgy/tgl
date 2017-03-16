@@ -37,6 +37,9 @@
 
 #include <cassert>
 
+namespace tgl {
+namespace impl {
+
 bool updater::check_pts_diff(int32_t pts, int32_t pts_count)
 {
     TGL_DEBUG("pts = " << pts << ", pts_count = " << pts_count);
@@ -720,4 +723,7 @@ void updater::work_encrypted_message(const tl_ds_encrypted_message* DS_EM)
     }
 
     secret_chat->private_facet()->imbue_encrypted_message(DS_EM);
+}
+
+}
 }

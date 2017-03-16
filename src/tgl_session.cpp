@@ -24,6 +24,9 @@
 #include "tgl/tgl_net.h"
 #include "tgl/tgl_timer.h"
 
+namespace tgl {
+namespace impl {
+
 void tgl_session::clear()
 {
     session_id = 0;
@@ -47,3 +50,5 @@ void tgl_session::clear()
     ev = nullptr;
 }
 
+}
+}

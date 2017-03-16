@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_channel_get_participant: public query
 {
 public:
@@ -38,3 +41,6 @@ private:
     int32_t m_channel_id;
     std::function<void(bool)> m_callback;
 };
+
+}
+}

@@ -27,6 +27,9 @@
 #include "updater.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 query_get_difference::query_get_difference(const std::function<void(bool)>& callback)
     : query("get difference", TYPE_TO_PARAM(updates_difference))
     , m_callback(callback)
@@ -108,4 +111,7 @@ int query_get_difference::on_error(int error_code, const std::string& error_stri
         m_callback(false);
     }
     return 0;
+}
+
+}
 }

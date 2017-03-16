@@ -58,6 +58,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+namespace tgl {
+namespace impl {
+
 static constexpr double SESSION_CLEANUP_TIMEOUT = 5.0;
 static constexpr int MAX_MESSAGE_INTS = 1048576;
 static constexpr int ACK_TIMEOUT = 1;
@@ -1943,4 +1946,7 @@ void mtproto_client::bytes_received(size_t bytes)
     if (auto ua = m_user_agent.lock()) {
         ua->bytes_received(bytes);
     }
+}
+
+}
 }

@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 static constexpr struct paramed_type bare_int_type = TYPE_TO_PARAM(bare_int);
 static constexpr struct paramed_type bare_int_array_type[1] = {bare_int_type};
 static constexpr struct paramed_type vector_type = (struct paramed_type) {.type = tl_type_vector, .params=bare_int_array_type};
@@ -64,3 +67,6 @@ public:
 private:
     std::function<void(bool, const std::vector<int>&)> m_callback;
 };
+
+}
+}

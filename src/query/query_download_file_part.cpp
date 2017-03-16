@@ -26,6 +26,9 @@
 
 #include <cassert>
 
+namespace tgl {
+namespace impl {
+
 query_download_file_part::query_download_file_part(const std::shared_ptr<download_task>& download,
         const std::function<void(const tl_ds_upload_file*)>& callback)
     : query("download", TYPE_TO_PARAM(upload_file))
@@ -85,4 +88,7 @@ bool query_download_file_part::download_finished() const
     return m_download->status == tgl_download_status::succeeded
             || m_download->status == tgl_download_status::failed
             || m_download->status == tgl_download_status::cancelled;
+}
+
+}
 }

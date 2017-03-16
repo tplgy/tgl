@@ -24,6 +24,9 @@
 
 #include <cstddef> /* size_t */
 
+namespace tgl {
+namespace impl {
+
 inline static void TGLC_sha1(const unsigned char* d, size_t n, unsigned char* md)
 {
     SHA1(d, n, md);
@@ -32,4 +35,7 @@ inline static void TGLC_sha1(const unsigned char* d, size_t n, unsigned char* md
 inline static void TGLC_sha256(const unsigned char* d, size_t n, unsigned char* md)
 {
     SHA256(d, n, md);
+}
+
+}
 }

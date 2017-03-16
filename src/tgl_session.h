@@ -33,6 +33,9 @@
 class tgl_connection;
 class tgl_timer;
 
+namespace tgl {
+namespace impl {
+
 struct worker {
     std::shared_ptr<tgl_connection> connection;
     std::shared_ptr<tgl_timer> live_timer;
@@ -60,3 +63,6 @@ struct tgl_session {
 
     void clear();
 };
+
+}
+}

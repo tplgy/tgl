@@ -23,6 +23,9 @@
 
 #include "tgl/tgl_user.h"
 
+namespace tgl {
+namespace impl {
+
 struct tl_ds_user;
 struct tl_ds_user_full;
 
@@ -78,3 +81,6 @@ private:
     bool m_deleted;
     bool m_official;
 };
+
+}
+}

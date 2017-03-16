@@ -32,6 +32,9 @@
 #include <memory>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_msg_send: public query
 {
 public:
@@ -71,3 +74,6 @@ private:
     std::shared_ptr<tgl_message> m_message;
     std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
 };
+
+}
+}

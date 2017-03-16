@@ -27,6 +27,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_send_code: public query
 {
 public:
@@ -80,3 +83,6 @@ public:
 private:
     std::function<void(bool, bool, const std::string)> m_callback;
 };
+
+}
+}

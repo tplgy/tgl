@@ -28,6 +28,9 @@
 #include <functional>
 #include <memory>
 
+namespace tgl {
+namespace impl {
+
 class query_upload_file_part: public query
 {
 public:
@@ -47,3 +50,6 @@ private:
     std::shared_ptr<upload_task> m_upload;
     std::function<void(bool success)> m_callback;
 };
+
+}
+}

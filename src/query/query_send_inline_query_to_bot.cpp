@@ -20,6 +20,9 @@
 
 #include "query_send_inline_query_to_bot.h"
 
+namespace tgl {
+namespace impl {
+
 query_send_inline_query_to_bot::query_send_inline_query_to_bot(const std::function<void(bool, const std::string&)>& callback)
     : query("send inline query to bot", TYPE_TO_PARAM(messages_bot_results))
     , m_callback(callback)
@@ -48,4 +51,7 @@ int query_send_inline_query_to_bot::on_error(int error_code, const std::string& 
         m_callback(false, std::string());
     }
     return 0;
+}
+
+}
 }

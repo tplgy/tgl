@@ -33,6 +33,9 @@
 #include "tgl/tgl_message.h"
 #include "tgl/tgl_message_media.h"
 
+namespace tgl {
+namespace impl {
+
 class user_agent;
 
 std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(user_agent* ua, const tl_ds_encrypted_chat* DS_EC);
@@ -62,3 +65,6 @@ std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W
 std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info(const tl_ds_bot_info* DS_BI);
 std::shared_ptr<tgl_message_reply_markup> tglf_fetch_alloc_reply_markup(const tl_ds_reply_markup* DS_RM);
 void tglf_fetch_message_entities(const std::shared_ptr<tgl_message>& M, const tl_ds_vector* DS);
+
+}
+}

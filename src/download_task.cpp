@@ -26,6 +26,9 @@
 
 #include <cstring>
 
+namespace tgl {
+namespace impl {
+
 download_task::download_task(int64_t id, int32_t size, const tgl_file_location& location)
     : id(id)
     , offset(0)
@@ -117,4 +120,7 @@ bool download_task::check_cancelled()
     }
     set_status(tgl_download_status::cancelled);
     return true;
+}
+
+}
 }

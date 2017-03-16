@@ -26,6 +26,9 @@
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 query_get_history::query_get_history(const tgl_input_peer_t& id, int limit, int offset, int max_id,
         const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback)
     : query("get history", TYPE_TO_PARAM(messages_messages))
@@ -101,4 +104,7 @@ int query_get_history::on_error(int error_code, const std::string& error_string)
         m_callback(false, std::vector<std::shared_ptr<tgl_message>>());
     }
     return 0;
+}
+
+}
 }

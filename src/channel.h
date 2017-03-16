@@ -24,6 +24,9 @@
 #include "chat.h"
 #include "tgl/tgl_channel.h"
 
+namespace tgl {
+namespace impl {
+
 struct tl_ds_chat;
 
 class channel: public chat, virtual public tgl_channel
@@ -55,3 +58,6 @@ private:
     bool m_is_broadcast;
     bool m_is_diff_locked;
 };
+
+}
+}

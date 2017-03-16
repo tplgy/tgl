@@ -26,6 +26,9 @@
 #include <functional>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_send_inline_query_to_bot: public query
 {
 public:
@@ -36,3 +39,6 @@ public:
 private:
     std::function<void(bool, const std::string&)> m_callback;
 };
+
+}
+}

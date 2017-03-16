@@ -28,6 +28,9 @@
 
 #include <string.h>
 
+namespace tgl {
+namespace impl {
+
 static void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const unsigned char msg_sha[20], const int32_t* encr_ptr, const int32_t* encr_end, char* encrypted_data)
 {
@@ -108,4 +111,7 @@ void secret_chat_encryptor::end()
     m_serializer->out_i32s_at(m_encr_base + 1 + 2, reinterpret_cast<int32_t*>(sha1_buffer + 4), 4); // msg_key
 
     encrypt_decrypted_message(m_secret_chat, sha1_buffer, encr_ptr, encr_end, reinterpret_cast<char*>(const_cast<int32_t*>(encr_ptr)));
+}
+
+}
 }

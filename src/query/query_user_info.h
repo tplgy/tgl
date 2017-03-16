@@ -25,6 +25,9 @@
 #include "structures.h"
 #include "user.h"
 
+namespace tgl {
+namespace impl {
+
 class query_user_info: public query
 {
 public:
@@ -67,3 +70,6 @@ public:
 private:
     std::function<void(bool, const std::shared_ptr<user>&)> m_callback;
 };
+
+}
+}

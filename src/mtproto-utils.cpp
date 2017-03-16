@@ -30,6 +30,9 @@
 #include <memory>
 #include <string.h>
 
+namespace tgl {
+namespace impl {
+
 inline static unsigned long long gcd(unsigned long long a, unsigned long long b)
 {
     return b ? gcd(b, a % b) : a;
@@ -42,9 +45,7 @@ inline static int check_prime(TGLC_bn_ctx* ctx, TGLC_bn* p)
     return r;
 }
 
-
 // Complete set of checks see at https://core.telegram.org/mtproto/security_guidelines
-
 
 // Checks that(p,g) is acceptable pair for DH
 int tglmp_check_DH_params(TGLC_bn_ctx* ctx, TGLC_bn* p, int g)
@@ -214,4 +215,7 @@ int bn_factorize(TGLC_bn* pq, TGLC_bn* p, TGLC_bn* q)
     ull2BN(p, p1);
     ull2BN(q, p2);
     return 0;
+}
+
+}
 }

@@ -23,6 +23,9 @@
 
 #include "secret_chat_encryptor.h"
 
+namespace tgl {
+namespace impl {
+
 query_messages_send_encrypted_action::query_messages_send_encrypted_action(
         const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message,
@@ -149,4 +152,7 @@ void query_messages_send_encrypted_action::assemble()
     append_blob_to_unconfirmed_message(start);
     encryptor.end();
     end_unconfirmed_message();
+}
+
+}
 }

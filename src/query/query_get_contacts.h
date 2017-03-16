@@ -30,6 +30,9 @@
 #include <memory>
 #include <string>
 
+namespace tgl {
+namespace impl {
+
 class query_get_contacts: public query
 {
 public:
@@ -66,3 +69,6 @@ public:
 private:
     std::function<void(bool, const std::vector<std::shared_ptr<tgl_user>>&)> m_callback;
 };
+
+}
+}
