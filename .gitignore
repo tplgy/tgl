@@ -1,4 +1,5 @@
 /build*
+.arcconfig
 CMakeLists.txt.user
 *.pyc
 Makefile
