@@ -22,6 +22,7 @@
 #pragma once
 
 #include "tgl/tgl_chat.h"
+#include <memory>
 
 namespace tgl {
 namespace impl {
