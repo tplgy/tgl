@@ -208,7 +208,11 @@ void user_agent::shut_down()
 
 void user_agent::set_dc_auth_key(int dc_id, const char* key, size_t key_length)
 {
-    assert(dc_id > 0 && dc_id <= MAX_DC_ID);
+    if (dc_id <= 0 || dc_id > MAX_DC_ID) {
+        TGL_ERROR("invalid dc id " << dc_id << ", db corrupted?");
+        assert(false);
+        return;
+    }
 
     assert(key);
     assert(key_length == 256);
@@ -258,8 +262,13 @@ void user_agent::set_dc_option(bool is_v6, int id, const std::string& ip, int po
 
 void user_agent::set_dc_logged_in(int dc_id, bool logged_in)
 {
+    if (dc_id <= 0 || dc_id > MAX_DC_ID) {
+        TGL_ERROR("invalid dc id " << dc_id << ", db corrupted?");
+        assert(false);
+        return;
+    }
+
     TGL_DEBUG("set signed " << dc_id);
-    assert(dc_id > 0 && dc_id <= MAX_DC_ID);
     auto client = m_clients[dc_id];
     client->set_logged_in(logged_in);
     m_callback->dc_updated(client);
@@ -267,11 +276,16 @@ void user_agent::set_dc_logged_in(int dc_id, bool logged_in)
 
 void user_agent::set_active_dc(int dc_id)
 {
+    if (dc_id <= 0 || dc_id > MAX_DC_ID) {
+        TGL_ERROR("invalid dc id " << dc_id << ", db corrupted?");
+        assert(false);
+        return;
+    }
+
     if (m_active_client && m_active_client->id() == dc_id) {
         return;
     }
     TGL_DEBUG("change active DC to " << dc_id);
-    assert(dc_id > 0 && dc_id <= MAX_DC_ID);
     m_active_client = m_clients[dc_id];
     m_callback->active_dc_changed(dc_id);
 }
