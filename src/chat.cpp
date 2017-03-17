@@ -38,17 +38,20 @@ namespace impl {
 std::shared_ptr<chat> chat::create(const tl_ds_chat* DS_C)
 {
     if (!DS_C) {
-        return std::shared_ptr<chat>(new chat(nullptr));
+        return nullptr;
     }
 
-    if (DS_C->magic == CODE_channel || DS_C->magic == CODE_channel_forbidden) {
-        return std::shared_ptr<chat>(new channel(DS_C));
+    try {
+        if (DS_C->magic == CODE_channel || DS_C->magic == CODE_channel_forbidden) {
+            return std::shared_ptr<chat>(new channel(DS_C));
+        }
+        return std::shared_ptr<chat>(new chat(DS_C));
+    } catch (...) {
+        return nullptr;
     }
-
-    return std::shared_ptr<chat>(new chat(DS_C));
 }
 
-chat::chat(const tl_ds_chat* DS_C, chat::dont_check_magic)
+chat::chat()
     : m_date(0)
     , m_participants_count(0)
     , m_is_creator(false)
@@ -64,8 +67,12 @@ chat::chat(const tl_ds_chat* DS_C, chat::dont_check_magic)
     , m_is_restricted(false)
     , m_is_forbidden(false)
 {
+}
+
+chat::chat(const tl_ds_chat* DS_C, chat::dont_check_magic) throw(std::runtime_error)
+{
     if (!DS_C || DS_C->magic == CODE_chat_empty) {
-        return;
+        throw std::runtime_error("empty chat");
     }
 
     m_id = tgl_input_peer_t(tgl_peer_type::chat, DS_LVAL(DS_C->id), DS_LVAL(DS_C->access_hash));
@@ -95,14 +102,16 @@ chat::chat(const tl_ds_chat* DS_C, chat::dont_check_magic)
     }
 }
 
-chat::chat(const tl_ds_chat* DS_C)
+chat::chat(const tgl_input_peer_t& id)
+    : chat()
+{
+    m_id = id;
+}
+
+chat::chat(const tl_ds_chat* DS_C) throw(std::runtime_error)
     : chat(DS_C, chat::dont_check_magic())
 {
-    if (empty()) {
-        return;
-    }
-
-    assert(DS_C->magic == CODE_chat);
+    assert(DS_C->magic == CODE_chat || DS_C->magic == CODE_chat_forbidden);
 }
 
 }

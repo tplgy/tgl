@@ -33,12 +33,7 @@
 #include <string>
 #include <vector>
 
-// FIXME: this should be either removed or replaced by a defined type.
-namespace tgl {
-namespace impl {
-struct tl_ds_reply_markup;
-}
-}
+class tgl_secret_chat;
 
 class tgl_query_api {
 public:
@@ -70,7 +65,6 @@ public:
     virtual int64_t send_text_message(const tgl_input_peer_t& peer_id, const std::string& text, int64_t message_id = 0,
             int32_t reply_id = 0, bool disable_preview = false, bool post_as_channel_message = false,
             bool send_as_secret_chat_service_message = false,
-            const std::shared_ptr<tgl::impl::tl_ds_reply_markup>& reply_markup = nullptr,
             const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback = nullptr) = 0;
 
     // Forward message *msg_id* to peer *id*

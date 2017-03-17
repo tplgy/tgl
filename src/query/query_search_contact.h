@@ -48,11 +48,17 @@ public:
         std::vector<std::shared_ptr<tgl_user>> users;
         std::vector<std::shared_ptr<tgl_chat>> chats;
         if (auto ua = get_user_agent()) {
-            for (int i = 0; i < DS_LVAL(DS_CRU->users->cnt); i++) {
-                users.push_back(std::make_shared<user>(DS_CRU->users->data[i]));
+            int32_t n = DS_LVAL(DS_CRU->users->cnt);
+            for (int32_t i = 0; i < n; ++i) {
+                if (auto u = user::create(DS_CRU->users->data[i])) {
+                    users.push_back(u);
+                }
             }
-            for (int i = 0; i < DS_LVAL(DS_CRU->chats->cnt); i++) {
-                chats.push_back(chat::create(DS_CRU->chats->data[i]));
+            n = DS_LVAL(DS_CRU->chats->cnt);
+            for (int32_t i = 0; i < n; ++i) {
+                if (auto c = chat::create(DS_CRU->chats->data[i])) {
+                    chats.push_back(c);
+                }
             }
         }
         if (m_callback) {

@@ -48,6 +48,7 @@ struct tgl_bn_context;
 
 class channel;
 class chat;
+class message;
 class mtproto_client;
 class query;
 class tgl_rsa_key;
@@ -137,7 +138,6 @@ public:
     virtual int64_t send_text_message(const tgl_input_peer_t& peer_id, const std::string& text, int64_t message_id = 0,
             int32_t reply_id = 0, bool disable_preview = false, bool post_as_channel_message = false,
             bool send_as_secret_chat_service_message = false,
-            const std::shared_ptr<tl_ds_reply_markup>& reply_markup = nullptr,
             const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback = nullptr) override;
     virtual void forward_message(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id, int64_t message_id,
             const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback) override;
@@ -334,7 +334,7 @@ private:
             const std::string& first_name, const std::string& last_name, const std::string& code, tgl_login_action action);
     void lookup_state();
 
-    void send_text_message(const std::shared_ptr<tgl_message>& message, bool disable_preview,
+    void send_text_message(const std::shared_ptr<message>& m, bool disable_preview,
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
     void mark_encrypted_message_read(const tgl_input_peer_t& id, int32_t max_time,
             const std::function<void(bool success)>& callback);

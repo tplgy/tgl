@@ -22,6 +22,7 @@
 #include "query_get_dialogs.h"
 
 #include "chat.h"
+#include "message.h"
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
@@ -48,17 +49,23 @@ void query_get_dialogs::on_answer(void* D)
     }
 
     tl_ds_messages_dialogs* DS_MD = static_cast<tl_ds_messages_dialogs*>(D);
-    int dl_size = DS_LVAL(DS_MD->dialogs->cnt);
+    int32_t dl_size = DS_LVAL(DS_MD->dialogs->cnt);
 
-    for (int i = 0; i < DS_LVAL(DS_MD->chats->cnt); i++) {
-        ua->chat_fetched(chat::create(DS_MD->chats->data[i]));
+    int32_t n = DS_LVAL(DS_MD->chats->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto c = chat::create(DS_MD->chats->data[i])) {
+            ua->chat_fetched(c);
+        }
     }
 
-    for (int i = 0; i < DS_LVAL(DS_MD->users->cnt); i++) {
-        ua->user_fetched(std::make_shared<user>(DS_MD->users->data[i]));
+    n = DS_LVAL(DS_MD->users->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto u = user::create(DS_MD->users->data[i])) {
+            ua->user_fetched(u);
+        }
     }
 
-    for (int i = 0; i < dl_size; i++) {
+    for (int32_t i = 0; i < dl_size; ++i) {
         struct tl_ds_dialog* DS_D = DS_MD->dialogs->data[i];
         tgl_peer_id_t peer_id = tglf_fetch_peer_id(DS_D->peer);
         m_state->peers.push_back(peer_id);
@@ -72,8 +79,11 @@ void query_get_dialogs::on_answer(void* D)
     }
 
     std::vector<std::shared_ptr<tgl_message>> new_messages;
-    for (int i = 0; i < DS_LVAL(DS_MD->messages->cnt); i++) {
-        new_messages.push_back(tglf_fetch_alloc_message(ua.get(), DS_MD->messages->data[i]));
+    n = DS_LVAL(DS_MD->messages->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto m = message::create(ua->our_id(), DS_MD->messages->data[i])) {
+            new_messages.push_back(m);
+        }
     }
     ua->callback()->new_messages(new_messages);
 

@@ -49,14 +49,18 @@ void query_get_channel_info::on_answer(void* D)
     if (DS_MCF->users) {
         int32_t n = DS_LVAL(DS_MCF->users->cnt);
         for (int32_t i = 0; i < n; ++i) {
-            ua->user_fetched(std::make_shared<user>(DS_MCF->users->data[i]));
+            if (auto u = user::create(DS_MCF->users->data[i])) {
+                ua->user_fetched(u);
+            }
         }
     }
 
     if (DS_MCF->chats) {
         int32_t n = DS_LVAL(DS_MCF->chats->cnt);
         for (int32_t i = 0; i < n; ++i) {
-            ua->chat_fetched(chat::create(DS_MCF->chats->data[i]));
+            if (auto c = chat::create(DS_MCF->chats->data[i])) {
+                ua->chat_fetched(c);
+            }
         }
     }
 

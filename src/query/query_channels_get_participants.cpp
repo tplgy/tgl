@@ -41,7 +41,9 @@ void query_channels_get_participants::on_answer(void* D)
     auto ua = m_state->weak_user_agent.lock();
     if (ua) {
         for (int32_t i = 0; i < DS_LVAL(DS_CP->users->cnt); i++) {
-            ua->user_fetched(std::make_shared<user>(DS_CP->users->data[i]));
+            if (auto u = user::create(DS_CP->users->data[i])) {
+                ua->user_fetched(u);
+            }
         }
     }
 

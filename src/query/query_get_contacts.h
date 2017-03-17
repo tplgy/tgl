@@ -45,11 +45,13 @@ public:
     virtual void on_answer(void* D) override
     {
         tl_ds_contacts_contacts* DS_CC = static_cast<tl_ds_contacts_contacts*>(D);
-        int n = DS_CC->users ? DS_LVAL(DS_CC->users->cnt) : 0;
+        int32_t n = DS_CC->users ? DS_LVAL(DS_CC->users->cnt) : 0;
         std::vector<std::shared_ptr<tgl_user>> users;
         if (auto ua = get_user_agent()) {
-            for (int i = 0; i < n; i++) {
-                ua->user_fetched(std::make_shared<user>(DS_CC->users->data[i]));
+            for (int32_t i = 0; i < n; ++i) {
+                if (auto u = user::create(DS_CC->users->data[i])) {
+                    ua->user_fetched(u);
+                }
             }
         }
         if (m_callback) {

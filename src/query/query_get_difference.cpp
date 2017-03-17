@@ -22,6 +22,7 @@
 #include "query_get_difference.h"
 
 #include "chat.h"
+#include "message.h"
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "updater.h"
@@ -61,27 +62,37 @@ void query_get_difference::on_answer(void* D)
             m_callback(true);
         }
     } else {
-        for (int32_t i = 0; i < DS_LVAL(DS_UD->users->cnt); i++) {
-            ua->user_fetched(std::make_shared<user>(DS_UD->users->data[i]));
-        }
-        for (int32_t i = 0; i < DS_LVAL(DS_UD->chats->cnt); i++) {
-            ua->chat_fetched(chat::create(DS_UD->chats->data[i]));
+        int32_t n = DS_LVAL(DS_UD->users->cnt);
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto u = user::create(DS_UD->users->data[i])) {
+                ua->user_fetched(u);
+            }
         }
 
-        for (int i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
+        n = DS_LVAL(DS_UD->chats->cnt);
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto c = chat::create(DS_UD->chats->data[i])) {
+                ua->chat_fetched(c);
+            }
+        }
+
+        n = DS_LVAL(DS_UD->other_updates->cnt);
+        for (int32_t i = 0; i < n; ++i) {
             ua->updater().work_update(DS_UD->other_updates->data[i], nullptr, tgl_update_mode::dont_check_and_update_consistency);
         }
 
-        int message_count = DS_LVAL(DS_UD->new_messages->cnt);
+        int32_t message_count = DS_LVAL(DS_UD->new_messages->cnt);
         std::vector<std::shared_ptr<tgl_message>> messages;
-        for (int i = 0; i < message_count; i++) {
-            messages.push_back(tglf_fetch_alloc_message(ua.get(), DS_UD->new_messages->data[i]));
+        for (int32_t i = 0; i < message_count; ++i) {
+            if (auto m = message::create(ua->our_id(), DS_UD->new_messages->data[i])) {
+                messages.push_back(m);
+            }
         }
         ua->callback()->new_messages(messages);
         messages.clear();
 
-        int encrypted_message_count = DS_LVAL(DS_UD->new_encrypted_messages->cnt);
-        for (int i = 0; i < encrypted_message_count; i++) {
+        int32_t encrypted_message_count = DS_LVAL(DS_UD->new_encrypted_messages->cnt);
+        for (int32_t i = 0; i < encrypted_message_count; ++i) {
             ua->updater().work_encrypted_message(DS_UD->new_encrypted_messages->data[i]);
         }
 

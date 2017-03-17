@@ -22,6 +22,7 @@
 #include "query_get_history.h"
 
 #include "chat.h"
+#include "message.h"
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
@@ -48,18 +49,23 @@ void query_get_history::on_answer(void* D)
 
     if (auto ua = get_user_agent()) {
         int32_t n = DS_LVAL(DS_MM->chats->cnt);
-        for (int32_t i = 0; i < n; i++) {
-            ua->chat_fetched(chat::create(DS_MM->chats->data[i]));
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto c = chat::create(DS_MM->chats->data[i])) {
+                ua->chat_fetched(c);
+            }
         }
         n = DS_LVAL(DS_MM->users->cnt);
-        for (int32_t i = 0; i < n; i++) {
-            ua->user_fetched(std::make_shared<user>(DS_MM->users->data[i]));
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto u = user::create(DS_MM->users->data[i])) {
+                ua->user_fetched(u);
+            }
         }
         n = DS_LVAL(DS_MM->messages->cnt);
-        for (int32_t i = 0; i < n; i++) {
-            auto message = tglf_fetch_alloc_message(ua.get(), DS_MM->messages->data[i]);
-            message->set_history(true);
-            m_messages.push_back(message);
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto m = message::create(ua->our_id(), DS_MM->messages->data[i])) {
+                m->set_history(true);
+                m_messages.push_back(m);
+            }
         }
         ua->callback()->new_messages(m_messages);
     }

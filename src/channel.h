@@ -48,7 +48,8 @@ public:
 
 private:
     friend class chat;
-    explicit channel(const tl_ds_chat*);
+    channel(const tl_ds_chat*) throw(std::runtime_error);
+    channel(const tgl_input_peer_t& id);
 
 private:
     int32_t m_admins_count;

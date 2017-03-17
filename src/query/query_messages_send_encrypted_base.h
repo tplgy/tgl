@@ -30,7 +30,6 @@
 #include "auto/auto.h"
 #include "auto/constants.h"
 #include "query.h"
-#include "tgl/tgl_message.h"
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_unconfirmed_secret_message.h"
 #include "tgl/tgl_update_callback.h"
@@ -39,16 +38,18 @@
 namespace tgl {
 namespace impl {
 
+class message;
+
 class query_messages_send_encrypted_base: public query {
 public:
     query_messages_send_encrypted_base(const std::string& name,
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback,
+            const std::shared_ptr<message>& m,
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback,
             bool assembled)
         : query(name, TYPE_TO_PARAM(messages_sent_encrypted_message))
         , m_secret_chat(secret_chat)
-        , m_message(message)
+        , m_message(m)
         , m_callback(callback)
         , m_assembled(assembled)
     { }
@@ -71,8 +72,8 @@ protected:
 
 protected:
     std::shared_ptr<tgl_secret_chat> m_secret_chat;
-    std::shared_ptr<tgl_message> m_message;
-    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
+    std::shared_ptr<message> m_message;
+    std::function<void(bool, const std::shared_ptr<message>&)> m_callback;
     bool m_assembled;
 
 private:

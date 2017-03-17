@@ -45,11 +45,17 @@ public:
     {
         tl_ds_contacts_resolved_peer* DS_CRU = static_cast<tl_ds_contacts_resolved_peer*>(D);
         if (auto ua = get_user_agent()) {
-            for (int32_t i = 0; i < DS_LVAL(DS_CRU->users->cnt); i++) {
-                ua->user_fetched(std::make_shared<user>(DS_CRU->users->data[i]));
+            int32_t n = DS_LVAL(DS_CRU->users->cnt);
+            for (int32_t i = 0; i < n; ++i) {
+                if (auto u = user::create(DS_CRU->users->data[i])) {
+                    ua->user_fetched(u);
+                }
             }
-            for (int32_t i = 0; i < DS_LVAL(DS_CRU->chats->cnt); i++) {
-                ua->chat_fetched(chat::create(DS_CRU->chats->data[i]));
+            n = DS_LVAL(DS_CRU->chats->cnt);
+            for (int32_t i = 0; i < n; ++i) {
+                if (auto c = chat::create(DS_CRU->chats->data[i])) {
+                    ua->chat_fetched(c);
+                }
             }
         }
         if (m_callback) {

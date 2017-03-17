@@ -23,7 +23,6 @@
 
 #include "crypto/tgl_crypto_bn.h"
 #include "crypto/tgl_crypto_sha.h"
-#include "tgl/tgl_message.h"
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_timer.h"
 #include "user_agent.h"
@@ -43,12 +42,13 @@ namespace impl {
 
 static constexpr int32_t TGL_ENCRYPTED_LAYER = 17;
 
+class message;
 class query;
 
 struct tl_ds_encrypted_message;
 
 struct secret_message {
-    std::shared_ptr<tgl_message> message;
+    std::shared_ptr<class message> message;
     int32_t raw_in_seq_no = -1;
     int32_t raw_out_seq_no = -1;
 };
@@ -188,27 +188,27 @@ public:
 
     void queue_unconfirmed_outgoing_message(const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message);
 
-    std::shared_ptr<tgl_message> fetch_message(const tl_ds_encrypted_message*);
-    std::shared_ptr<tgl_message> construct_message(const tgl_peer_id_t& from_id, int64_t message_id,
+    std::shared_ptr<message> fetch_message(const tl_ds_encrypted_message*);
+    std::shared_ptr<message> construct_message(const tgl_peer_id_t& from_id, int64_t message_id,
             int64_t date, const std::string& layer_blob, const std::string& file_info_blob);
 
-    void send_message(const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+    void send_message(const std::shared_ptr<message>& m,
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback);
 
     void send_action(const tl_ds_decrypted_message_action& action,
             int64_t message_id,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback);
 
     void send_location(double latitude, double longitude,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>&)>& callback);
+            const std::function<void(bool success, const std::shared_ptr<message>&)>& callback);
 
     void send_layer();
 
     void mark_messages_read(int32_t max_time,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback);
 
     void delete_message(int64_t message_id,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback);
 
     void set_deleted();
 

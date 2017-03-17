@@ -30,7 +30,7 @@
 #include <unordered_set>
 #include <vector>
 
-struct tgl_message;
+class tgl_message;
 
 namespace tgl {
 namespace impl {

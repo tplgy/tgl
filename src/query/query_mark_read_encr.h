@@ -29,13 +29,15 @@
 namespace tgl {
 namespace impl {
 
+class message;
+
 class query_mark_read_encr: public query
 {
 public:
     query_mark_read_encr(
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
             int32_t max_time,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
         : query("read encrypted", TYPE_TO_PARAM(bool))
         , m_secret_chat(secret_chat)
         , m_max_time(max_time)
@@ -73,7 +75,7 @@ public:
 private:
     std::shared_ptr<tgl_secret_chat> m_secret_chat;
     int32_t m_max_time;
-    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
+    std::function<void(bool, const std::shared_ptr<message>&)> m_callback;
 };
 
 }

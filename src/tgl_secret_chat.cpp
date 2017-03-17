@@ -29,6 +29,7 @@
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_bn.h"
 #include "crypto/tgl_crypto_sha.h"
+#include "message.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
 #include "query/query_mark_read_encr.h"
@@ -45,7 +46,7 @@
 constexpr double REQUEST_RESEND_DELAY = 1.0; // seconds
 constexpr double HOLE_TTL = 3.0; // seconds
 
-tgl_secret_chat::tgl_secret_chat(std::unique_ptr<tgl_secret_chat_private>&& d)
+tgl_secret_chat::tgl_secret_chat(std::unique_ptr<tgl::impl::tgl_secret_chat_private>&& d)
     : d(std::move(d))
 {
 }
@@ -254,7 +255,7 @@ void tgl_secret_chat_private_facet::set_state(const tgl_secret_chat_state& new_s
 void tgl_secret_chat_private_facet::message_received(const secret_message& m,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message)
 {
-    const std::shared_ptr<tgl_message>& message = m.message;
+    const std::shared_ptr<class message>& message = m.message;
     if (!message) {
         return;
     }
@@ -289,11 +290,11 @@ void tgl_secret_chat_private_facet::message_received(const secret_message& m,
             TGL_WARNING("hole in seq in secret chat, expecting in_seq_no of "
                     << in_seq_no() << " but " << raw_out_seq_no / 2 << " was received");
 
-            if (message->action && message->action->type() == tgl_message_action_type::resend) {
+            if (message->action() && message->action()->type() == tgl_message_action_type::resend) {
                 // We have to make a special case here for resend message because otherwise we may
                 // end up with a deadlock where both sides are requesting resend but the resend will
                 // never get processed because of a hole ahead of it.
-                auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action);
+                auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action());
                 TGL_DEBUG("received request for message resend, start-seq: "<< action->start_seq_no << " end-seq: " << action->end_seq_no);
                 resend_messages(action->start_seq_no, action->end_seq_no);
                 auto secret_message_copy = m;
@@ -510,14 +511,14 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
             continue;
         }
 
-        if (m.raw_out_seq_no >= 0 && message->from_id.peer_id != d->m_our_id.peer_id) {
-            message->seq_no = m.raw_out_seq_no / 2;
+        if (m.raw_out_seq_no >= 0 && message->from_id().peer_id != d->m_our_id.peer_id) {
+            message->set_sequence_number(m.raw_out_seq_no / 2);
         }
-        auto action_type = message->action ? message->action->type() : tgl_message_action_type::none;
+        auto action_type = message->action() ? message->action()->type() : tgl_message_action_type::none;
         if (action_type == tgl_message_action_type::none) {
             messages_to_deliver.push_back(message);
         } else if (action_type == tgl_message_action_type::request_key) {
-            auto action = std::static_pointer_cast<tgl_message_action_request_key>(message->action);
+            auto action = std::static_pointer_cast<tgl_message_action_request_key>(message->action());
             if (exchange_state() == tgl_secret_chat_exchange_state::none
                     || (exchange_state() == tgl_secret_chat_exchange_state::requested && exchange_id() > action->exchange_id )) {
                 accept_key_exchange(action->exchange_id, action->g_a);
@@ -525,37 +526,37 @@ void tgl_secret_chat_private_facet::process_messages(const std::vector<secret_me
                 TGL_WARNING("secret_chat exchange: incorrect state (received request, state = " << exchange_state() << ")");
             }
         } else if (action_type == tgl_message_action_type::accept_key) {
-            auto action = std::static_pointer_cast<tgl_message_action_accept_key>(message->action);
+            auto action = std::static_pointer_cast<tgl_message_action_accept_key>(message->action());
             if (exchange_state() == tgl_secret_chat_exchange_state::requested && exchange_id() == action->exchange_id) {
                 commit_key_exchange(action->g_a);
             } else {
                 TGL_WARNING("secret_chat exchange: incorrect state (received accept, state = " << exchange_state() << ")");
             }
         } else if (action_type == tgl_message_action_type::commit_key) {
-            auto action = std::static_pointer_cast<tgl_message_action_commit_key>(message->action);
+            auto action = std::static_pointer_cast<tgl_message_action_commit_key>(message->action());
             if (exchange_state() == tgl_secret_chat_exchange_state::accepted && exchange_id() == action->exchange_id) {
                 confirm_key_exchange(1);
             } else {
                 TGL_WARNING("secret_chat exchange: incorrect state (received commit, state = " << exchange_state() << ")");
             }
         } else if (action_type == tgl_message_action_type::abort_key) {
-            auto action = std::static_pointer_cast<tgl_message_action_abort_key>(message->action);
+            auto action = std::static_pointer_cast<tgl_message_action_abort_key>(message->action());
             if (exchange_state() != tgl_secret_chat_exchange_state::none && exchange_id() == action->exchange_id) {
                 abort_key_exchange();
             } else {
                 TGL_WARNING("secret_chat exchange: incorrect state (received abort, state = " << exchange_state() << ")");
             }
         } else if (action_type == tgl_message_action_type::notify_layer) {
-            auto action = std::static_pointer_cast<tgl_message_action_notify_layer>(message->action);
+            auto action = std::static_pointer_cast<tgl_message_action_notify_layer>(message->action());
             set_layer(action->layer);
         } else if (action_type == tgl_message_action_type::set_message_ttl) {
-            auto action = std::static_pointer_cast<tgl_message_action_set_message_ttl>(message->action);
+            auto action = std::static_pointer_cast<tgl_message_action_set_message_ttl>(message->action());
             set_ttl(action->ttl);
         } else if (action_type == tgl_message_action_type::delete_messages) {
-            auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(message->action);
+            auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(message->action());
             incoming_messages_deleted(action->msg_ids);
         } else if (action_type == tgl_message_action_type::resend) {
-            auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action);
+            auto action = std::static_pointer_cast<tgl_message_action_resend>(message->action());
             TGL_DEBUG("received request for message resend; start-seq: "<< action->start_seq_no << " end-seq: " << action->end_seq_no);
             resend_messages(action->start_seq_no, action->end_seq_no);
         } else if (action_type == tgl_message_action_type::opaque_message) {
@@ -662,7 +663,7 @@ bool tgl_secret_chat_private_facet::decrypt_message(int32_t*& decr_ptr, int32_t*
     return true;
 }
 
-std::shared_ptr<tgl_message> tgl_secret_chat_private_facet::fetch_message(const tl_ds_encrypted_message* DS_EM)
+std::shared_ptr<message> tgl_secret_chat_private_facet::fetch_message(const tl_ds_encrypted_message* DS_EM)
 {
     return fetch_message(DS_EM, false).first.message;
 }
@@ -733,7 +734,7 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, const tgl_peer_i
             return std::make_pair(m, nullptr);;
         }
 
-        m.message = std::make_shared<tgl_message>(shared_from_this(),
+        m.message = std::make_shared<message>(shared_from_this(),
                 message_id,
                 from_id,
                 &date,
@@ -744,9 +745,9 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, const tgl_peer_i
         m.raw_in_seq_no = DS_LVAL(DS_DML->in_seq_no);
         m.raw_out_seq_no = DS_LVAL(DS_DML->out_seq_no);
         if (m.message->is_outgoing()) {
-            m.message->seq_no = m.raw_out_seq_no / 2;
+            m.message->set_sequence_number(m.raw_out_seq_no / 2);
         } else {
-            m.message->seq_no = m.raw_in_seq_no / 2;
+            m.message->set_sequence_number(m.raw_in_seq_no / 2);
         }
 
         if (construct_unconfirmed_message) {
@@ -773,7 +774,7 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, const tgl_peer_i
         struct tl_ds_decrypted_message* DS_DM = fetch_ds_type_decrypted_message(&in, &decrypted_message);
         assert(DS_DM);
 
-        m.message = std::make_shared<tgl_message>(shared_from_this(),
+        m.message = std::make_shared<message>(shared_from_this(),
                 message_id,
                 from_id,
                 &date,
@@ -785,9 +786,9 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, const tgl_peer_i
         m.raw_out_seq_no = -1;
     }
 
-    if (construct_unconfirmed_message && unconfirmed_message && file && m.message->media
-            && m.message->media->type() == tgl_message_media_type::document
-            && std::static_pointer_cast<tgl_message_media_document>(m.message->media)->document->is_encrypted()) {
+    if (construct_unconfirmed_message && unconfirmed_message && file && m.message->media()
+            && m.message->media()->type() == tgl_message_media_type::document
+            && std::static_pointer_cast<tgl_message_media_document>(m.message->media())->document->is_encrypted()) {
         mtprotocol_serializer s;
         s.out_i32(CODE_encrypted_file);
         s.out_i64(DS_LVAL(file->id));
@@ -801,7 +802,7 @@ tgl_secret_chat_private_facet::fetch_message(tgl_in_buffer& in, const tgl_peer_i
     return std::make_pair(m, unconfirmed_message);
 }
 
-std::shared_ptr<tgl_message> tgl_secret_chat_private_facet::construct_message(const tgl_peer_id_t& from_id,
+std::shared_ptr<message> tgl_secret_chat_private_facet::construct_message(const tgl_peer_id_t& from_id,
         int64_t message_id, int64_t date, const std::string& layer_blob, const std::string& file_info_blob)
 {
     if ((layer_blob.size() % 4) || (file_info_blob.size() % 4)) {
@@ -858,10 +859,10 @@ void tgl_secret_chat_private_facet::incoming_messages_deleted(const std::vector<
         bool is_unconfirmed = false;
         for (auto& it: d->m_unconfirmed_incoming_messages) {
             const auto& message = it.second.message;
-            if (message && message->permanent_id == id) {
+            if (message && message->id() == id) {
                auto unconfirmed_message = unconfirmed_secret_message::create_default_impl(
                         id,
-                        message->date,
+                        message->date(),
                         this->id().peer_id,
                         it.second.raw_in_seq_no / 2,
                         it.second.raw_out_seq_no / 2,
@@ -879,8 +880,8 @@ void tgl_secret_chat_private_facet::incoming_messages_deleted(const std::vector<
     }
 }
 
-void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<tgl_message>& message,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
+void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<class message>& message,
+        const std::function<void(bool, const std::shared_ptr<class message>&)>& callback)
 {
     auto ua = d->m_user_agent.lock();
     if (state() != tgl_secret_chat_state::ok || !ua) {
@@ -895,12 +896,12 @@ void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<tgl_messa
         return;
     }
 
-    assert(message->permanent_id);
+    assert(message->id());
 
     std::shared_ptr<query> q;
 
     load_unconfirmed_outgoing_messages_if_needed();
-    const auto& it = d->m_unconfirmed_outgoing_seq_numbers.find(message->permanent_id);
+    const auto& it = d->m_unconfirmed_outgoing_seq_numbers.find(message->id());
     if (it != d->m_unconfirmed_outgoing_seq_numbers.end()) {
         auto queries = query_messages_send_encrypted_base::create_by_out_seq_no(shared_from_this(), it->second, it->second);
         if (queries.size() == 1) {
@@ -910,7 +911,7 @@ void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<tgl_messa
 
     if (!q) {
         if (message->is_service()) {
-            if (!message->action) {
+            if (!message->action()) {
                 if (callback) {
                     TGL_WARNING("we can't send a service message which doesn't have an action");
                     callback(true, nullptr);
@@ -929,7 +930,7 @@ void tgl_secret_chat_private_facet::send_message(const std::shared_ptr<tgl_messa
 
 void tgl_secret_chat_private_facet::send_action(const tl_ds_decrypted_message_action& action,
         int64_t message_id,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
+        const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
 {
     if (action.magic == CODE_decrypted_message_action_opaque_message && !opaque_service_message_enabled()) {
         TGL_ERROR("opaque service message disabled");
@@ -945,7 +946,7 @@ void tgl_secret_chat_private_facet::send_action(const tl_ds_decrypted_message_ac
         tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
     }
 
-    auto message = std::make_shared<tgl_message>(shared_from_this(),
+    auto m = std::make_shared<message>(shared_from_this(),
             message_id,
             d->m_our_id,
             &date,
@@ -953,12 +954,12 @@ void tgl_secret_chat_private_facet::send_action(const tl_ds_decrypted_message_ac
             nullptr,
             &action,
             nullptr);
-    message->set_pending(true).set_unread(true);
-    send_message(message, callback);
+    m->set_pending(true).set_unread(true);
+    send_message(m, callback);
 }
 
 void tgl_secret_chat_private_facet::send_location(double latitude, double longitude,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>&)>& callback)
+        const std::function<void(bool success, const std::shared_ptr<message>&)>& callback)
 {
     struct tl_ds_decrypted_message_media TDSM;
     memset(&TDSM, 0, sizeof(TDSM));
@@ -972,7 +973,7 @@ void tgl_secret_chat_private_facet::send_location(double latitude, double longit
     while (!message_id) {
         tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
     }
-    auto message = std::make_shared<tgl_message>(shared_from_this(),
+    auto m = std::make_shared<message>(shared_from_this(),
             message_id,
             d->m_our_id,
             &date,
@@ -980,8 +981,8 @@ void tgl_secret_chat_private_facet::send_location(double latitude, double longit
             &TDSM,
             nullptr,
             nullptr);
-    message->set_unread(true).set_pending(true);
-    send_message(message, callback);
+    m->set_unread(true).set_pending(true);
+    send_message(m, callback);
 }
 
 void tgl_secret_chat_private_facet::send_layer()
@@ -993,7 +994,7 @@ void tgl_secret_chat_private_facet::send_layer()
     action.layer = &layer;
 
     std::weak_ptr<user_agent> weak_ua = d->m_user_agent;
-    send_action(action, 0, [=](bool success, const std::shared_ptr<tgl_message>& msg) {
+    send_action(action, 0, [=](bool success, const std::shared_ptr<message>&) {
         if (success) {
             if (auto ua = weak_ua.lock()) {
                 ua->callback()->secret_chat_update(shared_from_this());
@@ -1003,7 +1004,7 @@ void tgl_secret_chat_private_facet::send_layer()
 }
 
 void tgl_secret_chat_private_facet::mark_messages_read(int32_t max_time,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
+        const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
 {
     auto ua = d->m_user_agent.lock();
     if (!ua) {
@@ -1032,7 +1033,7 @@ void tgl_secret_chat_private_facet::set_deleted()
 }
 
 void tgl_secret_chat_private_facet::delete_message(int64_t message_id,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
+        const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
 {
     struct tl_ds_decrypted_message_action action;
     action.magic = CODE_decrypted_message_action_delete_messages;

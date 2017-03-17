@@ -21,6 +21,8 @@
 
 #include "upload_task.h"
 
+#include "tgl/tgl_message.h"
+
 #include <cstring>
 
 namespace tgl {

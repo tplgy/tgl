@@ -22,7 +22,9 @@
 #pragma once
 
 #include "tgl/tgl_chat.h"
+
 #include <memory>
+#include <stdexcept>
 
 namespace tgl {
 namespace impl {
@@ -32,6 +34,7 @@ struct tl_ds_chat;
 class chat: virtual public tgl_chat
 {
 public:
+    // Could return null.
     static std::shared_ptr<chat> create(const tl_ds_chat*);
 
     virtual const tgl_input_peer_t& id() const override { return m_id; }
@@ -55,14 +58,15 @@ public:
     virtual const tgl_file_location& photo_small() const override { return m_photo_small; }
 
     virtual bool is_channel() const { return false; }
-    bool empty() const { return m_id.empty(); }
 
 protected:
     class dont_check_magic { };
-    chat(const tl_ds_chat*, dont_check_magic);
+    chat(const tl_ds_chat*, dont_check_magic) throw(std::runtime_error);
+    chat(const tgl_input_peer_t& id);
 
 private:
-    explicit chat(const tl_ds_chat*);
+    chat();
+    chat(const tl_ds_chat*) throw(std::runtime_error);
 
 protected:
     tgl_input_peer_t m_id;

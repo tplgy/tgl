@@ -27,6 +27,7 @@
 #include "auto/auto-skip.h"
 #include "crypto/tgl_crypto_md5.h"
 #include "document.h"
+#include "message.h"
 #include "secret_chat_encryptor.h"
 #include "tgl/tgl_mime_type.h"
 #include "transfer_manager.h"
@@ -64,9 +65,9 @@ struct query_messages_send_encrypted_file::decrypted_message_media {
 
 query_messages_send_encrypted_file::query_messages_send_encrypted_file(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::shared_ptr<upload_task>& upload,
-        const std::shared_ptr<tgl_message>& message,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
-    : query_messages_send_encrypted_base("send encrypted file message", secret_chat, message, callback, false)
+        const std::shared_ptr<message>& m,
+        const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
+    : query_messages_send_encrypted_base("send encrypted file message", secret_chat, m, callback, false)
     , m_upload(upload)
 {
 }
@@ -74,7 +75,7 @@ query_messages_send_encrypted_file::query_messages_send_encrypted_file(const std
 query_messages_send_encrypted_file::query_messages_send_encrypted_file(
         const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) throw(std::runtime_error)
+        const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error)
     : query_messages_send_encrypted_base("send encrypted file message (reassembled)", secret_chat, nullptr, callback, true)
 {
     const auto& blobs = unconfirmed_message->blobs();
@@ -111,8 +112,8 @@ void query_messages_send_encrypted_file::set_message_media(const tl_ds_decrypted
 {
     m_message->set_decrypted_message_media(DS_DMM);
 
-    if (m_message->media->type() == tgl_message_media_type::document) {
-        auto media = std::static_pointer_cast<tgl_message_media_document>(m_message->media);
+    if (m_message->media()->type() == tgl_message_media_type::document) {
+        auto media = std::static_pointer_cast<tgl_message_media_document>(m_message->media());
         auto document = std::static_pointer_cast<class document>(media->document);
         if (document && document->is_encrypted()) {
             const auto& u = m_upload;
@@ -144,7 +145,7 @@ void query_messages_send_encrypted_file::assemble()
     out_i32(CODE_input_encrypted_chat);
     out_i32(u->to_id.peer_id);
     out_i64(m_secret_chat->id().access_hash);
-    out_i64(m_message->permanent_id);
+    out_i64(m_message->id());
     secret_chat_encryptor encryptor(m_secret_chat, serializer());
     encryptor.start();
     size_t capture_start = begin_unconfirmed_message(CODE_messages_send_encrypted_file);
@@ -154,7 +155,7 @@ void query_messages_send_encrypted_file::assemble()
     out_i32(m_secret_chat->private_facet()->raw_in_seq_no());
     out_i32(m_secret_chat->private_facet()->raw_out_seq_no());
     out_i32(CODE_decrypted_message);
-    out_i64(m_message->permanent_id);
+    out_i64(m_message->id());
     out_i32(m_secret_chat->ttl());
     out_string("");
 

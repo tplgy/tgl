@@ -22,6 +22,7 @@
 #include "query_search_message.h"
 
 #include "chat.h"
+#include "message.h"
 #include "tgl/tgl_update_callback.h"
 #include "structures.h"
 #include "user.h"
@@ -48,16 +49,24 @@ void query_search_message::on_answer(void* D)
     }
 
     tl_ds_messages_messages* DS_MM = static_cast<tl_ds_messages_messages*>(D);
-    for (int32_t i = 0; i < DS_LVAL(DS_MM->chats->cnt); i++) {
-        ua->chat_fetched(chat::create(DS_MM->chats->data[i]));
+    int32_t n = DS_LVAL(DS_MM->chats->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto c = chat::create(DS_MM->chats->data[i])) {
+            ua->chat_fetched(c);
+        }
     }
-    for (int32_t i = 0; i < DS_LVAL(DS_MM->users->cnt); i++) {
-        ua->user_fetched(std::make_shared<user>(DS_MM->users->data[i]));
+    n = DS_LVAL(DS_MM->users->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto u = user::create(DS_MM->users->data[i])) {
+            ua->user_fetched(u);
+        }
     }
 
-    int n = DS_LVAL(DS_MM->messages->cnt);
-    for (int i = 0; i < n; i++) {
-        m_state->messages.push_back(tglf_fetch_alloc_message(ua.get(), DS_MM->messages->data[i]));
+    n = DS_LVAL(DS_MM->messages->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto m = message::create(ua->our_id(), DS_MM->messages->data[i])) {
+            m_state->messages.push_back(m);
+        }
     }
     ua->callback()->new_messages(m_state->messages);
     m_state->offset += n;
@@ -75,7 +84,7 @@ void query_search_message::on_answer(void* D)
             m_callback(true, m_state->messages);
         }
     } else {
-        m_state->max_id = m_state->messages[m_state->messages.size()-1]->permanent_id;
+        m_state->max_id = m_state->messages[m_state->messages.size()-1]->id();
         m_state->offset = 0;
         tgl_do_msg_search(m_state, m_callback);
     }

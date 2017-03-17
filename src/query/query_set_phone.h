@@ -44,8 +44,10 @@ public:
     {
         std::shared_ptr<user> u;
         if (auto ua = get_user_agent()) {
-            u = std::make_shared<user>(static_cast<tl_ds_user*>(D));
-            ua->user_fetched(u);
+            u = user::create(static_cast<tl_ds_user*>(D));
+            if (u) {
+                ua->user_fetched(u);
+            }
         }
         if (m_callback) {
             m_callback(!!u, u);

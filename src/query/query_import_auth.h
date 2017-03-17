@@ -49,7 +49,9 @@ public:
         tl_ds_auth_authorization* DS_AA = static_cast<tl_ds_auth_authorization*>(D);
 
         if (ua) {
-            ua->user_fetched(std::make_shared<user>(DS_AA->user));
+            if (auto u = user::create(DS_AA->user)) {
+                ua->user_fetched(u);
+            }
         }
 
         assert(m_client);

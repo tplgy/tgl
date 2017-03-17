@@ -31,16 +31,16 @@ class query_messages_send_encrypted_action: public query_messages_send_encrypted
 public:
     query_messages_send_encrypted_action(
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
-        : query_messages_send_encrypted_base("send encrypted action", secret_chat, message, callback, false)
+            const std::shared_ptr<message>& m,
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
+        : query_messages_send_encrypted_base("send encrypted action", secret_chat, m, callback, false)
     {
     }
 
     query_messages_send_encrypted_action(
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<tgl_unconfirmed_secret_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) throw(std::runtime_error);
+            const std::shared_ptr<tgl_unconfirmed_secret_message>& m,
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error);
 
     virtual void assemble() override;
 };

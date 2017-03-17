@@ -22,6 +22,7 @@
 #include "query_get_channel_difference.h"
 
 #include "chat.h"
+#include "message.h"
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "updater.h"
@@ -60,11 +61,15 @@ void query_get_channel_difference::on_answer(void* D)
         }
     } else {
         for (int32_t i = 0; i < DS_LVAL(DS_UD->users->cnt); i++) {
-            ua->user_fetched(std::make_shared<user>(DS_UD->users->data[i]));
+            if (auto u = user::create(DS_UD->users->data[i])) {
+                ua->user_fetched(u);
+            }
         }
 
         for (int32_t i = 0; i < DS_LVAL(DS_UD->chats->cnt); i++) {
-            ua->chat_fetched(chat::create(DS_UD->chats->data[i]));
+            if (auto c = chat::create(DS_UD->chats->data[i])) {
+                ua->chat_fetched(c);
+            }
         }
 
         for (int32_t i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
@@ -74,7 +79,9 @@ void query_get_channel_difference::on_answer(void* D)
         int message_count = DS_LVAL(DS_UD->new_messages->cnt);
         std::vector<std::shared_ptr<tgl_message>> messages;
         for (int32_t i = 0; i < message_count; i++) {
-            messages.push_back(tglf_fetch_alloc_message(ua.get(), DS_UD->new_messages->data[i]));
+            if (auto m = message::create(ua->our_id(), DS_UD->new_messages->data[i])) {
+                messages.push_back(m);
+            }
         }
         ua->callback()->new_messages(messages);
 

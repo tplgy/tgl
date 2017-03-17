@@ -21,6 +21,7 @@
 
 #include "query_messages_send_encrypted_action.h"
 
+#include "message.h"
 #include "secret_chat_encryptor.h"
 
 namespace tgl {
@@ -29,7 +30,7 @@ namespace impl {
 query_messages_send_encrypted_action::query_messages_send_encrypted_action(
         const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) throw(std::runtime_error)
+        const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error)
     : query_messages_send_encrypted_base("send encrypted action (reassembled)", secret_chat, nullptr, callback, true)
 {
     const auto& blobs = unconfirmed_message->blobs();
@@ -58,13 +59,13 @@ query_messages_send_encrypted_action::query_messages_send_encrypted_action(
 
 void query_messages_send_encrypted_action::assemble()
 {
-    assert(m_message->action);
+    assert(m_message->action());
 
     out_i32(CODE_messages_send_encrypted_service);
     out_i32(CODE_input_encrypted_chat);
     out_i32(m_secret_chat->id().peer_id);
     out_i64(m_secret_chat->id().access_hash);
-    out_i64(m_message->permanent_id);
+    out_i64(m_message->id());
     secret_chat_encryptor encryptor(m_secret_chat, serializer());
     encryptor.start();
     size_t start = begin_unconfirmed_message(CODE_messages_send_encrypted_service);
@@ -74,20 +75,20 @@ void query_messages_send_encrypted_action::assemble()
     out_i32(m_secret_chat->private_facet()->raw_in_seq_no());
     out_i32(m_secret_chat->private_facet()->raw_out_seq_no());
     out_i32(CODE_decrypted_message_service);
-    out_i64(m_message->permanent_id);
+    out_i64(m_message->id());
 
-    switch (m_message->action->type()) {
+    switch (m_message->action()->type()) {
     case tgl_message_action_type::notify_layer:
         out_i32(CODE_decrypted_message_action_notify_layer);
-        out_i32(std::static_pointer_cast<tgl_message_action_notify_layer>(m_message->action)->layer);
+        out_i32(std::static_pointer_cast<tgl_message_action_notify_layer>(m_message->action())->layer);
         break;
     case tgl_message_action_type::set_message_ttl:
         out_i32(CODE_decrypted_message_action_set_message_ttl);
-        out_i32(std::static_pointer_cast<tgl_message_action_set_message_ttl>(m_message->action)->ttl);
+        out_i32(std::static_pointer_cast<tgl_message_action_set_message_ttl>(m_message->action())->ttl);
         break;
     case tgl_message_action_type::request_key:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_request_key>(m_message->action);
+        auto action = std::static_pointer_cast<tgl_message_action_request_key>(m_message->action());
         out_i32(CODE_decrypted_message_action_request_key);
         out_i64(action->exchange_id);
         out_string(reinterpret_cast<char*>(action->g_a.data()), 256);
@@ -95,7 +96,7 @@ void query_messages_send_encrypted_action::assemble()
     }
     case tgl_message_action_type::accept_key:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_accept_key>(m_message->action);
+        auto action = std::static_pointer_cast<tgl_message_action_accept_key>(m_message->action());
         out_i32(CODE_decrypted_message_action_accept_key);
         out_i64(action->exchange_id);
         out_string(reinterpret_cast<char*>(action->g_a.data()), 256);
@@ -104,7 +105,7 @@ void query_messages_send_encrypted_action::assemble()
     }
     case tgl_message_action_type::commit_key:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_commit_key>(m_message->action);
+        auto action = std::static_pointer_cast<tgl_message_action_commit_key>(m_message->action());
         out_i32(CODE_decrypted_message_action_commit_key);
         out_i64(action->exchange_id);
         out_i64(action->key_fingerprint);
@@ -112,7 +113,7 @@ void query_messages_send_encrypted_action::assemble()
     }
     case tgl_message_action_type::abort_key:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_abort_key>(m_message->action);
+        auto action = std::static_pointer_cast<tgl_message_action_abort_key>(m_message->action());
         out_i32(CODE_decrypted_message_action_abort_key);
         out_i64(action->exchange_id);
         break;
@@ -122,7 +123,7 @@ void query_messages_send_encrypted_action::assemble()
         break;
     case tgl_message_action_type::resend:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_resend>(m_message->action);
+        auto action = std::static_pointer_cast<tgl_message_action_resend>(m_message->action());
         out_i32(CODE_decrypted_message_action_resend);
         out_i32(action->start_seq_no);
         out_i32(action->end_seq_no);
@@ -130,7 +131,7 @@ void query_messages_send_encrypted_action::assemble()
     }
     case tgl_message_action_type::delete_messages:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(m_message->action);
+        auto action = std::static_pointer_cast<tgl_message_action_delete_messages>(m_message->action());
         out_i32 (CODE_decrypted_message_action_delete_messages);
         out_i32(CODE_vector);
         out_i32(action->msg_ids.size());
@@ -141,7 +142,7 @@ void query_messages_send_encrypted_action::assemble()
     }
     case tgl_message_action_type::opaque_message:
     {
-        auto action = std::static_pointer_cast<tgl_message_action_opaque_message>(m_message->action);
+        auto action = std::static_pointer_cast<tgl_message_action_opaque_message>(m_message->action());
         out_i32(CODE_decrypted_message_action_opaque_message);
         out_std_string(action->message);
         break;

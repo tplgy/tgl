@@ -21,9 +21,9 @@
 
 #pragma once
 
+#include "message.h"
 #include "query.h"
 #include "tgl/tgl_log.h"
-#include "tgl/tgl_message.h"
 #include "tgl/tgl_update_callback.h"
 #include "updater.h"
 #include "user_agent.h"
@@ -38,10 +38,10 @@ namespace impl {
 class query_msg_send: public query
 {
 public:
-    query_msg_send(const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
+    query_msg_send(const std::shared_ptr<message>& m,
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
         : query("send message", TYPE_TO_PARAM(updates))
-        , m_message(message)
+        , m_message(m)
         , m_callback(callback)
     { }
 
@@ -71,8 +71,8 @@ public:
         return 0;
     }
 private:
-    std::shared_ptr<tgl_message> m_message;
-    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_callback;
+    std::shared_ptr<message> m_message;
+    std::function<void(bool, const std::shared_ptr<message>&)> m_callback;
 };
 
 }

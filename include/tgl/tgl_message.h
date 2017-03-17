@@ -16,7 +16,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
 
 #pragma once
@@ -26,101 +26,38 @@
 #include "tgl_message_media.h"
 #include "tgl_peer_id.h"
 
-#include <bitset>
 #include <cstdint>
 #include <memory>
 #include <vector>
 
-struct tgl_message_reply_markup {
-    int flags;
+struct tgl_message_reply_markup
+{
+    int32_t flags = 0;
     std::vector<std::vector<std::string>> button_matrix;
-    tgl_message_reply_markup(): flags(0) { }
 };
 
-class tgl_secret_chat;
-
-// FIXME
-namespace tgl {
-namespace impl {
-
-struct tl_ds_message_media;
-struct tl_ds_message_action;
-struct tl_ds_reply_markup;
-struct tl_ds_decrypted_message_media;
-struct tl_ds_decrypted_message_action;
-struct tl_ds_encrypted_file;
-
-}
-}
-
-// FIXME
-using namespace tgl::impl;
-
-struct tgl_message {
-    int64_t server_id;
-    int64_t random_id;
-    int64_t fwd_date;
-    int64_t date;
-    int64_t permanent_id;
-    int32_t reply_id;
-    int32_t seq_no;
-    tgl_peer_id_t fwd_from_id;
-    tgl_peer_id_t from_id;
-    tgl_input_peer_t to_id;
-    std::vector<std::shared_ptr<tgl_message_entity>> entities;
-    std::shared_ptr<tgl_message_reply_markup> reply_markup;
-    std::shared_ptr<tgl_message_action> action;
-    std::shared_ptr<tgl_message_media> media;
-    std::string message;
-
-    tgl_message();
-
-    tgl_message(int64_t message_id,
-            const tgl_peer_id_t& from_id,
-            const tgl_input_peer_t& to_id,
-            const tgl_peer_id_t* fwd_from_id,
-            const int64_t* fwd_date,
-            const int64_t* date,
-            const std::string& message,
-            const tl_ds_message_media* media,
-            const tl_ds_message_action* action,
-            int32_t reply_id,
-            const tl_ds_reply_markup* reply_markup);
-
-    tgl_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            int64_t message_id,
-            const tgl_peer_id_t& from_id,
-            const int64_t* date,
-            const std::string& message,
-            const tl_ds_decrypted_message_media* media,
-            const tl_ds_decrypted_message_action* action,
-            const tl_ds_encrypted_file* file);
-
-    bool is_unread() const { return m_flags[index_unread]; }
-    bool is_outgoing() const { return m_flags[index_outgoing]; }
-    bool is_mention() const { return m_flags[index_mention]; }
-    bool is_pending() const { return m_flags[index_pending]; }
-    bool is_service() const { return m_flags[index_service]; }
-    bool is_send_failed() const { return m_flags[index_send_failed]; }
-    bool is_history() const { return m_flags[index_history]; }
-
-    tgl_message& set_unread(bool b) { m_flags[index_unread] = b; return *this; }
-    tgl_message& set_outgoing(bool b) { m_flags[index_outgoing] = b; return *this; }
-    tgl_message& set_mention(bool b) { m_flags[index_mention] = b; return *this; }
-    tgl_message& set_pending(bool b) { m_flags[index_pending] = b; return *this; }
-    tgl_message& set_service(bool b) { m_flags[index_service] = b; return *this; }
-    tgl_message& set_send_failed(bool b) { m_flags[index_send_failed] = b; return *this; }
-    tgl_message& set_history(bool b) { m_flags[index_history] = b; return *this; }
-
-    void set_decrypted_message_media(const tl_ds_decrypted_message_media*);
-
-private:
-    static constexpr size_t index_unread = 0;
-    static constexpr size_t index_outgoing = 1;
-    static constexpr size_t index_mention = 2;
-    static constexpr size_t index_pending = 3;
-    static constexpr size_t index_service = 4;
-    static constexpr size_t index_send_failed = 5;
-    static constexpr size_t index_history = 6;
-    std::bitset<32> m_flags;
+class tgl_message
+{
+public:
+    virtual ~tgl_message() { }
+    virtual int64_t id() const = 0;
+    virtual int32_t reply_id() const = 0;
+    virtual int64_t forward_date() const = 0;
+    virtual int64_t date() const = 0;
+    virtual int32_t sequence_number() const = 0;
+    virtual const tgl_peer_id_t& forward_from_id() const = 0;
+    virtual const tgl_peer_id_t& from_id() const = 0;
+    virtual const tgl_input_peer_t& to_id() const = 0;
+    virtual const std::string text() const = 0;
+    virtual const std::shared_ptr<tgl_message_media>& media() const = 0;
+    virtual const std::shared_ptr<tgl_message_action>& action() const = 0;
+    virtual const std::vector<std::shared_ptr<tgl_message_entity>>& entities() const = 0;
+    virtual const std::shared_ptr<tgl_message_reply_markup>& reply_markup() const = 0;
+    virtual bool is_unread() const = 0;
+    virtual bool is_outgoing() const = 0;
+    virtual bool is_mention() const = 0;
+    virtual bool is_pending() const = 0;
+    virtual bool is_service() const = 0;
+    virtual bool is_send_failed() const = 0;
+    virtual bool is_history() const = 0;
 };

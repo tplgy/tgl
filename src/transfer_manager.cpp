@@ -28,6 +28,7 @@
 #include "crypto/tgl_crypto_aes.h"
 #include "crypto/tgl_crypto_md5.h"
 #include "download_task.h"
+#include "message.h"
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "query/query_download_file_part.h"
@@ -178,11 +179,9 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_
                 u->set_status(success ? tgl_upload_status::succeeded : tgl_upload_status::failed);
             });
 
-    auto message = std::make_shared<tgl_message>();
-    message->permanent_id = u->message_id;
-    message->to_id = u->to_id;
-    message->from_id = ua->our_id();
-    q->set_message(message);
+    auto m = std::make_shared<message>(u->message_id, ua->our_id(), u->to_id,
+            nullptr, nullptr, nullptr, std::string(), nullptr, nullptr, 0, nullptr);
+    q->set_message(m);
 
     q->out_i32(CODE_messages_send_media);
     q->out_i32((u->reply ? 1 : 0));
@@ -289,7 +288,7 @@ void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<upload_ta
 
     tgl_peer_id_t from_id = ua->our_id();
     int64_t date = tgl_get_system_time();
-    std::shared_ptr<tgl_message> message = std::make_shared<tgl_message>(secret_chat,
+    auto m = std::make_shared<message>(secret_chat,
             u->message_id,
             from_id,
             &date,
@@ -297,9 +296,9 @@ void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<upload_ta
             nullptr,
             nullptr,
             nullptr);
-    message->set_pending(true).set_unread(true);
-    auto q = std::make_shared<query_messages_send_encrypted_file>(secret_chat, u, message,
-            [=](bool success, const std::shared_ptr<tgl_message>& message) {
+    m->set_pending(true).set_unread(true);
+    auto q = std::make_shared<query_messages_send_encrypted_file>(secret_chat, u, m,
+            [=](bool success, const std::shared_ptr<tgl_message>&) {
                 u->set_status(success ? tgl_upload_status::succeeded : tgl_upload_status::failed);
             });
 

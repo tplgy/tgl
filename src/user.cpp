@@ -32,7 +32,25 @@
 namespace tgl {
 namespace impl {
 
-user::user(const tl_ds_user* DS_U)
+std::shared_ptr<user> user::create(const tl_ds_user* DS_U)
+{
+    try {
+        return std::shared_ptr<user>(new user(DS_U));
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+std::shared_ptr<user> user::create(const tl_ds_user_full* DS_UF)
+{
+    try {
+        return std::shared_ptr<user>(new user(DS_UF));
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+user::user(const tl_ds_user* DS_U) throw(std::runtime_error)
     : m_id(tgl_peer_type::user, DS_LVAL(DS_U->id), DS_LVAL(DS_U->access_hash))
     , m_status(tglf_fetch_user_status(DS_U->status))
     , m_user_name(DS_STDSTR(DS_U->username))
@@ -49,7 +67,7 @@ user::user(const tl_ds_user* DS_U)
     , m_official(false)
 {
     if (!DS_U || DS_U->magic == CODE_user_empty) {
-        return;
+        throw std::runtime_error("empty user");
     }
 
     int32_t flags = DS_LVAL(DS_U->flags);
@@ -81,7 +99,7 @@ user::user(const tl_ds_user* DS_U)
     }
 }
 
-user::user(const tl_ds_user_full* DS_UF)
+user::user(const tl_ds_user_full* DS_UF) throw(std::runtime_error)
     : user(DS_UF->user)
 {
     set_blocked(DS_BVAL(DS_UF->blocked));

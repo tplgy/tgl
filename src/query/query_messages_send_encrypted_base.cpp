@@ -22,6 +22,7 @@
 #include "query_messages_send_encrypted_base.h"
 
 #include "document.h"
+#include "message.h"
 #include "query_messages_send_encrypted_action.h"
 #include "query_messages_send_encrypted_file.h"
 #include "query_messages_send_encrypted_message.h"
@@ -48,11 +49,11 @@ void query_messages_send_encrypted_base::on_answer(void* D)
     }
 
     if (DS_MSEM->date) {
-        m_message->date = *DS_MSEM->date;
+        m_message->set_date(*DS_MSEM->date);
     }
 
-    if(DS_MSEM->file && DS_MSEM->file->magic == CODE_encrypted_file && m_message->media->type() == tgl_message_media_type::document) {
-        auto doc = std::static_pointer_cast<tgl_message_media_document>(m_message->media)->document;
+    if(DS_MSEM->file && DS_MSEM->file->magic == CODE_encrypted_file && m_message->media()->type() == tgl_message_media_type::document) {
+        auto doc = std::static_pointer_cast<tgl_message_media_document>(m_message->media())->document;
         std::static_pointer_cast<document>(doc)->update(DS_MSEM->file);
     }
 
@@ -62,7 +63,7 @@ void query_messages_send_encrypted_base::on_answer(void* D)
         m_callback(!!ua, m_message);
     }
 
-    ua->callback()->message_sent(m_message->permanent_id, m_message->permanent_id, m_message->date, m_message->to_id);
+    ua->callback()->message_sent(m_message->id(), m_message->id(), m_message->date(), m_message->to_id());
 }
 
 int query_messages_send_encrypted_base::on_error(int error_code, const std::string& error_string)
@@ -108,7 +109,7 @@ void query_messages_send_encrypted_base::will_send()
         m_unconfirmed_message = nullptr;
     }
 
-    m_message->seq_no = m_secret_chat->private_facet()->out_seq_no();
+    m_message->set_sequence_number(m_secret_chat->private_facet()->out_seq_no());
     m_secret_chat->private_facet()->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
     if (auto ua = get_user_agent()) {
         ua->callback()->secret_chat_update(m_secret_chat);
@@ -126,8 +127,8 @@ size_t query_messages_send_encrypted_base::begin_unconfirmed_message(uint32_t co
     assert(!m_unconfirmed_message);
     assert(m_message);
     m_unconfirmed_message = tgl_unconfirmed_secret_message::create_default_impl(
-            m_message->permanent_id,
-            m_message->date,
+            m_message->id(),
+            m_message->date(),
             m_secret_chat->id().peer_id,
             m_secret_chat->private_facet()->in_seq_no(),
             m_secret_chat->private_facet()->out_seq_no(),

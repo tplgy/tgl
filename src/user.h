@@ -23,6 +23,8 @@
 
 #include "tgl/tgl_user.h"
 
+#include <stdexcept>
+
 namespace tgl {
 namespace impl {
 
@@ -32,8 +34,9 @@ struct tl_ds_user_full;
 class user: public tgl_user
 {
 public:
-    explicit user(const tl_ds_user*);
-    explicit user(const tl_ds_user_full*);
+    // Could return null.
+    static std::shared_ptr<user> create(const tl_ds_user*);
+    static std::shared_ptr<user> create(const tl_ds_user_full*);
 
     virtual const tgl_input_peer_t& id() override { return m_id; }
     virtual const tgl_user_status& status() override { return m_status; }
@@ -61,7 +64,9 @@ public:
     const tgl_file_location& photo_big() const { return m_photo_big; }
     const tgl_file_location& photo_small() const { return m_photo_small; }
 
-    bool empty() const { return m_id.empty(); }
+private:
+    user(const tl_ds_user*) throw(std::runtime_error);
+    user(const tl_ds_user_full*) throw(std::runtime_error);
 
 private:
     tgl_input_peer_t m_id;

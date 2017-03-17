@@ -27,7 +27,6 @@
 #include <memory>
 
 class tgl_secret_chat;
-struct tgl_message;
 
 namespace tgl {
 namespace impl {
@@ -40,13 +39,13 @@ class query_messages_send_encrypted_file: public query_messages_send_encrypted_b
 public:
     query_messages_send_encrypted_file(const std::shared_ptr<tgl_secret_chat>& secret_chat,
             const std::shared_ptr<upload_task>& upload,
-            const std::shared_ptr<tgl_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
+            const std::shared_ptr<message>& m,
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback);
 
     query_messages_send_encrypted_file(
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::shared_ptr<tgl_unconfirmed_secret_message>& message,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) throw(std::runtime_error);
+            const std::shared_ptr<tgl_unconfirmed_secret_message>& m,
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error);
 
     ~query_messages_send_encrypted_file();
 

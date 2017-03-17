@@ -50,9 +50,10 @@ public:
         if (auto ua = get_user_agent()) {
             int32_t n = DS_LVAL(DS_CIC->users->cnt);
             for (int32_t i = 0; i < n; i++) {
-                auto u = std::make_shared<user>(DS_CIC->users->data[i]);
-                ua->user_fetched(u);
-                users.push_back(u->id().peer_id);
+                if (auto u = user::create(DS_CIC->users->data[i])) {
+                    ua->user_fetched(u);
+                    users.push_back(u->id().peer_id);
+                }
             }
         } else {
             success = false;

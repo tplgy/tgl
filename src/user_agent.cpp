@@ -34,6 +34,7 @@
 #include "crypto/tgl_crypto_rand.h"
 #include "crypto/tgl_crypto_rsa_pem.h"
 #include "crypto/tgl_crypto_sha.h"
+#include "message.h"
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "mtproto-utils.h"
@@ -130,7 +131,7 @@ std::shared_ptr<tgl_user_agent> tgl_user_agent::create(
         const std::string& system_version,
         const std::string& lang_code)
 {
-    auto ua = std::make_shared<user_agent>();
+    auto ua = std::make_shared<tgl::impl::user_agent>();
 
     ua->m_transfer_manager = std::make_shared<tgl::impl::transfer_manager>(ua, download_dir);
     ua->m_app_id = app_id;
@@ -651,10 +652,10 @@ void user_agent::update_contact_list(const std::function<void(bool, const std::v
     q->execute(active_client());
 }
 
-void user_agent::send_text_message(const std::shared_ptr<tgl_message>& message, bool disable_preview,
+void user_agent::send_text_message(const std::shared_ptr<class message>& message, bool disable_preview,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
 {
-    if (message->to_id.peer_type == tgl_peer_type::enc_chat) {
+    if (message->to_id().peer_type == tgl_peer_type::enc_chat) {
         assert(false);
         return;
     }
@@ -662,31 +663,31 @@ void user_agent::send_text_message(const std::shared_ptr<tgl_message>& message, 
     auto q = std::make_shared<query_msg_send>(message, callback);
     q->out_i32(CODE_messages_send_message);
 
-    unsigned f = (disable_preview ? 2 : 0) | (message->reply_id ? 1 : 0) | (message->reply_markup ? 4 : 0) | (message->entities.size() > 0 ? 8 : 0);
-    if (message->from_id.peer_type == tgl_peer_type::channel) {
+    unsigned f = (disable_preview ? 2 : 0) | (message->reply_id() ? 1 : 0) | (message->reply_markup() ? 4 : 0) | (message->entities().size() > 0 ? 8 : 0);
+    if (message->from_id().peer_type == tgl_peer_type::channel) {
         f |= 16;
     }
     q->out_i32(f);
-    q->out_input_peer(this, message->to_id);
-    if (message->reply_id) {
-        q->out_i32(message->reply_id);
+    q->out_input_peer(this, message->to_id());
+    if (message->reply_id()) {
+        q->out_i32(message->reply_id());
     }
-    q->out_std_string(message->message);
-    q->out_i64(message->permanent_id);
+    q->out_std_string(message->text());
+    q->out_i64(message->id());
 
-    if (message->reply_markup) {
-        if (!message->reply_markup->button_matrix.empty()) {
+    if (message->reply_markup()) {
+        if (!message->reply_markup()->button_matrix.empty()) {
             q->out_i32(CODE_reply_keyboard_markup);
-            q->out_i32(message->reply_markup->flags);
+            q->out_i32(message->reply_markup()->flags);
             q->out_i32(CODE_vector);
-            q->out_i32(message->reply_markup->button_matrix.size());
-            for (size_t i = 0; i < message->reply_markup->button_matrix.size(); ++i) {
+            q->out_i32(message->reply_markup()->button_matrix.size());
+            for (size_t i = 0; i < message->reply_markup()->button_matrix.size(); ++i) {
                 q->out_i32(CODE_keyboard_button_row);
                 q->out_i32(CODE_vector);
-                q->out_i32(message->reply_markup->button_matrix[i].size());
-                for (size_t j = 0; j < message->reply_markup->button_matrix[i].size(); ++j) {
+                q->out_i32(message->reply_markup()->button_matrix[i].size());
+                for (size_t j = 0; j < message->reply_markup()->button_matrix[i].size(); ++j) {
                     q->out_i32(CODE_keyboard_button);
-                    q->out_std_string(message->reply_markup->button_matrix[i][j]);
+                    q->out_std_string(message->reply_markup()->button_matrix[i][j]);
                 }
             }
         } else {
@@ -694,11 +695,11 @@ void user_agent::send_text_message(const std::shared_ptr<tgl_message>& message, 
         }
     }
 
-    if (message->entities.size() > 0) {
+    if (message->entities().size() > 0) {
         q->out_i32(CODE_vector);
-        q->out_i32(message->entities.size());
-        for (size_t i = 0; i < message->entities.size(); i++) {
-            auto entity = message->entities[i];
+        q->out_i32(message->entities().size());
+        for (size_t i = 0; i < message->entities().size(); i++) {
+            auto entity = message->entities()[i];
             switch (entity->type) {
             case tgl_message_entity_type::bold:
                 q->out_i32(CODE_message_entity_bold);
@@ -738,7 +739,6 @@ int64_t user_agent::send_text_message(const tgl_input_peer_t& peer_id,
         bool disable_preview,
         bool post_as_channel_message,
         bool send_as_secret_chat_service_message,
-        const std::shared_ptr<tl_ds_reply_markup>& reply_markup,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback)
 {
     std::shared_ptr<tgl_secret_chat> secret_chat;
@@ -775,9 +775,9 @@ int64_t user_agent::send_text_message(const tgl_input_peer_t& peer_id,
         } else {
             from_id = our_id();
         }
-        auto message = std::make_shared<tgl_message>(message_id, from_id, peer_id, nullptr, nullptr, &date, text, &TDSM, nullptr, reply_id, reply_markup.get());
-        message->set_unread(true).set_outgoing(true).set_pending(true);
-        send_text_message(message, disable_preview, callback);
+        auto m = std::make_shared<message>(message_id, from_id, peer_id, nullptr, nullptr, &date, text, &TDSM, nullptr, reply_id, nullptr);
+        m->set_unread(true).set_outgoing(true).set_pending(true);
+        send_text_message(m, disable_preview, callback);
     } else {
         assert(secret_chat);
         if (send_as_secret_chat_service_message) {
@@ -793,9 +793,9 @@ int64_t user_agent::send_text_message(const tgl_input_peer_t& peer_id,
             tl_ds_decrypted_message_media TDSM;
             TDSM.magic = CODE_decrypted_message_media_empty;
             tgl_peer_id_t from_id = our_id();
-            auto message = std::make_shared<tgl_message>(secret_chat, message_id, from_id, &date, text, &TDSM, nullptr, nullptr);
-            message->set_unread(true).set_pending(true);
-            secret_chat->private_facet()->send_message(message, callback);
+            auto m = std::make_shared<message>(secret_chat, message_id, from_id, &date, text, &TDSM, nullptr, nullptr);
+            m->set_unread(true).set_pending(true);
+            secret_chat->private_facet()->send_message(m, callback);
         }
     }
 
@@ -1964,9 +1964,9 @@ void user_agent::send_broadcast(const std::vector<tgl_input_peer_t>& peers, cons
         struct tl_ds_message_media TDSM;
         TDSM.magic = CODE_message_media_empty;
 
-        auto msg = std::make_shared<tgl_message>(message_id, our_id(), peers[i], nullptr, nullptr, &date, text, &TDSM, nullptr, 0, nullptr);
-        msg->set_unread(true).set_outgoing(true).set_pending(true);
-        m_callback->new_messages({msg});
+        auto m = std::make_shared<message>(message_id, our_id(), peers[i], nullptr, nullptr, &date, text, &TDSM, nullptr, 0, nullptr);
+        m->set_unread(true).set_outgoing(true).set_pending(true);
+        m_callback->new_messages({m});
     }
 
     auto q = std::make_shared<query_send_messages>(E, callback);
@@ -2634,10 +2634,6 @@ tgl_net_stats user_agent::get_net_stats(bool reset_after_get)
 
 void user_agent::user_fetched(const std::shared_ptr<user>& u)
 {
-    if (u->empty()) {
-        return;
-    }
-
     if (u->is_self()) {
         set_our_id(u->id().peer_id);
     }
@@ -2652,10 +2648,6 @@ void user_agent::user_fetched(const std::shared_ptr<user>& u)
 
 void user_agent::chat_fetched(const std::shared_ptr<chat>& c)
 {
-    if (c->empty()) {
-        return;
-    }
-
     if (c->is_channel()) {
         m_callback->channel_update(std::static_pointer_cast<channel>(c));
     } else {

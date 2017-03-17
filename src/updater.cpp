@@ -26,6 +26,7 @@
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "chat.h"
+#include "message.h"
 #include "mtproto-common.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
@@ -191,13 +192,13 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
 
     switch (DS_U->magic) {
     case CODE_update_new_message:
-        if (auto message = tglf_fetch_alloc_message(&m_user_agent, DS_U->message)) {
-            m_user_agent.callback()->new_messages({message});
+        if (auto m = message::create(m_user_agent.our_id(), DS_U->message)) {
+            m_user_agent.callback()->new_messages({m});
         }
         break;
     case CODE_update_message_id:
         if (auto message = std::static_pointer_cast<tgl_message>(extra)) {
-            m_user_agent.callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), message->to_id);
+            m_user_agent.callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), message->to_id());
         } else {
             m_user_agent.callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), tgl_input_peer_t());
         }
@@ -439,8 +440,8 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
     case CODE_update_channel_group:
         break;
     case CODE_update_new_channel_message:
-        if (auto message = tglf_fetch_alloc_message(&m_user_agent, DS_U->message)) {
-            m_user_agent.callback()->new_messages({message});
+        if (auto m = message::create(m_user_agent.our_id(), DS_U->message)) {
+            m_user_agent.callback()->new_messages({m});
         }
         break;
     case CODE_update_read_channel_inbox:
@@ -505,19 +506,26 @@ void updater::work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void
     }
 
     if (DS_U->users) {
-        for (int32_t i = 0; i < DS_LVAL(DS_U->users->cnt); ++i) {
-            m_user_agent.user_fetched(std::make_shared<user>(DS_U->users->data[i]));
+        int32_t n = DS_LVAL(DS_U->users->cnt);
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto u = user::create(DS_U->users->data[i])) {
+                m_user_agent.user_fetched(u);
+            }
         }
     }
 
     if (DS_U->chats) {
-        for (int32_t i = 0; i < DS_LVAL(DS_U->chats->cnt); ++i) {
-            m_user_agent.chat_fetched(chat::create(DS_U->chats->data[i]));
+        int32_t n = DS_LVAL(DS_U->chats->cnt);
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto c = chat::create(DS_U->chats->data[i])) {
+                m_user_agent.chat_fetched(c);
+            }
         }
     }
 
     if (DS_U->updates) {
-        for (int i = 0; i < DS_LVAL(DS_U->updates->cnt); ++i) {
+        int32_t n = DS_LVAL(DS_U->updates->cnt);
+        for (int32_t i = 0; i < n; ++i) {
             work_update(DS_U->updates->data[i], extra, mode);
         }
     }
@@ -542,15 +550,22 @@ void updater::work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mode m
         return;
     }
 
-    for (int32_t i = 0; i < DS_LVAL(DS_U->users->cnt); ++i) {
-        m_user_agent.user_fetched(std::make_shared<user>(DS_U->users->data[i]));
+    int32_t n = DS_LVAL(DS_U->users->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto u = user::create(DS_U->users->data[i])) {
+            m_user_agent.user_fetched(u);
+        }
     }
 
-    for (int32_t i = 0; i < DS_LVAL(DS_U->chats->cnt); ++i) {
-        m_user_agent.chat_fetched(chat::create(DS_U->chats->data[i]));
+    n = DS_LVAL(DS_U->chats->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto c = chat::create(DS_U->chats->data[i])) {
+            m_user_agent.chat_fetched(c);
+        }
     }
 
-    for (int i = 0; i < DS_LVAL(DS_U->updates->cnt); ++i) {
+    n = DS_LVAL(DS_U->updates->cnt);
+    for (int32_t i = 0; i < n; ++i) {
         work_update(DS_U->updates->data[i], nullptr, mode);
     }
 
@@ -574,8 +589,9 @@ void updater::work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mo
         return;
     }
 
-    auto message = tglf_fetch_alloc_message_short(&m_user_agent, DS_U);
-    m_user_agent.callback()->new_messages({message});
+    if (auto m = message::create_from_short_update(m_user_agent.our_id(), DS_U)) {
+        m_user_agent.callback()->new_messages({m});
+    }
 
     if (m_user_agent.is_diff_locked()) {
         return;
@@ -600,8 +616,8 @@ void updater::work_update_short_chat_message(const tl_ds_updates* DS_U, tgl_upda
         return;
     }
 
-    if (auto message = tglf_fetch_alloc_message_short_chat(DS_U)) {
-        m_user_agent.callback()->new_messages({message});
+    if (auto m = message::create_chat_message_from_short_update(DS_U)) {
+        m_user_agent.callback()->new_messages({m});
     }
 
     if (m_user_agent.is_diff_locked()) {
@@ -649,13 +665,14 @@ void updater::work_update_short_sent_message(const tl_ds_updates* DS_U,
         return;
     }
 
-    if (std::shared_ptr<tgl_message> message = std::static_pointer_cast<tgl_message>(extra)) {
-        auto new_message = tglf_fetch_alloc_message_short(&m_user_agent, DS_U);
-        if (new_message->media) {
-            message->media = new_message->media;
-            m_user_agent.callback()->update_messages({message});
+    if (auto old_message = std::static_pointer_cast<message>(extra)) {
+        if (auto new_message = message::create_from_short_update(m_user_agent.our_id(), DS_U)) {
+            if (new_message->media()) {
+                old_message->set_media(new_message->media());
+                m_user_agent.callback()->update_messages({old_message});
+            }
+            m_user_agent.callback()->message_sent(old_message->id(), new_message->id(), new_message->date(), old_message->to_id());
         }
-        m_user_agent.callback()->message_sent(message->permanent_id, new_message->permanent_id, new_message->date, message->to_id);
     }
 
     if (mode != tgl_update_mode::check_and_update_consistency) {

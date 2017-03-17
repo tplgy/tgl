@@ -49,8 +49,10 @@ public:
         auto DS_UF = static_cast<tl_ds_user_full*>(D);
         std::shared_ptr<user> u;
         if (DS_UF->user && DS_UF->user->magic != CODE_user_empty) {
-            u = std::make_shared<user>(DS_UF);
-            ua->user_fetched(u);
+            u = user::create(DS_UF);
+            if (u) {
+                ua->user_fetched(u);
+            }
         }
 
         if (m_callback) {

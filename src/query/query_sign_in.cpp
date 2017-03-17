@@ -38,8 +38,10 @@ void query_sign_in::on_answer(void* D)
     tl_ds_auth_authorization* DS_AA = static_cast<tl_ds_auth_authorization*>(D);
     std::shared_ptr<user> u;
     if (auto ua = get_user_agent()) {
-        u = std::make_shared<user>(DS_AA->user);
-        ua->user_fetched(u);
+        u = user::create(DS_AA->user);
+        if (u) {
+            ua->user_fetched(u);
+        }
         ua->set_dc_logged_in(ua->active_client()->id());
     }
     if (m_callback) {

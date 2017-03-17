@@ -41,10 +41,11 @@ void query_get_blocked_users::on_answer(void* D)
         if (DS_T->blocked && DS_T->users) {
             int n = DS_LVAL(DS_T->blocked->cnt);
             for (int i = 0; i < n; ++i) {
-                auto u = std::make_shared<user>(DS_T->users->data[i]);
-                u->set_blocked(true);
-                blocked_contacts.push_back(u->id().peer_id);
-                ua->user_fetched(u);
+                if (auto u = user::create(DS_T->users->data[i])) {
+                    u->set_blocked(true);
+                    blocked_contacts.push_back(u->id().peer_id);
+                    ua->user_fetched(u);
+                }
             }
         }
     }

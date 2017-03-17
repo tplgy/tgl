@@ -21,6 +21,7 @@
 
 #include "query_messages_send_encrypted_message.h"
 
+#include "message.h"
 #include "secret_chat_encryptor.h"
 
 namespace tgl {
@@ -29,7 +30,7 @@ namespace impl {
 query_messages_send_encrypted_message::query_messages_send_encrypted_message(
         const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback) throw(std::runtime_error)
+        const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error)
     : query_messages_send_encrypted_base("send encrypted message (reassembled)", secret_chat, nullptr, callback, true)
 {
     const auto& blobs = unconfirmed_message->blobs();
@@ -62,7 +63,7 @@ void query_messages_send_encrypted_message::assemble()
     out_i32(CODE_input_encrypted_chat);
     out_i32(m_secret_chat->id().peer_id);
     out_i64(m_secret_chat->id().access_hash);
-    out_i64(m_message->permanent_id);
+    out_i64(m_message->id());
     secret_chat_encryptor encryptor(m_secret_chat, serializer());
     encryptor.start();
     size_t start = begin_unconfirmed_message(CODE_messages_send_encrypted);
@@ -72,17 +73,17 @@ void query_messages_send_encrypted_message::assemble()
     out_i32(m_secret_chat->private_facet()->raw_in_seq_no());
     out_i32(m_secret_chat->private_facet()->raw_out_seq_no());
     out_i32(CODE_decrypted_message);
-    out_i64(m_message->permanent_id);
+    out_i64(m_message->id());
     out_i32(m_secret_chat->ttl());
-    out_std_string(m_message->message);
-    assert(m_message->media);
-    switch (m_message->media->type()) {
+    out_std_string(m_message->text());
+    assert(m_message->media());
+    switch (m_message->media()->type()) {
     case tgl_message_media_type::none:
         out_i32(CODE_decrypted_message_media_empty);
         break;
     case tgl_message_media_type::geo:
     {
-        auto media = std::static_pointer_cast<tgl_message_media_geo>(m_message->media);
+        auto media = std::static_pointer_cast<tgl_message_media_geo>(m_message->media());
         out_i32(CODE_decrypted_message_media_geo_point);
         out_double(media->geo.latitude);
         out_double(media->geo.longitude);
