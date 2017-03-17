@@ -16,7 +16,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
 
 #pragma once
@@ -25,7 +25,6 @@
 
 #include <cassert>
 #include <iostream>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -98,57 +97,42 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_secret_chat_exchang
     return os;
 }
 
-// FIXME
-namespace tgl {
-namespace impl {
-class tgl_secret_chat_private_facet;
-struct tgl_secret_chat_private;
-}
-}
-
-class tgl_secret_chat: public std::enable_shared_from_this<tgl_secret_chat> {
+class tgl_secret_chat
+{
 public:
-    explicit tgl_secret_chat(std::unique_ptr<tgl::impl::tgl_secret_chat_private>&&);
-    ~tgl_secret_chat();
-
     enum class qos { real_time, normal };
+    virtual ~tgl_secret_chat() { }
 
-    qos quality_of_service() const;
-    void set_quality_of_service(qos);
+    virtual qos quality_of_service() const = 0;
+    virtual void set_quality_of_service(qos) = 0;
 
-    bool opaque_service_message_enabled() const;
-    void set_opaque_service_message_enabled(bool b);
+    virtual bool opaque_service_message_enabled() const = 0;
+    virtual void set_opaque_service_message_enabled(bool b) = 0;
 
-    const tgl_input_peer_t& id() const;
-    int64_t exchange_id() const;
-    int64_t exchange_key_fingerprint() const;
-    int32_t user_id() const;
-    int32_t admin_id() const; // creator
-    int32_t date() const;
-    int32_t ttl() const;
-    int32_t layer() const;
-    int32_t in_seq_no() const;
-    int32_t out_seq_no() const;
-    int32_t last_in_seq_no() const;
-    int32_t encr_root() const;
-    int32_t encr_param_version() const;
-    tgl_secret_chat_state state() const;
-    tgl_secret_chat_exchange_state exchange_state() const;
-    const std::vector<unsigned char>& encr_prime() const;
-    const std::vector<unsigned char>& g_key() const;
+    virtual const tgl_input_peer_t& id() const = 0;
+    virtual int64_t exchange_id() const = 0;
+    virtual int64_t exchange_key_fingerprint() const = 0;
+    virtual int32_t user_id() const = 0;
+    virtual int32_t admin_id() const = 0; // creator
+    virtual int32_t date() const = 0;
+    virtual int32_t ttl() const = 0;
+    virtual int32_t layer() const = 0;
+    virtual int32_t in_seq_no() const = 0;
+    virtual int32_t out_seq_no() const = 0;
+    virtual int32_t last_in_seq_no() const = 0;
+    virtual int32_t encr_root() const = 0;
+    virtual int32_t encr_param_version() const = 0;
+    virtual tgl_secret_chat_state state() const = 0;
+    virtual tgl_secret_chat_exchange_state exchange_state() const = 0;
+    virtual const std::vector<unsigned char>& encr_prime() const = 0;
+    virtual const std::vector<unsigned char>& g_key() const = 0;
 
-    const unsigned char* exchange_key() const;
-    const unsigned char* key() const;
-    const unsigned char* key_sha() const;
-    int64_t key_fingerprint() const;
+    virtual const unsigned char* exchange_key() const = 0;
+    virtual const unsigned char* key() const = 0;
+    virtual const unsigned char* key_sha() const = 0;
+    virtual int64_t key_fingerprint() const = 0;
 
     static size_t key_size() { return 256; }
     static size_t key_sha_size() { return 20; }
     static size_t exchange_key_size() { return 256; }
-
-    tgl::impl::tgl_secret_chat_private_facet* private_facet();
-
-private:
-    friend class tgl::impl::tgl_secret_chat_private_facet;
-    std::unique_ptr<tgl::impl::tgl_secret_chat_private> d;
 };

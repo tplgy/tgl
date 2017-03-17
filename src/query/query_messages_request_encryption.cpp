@@ -22,19 +22,18 @@
 #include "query_messages_request_encryption.h"
 
 #include "auto/auto.h"
+#include "secret_chat.h"
 #include "structures.h"
-#include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_update_callback.h"
-#include "tgl_secret_chat_private.h"
 
 namespace tgl {
 namespace impl {
 
 query_messages_request_encryption::query_messages_request_encryption(
-        const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
+        const std::shared_ptr<secret_chat>& sc,
+        const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback)
     : query("send encrypted (chat request)", TYPE_TO_PARAM(encrypted_chat))
-    , m_secret_chat(secret_chat)
+    , m_secret_chat(sc)
     , m_callback(callback)
 { }
 
@@ -49,20 +48,19 @@ void query_messages_request_encryption::on_answer(void* D)
         return;
     }
 
-    std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat(ua.get(),
-            static_cast<tl_ds_encrypted_chat*>(D));
+    std::shared_ptr<secret_chat> sc = ua->allocate_or_update_secret_chat(static_cast<tl_ds_encrypted_chat*>(D));
 
-    if (!secret_chat) {
+    if (!sc) {
         if (m_callback) {
-            m_callback(false, secret_chat);
+            m_callback(false, sc);
         }
         return;
     }
 
-    ua->callback()->secret_chat_update(secret_chat);
+    ua->callback()->secret_chat_update(sc);
 
     if (m_callback) {
-        m_callback(secret_chat->state() != tgl_secret_chat_state::deleted, secret_chat);
+        m_callback(sc->state() != tgl_secret_chat_state::deleted, sc);
     }
 }
 

@@ -25,10 +25,10 @@
 
 #include <bitset>
 
-class tgl_secret_chat;
-
 namespace tgl {
 namespace impl {
+
+class secret_chat;
 
 struct tl_ds_decrypted_message_media;
 struct tl_ds_decrypted_message_action;
@@ -60,7 +60,7 @@ public:
             int32_t reply_id,
             const tl_ds_reply_markup* reply_markup);
 
-    message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+    message(const std::shared_ptr<secret_chat>& sc,
             int64_t message_id,
             const tgl_peer_id_t& from_id,
             const int64_t* date,

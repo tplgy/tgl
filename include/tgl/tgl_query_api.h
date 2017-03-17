@@ -183,13 +183,13 @@ public:
             const std::function<void(bool, int32_t mute_until)>& callback) = 0;
 
     // Accepts secret chat request. It can fail if another device will be first to accept it
-    virtual void accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+    virtual void accept_encr_chat_request(const tgl_input_peer_t& chat_id,
             const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback) = 0;
 
     // Sets ttl of secret chat
-    virtual void set_secret_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_chat, int32_t ttl) = 0;
+    virtual void set_secret_chat_ttl(const tgl_input_peer_t& chat_id, int32_t ttl) = 0;
 
-    virtual void discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+    virtual void discard_secret_chat(const tgl_input_peer_t& chat_id,
             const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback) = 0;
 
     // Requests creation of secret chat with user id

@@ -23,19 +23,19 @@
 
 #include "auto/auto.h"
 #include "auto/auto-types.h"
-#include "tgl_secret_chat_private.h"
+#include "secret_chat.h"
 
 namespace tgl {
 namespace impl {
 
-query_messages_get_dh_config::query_messages_get_dh_config(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        const std::function<void(const std::shared_ptr<tgl_secret_chat>&,
+query_messages_get_dh_config::query_messages_get_dh_config(const std::shared_ptr<secret_chat>& sc,
+        const std::function<void(const std::shared_ptr<secret_chat>&,
                 std::array<unsigned char, 256>& random,
-                const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>&)>& callback,
-        const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& final_callback,
+                const std::function<void(bool, const std::shared_ptr<secret_chat>&)>&)>& callback,
+        const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& final_callback,
         double timeout)
     : query("get dh config", TYPE_TO_PARAM(messages_dh_config))
-    , m_secret_chat(secret_chat)
+    , m_secret_chat(sc)
     , m_callback(callback)
     , m_final_callback(final_callback)
     , m_timeout(timeout)
@@ -49,7 +49,7 @@ void query_messages_get_dh_config::on_answer(void* D)
     bool fail = false;
     if (DS_MDC->magic == CODE_messages_dh_config) {
         if (DS_MDC->p->len == 256) {
-            m_secret_chat->private_facet()->set_dh_params(DS_LVAL(DS_MDC->g),
+            m_secret_chat->set_dh_params(DS_LVAL(DS_MDC->g),
                     reinterpret_cast<unsigned char*>(DS_MDC->p->data), DS_LVAL(DS_MDC->version));
         } else {
             TGL_WARNING("the prime got from the server is not of size 256");
@@ -71,7 +71,7 @@ void query_messages_get_dh_config::on_answer(void* D)
     }
 
     if (fail) {
-        m_secret_chat->private_facet()->set_deleted();
+        m_secret_chat->set_deleted();
         if (m_final_callback) {
             m_final_callback(false, m_secret_chat);
         }
@@ -88,7 +88,7 @@ void query_messages_get_dh_config::on_answer(void* D)
 int query_messages_get_dh_config::on_error(int error_code, const std::string& error_string)
 {
     TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-    m_secret_chat->private_facet()->set_deleted();
+    m_secret_chat->set_deleted();
     if (m_final_callback) {
         m_final_callback(false, m_secret_chat);
     }

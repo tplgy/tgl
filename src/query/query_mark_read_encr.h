@@ -23,7 +23,7 @@
 
 #include "query.h"
 
-#include "tgl_secret_chat_private.h"
+#include "secret_chat.h"
 #include "tgl/tgl_update_callback.h"
 
 namespace tgl {
@@ -35,11 +35,11 @@ class query_mark_read_encr: public query
 {
 public:
     query_mark_read_encr(
-            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::shared_ptr<secret_chat>& sc,
             int32_t max_time,
             const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
         : query("read encrypted", TYPE_TO_PARAM(bool))
-        , m_secret_chat(secret_chat)
+        , m_secret_chat(sc)
         , m_max_time(max_time)
         , m_callback(callback)
     { }
@@ -62,7 +62,7 @@ public:
 
         TGL_ERROR("mark read failed " << error_string << "max time: " << m_max_time);
         if (m_secret_chat->state() != tgl_secret_chat_state::deleted && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-            m_secret_chat->private_facet()->set_deleted();
+            m_secret_chat->set_deleted();
         }
 
         if (m_callback) {
@@ -73,7 +73,7 @@ public:
     }
 
 private:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
+    std::shared_ptr<secret_chat> m_secret_chat;
     int32_t m_max_time;
     std::function<void(bool, const std::shared_ptr<message>&)> m_callback;
 };

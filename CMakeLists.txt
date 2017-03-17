@@ -201,10 +201,10 @@ set(PRIVATE_HEADERS
     src/query/query_update_status.h
     src/query/query_upload_file_part.h
     src/query/query_user_info.h
+    src/secret_chat.h
     src/secret_chat_encryptor.h
     src/structures.h
     src/tgl_rsa_key.h
-    src/tgl_secret_chat_private.h
     src/tgl_session.h
     src/tools.h
     src/transfer_manager.h
@@ -265,11 +265,11 @@ set(SOURCES
     src/query/query_sign_in.cpp
     src/query/query_unregister_device.cpp
     src/query/query_upload_file_part.cpp
+    src/secret_chat.cpp
     src/secret_chat_encryptor.cpp
     src/structures.cpp
     src/tgl_log.cpp
     src/tgl_mime_type.cpp
-    src/tgl_secret_chat.cpp
     src/tgl_session.cpp
     src/transfer_manager.cpp
     src/tools.cpp

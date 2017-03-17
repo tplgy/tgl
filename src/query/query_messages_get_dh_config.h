@@ -25,19 +25,19 @@
 
 #include <array>
 
-class tgl_secret_chat;
-
 namespace tgl {
 namespace impl {
+
+class secret_chat;
 
 class query_messages_get_dh_config: public query
 {
 public:
-    query_messages_get_dh_config(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::function<void(const std::shared_ptr<tgl_secret_chat>&,
+    query_messages_get_dh_config(const std::shared_ptr<secret_chat>& sc,
+            const std::function<void(const std::shared_ptr<secret_chat>&,
                     std::array<unsigned char, 256>& random,
-                    const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>&)>& callback,
-            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& final_callback,
+                    const std::function<void(bool, const std::shared_ptr<secret_chat>&)>&)>& callback,
+            const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& final_callback,
             double timeout = 0);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
@@ -47,11 +47,11 @@ public:
     virtual void will_be_pending() override;
 
 private:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
-    std::function<void(const std::shared_ptr<tgl_secret_chat>&,
+    std::shared_ptr<secret_chat> m_secret_chat;
+    std::function<void(const std::shared_ptr<secret_chat>&,
              std::array<unsigned char, 256>& random,
-             const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>&)> m_callback;
-    std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_final_callback;
+             const std::function<void(bool, const std::shared_ptr<secret_chat>&)>&)> m_callback;
+    std::function<void(bool, const std::shared_ptr<secret_chat>&)> m_final_callback;
     double m_timeout;
 };
 

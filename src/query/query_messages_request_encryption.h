@@ -23,16 +23,16 @@
 
 #include "query.h"
 
-class tgl_secret_chat;
-
 namespace tgl {
 namespace impl {
+
+class secret_chat;
 
 class query_messages_request_encryption: public query
 {
 public:
-    query_messages_request_encryption(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback);
+    query_messages_request_encryption(const std::shared_ptr<secret_chat>& sc,
+            const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     virtual void on_timeout() override;
@@ -41,8 +41,8 @@ public:
     virtual void will_be_pending() override;
 
 private:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
-    std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)> m_callback;
+    std::shared_ptr<secret_chat> m_secret_chat;
+    std::function<void(bool, const std::shared_ptr<secret_chat>&)> m_callback;
 };
 
 }

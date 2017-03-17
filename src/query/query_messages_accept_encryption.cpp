@@ -22,17 +22,16 @@
 #include "query_messages_accept_encryption.h"
 
 #include "auto/auto.h"
+#include "secret_chat.h"
 #include "structures.h"
-#include "tgl_secret_chat_private.h"
-#include "tgl/tgl_secret_chat.h"
 
 namespace tgl {
 namespace impl {
 
-query_messages_accept_encryption::query_messages_accept_encryption(const std::shared_ptr<tgl_secret_chat>& secret_chat,
-        const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
+query_messages_accept_encryption::query_messages_accept_encryption(const std::shared_ptr<secret_chat>& sc,
+        const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback)
     : query("send encrypted (chat accept)", TYPE_TO_PARAM(encrypted_chat))
-    , m_secret_chat(secret_chat)
+    , m_secret_chat(sc)
     , m_callback(callback)
 {
 }
@@ -48,19 +47,18 @@ void query_messages_accept_encryption::on_answer(void* D)
         return;
     }
 
-    std::shared_ptr<tgl_secret_chat> secret_chat = tglf_fetch_alloc_encrypted_chat(ua.get(),
-            static_cast<tl_ds_encrypted_chat*>(D));
+    std::shared_ptr<secret_chat> sc = ua->allocate_or_update_secret_chat(static_cast<tl_ds_encrypted_chat*>(D));
 
-    if (secret_chat && secret_chat->state() == tgl_secret_chat_state::ok) {
-        secret_chat->private_facet()->send_layer();
+    if (sc && sc->state() == tgl_secret_chat_state::ok) {
+        sc->send_layer();
     }
 
-    if (secret_chat) {
-        assert(m_secret_chat == secret_chat);
+    if (sc) {
+        assert(m_secret_chat == sc);
     }
 
     if (m_callback) {
-        m_callback(secret_chat && secret_chat->state() == tgl_secret_chat_state::ok, secret_chat);
+        m_callback(sc && sc->state() == tgl_secret_chat_state::ok, sc);
     }
 }
 
@@ -68,7 +66,7 @@ int query_messages_accept_encryption::on_error(int error_code, const std::string
 {
     if (m_secret_chat && m_secret_chat->state() != tgl_secret_chat_state::deleted
         && error_code == 400 && error_string == "ENCRYPTION_DECLINED") {
-        m_secret_chat->private_facet()->set_deleted();
+        m_secret_chat->set_deleted();
     }
 
     if (m_callback) {

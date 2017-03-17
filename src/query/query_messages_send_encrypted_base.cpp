@@ -26,6 +26,7 @@
 #include "query_messages_send_encrypted_action.h"
 #include "query_messages_send_encrypted_file.h"
 #include "query_messages_send_encrypted_message.h"
+#include "secret_chat.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_unconfirmed_secret_message_storage.h"
@@ -72,7 +73,7 @@ int query_messages_send_encrypted_base::on_error(int error_code, const std::stri
 
     if (m_secret_chat->state() != tgl_secret_chat_state::deleted
             && (error_code == 400 && (error_string == "ENCRYPTION_DECLINED" || error_string == "ENCRYPTION_ID_INVALID"))) {
-        m_secret_chat->private_facet()->set_deleted();
+        m_secret_chat->set_deleted();
     }
 
     if (m_callback) {
@@ -96,7 +97,7 @@ void query_messages_send_encrypted_base::will_send()
 
     m_assembled = true;
 
-    auto depending_query_id = m_secret_chat->private_facet()->last_depending_query_id();
+    auto depending_query_id = m_secret_chat->last_depending_query_id();
     if (depending_query_id) {
         out_i32(CODE_invoke_after_msg);
         out_i64(depending_query_id);
@@ -105,12 +106,12 @@ void query_messages_send_encrypted_base::will_send()
     assemble();
 
     if (m_unconfirmed_message) {
-        m_secret_chat->private_facet()->queue_unconfirmed_outgoing_message(m_unconfirmed_message);
+        m_secret_chat->queue_unconfirmed_outgoing_message(m_unconfirmed_message);
         m_unconfirmed_message = nullptr;
     }
 
-    m_message->set_sequence_number(m_secret_chat->private_facet()->out_seq_no());
-    m_secret_chat->private_facet()->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
+    m_message->set_sequence_number(m_secret_chat->out_seq_no());
+    m_secret_chat->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
     if (auto ua = get_user_agent()) {
         ua->callback()->secret_chat_update(m_secret_chat);
         ua->callback()->update_messages({m_message});
@@ -119,7 +120,7 @@ void query_messages_send_encrypted_base::will_send()
 
 void query_messages_send_encrypted_base::sent()
 {
-    m_secret_chat->private_facet()->set_last_depending_query_id(msg_id());
+    m_secret_chat->set_last_depending_query_id(msg_id());
 }
 
 size_t query_messages_send_encrypted_base::begin_unconfirmed_message(uint32_t constructor_code)
@@ -130,8 +131,8 @@ size_t query_messages_send_encrypted_base::begin_unconfirmed_message(uint32_t co
             m_message->id(),
             m_message->date(),
             m_secret_chat->id().peer_id,
-            m_secret_chat->private_facet()->in_seq_no(),
-            m_secret_chat->private_facet()->out_seq_no(),
+            m_secret_chat->in_seq_no(),
+            m_secret_chat->out_seq_no(),
             true,
             constructor_code);
     return serializer()->char_size();
@@ -153,8 +154,8 @@ void query_messages_send_encrypted_base::end_unconfirmed_message()
 void query_messages_send_encrypted_base::construct_message(int64_t message_id, int64_t date,
         const std::string& layer_blob) throw(std::runtime_error)
 {
-    m_message = m_secret_chat->private_facet()->construct_message(
-            m_secret_chat->private_facet()->our_id(),
+    m_message = m_secret_chat->construct_message(
+            m_secret_chat->our_id(),
             message_id, date, layer_blob, std::string());
     if (!m_message) {
         throw std::runtime_error("failed to reconstruct message from blobs");
@@ -166,29 +167,29 @@ void query_messages_send_encrypted_base::construct_message(int64_t message_id, i
 }
 
 std::vector<std::shared_ptr<query_messages_send_encrypted_base>>
-query_messages_send_encrypted_base::create_by_out_seq_no(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+query_messages_send_encrypted_base::create_by_out_seq_no(const std::shared_ptr<secret_chat>& sc,
             int32_t out_seq_no_start, int32_t out_seq_no_end)
 {
     std::vector<std::shared_ptr<query_messages_send_encrypted_base>> queries;
-    auto ua = secret_chat->private_facet()->weak_user_agent().lock();
+    auto ua = sc->weak_user_agent().lock();
     if (!ua) {
         return queries;
     }
 
     auto storage = ua->unconfirmed_secret_message_storage();
-    auto messages = storage->load_messages_by_out_seq_no(secret_chat->id().peer_id, out_seq_no_start, out_seq_no_end, true);
+    auto messages = storage->load_messages_by_out_seq_no(sc->id().peer_id, out_seq_no_start, out_seq_no_end, true);
     for (const auto& message: messages) {
         TGL_DEBUG("reconstructing query from unconfirmed secret messsage out_seq_no " << message->out_seq_no());
         try {
             switch (message->constructor_code()) {
                 case CODE_messages_send_encrypted:
-                    queries.push_back(std::make_shared<query_messages_send_encrypted_message>(secret_chat, message, nullptr));
+                    queries.push_back(std::make_shared<query_messages_send_encrypted_message>(sc, message, nullptr));
                     break;
                 case CODE_messages_send_encrypted_service:
-                    queries.push_back(std::make_shared<query_messages_send_encrypted_action>(secret_chat, message, nullptr));
+                    queries.push_back(std::make_shared<query_messages_send_encrypted_action>(sc, message, nullptr));
                     break;
                 case CODE_messages_send_encrypted_file:
-                    queries.push_back(std::make_shared<query_messages_send_encrypted_file>(secret_chat, message, nullptr));
+                    queries.push_back(std::make_shared<query_messages_send_encrypted_file>(sc, message, nullptr));
                     break;
                 default:
                     TGL_WARNING("unknown constructor code 0x" << std::hex << message->constructor_code()

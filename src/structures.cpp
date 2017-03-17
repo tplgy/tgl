@@ -35,10 +35,8 @@
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "tgl/tgl_bot.h"
-#include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_update_callback.h"
 #include "tgl/tgl_user.h"
-#include "tgl_secret_chat_private.h"
 #include "updater.h"
 #include "user.h"
 #include "user_agent.h"
@@ -154,114 +152,6 @@ tgl_user_status tglf_fetch_user_status(const tl_ds_user_status* DS_US)
         assert(false);
     }
     return new_status;
-}
-
-inline static void str_to_256(unsigned char* dst, const char* src, int src_len)
-{
-    if (src_len >= 256) {
-        memcpy(dst, src + src_len - 256, 256);
-    } else {
-        memset(dst, 0, 256 - src_len);
-        memcpy(dst + 256 - src_len, src, src_len);
-    }
-}
-
-std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(user_agent* ua, const tl_ds_encrypted_chat* DS_EC)
-{
-    TGL_DEBUG("fetching secret chat from " << DS_EC);
-    if (!DS_EC) {
-        return nullptr;
-    }
-
-    if (DS_EC->magic == CODE_encrypted_chat_empty) {
-        TGL_DEBUG("empty secret chat found, discarding");
-        return nullptr;
-    }
-
-    tgl_input_peer_t chat_id(tgl_peer_type::enc_chat, DS_LVAL(DS_EC->id), DS_LVAL(DS_EC->access_hash));
-
-    std::shared_ptr<tgl_secret_chat> secret_chat = ua->secret_chat_for_id(chat_id);
-
-    bool is_new = false;
-    if (!secret_chat) {
-        int admin_id = DS_LVAL(DS_EC->id);
-
-        if (!admin_id) {
-            // It must be a secret chat which is encryptedChatDiscarded#13d6dd27.
-            // For a discarded secret chat which is not on our side either, we do nothing.
-            TGL_DEBUG("discarded secret chat " << chat_id.peer_id << " found, doing nothing");
-            return nullptr;
-        }
-
-        if (admin_id != ua->our_id().peer_id) {
-            // It must be a new secret chat requested from the peer.
-            secret_chat = ua->allocate_secret_chat(chat_id, DS_LVAL(DS_EC->participant_id));
-            is_new = true;
-            TGL_DEBUG("new secret chat " << chat_id.peer_id << " found");
-        }
-    }
-
-    if (!secret_chat) {
-        TGL_DEBUG("no secret chat found or created for id " << chat_id.peer_id);
-        return nullptr;
-    }
-
-    if (DS_EC->magic == CODE_encrypted_chat_discarded) {
-        if (is_new) {
-            TGL_DEBUG("this is a new scret chat " << chat_id.peer_id << " but has been discarded, doing nothing");
-            return nullptr;
-        }
-
-        TGL_DEBUG("discarded secret chat " << chat_id.peer_id << " found, setting it to deleted state");
-        secret_chat->private_facet()->set_deleted();
-        return secret_chat;
-    }
-
-    unsigned char g_key[256];
-    memset(g_key, 0, sizeof(g_key));
-    if (is_new) {
-        if (DS_EC->magic != CODE_encrypted_chat_requested) {
-            TGL_DEBUG("new secret chat " << chat_id.peer_id << " but not in requested state");
-            return secret_chat;
-        }
-        TGL_DEBUG("updating new secret chat " << chat_id.peer_id);
-
-        str_to_256(g_key, DS_STR(DS_EC->g_a));
-
-        int32_t user_id = DS_LVAL(DS_EC->participant_id) + DS_LVAL(DS_EC->admin_id) - ua->our_id().peer_id;
-        if (DS_EC->access_hash) {
-            secret_chat->private_facet()->set_access_hash(*(DS_EC->access_hash));
-        }
-        if (DS_EC->date) {
-            secret_chat->private_facet()->set_date(*(DS_EC->date));
-        }
-        if (DS_EC->admin_id) {
-            secret_chat->private_facet()->set_admin_id(*(DS_EC->admin_id));
-        }
-        secret_chat->private_facet()->set_user_id(user_id);
-        secret_chat->private_facet()->set_g_key(g_key, sizeof(g_key));
-        secret_chat->private_facet()->set_state(tgl_secret_chat_state::request);
-    } else {
-        TGL_DEBUG("updating existing secret chat " << chat_id.peer_id);
-        tgl_secret_chat_state state;
-        if (DS_EC->magic == CODE_encrypted_chat_waiting) {
-            state = tgl_secret_chat_state::waiting;
-        } else {
-            state = tgl_secret_chat_state::ok;
-            str_to_256(g_key, DS_STR(DS_EC->g_a_or_b));
-            secret_chat->private_facet()->set_temp_key_fingerprint(DS_LVAL(DS_EC->key_fingerprint));
-            secret_chat->private_facet()->set_g_key(g_key, sizeof(g_key));
-        }
-        if (DS_EC->access_hash) {
-            secret_chat->private_facet()->set_access_hash(*(DS_EC->access_hash));
-        }
-        if (DS_EC->date) {
-            secret_chat->private_facet()->set_date(*(DS_EC->date));
-        }
-        secret_chat->private_facet()->set_state(state);
-    }
-
-    return secret_chat;
 }
 
 std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const tl_ds_photo_size* DS_PS)

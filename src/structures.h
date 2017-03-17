@@ -33,14 +33,11 @@
 #include "tgl/tgl_typing_status.h"
 #include "tgl/tgl_user.h"
 
-class tgl_secret_chat;
-
 namespace tgl {
 namespace impl {
 
 class user_agent;
 
-std::shared_ptr<tgl_secret_chat> tglf_fetch_alloc_encrypted_chat(user_agent* ua, const tl_ds_encrypted_chat* DS_EC);
 tgl_peer_id_t tglf_fetch_peer_id(const tl_ds_peer* DS_P);
 
 tgl_user_status tglf_fetch_user_status(const tl_ds_user_status* DS_US);

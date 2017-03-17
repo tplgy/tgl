@@ -28,11 +28,10 @@
 #include "chat.h"
 #include "message.h"
 #include "mtproto-common.h"
+#include "secret_chat.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
-#include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_update_callback.h"
-#include "tgl_secret_chat_private.h"
 #include "user.h"
 #include "user_agent.h"
 
@@ -294,16 +293,16 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         work_encrypted_message(DS_U->encr_message);
         break;
     case CODE_update_encryption:
-        if (auto secret_chat = tglf_fetch_alloc_encrypted_chat(&m_user_agent, DS_U->encr_chat)) {
-            m_user_agent.callback()->secret_chat_update(secret_chat);
-            if (secret_chat->state() == tgl_secret_chat_state::ok) {
-                secret_chat->private_facet()->send_layer();
+        if (auto sc = m_user_agent.allocate_or_update_secret_chat(DS_U->encr_chat)) {
+            m_user_agent.callback()->secret_chat_update(sc);
+            if (sc->state() == tgl_secret_chat_state::ok) {
+                sc->send_layer();
             }
         }
         break;
     case CODE_update_encrypted_chat_typing:
-        if (auto secret_chat = m_user_agent.secret_chat_for_id(DS_LVAL(DS_U->chat_id))) {
-            m_user_agent.callback()->typing_status_changed(secret_chat->user_id(), DS_LVAL(DS_U->chat_id),
+        if (auto sc = m_user_agent.secret_chat_for_id(DS_LVAL(DS_U->chat_id))) {
+            m_user_agent.callback()->typing_status_changed(sc->user_id(), DS_LVAL(DS_U->chat_id),
                     tgl_peer_type::enc_chat, tgl_typing_status::typing);
         }
         break;
@@ -733,13 +732,13 @@ void updater::work_any_updates(tgl_in_buffer* in)
 
 void updater::work_encrypted_message(const tl_ds_encrypted_message* DS_EM)
 {
-    std::shared_ptr<tgl_secret_chat> secret_chat = m_user_agent.secret_chat_for_id(DS_LVAL(DS_EM->chat_id));
-    if (!secret_chat || secret_chat->state() != tgl_secret_chat_state::ok) {
+    std::shared_ptr<secret_chat> sc = m_user_agent.secret_chat_for_id(DS_LVAL(DS_EM->chat_id));
+    if (!sc || sc->state() != tgl_secret_chat_state::ok) {
         TGL_WARNING("encrypted message to unknown chat, dropping");
         return;
     }
 
-    secret_chat->private_facet()->imbue_encrypted_message(DS_EM);
+    sc->imbue_encrypted_message(DS_EM);
 }
 
 }

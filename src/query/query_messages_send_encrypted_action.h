@@ -26,19 +26,21 @@
 namespace tgl {
 namespace impl {
 
+class secret_chat;
+
 class query_messages_send_encrypted_action: public query_messages_send_encrypted_base
 {
 public:
     query_messages_send_encrypted_action(
-            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::shared_ptr<secret_chat>& sc,
             const std::shared_ptr<message>& m,
             const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
-        : query_messages_send_encrypted_base("send encrypted action", secret_chat, m, callback, false)
+        : query_messages_send_encrypted_base("send encrypted action", sc, m, callback, false)
     {
     }
 
     query_messages_send_encrypted_action(
-            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::shared_ptr<secret_chat>& sc,
             const std::shared_ptr<tgl_unconfirmed_secret_message>& m,
             const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error);
 

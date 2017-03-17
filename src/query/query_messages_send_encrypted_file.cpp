@@ -63,20 +63,20 @@ struct query_messages_send_encrypted_file::decrypted_message_media {
     tl_ds_decrypted_message_media* media;
 };
 
-query_messages_send_encrypted_file::query_messages_send_encrypted_file(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+query_messages_send_encrypted_file::query_messages_send_encrypted_file(const std::shared_ptr<secret_chat>& sc,
         const std::shared_ptr<upload_task>& upload,
         const std::shared_ptr<message>& m,
         const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
-    : query_messages_send_encrypted_base("send encrypted file message", secret_chat, m, callback, false)
+    : query_messages_send_encrypted_base("send encrypted file message", sc, m, callback, false)
     , m_upload(upload)
 {
 }
 
 query_messages_send_encrypted_file::query_messages_send_encrypted_file(
-        const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::shared_ptr<secret_chat>& sc,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message,
         const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error)
-    : query_messages_send_encrypted_base("send encrypted file message (reassembled)", secret_chat, nullptr, callback, true)
+    : query_messages_send_encrypted_base("send encrypted file message (reassembled)", sc, nullptr, callback, true)
 {
     const auto& blobs = unconfirmed_message->blobs();
     if (unconfirmed_message->constructor_code() != CODE_messages_send_encrypted_file
@@ -152,8 +152,8 @@ void query_messages_send_encrypted_file::assemble()
     out_i32(CODE_decrypted_message_layer);
     out_random(15 + 4 * (tgl_random<int>() % 3));
     out_i32(TGL_ENCRYPTED_LAYER);
-    out_i32(m_secret_chat->private_facet()->raw_in_seq_no());
-    out_i32(m_secret_chat->private_facet()->raw_out_seq_no());
+    out_i32(m_secret_chat->raw_in_seq_no());
+    out_i32(m_secret_chat->raw_out_seq_no());
     out_i32(CODE_decrypted_message);
     out_i64(m_message->id());
     out_i32(m_secret_chat->ttl());

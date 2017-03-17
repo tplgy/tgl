@@ -44,6 +44,7 @@ namespace tgl {
 namespace impl {
 
 struct tl_ds_dc_option;
+struct tl_ds_encrypted_chat;
 struct tgl_bn_context;
 
 class channel;
@@ -51,6 +52,7 @@ class chat;
 class message;
 class mtproto_client;
 class query;
+class secret_chat;
 class tgl_rsa_key;
 class updater;
 class user;
@@ -186,13 +188,13 @@ public:
             int32_t mute_until, const std::string& sound, bool show_previews, int32_t mask, const std::function<void(bool)>& callback) override;
     virtual void get_notify_settings(const tgl_input_peer_t& peer_id,
             const std::function<void(bool, int32_t mute_until)>& callback) override;
-    virtual void accept_encr_chat_request(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+    virtual void accept_encr_chat_request(const tgl_input_peer_t& chat_id,
             const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback) override;
-    virtual void set_secret_chat_ttl(const std::shared_ptr<tgl_secret_chat>& secret_chat, int32_t ttl) override;
-    virtual void discard_secret_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+    virtual void set_secret_chat_ttl(const tgl_input_peer_t& chat_id, int32_t ttl) override;
+    virtual void discard_secret_chat(const tgl_input_peer_t& chat_id,
             const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback) override;
     virtual void create_secret_chat(const tgl_input_peer_t& user_id, int32_t new_secret_chat_id,
-            const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& secret_chat)>& callback) override;
+            const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>& sc)>& callback) override;
     virtual void get_dialog_list(int32_t limit, int32_t offset,
             const std::function<void(bool success,
                     const std::vector<tgl_peer_id_t>& peers,
@@ -283,11 +285,11 @@ public:
 
     const std::vector<std::shared_ptr<tgl_rsa_key>>& rsa_keys() const { return m_rsa_keys; }
 
-    std::shared_ptr<tgl_secret_chat> secret_chat_for_id(const tgl_input_peer_t& id) const { return secret_chat_for_id(id.peer_id); }
-
-    std::shared_ptr<tgl_secret_chat> allocate_secret_chat(const tgl_input_peer_t& chat_id, int32_t user_id);
-    std::shared_ptr<tgl_secret_chat> secret_chat_for_id(int chat_id) const;
-    const std::map<int32_t, std::shared_ptr<tgl_secret_chat>>& secret_chats() const { return m_secret_chats; }
+    std::shared_ptr<secret_chat> allocate_secret_chat(const tgl_input_peer_t& chat_id, int32_t user_id);
+    std::shared_ptr<secret_chat> allocate_or_update_secret_chat(const tl_ds_encrypted_chat*);
+    std::shared_ptr<secret_chat> secret_chat_for_id(int chat_id) const;
+    std::shared_ptr<secret_chat> secret_chat_for_id(const tgl_input_peer_t& id) const { return secret_chat_for_id(id.peer_id); }
+    const std::map<int32_t, std::shared_ptr<secret_chat>>& secret_chats() const { return m_secret_chats; }
 
     void add_query(const std::shared_ptr<query>& q);
     std::shared_ptr<query> get_query(int64_t id) const;
@@ -338,13 +340,13 @@ private:
             const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
     void mark_encrypted_message_read(const tgl_input_peer_t& id, int32_t max_time,
             const std::function<void(bool success)>& callback);
-    void send_accept_encr_chat(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+    void send_accept_encr_chat(const std::shared_ptr<secret_chat>& sc,
             std::array<unsigned char, 256>& random,
-            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback);
+            const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback);
     void send_create_encr_chat(const tgl_input_peer_t& user_id,
-            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::shared_ptr<secret_chat>& sc,
             std::array<unsigned char, 256>& random,
-            const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback);
+            const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback);
     void call_me(const std::string& phone, const std::string& hash,
             const std::function<void(bool)>& callback);
     void password_got(const std::string& current_salt, const std::string& password,
@@ -396,7 +398,7 @@ private:
 
     std::vector<std::shared_ptr<mtproto_client>> m_clients;
     std::vector<std::shared_ptr<tgl_rsa_key>> m_rsa_keys;
-    std::map<int32_t/*peer id*/, std::shared_ptr<tgl_secret_chat>> m_secret_chats;
+    std::map<int32_t/*peer id*/, std::shared_ptr<secret_chat>> m_secret_chats;
     std::map<int64_t/*msg_id*/, std::shared_ptr<query>> m_active_queries;
     std::set<std::weak_ptr<tgl_online_status_observer>, std::owner_less<std::weak_ptr<tgl_online_status_observer>>> m_online_status_observers;
 };

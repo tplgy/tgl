@@ -30,10 +30,9 @@
 #include "auto/auto.h"
 #include "auto/constants.h"
 #include "query.h"
-#include "tgl/tgl_secret_chat.h"
+#include "secret_chat.h"
 #include "tgl/tgl_unconfirmed_secret_message.h"
 #include "tgl/tgl_update_callback.h"
-#include "tgl_secret_chat_private.h"
 
 namespace tgl {
 namespace impl {
@@ -43,12 +42,12 @@ class message;
 class query_messages_send_encrypted_base: public query {
 public:
     query_messages_send_encrypted_base(const std::string& name,
-            const std::shared_ptr<tgl_secret_chat>& secret_chat,
+            const std::shared_ptr<secret_chat>& sc,
             const std::shared_ptr<message>& m,
             const std::function<void(bool, const std::shared_ptr<message>&)>& callback,
             bool assembled)
         : query(name, TYPE_TO_PARAM(messages_sent_encrypted_message))
-        , m_secret_chat(secret_chat)
+        , m_secret_chat(sc)
         , m_message(m)
         , m_callback(callback)
         , m_assembled(assembled)
@@ -61,7 +60,7 @@ public:
     virtual void assemble() = 0;
 
     static std::vector<std::shared_ptr<query_messages_send_encrypted_base>>
-    create_by_out_seq_no(const std::shared_ptr<tgl_secret_chat>& secret_chat, int32_t out_seq_no_start, int32_t out_seq_no_end);
+    create_by_out_seq_no(const std::shared_ptr<secret_chat>& sc, int32_t out_seq_no_start, int32_t out_seq_no_end);
 
 protected:
     size_t begin_unconfirmed_message(uint32_t constructor_code);
@@ -71,7 +70,7 @@ protected:
             const std::string& layer_blob) throw(std::runtime_error);
 
 protected:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
+    std::shared_ptr<secret_chat> m_secret_chat;
     std::shared_ptr<message> m_message;
     std::function<void(bool, const std::shared_ptr<message>&)> m_callback;
     bool m_assembled;

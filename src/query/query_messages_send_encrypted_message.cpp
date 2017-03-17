@@ -22,16 +22,17 @@
 #include "query_messages_send_encrypted_message.h"
 
 #include "message.h"
+#include "secret_chat.h"
 #include "secret_chat_encryptor.h"
 
 namespace tgl {
 namespace impl {
 
 query_messages_send_encrypted_message::query_messages_send_encrypted_message(
-        const std::shared_ptr<tgl_secret_chat>& secret_chat,
+        const std::shared_ptr<secret_chat>& sc,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message,
         const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error)
-    : query_messages_send_encrypted_base("send encrypted message (reassembled)", secret_chat, nullptr, callback, true)
+    : query_messages_send_encrypted_base("send encrypted message (reassembled)", sc, nullptr, callback, true)
 {
     const auto& blobs = unconfirmed_message->blobs();
     if (unconfirmed_message->constructor_code() != CODE_messages_send_encrypted
@@ -70,8 +71,8 @@ void query_messages_send_encrypted_message::assemble()
     out_i32(CODE_decrypted_message_layer);
     out_random(15 + 4 * (tgl_random<int>() % 3));
     out_i32(TGL_ENCRYPTED_LAYER);
-    out_i32(m_secret_chat->private_facet()->raw_in_seq_no());
-    out_i32(m_secret_chat->private_facet()->raw_out_seq_no());
+    out_i32(m_secret_chat->raw_in_seq_no());
+    out_i32(m_secret_chat->raw_out_seq_no());
     out_i32(CODE_decrypted_message);
     out_i64(m_message->id());
     out_i32(m_secret_chat->ttl());

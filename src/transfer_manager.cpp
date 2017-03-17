@@ -35,13 +35,12 @@
 #include "query/query_messages_send_encrypted_file.h"
 #include "query/query_send_messages.h"
 #include "query/query_upload_file_part.h"
+#include "secret_chat.h"
 #include "secret_chat_encryptor.h"
 #include "tools.h"
 #include "tgl/tgl_mime_type.h"
-#include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_secure_random.h"
 #include "tgl/tgl_update_callback.h"
-#include "tgl_secret_chat_private.h"
 #include "upload_task.h"
 
 #include <boost/filesystem.hpp>
@@ -283,12 +282,16 @@ void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<upload_ta
         return;
     }
 
-    std::shared_ptr<tgl_secret_chat> secret_chat = ua->secret_chat_for_id(u->to_id);
-    assert(secret_chat);
+    std::shared_ptr<secret_chat> sc = ua->secret_chat_for_id(u->to_id);
+    if (!sc) {
+        TGL_ERROR("the secret chat has gone");
+        u->set_status(tgl_upload_status::failed);
+        return;
+    }
 
     tgl_peer_id_t from_id = ua->our_id();
     int64_t date = tgl_get_system_time();
-    auto m = std::make_shared<message>(secret_chat,
+    auto m = std::make_shared<message>(sc,
             u->message_id,
             from_id,
             &date,
@@ -297,7 +300,7 @@ void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<upload_ta
             nullptr,
             nullptr);
     m->set_pending(true).set_unread(true);
-    auto q = std::make_shared<query_messages_send_encrypted_file>(secret_chat, u, m,
+    auto q = std::make_shared<query_messages_send_encrypted_file>(sc, u, m,
             [=](bool success, const std::shared_ptr<tgl_message>&) {
                 u->set_status(success ? tgl_upload_status::succeeded : tgl_upload_status::failed);
             });

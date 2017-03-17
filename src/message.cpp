@@ -25,10 +25,9 @@
 #include "auto/auto-types.h"
 #include "auto/constants.h"
 #include "document.h"
+#include "secret_chat.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
-#include "tgl/tgl_secret_chat.h"
-#include "tgl_secret_chat_private.h"
 
 #include <cassert>
 #include <cctype>
@@ -567,7 +566,7 @@ message::message(int64_t message_id,
     }
 }
 
-message::message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+message::message(const std::shared_ptr<secret_chat>& sc,
         int64_t message_id,
         const tgl_peer_id_t& from_id,
         const int64_t* date,
@@ -575,11 +574,11 @@ message::message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
         const tl_ds_encrypted_file* file)
-    : message(message_id, from_id, secret_chat->id(), nullptr, nullptr, date, text, nullptr, nullptr, 0, nullptr)
+    : message(message_id, from_id, sc->id(), nullptr, nullptr, date, text, nullptr, nullptr, 0, nullptr)
 {
     if (action) {
         if (action->magic == CODE_decrypted_message_action_opaque_message
-                && !secret_chat->opaque_service_message_enabled()) {
+                && !sc->opaque_service_message_enabled()) {
             // ignore the action.
         } else {
             m_action = make_message_action_encrypted(action);
@@ -597,11 +596,11 @@ message::message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
         std::static_pointer_cast<document>(doc)->update(file);
     }
 
-    set_outgoing(from_id.peer_id == secret_chat->private_facet()->our_id().peer_id);
+    set_outgoing(from_id.peer_id == sc->our_id().peer_id);
 
     if (action && !is_outgoing() && m_action && m_action->type() == tgl_message_action_type::notify_layer) {
         // FIXME is following right?
-        secret_chat->private_facet()->set_layer(std::static_pointer_cast<tgl_message_action_notify_layer>(m_action)->layer);
+        sc->set_layer(std::static_pointer_cast<tgl_message_action_notify_layer>(m_action)->layer);
     }
 }
 
