@@ -23,6 +23,7 @@
 
 #include "tgl/tgl_user.h"
 
+#include <memory>
 #include <stdexcept>
 
 namespace tgl {
