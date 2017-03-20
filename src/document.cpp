@@ -27,6 +27,7 @@
 #include "auto/auto-free-ds.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/constants.h"
+#include "photo.h"
 #include "structures.h"
 
 #include <algorithm>
@@ -83,7 +84,7 @@ document::document(const tl_ds_document* DS_D)
     m_dc_id = DS_LVAL(DS_D->dc_id);
 
     if (DS_D->thumb && DS_D->thumb->magic != CODE_photo_size_empty) {
-        m_thumb = tglf_fetch_photo_size(DS_D->thumb);
+        m_thumb = create_photo_size(DS_D->thumb);
     }
 
     if (DS_D->attributes) {
@@ -138,7 +139,7 @@ document::document(const tl_ds_video* DS_V)
     m_size = DS_LVAL(DS_V->size);
 
     if (DS_V->thumb && DS_V->thumb->magic != CODE_photo_size_empty) {
-        m_thumb = tglf_fetch_photo_size(DS_V->thumb);
+        m_thumb = create_photo_size(DS_V->thumb);
     }
 
     m_dc_id = DS_LVAL(DS_V->dc_id);
@@ -201,7 +202,7 @@ document::document(const tl_ds_decrypted_message_media* DS_DMM)
     m_duration = DS_LVAL(DS_DMM->duration);
 
     if (DS_DMM->thumb && DS_DMM->magic != CODE_photo_size_empty) {
-        m_thumb = tglf_fetch_photo_size(DS_DMM->thumb);
+        m_thumb = create_photo_size(DS_DMM->thumb);
     }
 
     if (DS_DMM->str_thumb && DS_DMM->str_thumb->data) {

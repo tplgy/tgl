@@ -21,24 +21,28 @@
 
 #pragma once
 
-#include <cassert>
+#include "tgl_file_location.h"
+
+#include <cstdint>
 #include <memory>
+#include <string>
+#include <vector>
 
-#include "auto/auto-types.h"
-#include "tools.h"
-#include "tgl/tgl_bot.h"
-#include "tgl/tgl_chat.h"
-#include "tgl/tgl_channel.h"
-#include "tgl/tgl_message_media.h"
-#include "tgl/tgl_user.h"
+struct tgl_photo_size
+{
+    std::string type;
+    tgl_file_location loc;
+    int32_t width = 0;
+    int32_t height = 0;
+    int32_t size = 0;
+};
 
-namespace tgl {
-namespace impl {
+struct tgl_photo
+{
+    int64_t id = 0;
+    int64_t access_hash = 0;
+    int32_t date = 0;
+    std::string caption;
+    std::vector<std::shared_ptr<tgl_photo_size>> sizes;
+};
 
-class user_agent;
-
-std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P);
-std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W);
-
-}
-}

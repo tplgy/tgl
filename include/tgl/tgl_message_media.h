@@ -23,6 +23,7 @@
 
 #include "tgl_document.h"
 #include "tgl_file_location.h"
+#include "tgl_photo.h"
 
 #include <cstdint>
 #include <memory>
@@ -46,19 +47,6 @@ struct tgl_geo {
     double longitude;
     double latitude;
     tgl_geo(): longitude(0), latitude(0) { }
-};
-
-struct tgl_photo {
-    int64_t id;
-    int64_t access_hash;
-    int32_t date;
-    std::string caption;
-    std::vector<std::shared_ptr<tgl_photo_size>> sizes;
-    tgl_photo()
-        : id(0)
-        , access_hash(0)
-        , date(0)
-    { }
 };
 
 struct tgl_webpage {

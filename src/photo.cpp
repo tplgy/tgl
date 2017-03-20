@@ -19,26 +19,33 @@
     Copyright Topology LP 2016-2017
 */
 
-#pragma once
+#include "photo.h"
 
-#include <cassert>
-#include <memory>
-
+#include "auto/auto.h"
+#include "auto/constants.h"
 #include "auto/auto-types.h"
-#include "tools.h"
-#include "tgl/tgl_bot.h"
-#include "tgl/tgl_chat.h"
-#include "tgl/tgl_channel.h"
-#include "tgl/tgl_message_media.h"
-#include "tgl/tgl_user.h"
+#include "file_location.h"
 
 namespace tgl {
 namespace impl {
 
-class user_agent;
+std::shared_ptr<tgl_photo_size> create_photo_size(const tl_ds_photo_size* DS_PS)
+{
+    auto photo_size = std::make_shared<tgl_photo_size>();
 
-std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P);
-std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W);
+    photo_size->type = DS_STDSTR(DS_PS->type);
+    photo_size->width = DS_LVAL(DS_PS->w);
+    photo_size->height = DS_LVAL(DS_PS->h);
+    photo_size->size = DS_LVAL(DS_PS->size);
+    if (DS_PS->bytes) {
+        photo_size->size = DS_PS->bytes->len;
+    }
+
+    photo_size->loc = create_file_location(DS_PS->location);
+
+    return photo_size;
+}
 
 }
 }
+

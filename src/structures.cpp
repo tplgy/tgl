@@ -33,6 +33,7 @@
 #include "crypto/tgl_crypto_sha.h"
 #include "document.h"
 #include "file_location.h"
+#include "photo.h"
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "tgl/tgl_bot.h"
@@ -50,23 +51,6 @@
 
 namespace tgl {
 namespace impl {
-
-std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const tl_ds_photo_size* DS_PS)
-{
-    auto photo_size = std::make_shared<tgl_photo_size>();
-
-    photo_size->type = DS_STDSTR(DS_PS->type);
-    photo_size->w = DS_LVAL(DS_PS->w);
-    photo_size->h = DS_LVAL(DS_PS->h);
-    photo_size->size = DS_LVAL(DS_PS->size);
-    if (DS_PS->bytes) {
-        photo_size->size = DS_PS->bytes->len;
-    }
-
-    photo_size->loc = create_file_location(DS_PS->location);
-
-    return photo_size;
-}
 
 std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P)
 {
@@ -93,7 +77,7 @@ std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P)
     int sizes_num = DS_LVAL(DS_P->sizes->cnt);
     photo->sizes.resize(sizes_num);
     for (int i = 0; i < sizes_num; ++i) {
-        photo->sizes[i] = tglf_fetch_photo_size(DS_P->sizes->data[i]);
+        photo->sizes[i] = create_photo_size(DS_P->sizes->data[i]);
     }
 
     return photo;

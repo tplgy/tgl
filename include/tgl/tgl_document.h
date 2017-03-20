@@ -21,26 +21,12 @@
 
 #pragma once
 
-#include "tgl_file_location.h"
+#include "tgl_photo.h"
 
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
-
-struct tgl_photo_size
-{
-    std::string type;
-    tgl_file_location loc;
-    int32_t w;
-    int32_t h;
-    int32_t size;
-    tgl_photo_size()
-        : w(0)
-        , h(0)
-        , size(0)
-    { }
-};
 
 enum class tgl_document_type
 {
