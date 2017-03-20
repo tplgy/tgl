@@ -239,6 +239,7 @@ set(SOURCES
     src/file_location.cpp
     src/log.cpp
     src/message.cpp
+    src/mime_type.cpp
     src/mtproto_client.cpp
     src/mtproto-common.cpp
     src/mtproto-utils.cpp
@@ -279,7 +280,6 @@ set(SOURCES
     src/query/query_upload_file_part.cpp
     src/secret_chat.cpp
     src/secret_chat_encryptor.cpp
-    src/tgl_mime_type.cpp
     src/tgl_session.cpp
     src/tools.cpp
     src/transfer_manager.cpp
