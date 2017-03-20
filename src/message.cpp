@@ -25,6 +25,7 @@
 #include "auto/auto-types.h"
 #include "auto/constants.h"
 #include "document.h"
+#include "peer_id.h"
 #include "secret_chat.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
@@ -391,7 +392,7 @@ std::shared_ptr<message> message::create(const tgl_peer_id_t& our_id, const tl_d
         return nullptr;
     }
 
-    tgl_peer_id_t temp_to_id = tglf_fetch_peer_id(DS_M->to_id);
+    tgl_peer_id_t temp_to_id = create_peer_id(DS_M->to_id);
     tgl_input_peer_t to_id(temp_to_id.peer_type, temp_to_id.peer_id, 0);
 
     int32_t flags = DS_LVAL(DS_M->flags);
@@ -413,7 +414,7 @@ std::shared_ptr<message> message::create(const tgl_peer_id_t& our_id, const tl_d
 
     tgl_peer_id_t fwd_from_id;
     if (DS_M->fwd_from_id) {
-        fwd_from_id = tglf_fetch_peer_id(DS_M->fwd_from_id);
+        fwd_from_id = create_peer_id(DS_M->fwd_from_id);
     } else {
         fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
     }
@@ -445,7 +446,7 @@ std::shared_ptr<message> message::create_from_short_update(const tgl_peer_id_t& 
 
     tgl_peer_id_t fwd_from_id;
     if (DS_U->fwd_from_id) {
-        fwd_from_id = tglf_fetch_peer_id(DS_U->fwd_from_id);
+        fwd_from_id = create_peer_id(DS_U->fwd_from_id);
     } else {
         fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
     }
@@ -481,7 +482,7 @@ std::shared_ptr<message> message::create_chat_message_from_short_update(const tl
 
     tgl_peer_id_t fwd_from_id;
     if (DS_U->fwd_from_id) {
-        fwd_from_id = tglf_fetch_peer_id(DS_U->fwd_from_id);
+        fwd_from_id = create_peer_id(DS_U->fwd_from_id);
     } else {
         fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
     }

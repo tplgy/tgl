@@ -28,6 +28,7 @@
 #include "chat.h"
 #include "message.h"
 #include "mtproto-common.h"
+#include "peer_id.h"
 #include "secret_chat.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
@@ -413,13 +414,13 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         break;
     case CODE_update_read_history_inbox:
         {
-            tgl_peer_id_t id = tglf_fetch_peer_id(DS_U->peer);
+            tgl_peer_id_t id = create_peer_id(DS_U->peer);
             m_user_agent.callback()->mark_messages_read(false, id, DS_LVAL(DS_U->max_id));
         }
         break;
     case CODE_update_read_history_outbox:
         {
-            tgl_peer_id_t id = tglf_fetch_peer_id(DS_U->peer);
+            tgl_peer_id_t id = create_peer_id(DS_U->peer);
             m_user_agent.callback()->mark_messages_read(true, id, DS_LVAL(DS_U->max_id));
         }
         break;

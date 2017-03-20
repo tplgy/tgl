@@ -23,6 +23,7 @@
 
 #include "chat.h"
 #include "message.h"
+#include "peer_id.h"
 #include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
@@ -67,7 +68,7 @@ void query_get_dialogs::on_answer(void* D)
 
     for (int32_t i = 0; i < dl_size; ++i) {
         struct tl_ds_dialog* DS_D = DS_MD->dialogs->data[i];
-        tgl_peer_id_t peer_id = tglf_fetch_peer_id(DS_D->peer);
+        tgl_peer_id_t peer_id = create_peer_id(DS_D->peer);
         m_state->peers.push_back(peer_id);
         m_state->last_message_ids.push_back(DS_LVAL(DS_D->top_message));
         m_state->unread_count.push_back(DS_LVAL(DS_D->unread_count));

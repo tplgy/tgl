@@ -50,21 +50,6 @@
 namespace tgl {
 namespace impl {
 
-tgl_peer_id_t tglf_fetch_peer_id(const tl_ds_peer* DS_P)
-{
-    switch (DS_P->magic) {
-    case CODE_peer_user:
-        return tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_P->user_id));
-    case CODE_peer_chat:
-        return tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL(DS_P->chat_id));
-    case CODE_peer_channel:
-        return tgl_peer_id_t(tgl_peer_type::channel, DS_LVAL(DS_P->channel_id));
-    default:
-        assert(false);
-        exit(2);
-    }
-}
-
 tgl_file_location tglf_fetch_file_location(const tl_ds_file_location* DS_FL)
 {
     tgl_file_location location;

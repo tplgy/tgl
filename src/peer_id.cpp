@@ -19,33 +19,32 @@
     Copyright Topology LP 2016-2017
 */
 
-#pragma once
+#include "peer_id.h"
+
+#include "auto/auto.h"
+#include "auto/auto-types.h"
+#include "auto/constants.h"
 
 #include <cassert>
-#include <memory>
-
-#include "auto/auto-types.h"
-#include "tools.h"
-#include "tgl/tgl_bot.h"
-#include "tgl/tgl_chat.h"
-#include "tgl/tgl_channel.h"
-#include "tgl/tgl_message_media.h"
-#include "tgl/tgl_user.h"
 
 namespace tgl {
 namespace impl {
 
-class user_agent;
-
-tgl_user_status tglf_fetch_user_status(const tl_ds_user_status* DS_US);
-void tglf_fetch_chat_participants(const std::shared_ptr<tgl_chat>& C, const tl_ds_chat_participants* DS_CP);
-
-tgl_file_location tglf_fetch_file_location(const tl_ds_file_location* DS_FL);
-
-std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P);
-std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W);
-std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info(const tl_ds_bot_info* DS_BI);
-std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const tl_ds_photo_size* DS_PS);
+tgl_peer_id_t create_peer_id(const tl_ds_peer* DS_P)
+{
+    switch (DS_P->magic) {
+    case CODE_peer_user:
+        return tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_P->user_id));
+    case CODE_peer_chat:
+        return tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL(DS_P->chat_id));
+    case CODE_peer_channel:
+        return tgl_peer_id_t(tgl_peer_type::channel, DS_LVAL(DS_P->channel_id));
+    default:
+        assert(false);
+        return tgl_peer_id_t();
+    }
+}
 
 }
 }
+

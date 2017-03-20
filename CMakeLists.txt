@@ -135,6 +135,7 @@ set(PRIVATE_HEADERS
     src/mtproto_client.h
     src/mtproto-common.h
     src/mtproto-utils.h
+    src/peer_id.h
     src/query/query.h
     src/query/query_add_contacts.h
     src/query/query_block_or_unblock_user.h
@@ -234,6 +235,7 @@ set(SOURCES
     src/mtproto-common.cpp
     src/mtproto-utils.cpp
     src/net/tgl_net_base.cpp
+    src/peer_id.cpp
     src/query/query.cpp
     src/query/query_channel_get_participant.cpp
     src/query/query_channels_get_participants.cpp
