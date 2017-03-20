@@ -22,7 +22,7 @@
 #include "download_task.h"
 
 #include "auto/constants.h"
-#include "crypto/tgl_crypto_md5.h"
+#include "crypto/crypto_md5.h"
 
 #include <cstring>
 

@@ -21,7 +21,7 @@
 
 #include "query_get_and_set_password.h"
 
-#include "crypto/tgl_crypto_sha.h"
+#include "crypto/crypto_sha.h"
 #include "query_update_password_settings.h"
 #include "tgl/tgl_update_callback.h"
 

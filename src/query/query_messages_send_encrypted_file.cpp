@@ -25,7 +25,7 @@
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "auto/auto-skip.h"
-#include "crypto/tgl_crypto_md5.h"
+#include "crypto/crypto_md5.h"
 #include "document.h"
 #include "message.h"
 #include "secret_chat_encryptor.h"

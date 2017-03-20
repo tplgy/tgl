@@ -21,7 +21,7 @@
 
 #include "mtproto-utils.h"
 
-#include "crypto/tgl_crypto_bn.h"
+#include "crypto/crypto_bn.h"
 #include "mtproto-utils.h"
 #include "portable_endian.h"
 #include "tgl/tgl_log.h"

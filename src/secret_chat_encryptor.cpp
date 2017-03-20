@@ -21,8 +21,8 @@
 
 #include "secret_chat_encryptor.h"
 
-#include "crypto/tgl_crypto_aes.h"
-#include "crypto/tgl_crypto_sha.h"
+#include "crypto/crypto_aes.h"
+#include "crypto/crypto_sha.h"
 #include "mtproto-common.h"
 #include "tgl/tgl_secret_chat.h"
 

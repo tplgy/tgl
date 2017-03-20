@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "crypto/tgl_crypto_bn.h"
+#include "crypto/crypto_bn.h"
 
 namespace tgl {
 namespace impl {

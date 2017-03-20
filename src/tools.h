@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "crypto/tgl_crypto_err.h"
+#include "crypto/crypto_err.h"
 
 #include <cassert>
 #include <chrono>

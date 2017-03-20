@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "tgl_crypto_bn.h"
+#include "crypto_bn.h"
 
 #include <openssl/rsa.h>
 #include <openssl/pem.h>

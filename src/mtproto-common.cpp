@@ -23,8 +23,8 @@
 #include "mtproto-common.h"
 
 #include "auto/auto.h"
-#include "crypto/tgl_crypto_rand.h"
-#include "crypto/tgl_crypto_sha.h"
+#include "crypto/crypto_rand.h"
+#include "crypto/crypto_sha.h"
 #include "tgl/tgl_log.h"
 #include "tools.h"
 

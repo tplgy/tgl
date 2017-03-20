@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "crypto/tgl_crypto_bn.h"
+#include "crypto/crypto_bn.h"
 #include "tgl/tgl_mtproto_client.h"
 #include "tgl/tgl_dc.h"
 #include "tgl_session.h"

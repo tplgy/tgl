@@ -125,13 +125,13 @@ set(PRIVATE_HEADERS
     src/bot_info.h
     src/channel.h
     src/chat.h
-    src/crypto/tgl_crypto_aes.h
-    src/crypto/tgl_crypto_bn.h
-    src/crypto/tgl_crypto_err.h
-    src/crypto/tgl_crypto_md5.h
-    src/crypto/tgl_crypto_rsa_pem.h
-    src/crypto/tgl_crypto_sha.h
-    src/crypto/tgl_crypto_rand.h
+    src/crypto/crypto_aes.h
+    src/crypto/crypto_bn.h
+    src/crypto/crypto_err.h
+    src/crypto/crypto_md5.h
+    src/crypto/crypto_rsa_pem.h
+    src/crypto/crypto_sha.h
+    src/crypto/crypto_rand.h
     src/document.h
     src/download_task.h
     src/file_location.h

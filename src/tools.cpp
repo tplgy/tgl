@@ -24,7 +24,7 @@
 
 #include "tools.h"
 
-#include "crypto/tgl_crypto_rand.h"
+#include "crypto/crypto_rand.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_secure_random.h"
 

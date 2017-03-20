@@ -22,10 +22,10 @@
 
 #pragma once
 
-#include "crypto/tgl_crypto_aes.h"
-#include "crypto/tgl_crypto_bn.h"
-#include "crypto/tgl_crypto_rand.h"
-#include "crypto/tgl_crypto_rsa_pem.h"
+#include "crypto/crypto_aes.h"
+#include "crypto/crypto_bn.h"
+#include "crypto/crypto_rand.h"
+#include "crypto/crypto_rsa_pem.h"
 #include "tgl/tgl_secure_random.h"
 
 #include <cassert>

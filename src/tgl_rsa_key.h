@@ -26,7 +26,7 @@
 #include <memory>
 #include <string>
 
-#include "crypto/tgl_crypto_rsa_pem.h"
+#include "crypto/crypto_rsa_pem.h"
 #include "mtproto-common.h"
 
 namespace tgl {

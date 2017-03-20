@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include "crypto/tgl_crypto_bn.h"
-#include "crypto/tgl_crypto_sha.h"
+#include "crypto/crypto_bn.h"
+#include "crypto/crypto_sha.h"
 #include "tgl/tgl_secret_chat.h"
 #include "tgl/tgl_timer.h"
 
