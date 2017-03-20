@@ -155,20 +155,20 @@ bool updater::check_seq_diff(int32_t seq)
     }
 }
 
-void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
+void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& extra, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         TGL_WARNING("update during get_difference, dropping update");
         return;
     }
 
-    if (mode == tgl_update_mode::check_and_update_consistency
+    if (mode == update_mode::check_and_update_consistency
             && DS_U->pts
             && !check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
         return;
     }
 
-    if (mode == tgl_update_mode::check_and_update_consistency
+    if (mode == update_mode::check_and_update_consistency
             && DS_U->qts
             && !check_qts_diff(DS_LVAL(DS_U->qts), 1)) {
         return;
@@ -186,7 +186,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         }
 
         tgl_peer_id_t channel = tgl_peer_id_t(tgl_peer_type::channel, channel_id);
-        if (mode == tgl_update_mode::check_and_update_consistency
+        if (mode == update_mode::check_and_update_consistency
                 && !check_channel_pts_diff(channel, DS_LVAL(DS_U->channel_pts), DS_LVAL(DS_U->channel_pts_count))) {
             return;
         }
@@ -468,8 +468,8 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         assert(false);
     }
 
-    if (mode != tgl_update_mode::check_and_update_consistency) {
-        assert(mode == tgl_update_mode::dont_check_and_update_consistency);
+    if (mode != update_mode::check_and_update_consistency) {
+        assert(mode == update_mode::dont_check_and_update_consistency);
         return;
     }
 
@@ -496,13 +496,13 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
     }
 }
 
-void updater::work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
+void updater::work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         return;
     }
 
-    if (mode == tgl_update_mode::check_and_update_consistency
+    if (mode == update_mode::check_and_update_consistency
             && !check_seq_diff(DS_LVAL(DS_U->seq))) {
         return;
     }
@@ -532,8 +532,8 @@ void updater::work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void
         }
     }
 
-    if (mode != tgl_update_mode::check_and_update_consistency) {
-        assert(mode == tgl_update_mode::dont_check_and_update_consistency);
+    if (mode != update_mode::check_and_update_consistency) {
+        assert(mode == update_mode::dont_check_and_update_consistency);
         return;
     }
 
@@ -541,13 +541,13 @@ void updater::work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void
     m_user_agent.set_seq(DS_LVAL(DS_U->seq));
 }
 
-void updater::work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mode mode)
+void updater::work_updates_combined(const tl_ds_updates* DS_U, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         return;
     }
 
-    if (mode == tgl_update_mode::check_and_update_consistency
+    if (mode == update_mode::check_and_update_consistency
             && !check_seq_diff(DS_LVAL(DS_U->seq_start))) {
         return;
     }
@@ -571,8 +571,8 @@ void updater::work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mode m
         work_update(DS_U->updates->data[i], nullptr, mode);
     }
 
-    if (mode != tgl_update_mode::check_and_update_consistency) {
-        assert(mode == tgl_update_mode::dont_check_and_update_consistency);
+    if (mode != update_mode::check_and_update_consistency) {
+        assert(mode == update_mode::dont_check_and_update_consistency);
         return;
     }
 
@@ -580,13 +580,13 @@ void updater::work_updates_combined(const tl_ds_updates* DS_U, tgl_update_mode m
     m_user_agent.set_seq(DS_LVAL(DS_U->seq));
 }
 
-void updater::work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mode mode)
+void updater::work_update_short_message(const tl_ds_updates* DS_U, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         return;
     }
 
-    if (mode == tgl_update_mode::check_and_update_consistency
+    if (mode == update_mode::check_and_update_consistency
             && !check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
         return;
     }
@@ -599,21 +599,21 @@ void updater::work_update_short_message(const tl_ds_updates* DS_U, tgl_update_mo
         return;
     }
 
-    if (mode != tgl_update_mode::check_and_update_consistency) {
-        assert(mode == tgl_update_mode::dont_check_and_update_consistency);
+    if (mode != update_mode::check_and_update_consistency) {
+        assert(mode == update_mode::dont_check_and_update_consistency);
         return;
     }
 
     m_user_agent.set_pts(DS_LVAL(DS_U->pts));
 }
 
-void updater::work_update_short_chat_message(const tl_ds_updates* DS_U, tgl_update_mode mode)
+void updater::work_update_short_chat_message(const tl_ds_updates* DS_U, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         return;
     }
 
-    if (mode == tgl_update_mode::check_and_update_consistency
+    if (mode == update_mode::check_and_update_consistency
             && !check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
         return;
     }
@@ -626,22 +626,22 @@ void updater::work_update_short_chat_message(const tl_ds_updates* DS_U, tgl_upda
         return;
     }
 
-    if (mode != tgl_update_mode::check_and_update_consistency) {
-        assert(mode == tgl_update_mode::dont_check_and_update_consistency);
+    if (mode != update_mode::check_and_update_consistency) {
+        assert(mode == update_mode::dont_check_and_update_consistency);
         return;
     }
 
     m_user_agent.set_pts(DS_LVAL(DS_U->pts));
 }
 
-void updater::work_updates_too_long(const tl_ds_updates* DS_U, tgl_update_mode mode)
+void updater::work_updates_too_long(const tl_ds_updates* DS_U, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         return;
     }
 
-    if (mode != tgl_update_mode::check_and_update_consistency) {
-        assert(mode == tgl_update_mode::dont_check_and_update_consistency);
+    if (mode != update_mode::check_and_update_consistency) {
+        assert(mode == update_mode::dont_check_and_update_consistency);
         return;
     }
 
@@ -649,7 +649,7 @@ void updater::work_updates_too_long(const tl_ds_updates* DS_U, tgl_update_mode m
     m_user_agent.get_difference(false, nullptr);
 }
 
-void updater::work_update_short(const tl_ds_updates* DS_U, tgl_update_mode mode)
+void updater::work_update_short(const tl_ds_updates* DS_U, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         return;
@@ -659,9 +659,9 @@ void updater::work_update_short(const tl_ds_updates* DS_U, tgl_update_mode mode)
 }
 
 void updater::work_update_short_sent_message(const tl_ds_updates* DS_U,
-        const std::shared_ptr<void>& extra, tgl_update_mode mode)
+        const std::shared_ptr<void>& extra, update_mode mode)
 {
-    if (mode == tgl_update_mode::check_and_update_consistency
+    if (mode == update_mode::check_and_update_consistency
             && DS_U->pts
             && !check_pts_diff(DS_LVAL(DS_U->pts), DS_LVAL(DS_U->pts_count))) {
         return;
@@ -677,8 +677,8 @@ void updater::work_update_short_sent_message(const tl_ds_updates* DS_U,
         }
     }
 
-    if (mode != tgl_update_mode::check_and_update_consistency) {
-        assert(mode == tgl_update_mode::dont_check_and_update_consistency);
+    if (mode != update_mode::check_and_update_consistency) {
+        assert(mode == update_mode::dont_check_and_update_consistency);
         return;
     }
 
@@ -687,7 +687,7 @@ void updater::work_update_short_sent_message(const tl_ds_updates* DS_U,
     }
 }
 
-void updater::work_any_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, tgl_update_mode mode)
+void updater::work_any_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         return;
@@ -729,7 +729,7 @@ void updater::work_any_updates(tgl_in_buffer* in)
         return;
     }
 
-    work_any_updates(DS_U, nullptr, tgl_update_mode::check_and_update_consistency);
+    work_any_updates(DS_U, nullptr, update_mode::check_and_update_consistency);
     free_ds_type_updates(DS_U, &type);
 }
 
