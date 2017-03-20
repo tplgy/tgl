@@ -44,7 +44,7 @@ class tgl_timer;
 namespace tgl {
 namespace impl {
 
-class tgl_rsa_key;
+class rsa_public_key;
 class query;
 
 struct encrypted_message;
@@ -256,7 +256,7 @@ private:
     std::shared_ptr<query> m_bind_temp_auth_key_query;
 
     std::shared_ptr<tgl_timer> m_session_cleanup_timer;
-    std::shared_ptr<tgl_rsa_key> m_rsa_key;
+    std::shared_ptr<rsa_public_key> m_rsa_key;
     std::set<std::weak_ptr<connection_status_observer>, std::owner_less<std::weak_ptr<connection_status_observer>>> m_connection_status_observers;
 };
 

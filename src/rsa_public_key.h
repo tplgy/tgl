@@ -32,10 +32,10 @@
 namespace tgl {
 namespace impl {
 
-class tgl_rsa_key
+class rsa_public_key
 {
 public:
-    explicit tgl_rsa_key(const std::string& key)
+    explicit rsa_public_key(const std::string& key)
         : m_key(key)
         , m_public_key()
         , m_fingerprint(0)

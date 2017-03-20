@@ -92,6 +92,7 @@
 #include "query/query_update_notify_settings.h"
 #include "query/query_update_status.h"
 #include "query/query_user_info.h"
+#include "rsa_public_key.h"
 #include "secret_chat.h"
 #include "tgl/tgl_chat.h"
 #include "tgl/tgl_log.h"
@@ -104,7 +105,6 @@
 #include "tgl/tgl_update_callback.h"
 #include "tgl/tgl_value.h"
 #include "tgl_session.h"
-#include "tgl_rsa_key.h"
 #include "tools.h"
 #include "transfer_manager.h"
 #include "updater.h"
@@ -360,7 +360,7 @@ void user_agent::reset_authorization()
 
 void user_agent::add_rsa_key(const std::string& key)
 {
-    m_rsa_keys.push_back(std::unique_ptr<tgl_rsa_key>(new tgl_rsa_key(key)));
+    m_rsa_keys.push_back(std::unique_ptr<rsa_public_key>(new rsa_public_key(key)));
 }
 
 int32_t user_agent::create_secret_chat_id() const

@@ -52,8 +52,8 @@ class chat;
 class message;
 class mtproto_client;
 class query;
+class rsa_public_key;
 class secret_chat;
-class tgl_rsa_key;
 class updater;
 class user;
 
@@ -283,7 +283,7 @@ public:
     void set_seq(int32_t seq);
     int32_t seq() const { return m_seq; }
 
-    const std::vector<std::shared_ptr<tgl_rsa_key>>& rsa_keys() const { return m_rsa_keys; }
+    const std::vector<std::shared_ptr<rsa_public_key>>& rsa_keys() const { return m_rsa_keys; }
 
     std::shared_ptr<secret_chat> allocate_secret_chat(const tgl_input_peer_t& chat_id, int32_t user_id);
     std::shared_ptr<secret_chat> allocate_or_update_secret_chat(const tl_ds_encrypted_chat*);
@@ -397,7 +397,7 @@ private:
     std::unique_ptr<class updater> m_updater;
 
     std::vector<std::shared_ptr<mtproto_client>> m_clients;
-    std::vector<std::shared_ptr<tgl_rsa_key>> m_rsa_keys;
+    std::vector<std::shared_ptr<rsa_public_key>> m_rsa_keys;
     std::map<int32_t/*peer id*/, std::shared_ptr<secret_chat>> m_secret_chats;
     std::map<int64_t/*msg_id*/, std::shared_ptr<query>> m_active_queries;
     std::set<std::weak_ptr<tgl_online_status_observer>, std::owner_less<std::weak_ptr<tgl_online_status_observer>>> m_online_status_observers;
