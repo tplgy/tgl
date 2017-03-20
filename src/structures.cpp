@@ -32,6 +32,7 @@
 #include "crypto/tgl_crypto_bn.h"
 #include "crypto/tgl_crypto_sha.h"
 #include "document.h"
+#include "file_location.h"
 #include "mtproto_client.h"
 #include "mtproto-common.h"
 #include "tgl/tgl_bot.h"
@@ -50,22 +51,6 @@
 namespace tgl {
 namespace impl {
 
-tgl_file_location tglf_fetch_file_location(const tl_ds_file_location* DS_FL)
-{
-    tgl_file_location location;
-
-    if (!DS_FL) {
-        return location;
-    }
-
-    location.set_dc(DS_LVAL(DS_FL->dc_id));
-    location.set_volume(DS_LVAL(DS_FL->volume_id));
-    location.set_local_id(DS_LVAL(DS_FL->local_id));
-    location.set_secret(DS_LVAL(DS_FL->secret));
-
-    return location;
-}
-
 std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const tl_ds_photo_size* DS_PS)
 {
     auto photo_size = std::make_shared<tgl_photo_size>();
@@ -78,7 +63,7 @@ std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const tl_ds_photo_size* DS
         photo_size->size = DS_PS->bytes->len;
     }
 
-    photo_size->loc = tglf_fetch_file_location(DS_PS->location);
+    photo_size->loc = create_file_location(DS_PS->location);
 
     return photo_size;
 }

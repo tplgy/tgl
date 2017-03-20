@@ -19,28 +19,30 @@
     Copyright Topology LP 2016-2017
 */
 
-#pragma once
+#include "file_location.h"
 
-#include <cassert>
-#include <memory>
-
+#include "auto/auto.h"
 #include "auto/auto-types.h"
-#include "tools.h"
-#include "tgl/tgl_bot.h"
-#include "tgl/tgl_chat.h"
-#include "tgl/tgl_channel.h"
-#include "tgl/tgl_message_media.h"
-#include "tgl/tgl_user.h"
+#include "auto/constants.h"
 
 namespace tgl {
 namespace impl {
 
-class user_agent;
+tgl_file_location create_file_location(const tl_ds_file_location* DS_FL)
+{
+    tgl_file_location location;
 
+    if (!DS_FL) {
+        return location;
+    }
 
-std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P);
-std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W);
-std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const tl_ds_photo_size* DS_PS);
+    location.set_dc(DS_LVAL(DS_FL->dc_id));
+    location.set_volume(DS_LVAL(DS_FL->volume_id));
+    location.set_local_id(DS_LVAL(DS_FL->local_id));
+    location.set_secret(DS_LVAL(DS_FL->secret));
+
+    return location;
+}
 
 }
 }

@@ -21,26 +21,14 @@
 
 #pragma once
 
-#include <cassert>
-#include <memory>
-
-#include "auto/auto-types.h"
-#include "tools.h"
-#include "tgl/tgl_bot.h"
-#include "tgl/tgl_chat.h"
-#include "tgl/tgl_channel.h"
-#include "tgl/tgl_message_media.h"
-#include "tgl/tgl_user.h"
+#include "tgl/tgl_file_location.h"
 
 namespace tgl {
 namespace impl {
 
-class user_agent;
+struct tl_ds_file_location;
 
-
-std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P);
-std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W);
-std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const tl_ds_photo_size* DS_PS);
+tgl_file_location create_file_location(const tl_ds_file_location*);
 
 }
 }

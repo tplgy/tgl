@@ -26,6 +26,7 @@
 #include "auto/auto-fetch-ds.h"
 #include "auto/auto-free-ds.h"
 #include "chat.h"
+#include "file_location.h"
 #include "message.h"
 #include "mtproto-common.h"
 #include "peer_id.h"
@@ -238,8 +239,8 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         break;
     case CODE_update_user_photo:
         if (DS_U->photo) {
-            tgl_file_location photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
-            tgl_file_location photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
+            tgl_file_location photo_big = create_file_location(DS_U->photo->photo_big);
+            tgl_file_location photo_small = create_file_location(DS_U->photo->photo_small);
             m_user_agent.callback()->avatar_update(DS_LVAL(DS_U->user_id), tgl_peer_type::user, photo_small, photo_big);
         }
         break;

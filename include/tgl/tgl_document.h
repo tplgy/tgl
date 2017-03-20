@@ -31,7 +31,7 @@
 struct tgl_photo_size
 {
     std::string type;
-    struct tgl_file_location loc;
+    tgl_file_location loc;
     int32_t w;
     int32_t h;
     int32_t size;

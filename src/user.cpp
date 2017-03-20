@@ -27,6 +27,7 @@
 #include "auto/auto-free-ds.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/constants.h"
+#include "file_location.h"
 #include "structures.h"
 
 #include <cassert>
@@ -93,10 +94,10 @@ user::user(const tl_ds_user* DS_U) throw(std::runtime_error)
 
     if (DS_U->photo) {
         if (DS_U->photo->photo_big) {
-            m_photo_big = tglf_fetch_file_location(DS_U->photo->photo_big);
+            m_photo_big = create_file_location(DS_U->photo->photo_big);
         }
         if (DS_U->photo->photo_small) {
-            m_photo_small = tglf_fetch_file_location(DS_U->photo->photo_small);
+            m_photo_small = create_file_location(DS_U->photo->photo_small);
         }
     }
 }

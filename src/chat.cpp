@@ -28,6 +28,7 @@
 #include "auto/auto-fetch-ds.h"
 #include "auto/constants.h"
 #include "channel.h"
+#include "file_location.h"
 #include "structures.h"
 
 #include <cassert>
@@ -97,8 +98,8 @@ chat::chat(const tl_ds_chat* DS_C, chat::dont_check_magic) throw(std::runtime_er
     m_is_deactivated = flags & 32;
 
     if (DS_C->photo) {
-        m_photo_big = tglf_fetch_file_location(DS_C->photo->photo_big);
-        m_photo_small = tglf_fetch_file_location(DS_C->photo->photo_small);
+        m_photo_big = create_file_location(DS_C->photo->photo_big);
+        m_photo_small = create_file_location(DS_C->photo->photo_small);
     }
 }
 

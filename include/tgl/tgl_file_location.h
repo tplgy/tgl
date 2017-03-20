@@ -23,7 +23,8 @@
 
 #include <cstdint>
 
-struct tgl_file_location {
+class tgl_file_location {
+public:
     tgl_file_location()
         : m_dc(0)
         , m_local_id(0)

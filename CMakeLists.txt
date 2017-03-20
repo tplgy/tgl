@@ -132,6 +132,7 @@ set(PRIVATE_HEADERS
     src/crypto/tgl_crypto_rand.h
     src/document.h
     src/download_task.h
+    src/file_location.h
     src/message.h
     src/mtproto_client.h
     src/mtproto-common.h
@@ -232,6 +233,7 @@ set(SOURCES
     src/chat.cpp
     src/document.cpp
     src/download_task.cpp
+    src/file_location.cpp
     src/message.cpp
     src/mtproto_client.cpp
     src/mtproto-common.cpp
