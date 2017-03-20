@@ -23,9 +23,9 @@
 #pragma once
 
 #include "crypto/crypto_bn.h"
+#include "session.h"
 #include "tgl/tgl_mtproto_client.h"
 #include "tgl/tgl_dc.h"
-#include "tgl_session.h"
 #include "user_agent.h"
 
 #include <array>
@@ -98,7 +98,7 @@ public:
     virtual const std::array<unsigned char, 256>& auth_key() const override { return m_auth_key; }
     virtual double time_difference() const override { return m_server_time_delta; }
 
-    const std::shared_ptr<tgl_session>& session() const { return m_session; }
+    const std::shared_ptr<struct session>& session() const { return m_session; }
 
     void clear_session()
     {
@@ -227,7 +227,7 @@ private:
     std::weak_ptr<user_agent> m_user_agent;
     int32_t m_id;
     state m_state;
-    std::shared_ptr<tgl_session> m_session;
+    std::shared_ptr<struct session> m_session;
     std::array<unsigned char, 256> m_auth_key;
     std::array<unsigned char, 256> m_temp_auth_key;
     std::array<unsigned char, 16> m_nonce;

@@ -210,7 +210,7 @@ set(PRIVATE_HEADERS
     src/rsa_public_key.h
     src/secret_chat.h
     src/secret_chat_encryptor.h
-    src/tgl_session.h
+    src/session.h
     src/tools.h
     src/transfer_manager.h
     src/typing_status.h
@@ -280,7 +280,7 @@ set(SOURCES
     src/query/query_upload_file_part.cpp
     src/secret_chat.cpp
     src/secret_chat_encryptor.cpp
-    src/tgl_session.cpp
+    src/session.cpp
     src/tools.cpp
     src/transfer_manager.cpp
     src/typing_status.cpp

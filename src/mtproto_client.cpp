@@ -1669,7 +1669,7 @@ void mtproto_client::create_session()
     }
 
     assert(!m_session);
-    m_session = std::make_shared<tgl_session>();
+    m_session = std::make_shared<struct session>();
     while (!m_session->session_id) {
         tgl_secure_random(reinterpret_cast<unsigned char*>(&m_session->session_id), 8);
     }

@@ -19,36 +19,52 @@
     Copyright Topology LP 2016
 */
 
-#include "tgl_session.h"
+#pragma once
 
-#include "tgl/tgl_net.h"
 #include "tgl/tgl_timer.h"
+
+#include <memory>
+#include <set>
+#include <stdint.h>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+class tgl_connection;
+class tgl_timer;
 
 namespace tgl {
 namespace impl {
 
-void tgl_session::clear()
+struct worker
 {
-    session_id = 0;
-    last_msg_id = 0;
-    seq_no = 0;
-    received_messages = 0;
-    if (primary_worker) {
-        if (primary_worker->connection) {
-            primary_worker->connection->close();
-        }
-        primary_worker = nullptr;
-    }
-    for (const auto& w: secondary_workers) {
-        if (w->connection) {
-            w->connection->close();
-        }
-    }
-    secondary_workers.clear();
-    ack_set.clear();
-    ev->cancel();
-    ev = nullptr;
-}
+    std::shared_ptr<tgl_connection> connection;
+    std::shared_ptr<tgl_timer> live_timer;
+    std::set<int64_t> work_load;
+    explicit worker(const std::shared_ptr<tgl_connection>& c): connection(c) { }
+};
+
+struct session
+{
+    int64_t session_id;
+    int64_t last_msg_id;
+    int32_t seq_no;
+    int32_t received_messages;
+    std::shared_ptr<worker> primary_worker;
+    std::unordered_set<std::shared_ptr<worker>> secondary_workers;
+    std::set<int64_t> ack_set;
+    std::shared_ptr<tgl_timer> ev;
+    session()
+        : session_id(0)
+        , last_msg_id(0)
+        , seq_no(0)
+        , received_messages(0)
+        , ack_set()
+        , ev()
+    { }
+
+    void clear();
+};
 
 }
 }
