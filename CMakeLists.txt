@@ -237,6 +237,7 @@ set(SOURCES
     src/document.cpp
     src/download_task.cpp
     src/file_location.cpp
+    src/log.cpp
     src/message.cpp
     src/mtproto_client.cpp
     src/mtproto-common.cpp
@@ -278,7 +279,6 @@ set(SOURCES
     src/query/query_upload_file_part.cpp
     src/secret_chat.cpp
     src/secret_chat_encryptor.cpp
-    src/tgl_log.cpp
     src/tgl_mime_type.cpp
     src/tgl_session.cpp
     src/tools.cpp
