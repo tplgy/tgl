@@ -26,6 +26,7 @@
 #include "auto/constants.h"
 #include "document.h"
 #include "peer_id.h"
+#include "photo.h"
 #include "secret_chat.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
@@ -109,7 +110,7 @@ static std::shared_ptr<tgl_message_media> make_message_media(const tl_ds_message
     case CODE_message_media_photo_l27:
     {
         auto media = std::make_shared<tgl_message_media_photo>();
-        media->photo = tglf_fetch_alloc_photo(DS_MM->photo);
+        media->photo = create_photo(DS_MM->photo);
         media->caption = DS_STDSTR(DS_MM->caption);
         return media;
     }
@@ -243,7 +244,7 @@ static std::shared_ptr<tgl_message_action> make_message_action(const tl_ds_messa
         return action;
     }
     case CODE_message_action_chat_edit_photo:
-        return std::make_shared<tgl_message_action_chat_edit_photo>(tglf_fetch_alloc_photo(DS_MA->photo));
+        return std::make_shared<tgl_message_action_chat_edit_photo>(create_photo(DS_MA->photo));
     case CODE_message_action_chat_delete_photo:
         return std::make_shared<tgl_message_action_chat_delete_photo>();
     case CODE_message_action_chat_add_user:

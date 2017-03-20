@@ -46,6 +46,31 @@ std::shared_ptr<tgl_photo_size> create_photo_size(const tl_ds_photo_size* DS_PS)
     return photo_size;
 }
 
+std::shared_ptr<tgl_photo> create_photo(const tl_ds_photo* DS_P)
+{
+    if (!DS_P) {
+        return nullptr;
+    }
+
+    if (DS_P->magic == CODE_photo_empty) {
+        return nullptr;
+    }
+
+    auto photo = std::make_shared<tgl_photo>();
+    photo->id = DS_LVAL(DS_P->id);
+
+    photo->access_hash = DS_LVAL(DS_P->access_hash);
+    photo->date = DS_LVAL(DS_P->date);
+
+    int sizes_num = DS_LVAL(DS_P->sizes->cnt);
+    photo->sizes.resize(sizes_num);
+    for (int i = 0; i < sizes_num; ++i) {
+        photo->sizes[i] = create_photo_size(DS_P->sizes->data[i]);
+    }
+
+    return photo;
+}
+
 }
 }
 

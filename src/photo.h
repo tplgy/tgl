@@ -28,9 +28,11 @@
 namespace tgl {
 namespace impl {
 
+struct tl_ds_photo;
 struct tl_ds_photo_size;
 
 std::shared_ptr<tgl_photo_size> create_photo_size(const tl_ds_photo_size*);
+std::shared_ptr<tgl_photo> create_photo(const tl_ds_photo*);
 
 }
 }
