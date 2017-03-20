@@ -19,32 +19,37 @@
     Copyright Topology LP 2016-2017
 */
 
-#pragma once
+#include "bot_info.h"
 
-#include <cassert>
-#include <memory>
-
+#include "auto/auto.h"
 #include "auto/auto-types.h"
-#include "tools.h"
-#include "tgl/tgl_bot.h"
-#include "tgl/tgl_chat.h"
-#include "tgl/tgl_channel.h"
-#include "tgl/tgl_message_media.h"
-#include "tgl/tgl_user.h"
+#include "auto/constants.h"
 
 namespace tgl {
 namespace impl {
 
-class user_agent;
+std::shared_ptr<tgl_bot_info> create_bot_info(const tl_ds_bot_info* DS_BI)
+{
+    if (!DS_BI || DS_BI->magic == CODE_bot_info_empty) {
+        return nullptr;
+    }
 
-tgl_user_status tglf_fetch_user_status(const tl_ds_user_status* DS_US);
-void tglf_fetch_chat_participants(const std::shared_ptr<tgl_chat>& C, const tl_ds_chat_participants* DS_CP);
+    std::shared_ptr<tgl_bot_info> bot = std::make_shared<tgl_bot_info>();
+    bot->version = DS_LVAL(DS_BI->version);
+    bot->share_text = DS_STDSTR(DS_BI->share_text);
+    bot->description = DS_STDSTR(DS_BI->description);
 
-tgl_file_location tglf_fetch_file_location(const tl_ds_file_location* DS_FL);
-
-std::shared_ptr<tgl_photo> tglf_fetch_alloc_photo(const tl_ds_photo* DS_P);
-std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W);
-std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const tl_ds_photo_size* DS_PS);
+    int commands_num = DS_LVAL(DS_BI->commands->cnt);
+    bot->commands.resize(commands_num);
+    for (int i = 0; i < commands_num; i++) {
+        const tl_ds_bot_command* bot_command = DS_BI->commands->data[i];
+        bot->commands[i] = std::make_shared<tgl_bot_command>();
+        bot->commands[i]->command = DS_STDSTR(bot_command->command);
+        bot->commands[i]->description = DS_STDSTR(bot_command->description);
+    }
+    return bot;
+}
 
 }
 }
+

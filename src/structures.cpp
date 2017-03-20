@@ -172,27 +172,5 @@ std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W
     return webpage;
 }
 
-std::shared_ptr<tgl_bot_info> tglf_fetch_alloc_bot_info(const tl_ds_bot_info* DS_BI)
-{
-    if (!DS_BI || DS_BI->magic == CODE_bot_info_empty) {
-        return nullptr;
-    }
-
-    std::shared_ptr<tgl_bot_info> bot = std::make_shared<tgl_bot_info>();
-    bot->version = DS_LVAL(DS_BI->version);
-    bot->share_text = DS_STDSTR(DS_BI->share_text);
-    bot->description = DS_STDSTR(DS_BI->description);
-
-    int commands_num = DS_LVAL(DS_BI->commands->cnt);
-    bot->commands.resize(commands_num);
-    for (int i = 0; i < commands_num; i++) {
-        const tl_ds_bot_command* bot_command = DS_BI->commands->data[i];
-        bot->commands[i] = std::make_shared<tgl_bot_command>();
-        bot->commands[i]->command = DS_STDSTR(bot_command->command);
-        bot->commands[i]->description = DS_STDSTR(bot_command->description);
-    }
-    return bot;
-}
-
 }
 }

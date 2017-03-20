@@ -120,6 +120,7 @@ set(PUBLIC_IMPL_HEADERS
 set(PRIVATE_HEADERS
     ${GENERATED_TGL_HEADERS}
     src/auto/auto.h
+    src/bot_info.h
     src/channel.h
     src/chat.h
     src/crypto/tgl_crypto_aes.h
@@ -226,6 +227,7 @@ set(GENERATED_TGL_SOURCES
 
 set(SOURCES
     ${GENERATED_TGL_SOURCES}
+    src/bot_info.cpp
     src/channel.cpp
     src/chat.cpp
     src/document.cpp
