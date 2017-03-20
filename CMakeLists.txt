@@ -208,6 +208,7 @@ set(PRIVATE_HEADERS
     src/tgl_session.h
     src/tools.h
     src/transfer_manager.h
+    src/typing_status.h
     src/unconfirmed_secret_message.h
     src/updater.h
     src/upload_task.h
@@ -271,8 +272,9 @@ set(SOURCES
     src/tgl_log.cpp
     src/tgl_mime_type.cpp
     src/tgl_session.cpp
-    src/transfer_manager.cpp
     src/tools.cpp
+    src/transfer_manager.cpp
+    src/typing_status.cpp
     src/unconfirmed_secret_message.cpp
     src/updater.cpp
     src/upload_task.cpp

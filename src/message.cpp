@@ -28,6 +28,7 @@
 #include "secret_chat.h"
 #include "structures.h"
 #include "tgl/tgl_log.h"
+#include "typing_status.h"
 
 #include <cassert>
 #include <cctype>
@@ -316,7 +317,7 @@ static std::shared_ptr<tgl_message_action> make_message_action_encrypted(const t
     case CODE_decrypted_message_action_flush_history:
         return std::make_shared<tgl_message_action_flush_history>();
     case CODE_decrypted_message_action_typing:
-        return std::make_shared<tgl_message_action_typing>(tglf_fetch_typing(DS_DMA->action));
+        return std::make_shared<tgl_message_action_typing>(create_typing_status(DS_DMA->action));
     case CODE_decrypted_message_action_resend:
         return std::make_shared<tgl_message_action_resend>(DS_LVAL(DS_DMA->start_seq_no), DS_LVAL(DS_DMA->end_seq_no));
     case CODE_decrypted_message_action_noop:

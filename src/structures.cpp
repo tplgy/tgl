@@ -50,47 +50,6 @@
 namespace tgl {
 namespace impl {
 
-enum tgl_typing_status tglf_fetch_typing(const tl_ds_send_message_action* DS_SMA)
-{
-    if (!DS_SMA) {
-        return tgl_typing_status::none;
-    }
-    switch (DS_SMA->magic) {
-    case CODE_send_message_typing_action:
-        return tgl_typing_status::typing;
-    case CODE_send_message_cancel_action:
-        return tgl_typing_status::cancel;
-    case CODE_send_message_record_video_action:
-        return tgl_typing_status::record_video;
-    case CODE_send_message_upload_video_action:
-        return tgl_typing_status::upload_video;
-    case CODE_send_message_record_audio_action:
-        return tgl_typing_status::record_audio;
-    case CODE_send_message_upload_audio_action:
-        return tgl_typing_status::upload_audio;
-    case CODE_send_message_upload_photo_action:
-        return tgl_typing_status::upload_photo;
-    case CODE_send_message_upload_document_action:
-        return tgl_typing_status::upload_document;
-    case CODE_send_message_geo_location_action:
-        return tgl_typing_status::geo;
-    case CODE_send_message_choose_contact_action:
-        return tgl_typing_status::choose_contact;
-    default:
-        assert(false);
-        return tgl_typing_status::none;
-    }
-}
-
-/*enum tgl_typing_status tglf_fetch_typing(void)
-{
-    struct paramed_type type = TYPE_TO_PARAM(send_message_action);
-    struct tl_ds_send_message_action* DS_SMA = fetch_ds_type_send_message_action(&type);
-    enum tgl_typing_status res = tglf_fetch_typing_new(DS_SMA);
-    free_ds_type_send_message_action(DS_SMA, &type);
-    return res;
-}*/
-
 tgl_peer_id_t tglf_fetch_peer_id(const tl_ds_peer* DS_P)
 {
     switch (DS_P->magic) {

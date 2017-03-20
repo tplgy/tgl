@@ -32,6 +32,7 @@
 #include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_update_callback.h"
+#include "typing_status.h"
 #include "user.h"
 #include "user_agent.h"
 
@@ -206,7 +207,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         {
             //tgl_peer_id_t id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
             //tgl_peer_t* U = tgl_peer_get(id);
-            enum tgl_typing_status status = tglf_fetch_typing(DS_U->action);
+            enum tgl_typing_status status = create_typing_status(DS_U->action);
             m_user_agent.callback()->typing_status_changed(DS_LVAL(DS_U->user_id), DS_LVAL(DS_U->user_id), tgl_peer_type::user, status);
         }
         break;
@@ -214,7 +215,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         {
             tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL(DS_U->chat_id));
             tgl_peer_id_t id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(DS_U->user_id));
-            enum tgl_typing_status status = tglf_fetch_typing(DS_U->action);
+            enum tgl_typing_status status = create_typing_status(DS_U->action);
             m_user_agent.callback()->typing_status_changed(id.peer_id, chat_id.peer_id, tgl_peer_type::chat, status);
         }
         break;
