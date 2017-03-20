@@ -22,9 +22,9 @@
 #include "updater.h"
 
 #include "auto/auto.h"
-#include "auto/auto-types.h"
-#include "auto/auto-fetch-ds.h"
-#include "auto/auto-free-ds.h"
+#include "auto/auto_types.h"
+#include "auto/auto_fetch_ds.h"
+#include "auto/auto_free_ds.h"
 #include "chat.h"
 #include "file_location.h"
 #include "message.h"

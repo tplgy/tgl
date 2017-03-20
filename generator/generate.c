@@ -2208,8 +2208,8 @@ void gen_skip_source (void) {
   printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
-  printf ("#include \"auto/auto-skip.h\"\n");
-  printf ("#include \"auto/auto-types.h\"\n");
+  printf ("#include \"auto/auto_skip.h\"\n");
+  printf ("#include \"auto/auto_types.h\"\n");
   printf ("#include \"mtproto_common.h\"\n");
 
   printf ("namespace tgl {\n");
@@ -2267,10 +2267,9 @@ void gen_fetch_source (void) {
   printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
-  printf ("#include \"auto/auto-fetch.h\"\n");
-  printf ("#include \"auto/auto-skip.h\"\n");
-  printf ("#include \"auto/auto-types.h\"\n");
-  printf ("#include \"auto-static-fetch.c\"\n");
+  printf ("#include \"auto/auto_fetch.h\"\n");
+  printf ("#include \"auto/auto_skip.h\"\n");
+  printf ("#include \"auto/auto_types.h\"\n");
   printf ("#include \"mtproto_common.h\"\n");
 
   printf ("namespace tgl {\n");
@@ -2335,9 +2334,8 @@ void gen_store_source (void ) {
   printf ("#include <assert.h>\n");
   
   printf ("#include \"mtproto_common.h\"\n");
-  printf ("#include \"auto/auto-store.h\"\n");
-  printf ("#include \"auto/auto-types.h\"\n");
-  printf ("#include \"auto-static-store.c\"\n");
+  printf ("#include \"auto/auto_store.h\"\n");
+  printf ("#include \"auto/auto_types.h\"\n");
 
   printf ("namespace tgl {\n");
   printf ("namespace impl {\n");
@@ -2423,9 +2421,7 @@ void gen_autocomplete_source (void) {
   printf ("#include <assert.h>\n");
   
   printf ("#include \"mtproto_common.h\"\n");
-  printf ("#include \"auto/auto-autocomplete.h\"\n");
-  printf ("#include \"auto/auto-types.h\"\n");
-  printf ("#include \"auto-static-autocomplete.c\"\n");
+  printf ("#include \"auto/auto_types.h\"\n");
 
   printf ("namespace tgl {\n");
   printf ("namespace impl {\n");
@@ -2580,9 +2576,9 @@ void gen_fetch_ds_source (void) {
   printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
-  printf ("#include \"auto/auto-fetch-ds.h\"\n");
-  printf ("#include \"auto/auto-skip.h\"\n");
-  printf ("#include \"auto/auto-types.h\"\n");
+  printf ("#include \"auto/auto_fetch_ds.h\"\n");
+  printf ("#include \"auto/auto_skip.h\"\n");
+  printf ("#include \"auto/auto_types.h\"\n");
   printf ("#include \"mtproto_common.h\"\n");
 
   printf ("namespace tgl {\n");
@@ -2643,9 +2639,9 @@ void gen_free_ds_source (void) {
   printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
-  printf ("#include \"auto/auto-free-ds.h\"\n");
-  printf ("#include \"auto/auto-skip.h\"\n");
-  printf ("#include \"auto/auto-types.h\"\n");
+  printf ("#include \"auto/auto_free_ds.h\"\n");
+  printf ("#include \"auto/auto_skip.h\"\n");
+  printf ("#include \"auto/auto_types.h\"\n");
   printf ("#include \"mtproto_common.h\"\n");
 
   printf ("namespace tgl {\n");
@@ -2679,7 +2675,7 @@ void gen_free_ds_source (void) {
 
 void gen_free_ds_header (void) {
   printf ("#include \"auto/auto.h\"\n");
-  printf ("#include \"auto/auto-types.h\"\n");
+  printf ("#include \"auto/auto_types.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
@@ -2711,9 +2707,9 @@ void gen_store_ds_source (void) {
   printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
 
-  printf ("#include \"auto/auto-store-ds.h\"\n");
-  printf ("#include \"auto/auto-skip.h\"\n");
-  printf ("#include \"auto/auto-types.h\"\n");
+  printf ("#include \"auto/auto_store_ds.h\"\n");
+  printf ("#include \"auto/auto_skip.h\"\n");
+  printf ("#include \"auto/auto_types.h\"\n");
   printf ("#include \"mtproto_common.h\"\n");
 
   printf ("namespace tgl {\n");
@@ -2743,7 +2739,7 @@ void gen_store_ds_source (void) {
 
 void gen_store_ds_header (void) {
   printf ("#include \"auto/auto.h\"\n");
-  printf ("#include \"auto/auto-types.h\"\n");
+  printf ("#include \"auto/auto_types.h\"\n");
   printf ("#include <assert.h>\n");
   printf ("#include <stdio.h>\n");
 
@@ -2868,35 +2864,35 @@ int parse_tlo_file (void) {
   for (i = 0; i < gen_what_cnt; i++) {
     if (!strcmp (gen_what[i], "fetch")) {
       gen_fetch_source ();
-    } else if (!strcmp (gen_what[i], "fetch-header")) {
+    } else if (!strcmp (gen_what[i], "fetch_header")) {
       gen_fetch_header ();
     } else if (!strcmp (gen_what[i], "skip")) {
       gen_skip_source ();
-    } else if (!strcmp (gen_what[i], "skip-header")) {
+    } else if (!strcmp (gen_what[i], "skip_header")) {
       gen_skip_header ();
     } else if (!strcmp (gen_what[i], "store")) {
       gen_store_source ();
-    } else if (!strcmp (gen_what[i], "store-header")) {
+    } else if (!strcmp (gen_what[i], "store_header")) {
       gen_store_header ();
     } else if (!strcmp (gen_what[i], "autocomplete")) {
       gen_autocomplete_source ();
-    } else if (!strcmp (gen_what[i], "autocomplete-header")) {
+    } else if (!strcmp (gen_what[i], "autocomplete_header")) {
       gen_autocomplete_header ();
     } else if (!strcmp (gen_what[i], "types")) {
       gen_types_source ();
-    } else if (!strcmp (gen_what[i], "types-header")) {
+    } else if (!strcmp (gen_what[i], "types_header")) {
       gen_types_header ();
-    } else if (!strcmp (gen_what[i], "fetch-ds")) {
+    } else if (!strcmp (gen_what[i], "fetch_ds")) {
       gen_fetch_ds_source ();
-    } else if (!strcmp (gen_what[i], "fetch-ds-header")) {
+    } else if (!strcmp (gen_what[i], "fetch_ds_header")) {
       gen_fetch_ds_header ();
-    } else if (!strcmp (gen_what[i], "free-ds")) {
+    } else if (!strcmp (gen_what[i], "free_ds")) {
       gen_free_ds_source ();
-    } else if (!strcmp (gen_what[i], "free-ds-header")) {
+    } else if (!strcmp (gen_what[i], "free_ds_header")) {
       gen_free_ds_header ();
-    } else if (!strcmp (gen_what[i], "store-ds")) {
+    } else if (!strcmp (gen_what[i], "store_ds")) {
       gen_store_ds_source ();
-    } else if (!strcmp (gen_what[i], "store-ds-header")) {
+    } else if (!strcmp (gen_what[i], "store_ds_header")) {
       gen_store_ds_header ();
     } else {
       assert (0);

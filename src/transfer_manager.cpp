@@ -21,10 +21,10 @@
 
 #include "transfer_manager.h"
 
-#include "auto/auto-fetch-ds.h"
-#include "auto/auto-free-ds.h"
-#include "auto/auto-skip.h"
-#include "auto/auto-types.h"
+#include "auto/auto_fetch_ds.h"
+#include "auto/auto_free_ds.h"
+#include "auto/auto_skip.h"
+#include "auto/auto_types.h"
 #include "crypto/crypto_aes.h"
 #include "crypto/crypto_md5.h"
 #include "download_task.h"

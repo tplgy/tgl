@@ -22,7 +22,7 @@
 #include "file_location.h"
 
 #include "auto/auto.h"
-#include "auto/auto-types.h"
+#include "auto/auto_types.h"
 #include "auto/constants.h"
 
 namespace tgl {

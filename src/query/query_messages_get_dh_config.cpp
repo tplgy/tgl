@@ -22,7 +22,7 @@
 #include "query_messages_get_dh_config.h"
 
 #include "auto/auto.h"
-#include "auto/auto-types.h"
+#include "auto/auto_types.h"
 #include "secret_chat.h"
 
 namespace tgl {

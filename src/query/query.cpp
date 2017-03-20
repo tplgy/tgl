@@ -21,9 +21,9 @@
 
 #include "query.h"
 
-#include "auto/auto-fetch-ds.h"
-#include "auto/auto-free-ds.h"
-#include "auto/auto-skip.h"
+#include "auto/auto_fetch_ds.h"
+#include "auto/auto_free_ds.h"
+#include "auto/auto_skip.h"
 #include "query_user_info.h"
 #include "tgl/tgl_timer.h"
 #include "user_agent.h"

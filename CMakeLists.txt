@@ -72,10 +72,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 set(GENERATED_TGL_HEADERS
-    ${CMAKE_BINARY_DIR}/auto/auto-fetch-ds.h
-    ${CMAKE_BINARY_DIR}/auto/auto-free-ds.h
-    ${CMAKE_BINARY_DIR}/auto/auto-skip.h
-    ${CMAKE_BINARY_DIR}/auto/auto-types.h
+    ${CMAKE_BINARY_DIR}/auto/auto_fetch_ds.h
+    ${CMAKE_BINARY_DIR}/auto/auto_free_ds.h
+    ${CMAKE_BINARY_DIR}/auto/auto_skip.h
+    ${CMAKE_BINARY_DIR}/auto/auto_types.h
     ${CMAKE_BINARY_DIR}/auto/constants.h
 )
 
@@ -223,10 +223,10 @@ set(PRIVATE_HEADERS
 )
 
 set(GENERATED_TGL_SOURCES
-    ${CMAKE_BINARY_DIR}/auto/auto-fetch-ds.cpp
-    ${CMAKE_BINARY_DIR}/auto/auto-free-ds.cpp
-    ${CMAKE_BINARY_DIR}/auto/auto-skip.cpp
-    ${CMAKE_BINARY_DIR}/auto/auto-types.cpp
+    ${CMAKE_BINARY_DIR}/auto/auto_fetch_ds.cpp
+    ${CMAKE_BINARY_DIR}/auto/auto_free_ds.cpp
+    ${CMAKE_BINARY_DIR}/auto/auto_skip.cpp
+    ${CMAKE_BINARY_DIR}/auto/auto_types.cpp
 )
 
 set(SOURCES

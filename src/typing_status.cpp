@@ -22,7 +22,7 @@
 #include "typing_status.h"
 
 #include "auto/auto.h"
-#include "auto/auto-types.h"
+#include "auto/auto_types.h"
 #include "auto/constants.h"
 #include <cassert>
 

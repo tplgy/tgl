@@ -21,7 +21,7 @@
 
 #include "query_help_get_config.h"
 
-#include "auto/auto-fetch-ds.h"
+#include "auto/auto_fetch_ds.h"
 
 namespace tgl {
 namespace impl {

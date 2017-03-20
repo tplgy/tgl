@@ -100,8 +100,8 @@ def concatenate_small_files(file_names, out_file_name):
         out_file.write(in_file.read())
 
 def generate_by_name(what, is_header):
-    dest_file_name = os.path.join("auto", "auto-" + what + (".h" if is_header else ".cpp"))
-    command = os.path.join(".", "generate") + " -g " + what + ("-header " if is_header else " ") + os.path.join("auto", "scheme.tlo")
+    dest_file_name = os.path.join("auto", "auto_" + what + (".h" if is_header else ".cpp"))
+    command = os.path.join(".", "generate") + " -g " + what + ("_header " if is_header else " ") + os.path.join("auto", "scheme.tlo")
     f = open(dest_file_name, "w")
     r = build_lib.run_command_stdout_to_file(command, f)
     if r != 0:
@@ -165,6 +165,6 @@ r = build_lib.run_command(os.path.join(".", "tl-parser", "bin", "tl-parser") + "
 if r != 0:
     sys.exit(r)
 
-for what in ["fetch-ds", "free-ds", "skip", "types"]:
+for what in ["fetch_ds", "free_ds", "skip", "types"]:
     generate_by_name(what, is_header=True)
     generate_by_name(what, is_header=False)

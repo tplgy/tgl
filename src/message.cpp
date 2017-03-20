@@ -21,8 +21,8 @@
 
 #include "message.h"
 
-#include "auto/auto-fetch-ds.h"
-#include "auto/auto-types.h"
+#include "auto/auto_fetch_ds.h"
+#include "auto/auto_types.h"
 #include "auto/constants.h"
 #include "document.h"
 #include "peer_id.h"

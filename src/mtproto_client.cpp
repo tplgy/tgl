@@ -23,8 +23,8 @@
 #include "mtproto_client.h"
 
 #include "auto/auto.h"
-#include "auto/auto-skip.h"
-#include "auto/auto-types.h"
+#include "auto/auto_skip.h"
+#include "auto/auto_types.h"
 #include "crypto/crypto_aes.h"
 #include "crypto/crypto_bn.h"
 #include "crypto/crypto_rand.h"

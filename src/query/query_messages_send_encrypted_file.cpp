@@ -22,9 +22,9 @@
 #include "query_messages_send_encrypted_file.h"
 
 #include "auto/constants.h"
-#include "auto/auto-fetch-ds.h"
-#include "auto/auto-free-ds.h"
-#include "auto/auto-skip.h"
+#include "auto/auto_fetch_ds.h"
+#include "auto/auto_free_ds.h"
+#include "auto/auto_skip.h"
 #include "crypto/crypto_md5.h"
 #include "document.h"
 #include "message.h"

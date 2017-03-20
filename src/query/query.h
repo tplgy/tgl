@@ -22,7 +22,7 @@
 #pragma once
 
 #include "auto/auto.h"
-#include "auto/auto-types.h"
+#include "auto/auto_types.h"
 #include "mtproto_common.h"
 #include "mtproto_client.h"
 #include "tgl/tgl_connection_status.h"
