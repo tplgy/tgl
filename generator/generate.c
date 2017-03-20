@@ -2210,7 +2210,7 @@ void gen_skip_source (void) {
 
   printf ("#include \"auto/auto-skip.h\"\n");
   printf ("#include \"auto/auto-types.h\"\n");
-  printf ("#include \"mtproto-common.h\"\n");
+  printf ("#include \"mtproto_common.h\"\n");
 
   printf ("namespace tgl {\n");
   printf ("namespace impl {\n");
@@ -2271,7 +2271,7 @@ void gen_fetch_source (void) {
   printf ("#include \"auto/auto-skip.h\"\n");
   printf ("#include \"auto/auto-types.h\"\n");
   printf ("#include \"auto-static-fetch.c\"\n");
-  printf ("#include \"mtproto-common.h\"\n");
+  printf ("#include \"mtproto_common.h\"\n");
 
   printf ("namespace tgl {\n");
   printf ("namespace impl {\n");
@@ -2334,7 +2334,7 @@ void gen_store_source (void ) {
   printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
   
-  printf ("#include \"mtproto-common.h\"\n");
+  printf ("#include \"mtproto_common.h\"\n");
   printf ("#include \"auto/auto-store.h\"\n");
   printf ("#include \"auto/auto-types.h\"\n");
   printf ("#include \"auto-static-store.c\"\n");
@@ -2422,7 +2422,7 @@ void gen_autocomplete_source (void) {
   printf ("#include \"auto/auto.h\"\n");
   printf ("#include <assert.h>\n");
   
-  printf ("#include \"mtproto-common.h\"\n");
+  printf ("#include \"mtproto_common.h\"\n");
   printf ("#include \"auto/auto-autocomplete.h\"\n");
   printf ("#include \"auto/auto-types.h\"\n");
   printf ("#include \"auto-static-autocomplete.c\"\n");
@@ -2583,7 +2583,7 @@ void gen_fetch_ds_source (void) {
   printf ("#include \"auto/auto-fetch-ds.h\"\n");
   printf ("#include \"auto/auto-skip.h\"\n");
   printf ("#include \"auto/auto-types.h\"\n");
-  printf ("#include \"mtproto-common.h\"\n");
+  printf ("#include \"mtproto_common.h\"\n");
 
   printf ("namespace tgl {\n");
   printf ("namespace impl {\n");
@@ -2646,7 +2646,7 @@ void gen_free_ds_source (void) {
   printf ("#include \"auto/auto-free-ds.h\"\n");
   printf ("#include \"auto/auto-skip.h\"\n");
   printf ("#include \"auto/auto-types.h\"\n");
-  printf ("#include \"mtproto-common.h\"\n");
+  printf ("#include \"mtproto_common.h\"\n");
 
   printf ("namespace tgl {\n");
   printf ("namespace impl {\n");
@@ -2714,7 +2714,7 @@ void gen_store_ds_source (void) {
   printf ("#include \"auto/auto-store-ds.h\"\n");
   printf ("#include \"auto/auto-skip.h\"\n");
   printf ("#include \"auto/auto-types.h\"\n");
-  printf ("#include \"mtproto-common.h\"\n");
+  printf ("#include \"mtproto_common.h\"\n");
 
   printf ("namespace tgl {\n");
   printf ("namespace impl {\n");

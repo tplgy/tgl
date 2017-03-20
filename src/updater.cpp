@@ -28,7 +28,7 @@
 #include "chat.h"
 #include "file_location.h"
 #include "message.h"
-#include "mtproto-common.h"
+#include "mtproto_common.h"
 #include "peer_id.h"
 #include "secret_chat.h"
 #include "tgl/tgl_log.h"

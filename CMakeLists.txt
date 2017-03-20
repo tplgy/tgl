@@ -137,8 +137,8 @@ set(PRIVATE_HEADERS
     src/file_location.h
     src/message.h
     src/mtproto_client.h
-    src/mtproto-common.h
-    src/mtproto-utils.h
+    src/mtproto_common.h
+    src/mtproto_utils.h
     src/peer_id.h
     src/photo.h
     src/query/query.h
@@ -241,8 +241,8 @@ set(SOURCES
     src/message.cpp
     src/mime_type.cpp
     src/mtproto_client.cpp
-    src/mtproto-common.cpp
-    src/mtproto-utils.cpp
+    src/mtproto_common.cpp
+    src/mtproto_utils.cpp
     src/net/tgl_net_base.cpp
     src/peer_id.cpp
     src/photo.cpp

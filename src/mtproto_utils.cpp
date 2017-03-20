@@ -19,10 +19,9 @@
     Copyright Topology LP 2016
 */
 
-#include "mtproto-utils.h"
+#include "mtproto_utils.h"
 
 #include "crypto/crypto_bn.h"
-#include "mtproto-utils.h"
 #include "portable_endian.h"
 #include "tgl/tgl_log.h"
 #include "tools.h"

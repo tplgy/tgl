@@ -27,7 +27,7 @@
 #include <string>
 
 #include "crypto/crypto_rsa_pem.h"
-#include "mtproto-common.h"
+#include "mtproto_common.h"
 
 namespace tgl {
 namespace impl {

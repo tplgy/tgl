@@ -30,7 +30,7 @@
 #include "download_task.h"
 #include "message.h"
 #include "mtproto_client.h"
-#include "mtproto-common.h"
+#include "mtproto_common.h"
 #include "query/query_download_file_part.h"
 #include "query/query_messages_send_encrypted_file.h"
 #include "query/query_send_messages.h"

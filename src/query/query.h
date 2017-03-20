@@ -23,7 +23,7 @@
 
 #include "auto/auto.h"
 #include "auto/auto-types.h"
-#include "mtproto-common.h"
+#include "mtproto_common.h"
 #include "mtproto_client.h"
 #include "tgl/tgl_connection_status.h"
 #include "tgl/tgl_peer_id.h"

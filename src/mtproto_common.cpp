@@ -20,7 +20,7 @@
     Copyright Topology LP 2016
 */
 
-#include "mtproto-common.h"
+#include "mtproto_common.h"
 
 #include "auto/auto.h"
 #include "crypto/crypto_rand.h"

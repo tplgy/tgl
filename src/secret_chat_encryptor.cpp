@@ -23,7 +23,7 @@
 
 #include "crypto/crypto_aes.h"
 #include "crypto/crypto_sha.h"
-#include "mtproto-common.h"
+#include "mtproto_common.h"
 #include "tgl/tgl_secret_chat.h"
 
 #include <string.h>
