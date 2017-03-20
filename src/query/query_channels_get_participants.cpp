@@ -21,7 +21,6 @@
 
 #include "query_channels_get_participants.h"
 
-#include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
 

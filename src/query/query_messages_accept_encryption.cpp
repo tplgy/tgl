@@ -23,7 +23,6 @@
 
 #include "auto/auto.h"
 #include "secret_chat.h"
-#include "structures.h"
 
 namespace tgl {
 namespace impl {

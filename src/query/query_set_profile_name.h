@@ -23,7 +23,6 @@
 
 #include "query.h"
 #include "tgl/tgl_log.h"
-#include "structures.h"
 #include "user.h"
 
 #include <functional>

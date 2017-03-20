@@ -24,7 +24,6 @@
 #include "chat.h"
 #include "message.h"
 #include "peer_id.h"
-#include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
 

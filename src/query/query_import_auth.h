@@ -23,7 +23,6 @@
 
 #include "mtproto_client.h"
 #include "query.h"
-#include "structures.h"
 #include "user.h"
 
 #include <functional>

@@ -24,7 +24,6 @@
 #include "chat.h"
 #include "message.h"
 #include "tgl/tgl_update_callback.h"
-#include "structures.h"
 #include "user.h"
 
 namespace tgl {

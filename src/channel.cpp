@@ -27,7 +27,6 @@
 #include "auto/auto-free-ds.h"
 #include "auto/auto-fetch-ds.h"
 #include "auto/constants.h"
-#include "structures.h"
 
 #include <cassert>
 

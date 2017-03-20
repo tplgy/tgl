@@ -28,9 +28,9 @@
 #include "peer_id.h"
 #include "photo.h"
 #include "secret_chat.h"
-#include "structures.h"
 #include "tgl/tgl_log.h"
 #include "typing_status.h"
+#include "webpage.h"
 
 #include <cassert>
 #include <cctype>
@@ -155,7 +155,7 @@ static std::shared_ptr<tgl_message_media> make_message_media(const tl_ds_message
     case CODE_message_media_web_page:
     {
         auto media = std::make_shared<tgl_message_media_webpage>();
-        media->webpage = tglf_fetch_alloc_webpage(DS_MM->webpage);
+        media->webpage = webpage::create(DS_MM->webpage);
         return media;
     }
     case CODE_message_media_venue:

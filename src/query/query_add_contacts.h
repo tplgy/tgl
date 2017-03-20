@@ -22,7 +22,6 @@
 #pragma once
 
 #include "query.h"
-#include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"

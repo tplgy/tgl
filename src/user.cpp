@@ -28,7 +28,6 @@
 #include "auto/auto-fetch-ds.h"
 #include "auto/constants.h"
 #include "file_location.h"
-#include "structures.h"
 
 #include <cassert>
 

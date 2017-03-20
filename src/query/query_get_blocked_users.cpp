@@ -21,7 +21,6 @@
 
 #include "query_get_blocked_users.h"
 
-#include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
 

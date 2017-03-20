@@ -35,7 +35,6 @@
 #include "query/query_bind_temp_auth_key.h"
 #include "query/query_export_auth.h"
 #include "query/query_help_get_config.h"
-#include "structures.h"
 #include "tgl_rsa_key.h"
 #include "tools.h"
 #include "tgl/tgl_log.h"

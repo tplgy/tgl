@@ -23,7 +23,6 @@
 
 #include "chat.h"
 #include "message.h"
-#include "structures.h"
 #include "tgl/tgl_update_callback.h"
 #include "updater.h"
 #include "user.h"

@@ -29,7 +29,6 @@
 #include "auto/constants.h"
 #include "channel.h"
 #include "file_location.h"
-#include "structures.h"
 
 #include <cassert>
 

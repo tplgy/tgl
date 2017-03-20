@@ -93,7 +93,6 @@
 #include "query/query_update_status.h"
 #include "query/query_user_info.h"
 #include "secret_chat.h"
-#include "structures.h"
 #include "tgl/tgl_chat.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_online_status_observer.h"

@@ -21,23 +21,29 @@
 
 #pragma once
 
-#include <cassert>
+#include "tgl_photo.h"
+
+#include <cstdint>
 #include <memory>
+#include <string>
 
-#include "auto/auto-types.h"
-#include "tools.h"
-#include "tgl/tgl_bot.h"
-#include "tgl/tgl_chat.h"
-#include "tgl/tgl_channel.h"
-#include "tgl/tgl_message_media.h"
-#include "tgl/tgl_user.h"
+class tgl_webpage
+{
+public:
+    virtual ~tgl_webpage() { }
+    virtual int64_t id() const = 0;
+    virtual int32_t embed_width() const = 0;
+    virtual int32_t embed_height() const = 0;
+    virtual int32_t duration() const = 0;
+    virtual const std::string url() const = 0;
+    virtual const std::string display_url() const = 0;
+    virtual const std::string type() const = 0;
+    virtual const std::string site_name() const = 0;
+    virtual const std::string title() const = 0;
+    virtual const std::string description() const = 0;
+    virtual const std::string embed_url() const = 0;
+    virtual const std::string embed_type() const = 0;
+    virtual const std::string author() const = 0;
+    virtual const std::shared_ptr<tgl_photo> photo() const = 0;
+};
 
-namespace tgl {
-namespace impl {
-
-class user_agent;
-
-std::shared_ptr<tgl_webpage> tglf_fetch_alloc_webpage(const tl_ds_web_page* DS_W);
-
-}
-}

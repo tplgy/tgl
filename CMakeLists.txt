@@ -98,6 +98,7 @@ set(PUBLIC_HEADERS
     include/tgl/tgl_online_status.h
     include/tgl/tgl_online_status_observer.h
     include/tgl/tgl_peer_id.h
+    include/tgl/tgl_photo.h
     include/tgl/tgl_privacy_rule.h
     include/tgl/tgl_query_api.h
     include/tgl/tgl_secret_chat.h
@@ -111,6 +112,7 @@ set(PUBLIC_HEADERS
     include/tgl/tgl_user.h
     include/tgl/tgl_user_agent.h
     include/tgl/tgl_value.h
+    include/tgl/tgl_webpage.h
 )
 
 set(PUBLIC_IMPL_HEADERS
@@ -207,7 +209,6 @@ set(PRIVATE_HEADERS
     src/query/query_user_info.h
     src/secret_chat.h
     src/secret_chat_encryptor.h
-    src/structures.h
     src/tgl_rsa_key.h
     src/tgl_session.h
     src/tools.h
@@ -218,6 +219,7 @@ set(PRIVATE_HEADERS
     src/upload_task.h
     src/user.h
     src/user_agent.h
+    src/webpage.h
 )
 
 set(GENERATED_TGL_SOURCES
@@ -276,7 +278,6 @@ set(SOURCES
     src/query/query_upload_file_part.cpp
     src/secret_chat.cpp
     src/secret_chat_encryptor.cpp
-    src/structures.cpp
     src/tgl_log.cpp
     src/tgl_mime_type.cpp
     src/tgl_session.cpp
@@ -288,6 +289,7 @@ set(SOURCES
     src/upload_task.cpp
     src/user.cpp
     src/user_agent.cpp
+    src/webpage.cpp
 )
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PUBLIC_IMPL_HEADERS} ${PRIVATE_HEADERS})

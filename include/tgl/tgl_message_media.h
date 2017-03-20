@@ -24,6 +24,7 @@
 #include "tgl_document.h"
 #include "tgl_file_location.h"
 #include "tgl_photo.h"
+#include "tgl_webpage.h"
 
 #include <cstdint>
 #include <memory>
@@ -44,33 +45,8 @@ enum class tgl_message_media_type {
 };
 
 struct tgl_geo {
-    double longitude;
-    double latitude;
-    tgl_geo(): longitude(0), latitude(0) { }
-};
-
-struct tgl_webpage {
-    int64_t id;
-    int32_t embed_width;
-    int32_t embed_height;
-    int32_t duration;
-    std::string url;
-    std::string display_url;
-    std::string type;
-    std::string site_name;
-    std::string title;
-    std::string description;
-    std::shared_ptr<tgl_photo> photo;
-    std::string embed_url;
-    std::string embed_type;
-    std::string author;
-
-    tgl_webpage()
-        : id(0)
-        , embed_width(0)
-        , embed_height(0)
-        , duration(0)
-    { }
+    double longitude = 0;
+    double latitude = 0;
 };
 
 struct tgl_message_media {

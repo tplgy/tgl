@@ -28,7 +28,6 @@
 #include "auto/auto-fetch-ds.h"
 #include "auto/constants.h"
 #include "photo.h"
-#include "structures.h"
 
 #include <algorithm>
 #include <cassert>

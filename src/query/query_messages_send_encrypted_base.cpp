@@ -27,7 +27,6 @@
 #include "query_messages_send_encrypted_file.h"
 #include "query_messages_send_encrypted_message.h"
 #include "secret_chat.h"
-#include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_unconfirmed_secret_message_storage.h"
 

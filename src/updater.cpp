@@ -31,12 +31,12 @@
 #include "mtproto-common.h"
 #include "peer_id.h"
 #include "secret_chat.h"
-#include "structures.h"
 #include "tgl/tgl_log.h"
 #include "tgl/tgl_update_callback.h"
 #include "typing_status.h"
 #include "user.h"
 #include "user_agent.h"
+#include "webpage.h"
 
 #include <cassert>
 
@@ -427,7 +427,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         break;
     case CODE_update_web_page: {
         auto media = std::make_shared<tgl_message_media_webpage>();
-        media->webpage = tglf_fetch_alloc_webpage(DS_U->webpage);
+        media->webpage = webpage::create(DS_U->webpage);
         m_user_agent.callback()->message_media_webpage_updated(media);
         break;
     }
