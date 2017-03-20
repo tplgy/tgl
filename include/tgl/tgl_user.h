@@ -26,7 +26,8 @@
 
 #include <string>
 
-enum class tgl_user_online_status: int32_t {
+enum class tgl_user_online_status: int32_t
+{
     unknown = 0,
     online = 1,
     offline = 2,
@@ -35,10 +36,10 @@ enum class tgl_user_online_status: int32_t {
     last_month
 };
 
-struct tgl_user_status {
-    tgl_user_online_status online;
-    int64_t when;
-    tgl_user_status(): online(tgl_user_online_status::unknown), when(0) { }
+struct tgl_user_status
+{
+    tgl_user_online_status online = tgl_user_online_status::unknown;
+    int64_t when = 0;
 };
 
 class tgl_user

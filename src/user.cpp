@@ -29,6 +29,8 @@
 #include "auto/constants.h"
 #include "structures.h"
 
+#include <cassert>
+
 namespace tgl {
 namespace impl {
 
@@ -52,7 +54,7 @@ std::shared_ptr<user> user::create(const tl_ds_user_full* DS_UF)
 
 user::user(const tl_ds_user* DS_U) throw(std::runtime_error)
     : m_id(tgl_peer_type::user, DS_LVAL(DS_U->id), DS_LVAL(DS_U->access_hash))
-    , m_status(tglf_fetch_user_status(DS_U->status))
+    , m_status(create_user_status(DS_U->status))
     , m_user_name(DS_STDSTR(DS_U->username))
     , m_first_name(DS_STDSTR(DS_U->first_name))
     , m_last_name(DS_STDSTR(DS_U->last_name))
@@ -103,6 +105,42 @@ user::user(const tl_ds_user_full* DS_UF) throw(std::runtime_error)
     : user(DS_UF->user)
 {
     set_blocked(DS_BVAL(DS_UF->blocked));
+}
+
+tgl_user_status create_user_status(const tl_ds_user_status* DS_US)
+{
+    tgl_user_status new_status;
+
+    if (!DS_US) {
+        return new_status;
+    }
+
+    switch (DS_US->magic) {
+    case CODE_user_status_empty:
+        new_status.online = tgl_user_online_status::unknown;
+        new_status.when = 0;
+        break;
+    case CODE_user_status_online:
+        new_status.online = tgl_user_online_status::online;
+        new_status.when = DS_LVAL(DS_US->expires);
+        break;
+    case CODE_user_status_offline:
+        new_status.online = tgl_user_online_status::offline;
+        new_status.when = DS_LVAL(DS_US->was_online);
+        break;
+    case CODE_user_status_recently:
+        new_status.online = tgl_user_online_status::recent;
+        break;
+    case CODE_user_status_last_week:
+        new_status.online = tgl_user_online_status::last_week;
+        break;
+    case CODE_user_status_last_month:
+        new_status.online = tgl_user_online_status::last_month;
+        break;
+    default:
+        assert(false);
+    }
+    return new_status;
 }
 
 }

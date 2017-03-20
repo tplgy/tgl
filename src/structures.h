@@ -37,7 +37,6 @@ namespace impl {
 
 class user_agent;
 
-tgl_user_status tglf_fetch_user_status(const tl_ds_user_status* DS_US);
 void tglf_fetch_chat_participants(const std::shared_ptr<tgl_chat>& C, const tl_ds_chat_participants* DS_CP);
 
 tgl_file_location tglf_fetch_file_location(const tl_ds_file_location* DS_FL);

@@ -222,7 +222,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         break;
     case CODE_update_user_status:
         {
-            tgl_user_status status = tglf_fetch_user_status(DS_U->status);
+            tgl_user_status status = create_user_status(DS_U->status);
             m_user_agent.callback()->status_notification(DS_LVAL(DS_U->user_id), status);
         }
         break;

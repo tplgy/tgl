@@ -66,38 +66,6 @@ tgl_file_location tglf_fetch_file_location(const tl_ds_file_location* DS_FL)
     return location;
 }
 
-tgl_user_status tglf_fetch_user_status(const tl_ds_user_status* DS_US)
-{
-    tgl_user_status new_status;
-    if (!DS_US) { return new_status; }
-    switch (DS_US->magic) {
-    case CODE_user_status_empty:
-        new_status.online = tgl_user_online_status::unknown;
-        new_status.when = 0;
-        break;
-    case CODE_user_status_online:
-        new_status.online = tgl_user_online_status::online;
-        new_status.when = DS_LVAL(DS_US->expires);
-        break;
-    case CODE_user_status_offline:
-        new_status.online = tgl_user_online_status::offline;
-        new_status.when = DS_LVAL(DS_US->was_online);
-        break;
-    case CODE_user_status_recently:
-        new_status.online = tgl_user_online_status::recent;
-        break;
-    case CODE_user_status_last_week:
-        new_status.online = tgl_user_online_status::last_week;
-        break;
-    case CODE_user_status_last_month:
-        new_status.online = tgl_user_online_status::last_month;
-        break;
-    default:
-        assert(false);
-    }
-    return new_status;
-}
-
 std::shared_ptr<tgl_photo_size> tglf_fetch_photo_size(const tl_ds_photo_size* DS_PS)
 {
     auto photo_size = std::make_shared<tgl_photo_size>();

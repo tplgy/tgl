@@ -31,6 +31,7 @@ namespace impl {
 
 struct tl_ds_user;
 struct tl_ds_user_full;
+struct tl_ds_user_status;
 
 class user: public tgl_user
 {
@@ -87,6 +88,8 @@ private:
     bool m_deleted;
     bool m_official;
 };
+
+tgl_user_status create_user_status(const tl_ds_user_status*);
 
 }
 }
