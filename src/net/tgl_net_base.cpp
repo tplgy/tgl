@@ -47,6 +47,7 @@ tgl_connection_base::tgl_connection_base(
     , m_mtproto_client(weak_client)
     , m_online_status(tgl_online_status::not_online)
     , m_connection_status(tgl_connection_status::disconnected)
+    , m_destructing(false)
 {
     if (auto client = weak_client.lock()) {
         m_online_status = client->online_status();
@@ -60,7 +61,11 @@ tgl_connection_base::tgl_connection_base(
 
 tgl_connection_base::~tgl_connection_base()
 {
-    close();
+    m_destructing = true;
+
+    // In the destructor we can not call disconnect() which is a pure virtual function.
+    close_internal(false);
+
     if (auto client = m_mtproto_client.lock()) {
          TGL_DEBUG("connection to mtproto_client " << client->id() << " destroyed");
     }
@@ -289,6 +294,12 @@ void tgl_connection_base::consume_data()
 
 void tgl_connection_base::close()
 {
+    assert(!m_destructing);
+    close_internal(true);
+}
+
+void tgl_connection_base::close_internal(bool call_disconnect)
+{
     if (m_state == connection_state::closed) {
         return;
     }
@@ -301,7 +312,10 @@ void tgl_connection_base::close()
     set_state(connection_state::closed);
     stop_ping_timer();
     clear_buffers();
-    disconnect();
+
+    if (call_disconnect) {
+        disconnect();
+    }
 }
 
 void tgl_connection_base::clear_buffers()

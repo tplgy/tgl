@@ -85,7 +85,10 @@ public:
     virtual ~tgl_connection_base();
 
     virtual void open() override;
+
+    // NOTE: not expected to be called in destructors.
     virtual void close() override;
+
     virtual ssize_t read(void* buffer, size_t len) override;
     virtual ssize_t write(const void* data, size_t len) override;
     virtual ssize_t peek(void* data, size_t len) override;
@@ -98,7 +101,12 @@ public:
 
 protected:
     virtual bool connect() = 0;
+
+    // Apparently not be called in the destructor.
+    // If a subclass needs to disconnect in its
+    // destructor then it should call it.
     virtual void disconnect() = 0;
+
     virtual void start_read() = 0;
     virtual void start_write() = 0;
 
@@ -107,6 +115,7 @@ protected:
     void try_read();
     void try_write();
 
+    void close_internal(bool);
     void connect_finished(bool success);
     void data_received(const std::shared_ptr<tgl_net_buffer>& buffer);
     void lost();
@@ -159,4 +168,6 @@ private:
 
     tgl_online_status m_online_status;
     tgl_connection_status m_connection_status;
+
+    bool m_destructing;
 };
