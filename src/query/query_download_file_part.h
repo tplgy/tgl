@@ -32,7 +32,7 @@ struct tl_ds_upload_file;
 class query_download_file_part: public query
 {
 public:
-    query_download_file_part(const std::shared_ptr<download_task>& download,
+    query_download_file_part(user_agent& ua, const std::shared_ptr<download_task>& download,
             const std::function<void(const tl_ds_upload_file*)>& callback);
     virtual void on_answer(void* answer) override;
     virtual int on_error(int error_code, const std::string& error_string) override;

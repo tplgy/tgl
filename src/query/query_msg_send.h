@@ -38,9 +38,9 @@ namespace impl {
 class query_msg_send: public query
 {
 public:
-    query_msg_send(const std::shared_ptr<message>& m,
+    query_msg_send(user_agent& ua, const std::shared_ptr<message>& m,
             const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
-        : query("send message", TYPE_TO_PARAM(updates))
+        : query(ua, "send message", TYPE_TO_PARAM(updates))
         , m_message(m)
         , m_callback(callback)
     { }
@@ -48,9 +48,7 @@ public:
     virtual void on_answer(void* D) override
     {
         tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
-        if (auto ua = get_user_agent()) {
-            ua->updater().work_any_updates(DS_U, m_message);
-        }
+        m_user_agent.updater().work_any_updates(DS_U, m_message);
         if (m_callback) {
             m_callback(true, m_message);
         }
@@ -65,9 +63,7 @@ public:
             m_callback(false, m_message);
         }
 
-        if (auto ua = get_user_agent()) {
-            ua->callback()->update_messages({m_message});
-        }
+        m_user_agent.callback()->update_messages({m_message});
         return 0;
     }
 private:

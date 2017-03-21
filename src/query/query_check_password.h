@@ -33,41 +33,30 @@ namespace impl {
 class query_check_password: public query
 {
 public:
-    explicit query_check_password(const std::function<void(bool)>& callback)
-        : query("check password", TYPE_TO_PARAM(auth_authorization))
+    query_check_password(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "check password", TYPE_TO_PARAM(auth_authorization))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void*) override
     {
-        bool success = true;
-        if (auto ua = get_user_agent()) {
-            ua->set_password_locked(false);
-        } else {
-            success = false;
-        }
+        m_user_agent.set_password_locked(false);
         if (m_callback) {
-            m_callback(success);
+            m_callback(true);
         }
     }
 
     virtual int on_error(int error_code, const std::string& error_string) override
     {
-        auto ua = get_user_agent();
-
         if (error_code == 400) {
             TGL_ERROR("bad password");
-            if (ua) {
-                ua->check_password(m_callback);
-                return 0;
-            }
+            m_user_agent.check_password(m_callback);
+            return 0;
         }
 
         TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
 
-        if (ua) {
-            ua->set_password_locked(false);
-        }
+        m_user_agent.set_password_locked(false);
 
         if (m_callback) {
             m_callback(false);

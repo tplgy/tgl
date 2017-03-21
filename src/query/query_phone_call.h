@@ -33,8 +33,8 @@ namespace impl {
 class query_phone_call: public query
 {
 public:
-    explicit query_phone_call(const std::function<void(bool)>& callback)
-        : query("phone call", TYPE_TO_PARAM(bool))
+    query_phone_call(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "phone call", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

@@ -34,17 +34,15 @@ namespace impl {
 class query_set_profile_name: public query
 {
 public:
-    explicit query_set_profile_name(const std::function<void(bool)>& callback)
-        : query("set profile name", TYPE_TO_PARAM(user))
+    query_set_profile_name(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "set profile name", TYPE_TO_PARAM(user))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
-        if (auto ua = get_user_agent()) {
-            if (auto u = user::create(static_cast<tl_ds_user*>(D))) {
-                ua->user_fetched(u);
-            }
+        if (auto u = user::create(static_cast<tl_ds_user*>(D))) {
+            m_user_agent.user_fetched(u);
         }
 
         if (m_callback) {

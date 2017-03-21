@@ -27,31 +27,31 @@
 #include <functional>
 #include <string>
 
+class tgl_user;
+
 namespace tgl {
 namespace impl {
 
-struct change_phone_state {
-    std::string phone;
-    std::string hash;
-    std::string first_name;
-    std::string last_name;
-    std::function<void(bool success)> callback;
-    std::weak_ptr<user_agent> weak_user_agent;
-};
+struct change_phone_state;
 
 class query_send_change_code: public query
 {
 public:
-    explicit query_send_change_code(const std::function<void(bool, const std::string&)>& callback);
+    query_send_change_code(user_agent& ua, const std::string& phone_number,
+            const std::function<void(bool)>& callback);
+    std::shared_ptr<query_send_change_code> shared_from_this() { return std::static_pointer_cast<query_send_change_code>(query::shared_from_this()); }
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 
 private:
-    std::function<void(bool, const std::string&)> m_callback;
-};
+    void set_number_code(const std::string& code, tgl_login_action action);
+    void set_number_result(bool success, const std::shared_ptr<tgl_user>&);
+    void set_phone_number_cb(bool success, const std::string& hash);
 
-//FIXME: better organize this.
-void tgl_set_phone_number_cb(const std::shared_ptr<change_phone_state>& state, bool success, const std::string& hash);
+private:
+    std::function<void(bool)> m_callback;
+    std::shared_ptr<change_phone_state> m_state;
+};
 
 }
 }

@@ -35,7 +35,7 @@ struct tl_ds_account_password;
 class query_get_and_check_password: public query
 {
 public:
-    explicit query_get_and_check_password(const std::function<void(const tl_ds_account_password*)>& callback);
+    query_get_and_check_password(user_agent& ua, const std::function<void(const tl_ds_account_password*)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 

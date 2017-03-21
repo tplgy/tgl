@@ -33,8 +33,8 @@ namespace impl {
 class query_channels_set_about: public query
 {
 public:
-    explicit query_channels_set_about(const std::function<void(bool)>& callback)
-        : query("channels set about", TYPE_TO_PARAM(bool))
+    query_channels_set_about(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "channels set about", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

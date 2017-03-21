@@ -33,8 +33,8 @@ namespace impl {
 class query_delete_contact: public query
 {
 public:
-    explicit query_delete_contact(const std::function<void(bool)>& callback)
-        : query("delete contact", TYPE_TO_PARAM(contacts_link))
+    query_delete_contact(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "delete contact", TYPE_TO_PARAM(contacts_link))
         , m_callback(callback)
     { }
 

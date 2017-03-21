@@ -30,13 +30,20 @@
 namespace tgl {
 namespace impl {
 
+struct change_password_state;
+
 class query_get_and_set_password: public query
 {
 public:
-    explicit query_get_and_set_password(
+    query_get_and_set_password(user_agent& ua,
             const std::function<void(bool)>& callback);
+    std::shared_ptr<query_get_and_set_password> shared_from_this() { return std::static_pointer_cast<query_get_and_set_password>(query::shared_from_this()); }
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
+
+private:
+    void on_new_password(const std::shared_ptr<change_password_state>& state,
+            const std::string& new_password, const std::string& confirm_password, const std::string& new_hint);
 
 private:
     std::function<void(bool)> m_callback;

@@ -119,7 +119,7 @@ inline static std::ostream& operator<<(std::ostream& os, mtproto_client::state s
     return os;
 }
 
-mtproto_client::mtproto_client(const std::weak_ptr<user_agent>& ua, int32_t id)
+mtproto_client::mtproto_client(user_agent& ua, int32_t id)
     : m_user_agent(ua)
     , m_id(id)
     , m_state(state::init)
@@ -428,11 +428,6 @@ void mtproto_client::send_dh_params(TGLC_bn_ctx* ctx, TGLC_bn* dh_prime, TGLC_bn
 
 bool mtproto_client::process_respq_answer(const char* packet, int len, bool temp_key)
 {
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        return false;
-    }
-
     assert(!(len & 3));
     tgl_in_buffer in;
     in.ptr = reinterpret_cast<const int*>(packet);
@@ -471,7 +466,7 @@ bool mtproto_client::process_respq_answer(const char* packet, int len, bool temp
 
     for (int i = 0; i < fingerprints_num; i++) {
         int64_t fingerprint = fetch_i64(&in);
-        for (const auto& key : ua->rsa_keys()) {
+        for (const auto& key : m_user_agent.rsa_keys()) {
             if (key->is_loaded() && fingerprint == key->fingerprint()) {
                 m_rsa_key = key;
                 break;
@@ -484,18 +479,13 @@ bool mtproto_client::process_respq_answer(const char* packet, int len, bool temp
         return false;
     }
 
-    send_req_dh_packet(ua->bn_ctx()->ctx, pq.get(), temp_key, ua->temp_key_expire_time());
+    send_req_dh_packet(m_user_agent.bn_ctx()->ctx, pq.get(), temp_key, m_user_agent.temp_key_expire_time());
 
     return true;
 }
 
 bool mtproto_client::process_dh_answer(const char* packet, int len, bool temp_key)
 {
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        return false;
-    }
-
     assert(!(len & 3));
     tgl_in_buffer in;
     in.ptr = reinterpret_cast<const int*>(packet);
@@ -586,7 +576,7 @@ bool mtproto_client::process_dh_answer(const char* packet, int len, bool temp_ke
     result = fetch_bignum(&in, g_a.get());
     TGL_ASSERT_UNUSED(result, result > 0);
 
-    if (tglmp_check_DH_params(ua->bn_ctx()->ctx, dh_prime.get(), g) < 0) {
+    if (tglmp_check_DH_params(m_user_agent.bn_ctx()->ctx, dh_prime.get(), g) < 0) {
         TGL_ERROR("bad DH params");
         return false;
     }
@@ -613,7 +603,7 @@ bool mtproto_client::process_dh_answer(const char* packet, int len, bool temp_ke
     m_server_time_delta = server_time - tgl_get_system_time();
     m_server_time_udelta = server_time - tgl_get_monotonic_time();
 
-    send_dh_params(ua->bn_ctx()->ctx, dh_prime.get(), g_a.get(), g, temp_key);
+    send_dh_params(m_user_agent.bn_ctx()->ctx, dh_prime.get(), g_a.get(), g, temp_key);
 
     return true;
 }
@@ -634,11 +624,6 @@ void mtproto_client::restart_authorization(bool temp_key)
 
 bool mtproto_client::process_auth_complete(const char* packet, int len, bool temp_key)
 {
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        return false;
-    }
-
     assert(!(len & 3));
     tgl_in_buffer in;
     in.ptr = reinterpret_cast<const int*>(packet);
@@ -701,7 +686,7 @@ bool mtproto_client::process_auth_complete(const char* packet, int len, bool tem
 
     calculate_auth_key_id(temp_key);
     if (!temp_key) {
-        ua->callback()->dc_updated(shared_from_this());
+        m_user_agent.callback()->dc_updated(this);
     }
 
     m_server_salt = *reinterpret_cast<int64_t*>(m_server_nonce.data()) ^ *reinterpret_cast<int64_t*>(m_new_nonce.data());
@@ -710,10 +695,10 @@ bool mtproto_client::process_auth_complete(const char* packet, int len, bool tem
 
     TGL_DEBUG("auth success for DC " << m_id << " " << (temp_key ? "(temp)" : "") << " salt=" << m_server_salt);
     if (temp_key) {
-        bind_temp_auth_key(ua->temp_key_expire_time());
+        bind_temp_auth_key(m_user_agent.temp_key_expire_time());
     } else {
         set_authorized();
-        if (ua->pfs_enabled()) {
+        if (m_user_agent.pfs_enabled()) {
             create_temp_auth_key();
         } else {
             m_temp_auth_key_id = m_auth_key_id;
@@ -738,10 +723,8 @@ void mtproto_client::clear_bind_temp_auth_key_query()
     }
 
     m_bind_temp_auth_key_query->clear_timers();
-    if (auto ua = m_user_agent.lock()) {
-        if (m_bind_temp_auth_key_query->msg_id()) {
-            ua->remove_query(m_bind_temp_auth_key_query);
-        }
+    if (m_bind_temp_auth_key_query->msg_id()) {
+        m_user_agent.remove_query(m_bind_temp_auth_key_query);
     }
     m_bind_temp_auth_key_query = nullptr;
 }
@@ -778,7 +761,7 @@ void mtproto_client::bind_temp_auth_key(int32_t temp_key_expire_time)
     memset(data, 0, sizeof(data));
     int len = encrypt_inner_temp(s.i32_data(), s.i32_size(), data, msg_id);
 
-    auto q = std::make_shared<query_bind_temp_auth_key>(shared_from_this(), msg_id);
+    auto q = std::make_shared<query_bind_temp_auth_key>(m_user_agent, shared_from_this(), msg_id);
     m_bind_temp_auth_key_query = q;
 
     q->out_i32(CODE_auth_bind_temp_auth_key);
@@ -885,15 +868,9 @@ int64_t mtproto_client::send_message_impl(
         return -1;
     }
 
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return -1;
-    }
-
     assert(is_configured() || force_send);
 
-    auto best_worker = select_best_worker(ua.get(), allow_secondary_connections);
+    auto best_worker = select_best_worker(allow_secondary_connections);
     assert(best_worker);
 
     if (!best_worker->connection || best_worker->connection->status() == tgl_connection_status::disconnected) {
@@ -925,7 +902,7 @@ int64_t mtproto_client::send_message_impl(
     return msg_id;
 }
 
-std::shared_ptr<worker> mtproto_client::select_best_worker(const user_agent* ua, bool allow_secondary_workers)
+std::shared_ptr<worker> mtproto_client::select_best_worker(bool allow_secondary_workers)
 {
     assert(m_session);
     assert(m_session->primary_worker);
@@ -949,12 +926,12 @@ std::shared_ptr<worker> mtproto_client::select_best_worker(const user_agent* ua,
     }
 
     if (best_worker->work_load.size() != 0 && m_session->secondary_workers.size() < MAX_SECONDARY_WORKERS_PER_SESSION) {
-        auto connection = ua->connection_factory()->create_connection(
-                m_ipv4_options, m_ipv6_options, shared_from_this());
+        std::weak_ptr<mtproto_client> weak_this(shared_from_this());
+        auto connection = m_user_agent.connection_factory()->create_connection(
+                m_ipv4_options, m_ipv6_options, weak_this);
         connection->open();
         best_worker = std::make_shared<worker>(connection);
-        std::weak_ptr<mtproto_client> weak_client = shared_from_this();
-        best_worker->live_timer = ua->timer_factory()->create_timer([=] {
+        best_worker->live_timer = m_user_agent.timer_factory()->create_timer([=] {
             if (best_worker->work_load.size()) {
                 TGL_DEBUG("a worker idle timer fired but it still has " << best_worker->work_load.size() << " jobs to do, refreshing the timer");
                 best_worker->live_timer->start(MAX_SECONDARY_WORKER_IDLE_TIME);
@@ -964,7 +941,7 @@ std::shared_ptr<worker> mtproto_client::select_best_worker(const user_agent* ua,
                TGL_DEBUG("an idle worker stopped");
                best_worker->connection->close();
             }
-            if (auto client = weak_client.lock()) {
+            if (auto client = weak_this.lock()) {
                 if (client->m_session) {
                     client->m_session->secondary_workers.erase(best_worker);
                     TGL_DEBUG("now we have " << client->m_session->secondary_workers.size() << " secondary workers");
@@ -1049,24 +1026,17 @@ int mtproto_client::work_new_session_created(tgl_in_buffer* in, int64_t msg_id)
     fetch_i64(in); // unique_id
     m_server_salt = fetch_i64(in);
 
-    auto ua = m_user_agent.lock();
-    if (ua && ua->is_started()
-            && !ua->is_diff_locked()
-            && ua->active_client()->is_logged_in()) {
-        ua->get_difference(false, nullptr);
+    if (m_user_agent.is_started()
+            && !m_user_agent.is_diff_locked()
+            && m_user_agent.active_client()->is_logged_in()) {
+        m_user_agent.get_difference(false, nullptr);
     }
     return 0;
 }
 
 void mtproto_client::ack_query(int64_t msg_id)
 {
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return;
-    }
-
-    std::shared_ptr<query> q = ua->get_query(msg_id);
+    std::shared_ptr<query> q = m_user_agent.get_query(msg_id);
     if (q) {
         q->ack();
     }
@@ -1124,13 +1094,7 @@ int mtproto_client::query_error(tgl_in_buffer* in, int64_t id)
     int error_len = prefetch_strlen(in);
     std::string error_string = std::string(fetch_str(in, error_len), error_len);
 
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return 0;
-    }
-
-    std::shared_ptr<query> q = ua->get_query(id);
+    std::shared_ptr<query> q = m_user_agent.get_query(id);
     if (!q) {
         TGL_WARNING("error for unknown query #" << id << " #" << error_code << ": " << error_string);
     } else {
@@ -1143,14 +1107,7 @@ int mtproto_client::query_error(tgl_in_buffer* in, int64_t id)
 
 int mtproto_client::query_result(tgl_in_buffer* in, int64_t id)
 {
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        in->ptr = in->end;
-        return 0;
-    }
-
-    std::shared_ptr<query> q = ua->get_query(id);
+    std::shared_ptr<query> q = m_user_agent.get_query(id);
     if (!q) {
         in->ptr = in->end;
         return 0;
@@ -1194,13 +1151,7 @@ int mtproto_client::work_packed(tgl_in_buffer* in, int64_t msg_id)
 
 void mtproto_client::restart_query(int64_t msg_id)
 {
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return;
-    }
-
-    std::shared_ptr<query> q = ua->get_query(msg_id);
+    std::shared_ptr<query> q = m_user_agent.get_query(msg_id);
     if (q) {
         TGL_DEBUG("restarting query " << msg_id);
         q->alarm();
@@ -1256,13 +1207,7 @@ static int work_new_detailed_info(tgl_in_buffer* in)
 
 void mtproto_client::regen_query(int64_t msg_id)
 {
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return;
-    }
-
-    std::shared_ptr<query> q = ua->get_query(msg_id);
+    std::shared_ptr<query> q = m_user_agent.get_query(msg_id);
     if (!q) {
         return;
     }
@@ -1318,12 +1263,8 @@ int mtproto_client::rpc_execute_answer(tgl_in_buffer* in, int64_t msg_id, bool i
     case CODE_update_short_message:
     case CODE_update_short_chat_message:
     case CODE_updates_too_long:
-        if (auto ua = m_user_agent.lock()) {
-            ua->updater().work_any_updates(in);
-            return 0;
-        }
-        in->ptr = in->end;
-        return -1;
+        m_user_agent.updater().work_any_updates(in);
+        return 0;
     case CODE_gzip_packed:
         if (in_gzip) {
             TGL_ERROR("no netsted zip");
@@ -1462,11 +1403,6 @@ bool mtproto_client::rpc_execute(const std::shared_ptr<tgl_connection>& c, int o
     assert(m_session);
     assert(c);
 
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        return false;
-    }
-
     if (len >= MAX_RESPONSE_SIZE/* - 12*/ || len < 0/*12*/) {
         TGL_WARNING("answer too long, skipping. lengeth:" << len);
         return true;
@@ -1496,7 +1432,7 @@ bool mtproto_client::rpc_execute(const std::shared_ptr<tgl_connection>& c, int o
         return process_auth_complete(response.get()/* + 8*/, len/* - 12*/, true);
     case state::authorized:
         if (op < 0 && op >= -999) {
-            if (ua->pfs_enabled() && op == -404) {
+            if (m_user_agent.pfs_enabled() && op == -404) {
                 TGL_DEBUG("bind temp auth key failed with -404 error for DC "
                         << m_id << ", which is not unusual, requesting a new temp auth key and trying again");
                 restart_temp_authorization();
@@ -1587,28 +1523,21 @@ void mtproto_client::connected(bool pfs_enabled, int32_t temp_key_expire_time)
 
 void mtproto_client::configure()
 {
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return;
-    }
-
     TGL_DEBUG("start configuring DC " << id());
-    auto q = std::make_shared<query_help_get_config>(
-            std::bind(&mtproto_client::configured, shared_from_this(), std::placeholders::_1));
-    q->out_header(ua.get());
+    std::weak_ptr<mtproto_client> weak_this(shared_from_this());
+    auto q = std::make_shared<query_help_get_config>(m_user_agent,
+            [weak_this](bool success) {
+                if (auto shared_this = weak_this.lock()) {
+                    shared_this->configured(success);
+                }
+            });
+    q->out_header();
     q->out_i32(CODE_help_get_config);
     q->execute(shared_from_this(), query::execution_option::FORCE);
 }
 
 void mtproto_client::configured(bool success)
 {
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return;
-    }
-
     set_configured(success);
 
     TGL_DEBUG("configured DC " << id() << " success: " << std::boolalpha << success);
@@ -1617,7 +1546,7 @@ void mtproto_client::configured(bool success)
         return;
     }
 
-    if (this == ua->active_client().get() || is_logged_in()) {
+    if (this == m_user_agent.active_client().get() || is_logged_in()) {
         TGL_DEBUG("sart sending pending queries if we have");
         send_pending_queries();
     } else if (!is_logged_in()) {
@@ -1662,12 +1591,6 @@ void mtproto_client::insert_msg_id(int64_t id)
 
 void mtproto_client::create_session()
 {
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return;
-    }
-
     assert(!m_session);
     m_session = std::make_shared<struct session>();
     while (!m_session->session_id) {
@@ -1676,11 +1599,16 @@ void mtproto_client::create_session()
 
     TGL_DEBUG("start creating connection to DC " << id());
 
-    m_session->primary_worker = std::make_shared<worker>(ua->connection_factory()->create_connection(
-            m_ipv4_options, m_ipv6_options, shared_from_this()));
+    std::weak_ptr<mtproto_client> weak_this(shared_from_this());
+    m_session->primary_worker = std::make_shared<worker>(m_user_agent.connection_factory()->create_connection(
+            m_ipv4_options, m_ipv6_options, weak_this));
     m_session->primary_worker->connection->open();
-    m_session->ev = ua->timer_factory()->create_timer(
-            std::bind(&mtproto_client::send_all_acks, shared_from_this()));
+    m_session->ev = m_user_agent.timer_factory()->create_timer(
+            [weak_this]() {
+                if (auto shared_this = weak_this.lock()) {
+                    shared_this->send_all_acks();
+                }
+            });
 }
 
 void mtproto_client::reset_authorization()
@@ -1731,17 +1659,15 @@ void mtproto_client::decrease_active_queries(size_t num)
         m_active_queries -= num;
     }
 
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone, clearing session");
-        clear_session();
-        return;
-    }
-
-    if (!m_active_queries && m_pending_queries.empty() && ua->active_client().get() != this) {
+    if (!m_active_queries && m_pending_queries.empty() && m_user_agent.active_client().get() != this) {
         if (!m_session_cleanup_timer) {
-            m_session_cleanup_timer = ua->timer_factory()->create_timer(
-                    std::bind(&mtproto_client::cleanup_timer_expired, shared_from_this()));
+            std::weak_ptr<mtproto_client> weak_this(shared_from_this());
+            m_session_cleanup_timer = m_user_agent.timer_factory()->create_timer(
+                    [weak_this]() {
+                        if (auto shared_this = weak_this.lock()) {
+                            shared_this->cleanup_timer_expired();
+                        }
+                    });
         }
         m_session_cleanup_timer->start(SESSION_CLEANUP_TIMEOUT);
     }
@@ -1817,13 +1743,8 @@ void mtproto_client::connection_status_changed(const std::shared_ptr<tgl_connect
         return;
     }
 
-    auto ua = m_user_agent.lock();
-    if (!ua) {
-        return;
-    }
-
-    if (ua->active_client().get() == this) {
-        ua->callback()->connection_status_changed(c->status());
+    if (m_user_agent.active_client().get() == this) {
+        m_user_agent.callback()->connection_status_changed(c->status());
     }
 
     for (const auto& weak_observer: m_connection_status_observers) {
@@ -1833,7 +1754,7 @@ void mtproto_client::connection_status_changed(const std::shared_ptr<tgl_connect
     }
 
     if (c->status() == tgl_connection_status::connected) {
-        connected(ua->pfs_enabled(), ua->temp_key_expire_time());
+        connected(m_user_agent.pfs_enabled(), m_user_agent.temp_key_expire_time());
     }
 }
 
@@ -1861,33 +1782,34 @@ void mtproto_client::remove_connection_status_observer(const std::weak_ptr<conne
 
 void mtproto_client::transfer_auth_to_me()
 {
-    auto ua = m_user_agent.lock();
-    if (!ua || auth_transfer_in_process()) {
+    if (auth_transfer_in_process()) {
         return;
     }
 
-    assert(ua->active_client()->id() != id());
+    assert(m_user_agent.active_client()->id() != id());
 
     m_auth_transfer_in_process = true;
 
-    TGL_DEBUG("transferring auth from DC " << ua->active_client()->id() << " to DC " << id());
+    TGL_DEBUG("transferring auth from DC " << m_user_agent.active_client()->id() << " to DC " << id());
 
-    auto shared_this = shared_from_this();
-    auto q = std::make_shared<query_export_auth>(shared_this, [this, shared_this](bool success) {
+    std::weak_ptr<mtproto_client> weak_this(shared_from_this());
+    auto q = std::make_shared<query_export_auth>(m_user_agent, shared_from_this(), [this, weak_this](bool success) {
+        auto shared_this = weak_this.lock();
+        if (!shared_this) {
+            return;
+        }
         m_auth_transfer_in_process = false;
         if (!success) {
             TGL_ERROR("auth transfer problem to DC " << id());
             return;
         }
-        if (auto ua = m_user_agent.lock()) {
-            TGL_DEBUG("auth transferred from DC " << ua->active_client()->id() << " to DC " << id());
-        }
+        TGL_DEBUG("auth transferred from DC " << m_user_agent.active_client()->id() << " to DC " << id());
         send_pending_queries();
     });
 
     q->out_i32(CODE_auth_export_authorization);
     q->out_i32(id());
-    q->execute(ua->active_client());
+    q->execute(m_user_agent.active_client());
 }
 
 size_t mtproto_client::max_connections() const
@@ -1897,54 +1819,37 @@ size_t mtproto_client::max_connections() const
 
 tgl_online_status mtproto_client::online_status() const
 {
-    if (auto ua = m_user_agent.lock()) {
-        return ua->online_status();
-    }
-    return tgl_online_status::not_online;
+    return m_user_agent.online_status();
 }
 
 std::shared_ptr<tgl_timer_factory> mtproto_client::timer_factory() const
 {
-    if (auto ua = m_user_agent.lock()) {
-        return ua->timer_factory();
-    }
-    return nullptr;
+    return m_user_agent.timer_factory();
 }
 
 bool mtproto_client::ipv6_enabled() const
 {
-    if (auto ua = m_user_agent.lock()) {
-        return ua->ipv6_enabled();
-    }
-    return true;
+    return m_user_agent.ipv6_enabled();
 }
 
 void mtproto_client::add_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer)
 {
-    if (auto ua = m_user_agent.lock()) {
-        ua->add_online_status_observer(observer);
-    }
+    m_user_agent.add_online_status_observer(observer);
 }
 
 void mtproto_client::remove_online_status_observer(const std::weak_ptr<tgl_online_status_observer>& observer)
 {
-    if (auto ua = m_user_agent.lock()) {
-        ua->remove_online_status_observer(observer);
-    }
+    m_user_agent.remove_online_status_observer(observer);
 }
 
 void mtproto_client::bytes_sent(size_t bytes)
 {
-    if (auto ua = m_user_agent.lock()) {
-        ua->bytes_sent(bytes);
-    }
+    m_user_agent.bytes_sent(bytes);
 }
 
 void mtproto_client::bytes_received(size_t bytes)
 {
-    if (auto ua = m_user_agent.lock()) {
-        ua->bytes_received(bytes);
-    }
+    m_user_agent.bytes_received(bytes);
 }
 
 }

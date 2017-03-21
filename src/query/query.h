@@ -42,8 +42,9 @@ class query: public std::enable_shared_from_this<query>, public mtproto_client::
 public:
     enum class execution_option { UNKNOWN, NORMAL, LOGIN, LOGOUT, FORCE };
 
-    query(const std::string& name, const paramed_type& type, int64_t msg_id_override = 0)
-        : m_msg_id(0)
+    query(user_agent& ua, const std::string& name, const paramed_type& type, int64_t msg_id_override = 0)
+        : m_user_agent(ua)
+        , m_msg_id(0)
         , m_msg_id_override(msg_id_override)
         , m_session_id(0)
         , m_seq_no(0)
@@ -112,10 +113,10 @@ public:
         m_serializer->out_random(length);
     }
 
-    void out_peer_id(const user_agent* ua, const tgl_peer_id_t& id, int64_t access_hash);
-    void out_input_peer(const user_agent* ua, const tgl_input_peer_t& id);
+    void out_peer_id(const tgl_peer_id_t& id, int64_t access_hash);
+    void out_input_peer(const tgl_input_peer_t& id);
 
-    void out_header(const user_agent* ua);
+    void out_header();
 
     const std::string& name() const { return m_name; }
     int64_t session_id() const { return m_session_id; }
@@ -143,7 +144,6 @@ protected:
     virtual bool handle_session_password_needed(bool& should_retry);
     void timeout_within(double seconds);
     void retry_within(double seconds);
-    std::shared_ptr<user_agent> get_user_agent() const;
 
 private:
     virtual void connection_status_changed(tgl_connection_status status) override final;
@@ -157,6 +157,9 @@ private:
     bool send();
     void on_answer_internal(void* DS);
     int on_error_internal(int error_code, const std::string& error_string);
+
+protected:
+    user_agent& m_user_agent;
 
 private:
     int64_t m_msg_id;

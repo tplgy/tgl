@@ -28,11 +28,11 @@
 namespace tgl {
 namespace impl {
 
-query_messages_send_encrypted_action::query_messages_send_encrypted_action(
+query_messages_send_encrypted_action::query_messages_send_encrypted_action(user_agent& ua,
         const std::shared_ptr<secret_chat>& sc,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message,
         const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error)
-    : query_messages_send_encrypted_base("send encrypted action (reassembled)", sc, nullptr, callback, true)
+    : query_messages_send_encrypted_base(ua, "send encrypted action (reassembled)", sc, nullptr, callback, true)
 {
     const auto& blobs = unconfirmed_message->blobs();
     if (unconfirmed_message->constructor_code() != CODE_messages_send_encrypted_service

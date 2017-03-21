@@ -54,8 +54,8 @@ static constexpr size_t MAX_PART_SIZE = 512 * 1024;
 class query_set_photo: public query
 {
 public:
-    explicit query_set_photo(const std::function<void(bool)>& callback)
-        : query("set photo", TYPE_TO_PARAM(photos_photo))
+    query_set_photo(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "set photo", TYPE_TO_PARAM(photos_photo))
         , m_callback(callback)
     { }
 
@@ -109,7 +109,7 @@ void transfer_manager::upload_avatar_end(const std::shared_ptr<upload_task>& u, 
     }
 
     if (u->avatar > 0) {
-        auto q = std::make_shared<query_send_messages>(callback);
+        auto q = std::make_shared<query_send_messages>(*ua, callback);
         if (u->to_id.peer_type == tgl_peer_type::channel) {
             q->out_i32(CODE_channels_edit_photo);
             q->out_i32(CODE_input_channel);
@@ -139,7 +139,7 @@ void transfer_manager::upload_avatar_end(const std::shared_ptr<upload_task>& u, 
 
         q->execute(ua->active_client());
     } else {
-        auto q = std::make_shared<query_set_photo>(callback);
+        auto q = std::make_shared<query_set_photo>(*ua, callback);
         q->out_i32(CODE_photos_upload_profile_photo);
         if (u->size < BIG_FILE_THRESHOLD) {
             q->out_i32(CODE_input_file);
@@ -173,7 +173,7 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_
 
     auto extra = std::make_shared<messages_send_extra>();
     extra->id = u->message_id;
-    auto q = std::make_shared<query_send_messages>(extra,
+    auto q = std::make_shared<query_send_messages>(*ua, extra,
             [=](bool success, const std::shared_ptr<tgl_message>& message) {
                 u->set_status(success ? tgl_upload_status::succeeded : tgl_upload_status::failed);
             });
@@ -184,7 +184,7 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_
 
     q->out_i32(CODE_messages_send_media);
     q->out_i32((u->reply ? 1 : 0));
-    q->out_input_peer(ua.get(), u->to_id);
+    q->out_input_peer(u->to_id);
     if (u->reply) {
         q->out_i32(u->reply);
     }
@@ -300,7 +300,7 @@ void transfer_manager::upload_encrypted_file_end(const std::shared_ptr<upload_ta
             nullptr,
             nullptr);
     m->set_pending(true).set_unread(true);
-    auto q = std::make_shared<query_messages_send_encrypted_file>(sc, u, m,
+    auto q = std::make_shared<query_messages_send_encrypted_file>(*ua, sc, u, m,
             [=](bool success, const std::shared_ptr<tgl_message>&) {
                 u->set_status(success ? tgl_upload_status::succeeded : tgl_upload_status::failed);
             });
@@ -390,7 +390,7 @@ void transfer_manager::upload_part(const std::shared_ptr<upload_task>& u)
 
     auto offset = u->part_num * MAX_PART_SIZE;
     u->running_parts.insert(u->part_num);
-    auto q = std::make_shared<query_upload_file_part>(u, std::bind(&transfer_manager::upload_part_finished,
+    auto q = std::make_shared<query_upload_file_part>(*ua, u, std::bind(&transfer_manager::upload_part_finished,
             shared_from_this(), u, u->part_num, std::placeholders::_1));
     if (u->size < BIG_FILE_THRESHOLD) {
         q->out_i32(CODE_upload_save_file_part);
@@ -458,7 +458,7 @@ void transfer_manager::upload_thumb(const std::shared_ptr<upload_task>& u)
         return;
     }
 
-    auto q = std::make_shared<query_upload_file_part>(u, std::bind(&transfer_manager::upload_part_finished,
+    auto q = std::make_shared<query_upload_file_part>(*ua, u, std::bind(&transfer_manager::upload_part_finished,
             shared_from_this(), u, std::numeric_limits<size_t>::max(), std::placeholders::_1));
     while (u->thumb_id == 0) {
         u->thumb_id = tgl_random<int64_t>();
@@ -799,7 +799,7 @@ void transfer_manager::download_part(const std::shared_ptr<download_task>& d)
 
     d->running_parts[d->offset] = download_data();
 
-    auto q = std::make_shared<query_download_file_part>(d, std::bind(&transfer_manager::download_part_finished,
+    auto q = std::make_shared<query_download_file_part>(*ua, d, std::bind(&transfer_manager::download_part_finished,
             shared_from_this(), d, d->offset, std::placeholders::_1));
 
     q->out_i32(CODE_upload_get_file);

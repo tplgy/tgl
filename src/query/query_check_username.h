@@ -33,8 +33,8 @@ namespace impl {
 class query_check_username: public query
 {
 public:
-    explicit query_check_username(const std::function<void(int)>& callback)
-        : query("check username", TYPE_TO_PARAM(bool))
+    query_check_username(user_agent& ua, const std::function<void(int)>& callback)
+        : query(ua, "check username", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

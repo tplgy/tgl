@@ -220,7 +220,7 @@ void user_agent::set_dc_auth_key(int dc_id, const char* key, size_t key_length)
 
     auto client = m_clients[dc_id];
     client->set_auth_key(reinterpret_cast<const unsigned char*>(key), key_length);
-    m_callback->dc_updated(client);
+    m_callback->dc_updated(client.get());
 }
 
 void user_agent::set_our_id(int id)
@@ -269,7 +269,7 @@ void user_agent::set_dc_logged_in(int dc_id, bool logged_in)
     TGL_DEBUG("set signed " << dc_id);
     auto client = m_clients[dc_id];
     client->set_logged_in(logged_in);
-    m_callback->dc_updated(client);
+    m_callback->dc_updated(client.get());
 }
 
 void user_agent::set_active_dc(int dc_id)
@@ -494,7 +494,7 @@ std::shared_ptr<mtproto_client> user_agent::allocate_client(int id)
 
     assert(!m_clients[id]);
 
-    std::shared_ptr<mtproto_client> client = std::make_shared<mtproto_client>(shared_from_this(), id);
+    std::shared_ptr<mtproto_client> client = std::make_shared<mtproto_client>(*this, id);
     m_clients[id] = client;
 
     return client;
@@ -581,7 +581,7 @@ void user_agent::clear_all_locks()
 void user_agent::send_code(const std::string& phone, const std::function<void(bool, bool, const std::string&)>& callback)
 {
     TGL_NOTICE("requesting confirmation code from dc " << active_client()->id());
-    auto q = std::make_shared<query_send_code>(callback);
+    auto q = std::make_shared<query_send_code>(*this, callback);
     q->out_i32(CODE_auth_send_code);
     q->out_std_string(phone);
     q->out_i32(0);
@@ -596,8 +596,8 @@ void user_agent::call_me(const std::string& phone, const std::string& hash,
 {
     TGL_DEBUG("calling user at phone number: " << phone);
 
-    auto q = std::make_shared<query_phone_call>(callback);
-    q->out_header(this);
+    auto q = std::make_shared<query_phone_call>(*this, callback);
+    q->out_header();
     q->out_i32(CODE_auth_send_call);
     q->out_std_string(phone);
     q->out_std_string(hash);
@@ -609,7 +609,7 @@ void user_agent::send_code_result(const std::string& phone,
         const std::string& code,
         const std::function<void(bool success, const std::shared_ptr<user>&)>& callback)
 {
-    auto q = std::make_shared<query_sign_in>(callback);
+    auto q = std::make_shared<query_sign_in>(*this, callback);
     q->out_i32(CODE_auth_sign_in);
     q->out_std_string(phone);
     q->out_std_string(hash);
@@ -635,7 +635,7 @@ void user_agent::logout()
 
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
     auto do_logout = [=] {
-        auto q = std::make_shared<query_logout>([=](bool success) {
+        auto q = std::make_shared<query_logout>(*this, [=](bool success) {
             if (auto ua = weak_ua.lock()) {
                 ua->callback()->logged_out(success);
             }
@@ -655,7 +655,7 @@ void user_agent::logout()
 
 void user_agent::update_contact_list(const std::function<void(bool, const std::vector<std::shared_ptr<tgl_user>>&)>& callback)
 {
-    auto q = std::make_shared<query_get_contacts>(callback);
+    auto q = std::make_shared<query_get_contacts>(*this, callback);
     q->out_i32(CODE_contacts_get_contacts);
     q->out_string("");
     q->execute(active_client());
@@ -669,7 +669,7 @@ void user_agent::send_text_message(const std::shared_ptr<class message>& message
         return;
     }
 
-    auto q = std::make_shared<query_msg_send>(message, callback);
+    auto q = std::make_shared<query_msg_send>(*this, message, callback);
     q->out_i32(CODE_messages_send_message);
 
     unsigned f = (disable_preview ? 2 : 0) | (message->reply_id() ? 1 : 0) | (message->reply_markup() ? 4 : 0) | (message->entities().size() > 0 ? 8 : 0);
@@ -677,7 +677,7 @@ void user_agent::send_text_message(const std::shared_ptr<class message>& message
         f |= 16;
     }
     q->out_i32(f);
-    q->out_input_peer(this, message->to_id());
+    q->out_input_peer(message->to_id());
     if (message->reply_id()) {
         q->out_i32(message->reply_id());
     }
@@ -840,13 +840,13 @@ void user_agent::mark_message_read(const tgl_input_peer_t& id, int max_id_or_tim
     }
 
     if (id.peer_type != tgl_peer_type::channel) {
-        auto q = std::make_shared<query_mark_message_read>(id, max_id_or_time, callback);
+        auto q = std::make_shared<query_mark_message_read>(*this, id, max_id_or_time, callback);
         q->out_i32(CODE_messages_read_history);
-        q->out_input_peer(this, id);
+        q->out_input_peer(id);
         q->out_i32(max_id_or_time);
         q->execute(active_client());
     } else {
-        auto q = std::make_shared<query_mark_message_read>(id, max_id_or_time, callback);
+        auto q = std::make_shared<query_mark_message_read>(*this, id, max_id_or_time, callback);
         q->out_i32(CODE_channels_read_history);
         q->out_i32(CODE_input_channel);
         q->out_i32(id.peer_id);
@@ -859,9 +859,9 @@ void user_agent::mark_message_read(const tgl_input_peer_t& id, int max_id_or_tim
 void user_agent::get_history(const tgl_input_peer_t& id, int offset, int limit,
         const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>& list)>& callback) {
     assert(id.peer_type != tgl_peer_type::enc_chat);
-    auto q = std::make_shared<query_get_history>(id, limit, offset, 0/*max_id*/, callback);
+    auto q = std::make_shared<query_get_history>(*this, id, limit, offset, 0/*max_id*/, callback);
     q->out_i32(CODE_messages_get_history);
-    q->out_input_peer(this, id);
+    q->out_input_peer(id);
     q->out_i32(0); // offset_id
     q->out_i32(offset); // add_offset
     q->out_i32(limit);
@@ -880,8 +880,8 @@ void user_agent::get_dialog_list(int limit, int offset,
     state->limit = limit;
     state->offset = offset;
     state->channels = 0;
-    state->weak_user_agent = std::weak_ptr<user_agent>(shared_from_this());
-    tgl_do_get_dialog_list(state, callback);
+    auto q = std::make_shared<query_get_dialogs>(*this, state, callback);
+    q->execute(active_client());
 }
 
 void user_agent::get_channels_dialog_list(int limit, int offset,
@@ -896,14 +896,14 @@ void user_agent::get_channels_dialog_list(int limit, int offset,
     state->channels = 1;
     state->offset_date = 0;
     state->offset_peer.peer_type = tgl_peer_type::unknown;
-    state->weak_user_agent = std::weak_ptr<user_agent>(shared_from_this());
-    tgl_do_get_dialog_list(state, callback);
+    auto q = std::make_shared<query_get_dialogs>(*this, state, callback);
+    q->execute(active_client());
 }
 
 void user_agent::set_profile_name(const std::string& first_name, const std::string& last_name,
         const std::function<void(bool)>& callback)
 {
-    auto q = std::make_shared<query_set_profile_name>(callback);
+    auto q = std::make_shared<query_set_profile_name>(*this, callback);
     q->out_i32(CODE_account_update_profile);
     q->out_std_string(first_name);
     q->out_std_string(last_name);
@@ -912,7 +912,7 @@ void user_agent::set_profile_name(const std::string& first_name, const std::stri
 
 void user_agent::set_username(const std::string& username, const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_set_profile_name>(callback);
+    auto q = std::make_shared<query_set_profile_name>(*this, callback);
     q->out_i32(CODE_account_update_username);
     q->out_std_string(username);
     q->execute(active_client());
@@ -920,7 +920,7 @@ void user_agent::set_username(const std::string& username, const std::function<v
 
 void user_agent::check_username(const std::string& username, const std::function<void(int result)>& callback)
 {
-    auto q = std::make_shared<query_check_username>(callback);
+    auto q = std::make_shared<query_check_username>(*this, callback);
     q->out_i32(CODE_account_check_username);
     q->out_std_string(username);
     q->execute(active_client());
@@ -930,7 +930,7 @@ void user_agent::search_contact(const std::string& name, int limit,
         const std::function<void(const std::vector<std::shared_ptr<tgl_user>>&,
                            const std::vector<std::shared_ptr<tgl_chat>>&)>& callback)
 {
-    auto q = std::make_shared<query_search_contact>(callback);
+    auto q = std::make_shared<query_search_contact>(*this, callback);
     q->out_i32(CODE_contacts_search);
     q->out_std_string(name);
     q->out_i32(limit);
@@ -939,7 +939,7 @@ void user_agent::search_contact(const std::string& name, int limit,
 
 void user_agent::resolve_username(const std::string& name, const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_resolve_username>(callback);
+    auto q = std::make_shared<query_resolve_username>(*this, callback);
     q->out_i32(CODE_contacts_resolve_username);
     q->out_std_string(name);
     q->execute(active_client());
@@ -961,7 +961,7 @@ void user_agent::forward_messages(const tgl_input_peer_t& from_id, const tgl_inp
     E->multi = true;
     E->count = message_ids.size();
 
-    auto q = std::make_shared<query_send_messages>(E, callback);
+    auto q = std::make_shared<query_send_messages>(*this, E, callback);
     q->out_i32(CODE_messages_forward_messages);
 
     unsigned f = 0;
@@ -969,7 +969,7 @@ void user_agent::forward_messages(const tgl_input_peer_t& from_id, const tgl_inp
         f |= 16;
     }
     q->out_i32(f);
-    q->out_input_peer(this, from_id);
+    q->out_input_peer(from_id);
     q->out_i32(CODE_vector);
     q->out_i32(message_ids.size());
     for (size_t i = 0; i < message_ids.size(); i++) {
@@ -984,7 +984,7 @@ void user_agent::forward_messages(const tgl_input_peer_t& from_id, const tgl_inp
         E->message_ids.push_back(new_message_id);
         q->out_i64(new_message_id);
     }
-    q->out_input_peer(this, to_id);
+    q->out_input_peer(to_id);
     q->execute(active_client());
 }
 
@@ -1015,13 +1015,13 @@ void user_agent::forward_message(const tgl_input_peer_t& from_id, const tgl_inpu
 
     std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
     tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
-    auto q = std::make_shared<query_send_messages>(E, callback);
+    auto q = std::make_shared<query_send_messages>(*this, E, callback);
     q->out_i32(CODE_messages_forward_message);
-    q->out_input_peer(this, from_id);
+    q->out_input_peer(from_id);
     q->out_i32(message_id);
 
     q->out_i64(E->id);
-    q->out_input_peer(this, to_id);
+    q->out_input_peer(to_id);
     q->execute(active_client());
 }
 
@@ -1040,13 +1040,13 @@ void user_agent::send_contact(const tgl_input_peer_t& id,
     std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
     tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
 
-    auto q = std::make_shared<query_send_messages>(E, callback);
+    auto q = std::make_shared<query_send_messages>(*this, E, callback);
     q->out_i32(CODE_messages_send_media);
     q->out_i32(reply_id ? 1 : 0);
     if (reply_id) {
         q->out_i32(reply_id);
     }
-    q->out_input_peer(this, id);
+    q->out_input_peer(id);
     q->out_i32(CODE_input_media_contact);
     q->out_std_string(phone);
     q->out_std_string(first_name);
@@ -1114,14 +1114,14 @@ void user_agent::forward_media(const tgl_input_peer_t& to_id, int64_t message_id
     std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
     tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
 
-    auto q = std::make_shared<query_send_messages>(E, callback);
+    auto q = std::make_shared<query_send_messages>(*this, E, callback);
     q->out_i32(CODE_messages_send_media);
     int f = 0;
     if (post_as_channel_message) {
         f |= 16;
     }
     q->out_i32(f);
-    q->out_input_peer(this, to_id);
+    q->out_input_peer(to_id);
 #if 0
     switch (M->media.type) {
     case tgl_message_media_photo:
@@ -1167,7 +1167,7 @@ void user_agent::send_location(const tgl_input_peer_t& peer_id, double latitude,
         std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
         tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
 
-        auto q = std::make_shared<query_send_messages>(E, callback);
+        auto q = std::make_shared<query_send_messages>(*this, E, callback);
         q->out_i32(CODE_messages_send_media);
         unsigned f = reply_id ? 1 : 0;
         if (post_as_channel_message) {
@@ -1177,7 +1177,7 @@ void user_agent::send_location(const tgl_input_peer_t& peer_id, double latitude,
         if (reply_id) {
             q->out_i32(reply_id);
         }
-        q->out_input_peer(this, peer_id);
+        q->out_input_peer(peer_id);
         q->out_i32(CODE_input_media_geo_point);
         q->out_i32(CODE_input_geo_point);
         q->out_double(latitude);
@@ -1217,7 +1217,7 @@ void tgl_do_reply_location(tgl_message_id_t *_reply_id, double latitude, double 
 void user_agent::rename_chat(const tgl_input_peer_t& id, const std::string& new_title,
                         const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_edit_chat_title);
     assert(id.peer_type == tgl_peer_type::chat);
     q->out_i32(id.peer_id);
@@ -1228,7 +1228,7 @@ void user_agent::rename_chat(const tgl_input_peer_t& id, const std::string& new_
 void user_agent::rename_channel(const tgl_input_peer_t& id, const std::string& name,
         const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_channels_edit_title);
     assert(id.peer_type == tgl_peer_type::channel);
     q->out_i32(CODE_input_channel);
@@ -1240,7 +1240,7 @@ void user_agent::rename_channel(const tgl_input_peer_t& id, const std::string& n
 
 void user_agent::join_channel(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_channels_join_channel);
     assert(id.peer_type == tgl_peer_type::channel);
     q->out_i32(CODE_input_channel);
@@ -1251,7 +1251,7 @@ void user_agent::join_channel(const tgl_input_peer_t& id, const std::function<vo
 
 void user_agent::leave_channel(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_channels_leave_channel);
     assert(id.peer_type == tgl_peer_type::channel);
     q->out_i32(CODE_input_channel);
@@ -1264,7 +1264,7 @@ void user_agent::delete_channel(const tgl_input_peer_t& channel_id, const std::f
 {
     std::shared_ptr<messages_send_extra> extra = std::make_shared<messages_send_extra>();
     extra->multi = true;
-    auto q = std::make_shared<query_send_messages>(extra, [=](bool success, const std::vector<std::shared_ptr<tgl_message>>&) {
+    auto q = std::make_shared<query_send_messages>(*this, extra, [=](bool success, const std::vector<std::shared_ptr<tgl_message>>&) {
         if (callback) {
             callback(success);
         }
@@ -1281,7 +1281,7 @@ void user_agent::channel_edit_title(const tgl_input_peer_t& channel_id,
         const std::string& title,
         const std::function<void(bool success)>& callback)
 {
-     auto q = std::make_shared<query_send_messages>(callback);
+     auto q = std::make_shared<query_send_messages>(*this, callback);
      q->out_i32(CODE_channels_edit_title);
      assert(channel_id.peer_type == tgl_peer_type::channel);
      q->out_i32(CODE_input_channel);
@@ -1294,7 +1294,7 @@ void user_agent::channel_edit_title(const tgl_input_peer_t& channel_id,
 void user_agent::channel_set_about(const tgl_input_peer_t& id, const std::string& about,
         const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_channels_set_about>(callback);
+    auto q = std::make_shared<query_channels_set_about>(*this, callback);
     q->out_i32(CODE_channels_edit_about);
     assert(id.peer_type == tgl_peer_type::channel);
     q->out_i32(CODE_input_channel);
@@ -1307,7 +1307,7 @@ void user_agent::channel_set_about(const tgl_input_peer_t& id, const std::string
 void user_agent::channel_set_username(const tgl_input_peer_t& id, const std::string& username,
         const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_channels_set_about>(callback);
+    auto q = std::make_shared<query_channels_set_about>(*this, callback);
     q->out_i32(CODE_channels_update_username);
     assert(id.peer_type == tgl_peer_type::channel);
     q->out_i32(CODE_input_channel);
@@ -1320,7 +1320,7 @@ void user_agent::channel_set_username(const tgl_input_peer_t& id, const std::str
 void user_agent::channel_set_admin(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id, int type,
         const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_channels_edit_admin);
     assert(channel_id.peer_type == tgl_peer_type::channel);
     assert(user_id.peer_type == tgl_peer_type::user);
@@ -1353,13 +1353,13 @@ void user_agent::get_channel_participants(const tgl_input_peer_t& channel_id, in
     state->channel_id = channel_id;
     state->limit = limit;
     state->offset = offset;
-    state->weak_user_agent = std::weak_ptr<user_agent>(shared_from_this());
-    tgl_do_get_channel_participants(state, callback);
+    auto q = std::make_shared<query_channels_get_participants>(*this, state, callback);
+    q->execute(active_client());
 }
 
 void user_agent::get_channel_participant_self(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_channel_get_participant>(channel_id.peer_id, callback);
+    auto q = std::make_shared<query_channel_get_participant>(*this, channel_id.peer_id, callback);
     q->out_i32(CODE_channels_get_participant);
     q->out_i32(CODE_input_channel);
     q->out_i32(channel_id.peer_id);
@@ -1370,7 +1370,7 @@ void user_agent::get_channel_participant_self(const tgl_input_peer_t& channel_id
 
 void user_agent::get_chat_info(int32_t id, const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_get_chat_info>(callback);
+    auto q = std::make_shared<query_get_chat_info>(*this, callback);
     q->out_i32(CODE_messages_get_full_chat);
     q->out_i32(id);
     q->execute(active_client());
@@ -1379,7 +1379,7 @@ void user_agent::get_chat_info(int32_t id, const std::function<void(bool success
 void user_agent::get_channel_info(const tgl_input_peer_t& id,
         const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_get_channel_info>(callback);
+    auto q = std::make_shared<query_get_channel_info>(*this, callback);
     q->out_i32(CODE_channels_get_full_channel);
     assert(id.peer_type == tgl_peer_type::channel);
     q->out_i32(CODE_input_channel);
@@ -1398,7 +1398,7 @@ void user_agent::get_user_info(const tgl_input_peer_t& id, const std::function<v
         return;
     }
 
-    auto q = std::make_shared<query_user_info>(callback);
+    auto q = std::make_shared<query_user_info>(*this, callback);
     q->out_i32(CODE_users_get_full_user);
     assert(id.peer_type == tgl_peer_type::user);
     q->out_i32(CODE_input_user);
@@ -1410,7 +1410,7 @@ void user_agent::get_user_info(const tgl_input_peer_t& id, const std::function<v
 void user_agent::add_contacts(const std::vector<std::tuple<std::string, std::string, std::string>>& contacts, bool replace,
         const std::function<void(bool success, const std::vector<int32_t>& user_ids)>& callback)
 {
-    auto q = std::make_shared<query_add_contacts>(callback);
+    auto q = std::make_shared<query_add_contacts>(*this, callback);
     q->out_i32(CODE_contacts_import_contacts);
     q->out_i32(CODE_vector);
     q->out_i32(contacts.size());
@@ -1445,7 +1445,7 @@ void user_agent::delete_contact(const tgl_input_peer_t& id, const std::function<
 
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
     int32_t user_id = id.peer_id;
-    auto q = std::make_shared<query_delete_contact>([=](bool success) {
+    auto q = std::make_shared<query_delete_contact>(*this, [=](bool success) {
         if (success) {
             if (auto ua = weak_ua.lock()) {
                 ua->callback()->user_deleted(user_id);
@@ -1471,9 +1471,9 @@ void user_agent::search_message(const tgl_input_peer_t& id, int from, int to, in
         }
         return;
     }
-    std::shared_ptr<msg_search_state> state = std::make_shared<msg_search_state>(id, from, to, limit, offset, query);
-    state->weak_user_agent = std::weak_ptr<user_agent>(shared_from_this());
-    tgl_do_msg_search(state, callback);
+    auto state = std::make_shared<message_search_state>(id, from, to, limit, offset, query);
+    auto q = std::make_shared<query_search_message>(*this, state, callback);
+    q->execute(active_client());
 }
 
 void user_agent::lookup_state()
@@ -1481,8 +1481,8 @@ void user_agent::lookup_state()
     if (is_diff_locked()) {
         return;
     }
-    auto q = std::make_shared<query_lookup_state>(nullptr);
-    q->out_header(this);
+    auto q = std::make_shared<query_lookup_state>(*this, nullptr);
+    q->out_header();
     q->out_i32(CODE_updates_get_state);
     q->execute(active_client());
 }
@@ -1503,16 +1503,16 @@ void user_agent::get_difference(bool sync_from_start, const std::function<void(b
         if (date() == 0) {
             set_date(1, true);
         }
-        auto q = std::make_shared<query_get_difference>(callback);
-        q->out_header(this);
+        auto q = std::make_shared<query_get_difference>(*this, callback);
+        q->out_header();
         q->out_i32(CODE_updates_get_difference);
         q->out_i32(pts());
         q->out_i32(date());
         q->out_i32(qts());
         q->execute(active_client());
     } else {
-        auto q = std::make_shared<query_get_state>(callback);
-        q->out_header(this);
+        auto q = std::make_shared<query_get_state>(*this, callback);
+        q->out_header();
         q->out_i32(CODE_updates_get_state);
         q->execute(active_client());
     }
@@ -1540,8 +1540,8 @@ void user_agent::get_channel_difference(const tgl_input_peer_t& channel_id,
     }
     c->set_diff_locked(true);
 
-    auto q = std::make_shared<query_get_channel_difference>(c, callback);
-    q->out_header(this);
+    auto q = std::make_shared<query_get_channel_difference>(*this, c, callback);
+    q->out_header();
     q->out_i32(CODE_updates_get_channel_difference);
     q->out_i32(CODE_input_channel);
     q->out_i32(c->id().peer_id);
@@ -1554,7 +1554,7 @@ void user_agent::get_channel_difference(const tgl_input_peer_t& channel_id,
 
 void user_agent::add_user_to_chat(const tgl_peer_id_t& chat_id, const tgl_input_peer_t& user_id, int32_t limit,
         const std::function<void(bool success)>& callback) {
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_add_chat_user);
     q->out_i32(chat_id.peer_id);
 
@@ -1570,7 +1570,7 @@ void user_agent::add_user_to_chat(const tgl_peer_id_t& chat_id, const tgl_input_
 void user_agent::delete_user_from_chat(int32_t chat_id, const tgl_input_peer_t& user_id,
         const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_delete_chat_user);
     q->out_i32(chat_id);
 
@@ -1596,7 +1596,7 @@ void user_agent::channel_invite_user(const tgl_input_peer_t& channel_id, const s
         return;
     }
 
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_channels_invite_to_channel);
     q->out_i32(CODE_input_channel);
     q->out_i32(channel_id.peer_id);
@@ -1617,7 +1617,7 @@ void user_agent::channel_invite_user(const tgl_input_peer_t& channel_id, const s
 void user_agent::channel_delete_user(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id,
     const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_channels_kick_from_channel);
     q->out_i32(CODE_input_channel);
     q->out_i32(channel_id.peer_id);
@@ -1635,7 +1635,7 @@ void user_agent::channel_delete_user(const tgl_input_peer_t& channel_id, const t
 void user_agent::create_group_chat(const std::vector<tgl_input_peer_t>& user_ids, const std::string& chat_topic,
         const std::function<void(int32_t chat_id)>& callback)
 {
-    auto q = std::make_shared<query_create_chat>(callback);
+    auto q = std::make_shared<query_create_chat>(*this, callback);
     q->out_i32(CODE_messages_create_chat);
     q->out_i32(CODE_vector);
     q->out_i32(user_ids.size()); // Number of users, currently we support only 1 user.
@@ -1668,7 +1668,7 @@ void user_agent::create_channel(const std::string& topic, const std::string& abo
     if (mega_group) {
         flags |= 2;
     }
-    auto q = std::make_shared<query_create_chat>(callback, true);
+    auto q = std::make_shared<query_create_chat>(*this, callback, true);
     q->out_i32(CODE_channels_create_channel);
     q->out_i32(flags);
     q->out_std_string(topic);
@@ -1700,7 +1700,7 @@ void user_agent::delete_message(const tgl_input_peer_t& chat, int64_t message_id
         }
         return;
     }
-    auto q = std::make_shared<query_delete_message>(chat, message_id, callback);
+    auto q = std::make_shared<query_delete_message>(*this, chat, message_id, callback);
     if (chat.peer_type == tgl_peer_type::channel) {
         q->out_i32(CODE_channels_delete_messages);
         q->out_i32(CODE_input_channel);
@@ -1722,7 +1722,7 @@ void user_agent::delete_message(const tgl_input_peer_t& chat, int64_t message_id
 
 void user_agent::export_card(const std::function<void(bool success, const std::vector<int>& card)>& callback)
 {
-    auto q = std::make_shared<query_export_card>(callback);
+    auto q = std::make_shared<query_export_card>(*this, callback);
     q->out_i32(CODE_contacts_export_card);
     q->execute(active_client());
 }
@@ -1730,7 +1730,7 @@ void user_agent::export_card(const std::function<void(bool success, const std::v
 void user_agent::import_card(int size, int* card,
         const std::function<void(bool success, const std::shared_ptr<tgl_user>& user)>& callback)
 {
-    auto q = std::make_shared<query_import_card>(callback);
+    auto q = std::make_shared<query_import_card>(*this, callback);
     q->out_i32(CODE_contacts_import_card);
     q->out_i32(CODE_vector);
     q->out_i32(size);
@@ -1741,7 +1741,7 @@ void user_agent::import_card(int size, int* card,
 void user_agent::start_bot(const tgl_input_peer_t& bot, const tgl_peer_id_t& chat,
         const std::string& name, const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_start_bot);
     q->out_i32(CODE_input_user);
     q->out_i32(bot.peer_id);
@@ -1761,9 +1761,9 @@ void user_agent::send_typing(const tgl_input_peer_t& id, tgl_typing_status statu
         const std::function<void(bool success)>& callback)
 {
     if (id.peer_type != tgl_peer_type::enc_chat) {
-        auto q = std::make_shared<query_send_typing>(callback);
+        auto q = std::make_shared<query_send_typing>(*this, callback);
         q->out_i32(CODE_messages_set_typing);
-        q->out_input_peer(this, id);
+        q->out_input_peer(id);
         switch (status) {
         case tgl_typing_status::none:
         case tgl_typing_status::typing:
@@ -1812,7 +1812,7 @@ void user_agent::send_typing(const tgl_input_peer_t& id, tgl_typing_status statu
 void user_agent::get_message(int64_t message_id,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>&)>& callback)
 {
-    auto q = std::make_shared<query_get_messages>(callback);
+    auto q = std::make_shared<query_get_messages>(*this, callback);
     q->out_i32(CODE_messages_get_messages);
     q->out_i32(CODE_vector);
     q->out_i32(1);
@@ -1830,7 +1830,7 @@ void user_agent::export_chat_link(const tgl_peer_id_t& id, const std::function<v
         return;
     }
 
-    auto q = std::make_shared<query_export_chat_link>(callback);
+    auto q = std::make_shared<query_export_chat_link>(*this, callback);
     q->out_i32(CODE_messages_export_chat_invite);
     q->out_i32(id.peer_id);
 
@@ -1847,7 +1847,7 @@ void user_agent::import_chat_link(const std::string& link,
     }
     l++;
 
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_import_chat_invite);
     q->out_string(l, link.size() - (l - link_str));
 
@@ -1865,7 +1865,7 @@ void user_agent::export_channel_link(const tgl_input_peer_t& id,
         return;
     }
 
-    auto q = std::make_shared<query_export_chat_link>(callback);
+    auto q = std::make_shared<query_export_chat_link>(*this, callback);
     q->out_i32(CODE_channels_export_invite);
     q->out_i32(CODE_input_channel);
     q->out_i32(id.peer_id);
@@ -1875,7 +1875,7 @@ void user_agent::export_channel_link(const tgl_input_peer_t& id,
 
 void user_agent::update_password_settings(const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_get_and_set_password>(callback);
+    auto q = std::make_shared<query_get_and_set_password>(*this, callback);
     q->out_i32(CODE_account_get_password);
     q->execute(active_client());
 }
@@ -1897,7 +1897,7 @@ void user_agent::password_got(const std::string& current_salt, const std::string
         return;
     }
 
-    auto q = std::make_shared<query_check_password>(callback);
+    auto q = std::make_shared<query_check_password>(*this, callback);
     q->out_i32(CODE_auth_check_password);
 
     if (pwd && pwd_len && current_salt.size()) {
@@ -1916,7 +1916,7 @@ void user_agent::password_got(const std::string& current_salt, const std::string
 void user_agent::check_password(const std::function<void(bool success)>& callback)
 {
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
-    auto q = std::make_shared<query_get_and_check_password>([weak_ua, callback](const tl_ds_account_password* DS_AP) {
+    auto q = std::make_shared<query_get_and_check_password>(*this, [weak_ua, callback](const tl_ds_account_password* DS_AP) {
         auto ua = weak_ua.lock();
         if (!ua || !DS_AP) {
             if (ua) {
@@ -1978,7 +1978,7 @@ void user_agent::send_broadcast(const std::vector<tgl_input_peer_t>& peers, cons
         m_callback->new_messages({m});
     }
 
-    auto q = std::make_shared<query_send_messages>(E, callback);
+    auto q = std::make_shared<query_send_messages>(*this, E, callback);
     q->out_i32(CODE_messages_send_broadcast);
     q->out_i32(CODE_vector);
     q->out_i32(peers.size());
@@ -2012,7 +2012,7 @@ void user_agent::block_user(const tgl_input_peer_t& id, const std::function<void
         return;
     }
 
-    auto q = std::make_shared<query_block_or_unblock_user>(callback);
+    auto q = std::make_shared<query_block_or_unblock_user>(*this, callback);
     q->out_i32(CODE_contacts_block);
     q->out_i32(CODE_input_user);
     q->out_i32(id.peer_id);
@@ -2030,7 +2030,7 @@ void user_agent::unblock_user(const tgl_input_peer_t& id, const std::function<vo
         return;
     }
 
-    auto q = std::make_shared<query_block_or_unblock_user>(callback);
+    auto q = std::make_shared<query_block_or_unblock_user>(*this, callback);
     q->out_i32(CODE_contacts_unblock);
     q->out_i32(CODE_input_user);
     q->out_i32(id.peer_id);
@@ -2040,7 +2040,7 @@ void user_agent::unblock_user(const tgl_input_peer_t& id, const std::function<vo
 
 void user_agent::get_blocked_users(const std::function<void(std::vector<int32_t>)>& callback)
 {
-    auto q = std::make_shared<query_get_blocked_users>(callback);
+    auto q = std::make_shared<query_get_blocked_users>(*this, callback);
     q->out_i32(CODE_contacts_get_blocked);
     q->out_i32(0);
     q->out_i32(0);
@@ -2051,10 +2051,10 @@ void user_agent::update_notify_settings(const tgl_input_peer_t& peer_id,
         int32_t mute_until, const std::string& sound, bool show_previews, int32_t mask,
         const std::function<void(bool)>& callback)
 {
-    auto q = std::make_shared<query_update_notify_settings>(callback);
+    auto q = std::make_shared<query_update_notify_settings>(*this, callback);
     q->out_i32(CODE_account_update_notify_settings);
     q->out_i32(CODE_input_notify_peer);
-    q->out_input_peer(this, peer_id);
+    q->out_input_peer(peer_id);
     q->out_i32(CODE_input_peer_notify_settings);
     q->out_i32(mute_until);
     q->out_std_string(sound);
@@ -2067,16 +2067,16 @@ void user_agent::update_notify_settings(const tgl_input_peer_t& peer_id,
 void user_agent::get_notify_settings(const tgl_input_peer_t &peer_id,
         const std::function<void(bool, int32_t mute_until)>& callback)
 {
-    auto q = std::make_shared<query_get_notify_settings>(callback);
+    auto q = std::make_shared<query_get_notify_settings>(*this, callback);
     q->out_i32(CODE_account_get_notify_settings);
     q->out_i32(CODE_input_notify_peer);
-    q->out_input_peer(this, peer_id);
+    q->out_input_peer(peer_id);
     q->execute(active_client());
 }
 
 void user_agent::get_terms_of_service(const std::function<void(bool success, const std::string& tos)>& callback)
 {
-    auto q = std::make_shared<query_get_tos>(callback);
+    auto q = std::make_shared<query_get_tos>(*this, callback);
     q->out_i32(CODE_help_get_terms_of_service);
     q->out_string("");
     q->execute(active_client());
@@ -2093,7 +2093,7 @@ void user_agent::register_device(int32_t token_type, const std::string& token,
     m_device_token_type = token_type;
     m_device_token = token;
 
-    auto q = std::make_shared<query_register_device>(callback);
+    auto q = std::make_shared<query_register_device>(*this, callback);
     q->out_i32(CODE_account_register_device);
     q->out_i32(token_type);
     q->out_std_string(token);
@@ -2108,7 +2108,7 @@ void user_agent::register_device(int32_t token_type, const std::string& token,
 void user_agent::unregister_device(int32_t token_type, const std::string& token,
         const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_unregister_device>(callback);
+    auto q = std::make_shared<query_unregister_device>(*this, callback);
     q->out_i32(CODE_account_unregister_device);
     q->out_i32(token_type);
     q->out_std_string(token);
@@ -2117,7 +2117,7 @@ void user_agent::unregister_device(int32_t token_type, const std::string& token,
 
 void user_agent::upgrade_group(const tgl_peer_id_t& id, const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_send_messages>(callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_migrate_chat);
     q->out_i32(id.peer_id);
     q->execute(active_client());
@@ -2165,7 +2165,7 @@ void user_agent::set_client_logged_out(const std::shared_ptr<mtproto_client>& fr
 
 void user_agent::update_status(bool online, const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_update_status>(callback);
+    auto q = std::make_shared<query_update_status>(*this, callback);
     q->out_i32(CODE_account_update_status);
     q->out_i32(online ? CODE_bool_false : CODE_bool_true);
     q->execute(active_client());
@@ -2253,7 +2253,7 @@ void user_agent::sign_up_code(const std::string& phone, const std::string& hash,
         return;
     }
 
-    auto q = std::make_shared<query_sign_in>([weak_ua, try_again](bool success, const std::shared_ptr<user>&) {
+    auto q = std::make_shared<query_sign_in>(*this, [weak_ua, try_again](bool success, const std::shared_ptr<user>&) {
         auto ua = weak_ua.lock();
         if (!ua) {
             TGL_ERROR("the user agent has gone");
@@ -2388,24 +2388,16 @@ void user_agent::login()
     sign_in();
 }
 
-void user_agent::set_phone_number(const std::string& phonenumber, const std::function<void(bool success)>& callback)
+void user_agent::set_phone_number(const std::string& phone_number, const std::function<void(bool success)>& callback)
 {
-    std::shared_ptr<change_phone_state> state = std::make_shared<change_phone_state>();
-    state->phone = phonenumber;
-    state->callback = callback;
-    state->weak_user_agent = std::weak_ptr<user_agent>(shared_from_this());
-
-    auto q = std::make_shared<query_send_change_code>(std::bind(tgl_set_phone_number_cb, state, std::placeholders::_1, std::placeholders::_2));
-    q->out_header(this);
-    q->out_i32(CODE_account_send_change_phone_code);
-    q->out_std_string(state->phone);
+    auto q = std::make_shared<query_send_change_code>(*this, phone_number, callback);
     q->execute(active_client());
 }
 
 
 void user_agent::get_privacy_rules(std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)> callback)
 {
-    auto q = std::make_shared<query_get_privacy_rules>(callback);
+    auto q = std::make_shared<query_get_privacy_rules>(*this, callback);
     q->out_i32(CODE_account_get_privacy);
     q->out_i32(CODE_input_privacy_key_status_timestamp);
     q->execute(active_client());
@@ -2414,9 +2406,9 @@ void user_agent::get_privacy_rules(std::function<void(bool, const std::vector<st
 void user_agent::send_inline_query_to_bot(const tgl_input_peer_t& bot, const std::string& query,
         const std::function<void(bool success, const std::string& response)>& callback)
 {
-    auto q = std::make_shared<query_send_inline_query_to_bot>(callback);
+    auto q = std::make_shared<query_send_inline_query_to_bot>(*this, callback);
     q->out_i32(CODE_messages_get_inline_bot_results);
-    q->out_input_peer(this, bot);
+    q->out_input_peer(bot);
     q->out_std_string(query);
     q->out_std_string(std::string());
     q->execute(active_client());
@@ -2488,7 +2480,7 @@ void user_agent::send_accept_encr_chat(const std::shared_ptr<secret_chat>& sc,
     check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, bn_ctx()->ctx));
     TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
 
-    auto q = std::make_shared<query_messages_accept_encryption>(sc, callback);
+    auto q = std::make_shared<query_messages_accept_encryption>(*this, sc, callback);
     q->out_i32(CODE_messages_accept_encryption);
     q->out_i32(CODE_input_encrypted_chat);
     q->out_i32(sc->id().peer_id);
@@ -2529,7 +2521,7 @@ void user_agent::send_create_encr_chat(const tgl_input_peer_t& user_id,
     sc->set_state(tgl_secret_chat_state::waiting);
     m_callback->secret_chat_update(sc);
 
-    auto q = std::make_shared<query_messages_request_encryption>(sc, callback);
+    auto q = std::make_shared<query_messages_request_encryption>(*this, sc, callback);
     q->out_i32(CODE_messages_request_encryption);
     q->out_i32(CODE_input_user);
     q->out_i32(user_id.peer_id);
@@ -2550,7 +2542,7 @@ void user_agent::discard_secret_chat(const tgl_input_peer_t& chat_id,
         return;
     }
 
-    auto q = std::make_shared<query_messages_discard_encryption>(sc, callback);
+    auto q = std::make_shared<query_messages_discard_encryption>(*this, sc, callback);
     q->out_i32(CODE_messages_discard_encryption);
     q->out_i32(sc->id().peer_id);
 
@@ -2569,7 +2561,7 @@ void user_agent::accept_encr_chat_request(const tgl_input_peer_t& chat_id,
     }
 
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
-    auto q = std::make_shared<query_messages_get_dh_config>(sc,
+    auto q = std::make_shared<query_messages_get_dh_config>(*this, sc,
             [weak_ua](const std::shared_ptr<secret_chat>& sc,
                     std::array<unsigned char, 256>& random,
                     const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& cb)
@@ -2603,7 +2595,7 @@ void user_agent::create_secret_chat(const tgl_input_peer_t& user_id, int32_t new
     }
 
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
-    auto q = std::make_shared<query_messages_get_dh_config>(sc,
+    auto q = std::make_shared<query_messages_get_dh_config>(*this, sc,
             [weak_ua, user_id](const std::shared_ptr<secret_chat>& sc,
                     std::array<unsigned char, 256>& random,
                     const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& cb)

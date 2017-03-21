@@ -34,7 +34,7 @@ namespace impl {
 class query_upload_file_part: public query
 {
 public:
-    query_upload_file_part(const std::shared_ptr<upload_task>& u,
+    query_upload_file_part(user_agent& ua, const std::shared_ptr<upload_task>& u,
             const std::function<void(bool success)>& callback);
     virtual void on_answer(void* answer) override;
     virtual int on_error(int error_code, const std::string& error_string) override;

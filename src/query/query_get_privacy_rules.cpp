@@ -24,8 +24,9 @@
 namespace tgl {
 namespace impl {
 
-query_get_privacy_rules::query_get_privacy_rules(const std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)>& callback)
-    : query("set phone", TYPE_TO_PARAM(account_privacy_rules))
+query_get_privacy_rules::query_get_privacy_rules(user_agent& ua,
+        const std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)>& callback)
+    : query(ua, "get privacy rules", TYPE_TO_PARAM(account_privacy_rules))
     , m_callback(callback)
 { }
 
@@ -61,7 +62,9 @@ void query_get_privacy_rules::on_answer(void* D)
                 }
                 break;
             }
-            default:    tgl_rule = tgl_privacy_rule::unknown;
+            default:
+                tgl_rule = tgl_privacy_rule::unknown;
+                break;
             }
 
             privacy_rules.push_back(std::make_pair(tgl_rule, users));

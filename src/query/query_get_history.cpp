@@ -29,9 +29,9 @@
 namespace tgl {
 namespace impl {
 
-query_get_history::query_get_history(const tgl_input_peer_t& id, int limit, int offset, int max_id,
+query_get_history::query_get_history(user_agent& ua, const tgl_input_peer_t& id, int limit, int offset, int max_id,
         const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback)
-    : query("get history", TYPE_TO_PARAM(messages_messages))
+    : query(ua, "get history", TYPE_TO_PARAM(messages_messages))
     , m_id(id)
 #if 0
     , m_limit(limit)
@@ -44,30 +44,28 @@ query_get_history::query_get_history(const tgl_input_peer_t& id, int limit, int 
 void query_get_history::on_answer(void* D)
 {
     TGL_DEBUG("get history on answer for query #" << msg_id());
-    tl_ds_messages_messages* DS_MM = static_cast<tl_ds_messages_messages*>(D);
+    const tl_ds_messages_messages* DS_MM = static_cast<const tl_ds_messages_messages*>(D);
 
-    if (auto ua = get_user_agent()) {
-        int32_t n = DS_LVAL(DS_MM->chats->cnt);
-        for (int32_t i = 0; i < n; ++i) {
-            if (auto c = chat::create(DS_MM->chats->data[i])) {
-                ua->chat_fetched(c);
-            }
+    int32_t n = DS_LVAL(DS_MM->chats->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto c = chat::create(DS_MM->chats->data[i])) {
+            m_user_agent.chat_fetched(c);
         }
-        n = DS_LVAL(DS_MM->users->cnt);
-        for (int32_t i = 0; i < n; ++i) {
-            if (auto u = user::create(DS_MM->users->data[i])) {
-                ua->user_fetched(u);
-            }
-        }
-        n = DS_LVAL(DS_MM->messages->cnt);
-        for (int32_t i = 0; i < n; ++i) {
-            if (auto m = message::create(ua->our_id(), DS_MM->messages->data[i])) {
-                m->set_history(true);
-                m_messages.push_back(m);
-            }
-        }
-        ua->callback()->new_messages(m_messages);
     }
+    n = DS_LVAL(DS_MM->users->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto u = user::create(DS_MM->users->data[i])) {
+            m_user_agent.user_fetched(u);
+        }
+    }
+    n = DS_LVAL(DS_MM->messages->cnt);
+    for (int32_t i = 0; i < n; ++i) {
+        if (auto m = message::create(m_user_agent.our_id(), DS_MM->messages->data[i])) {
+            m->set_history(true);
+            m_messages.push_back(m);
+        }
+    }
+    m_user_agent.callback()->new_messages(m_messages);
 
 #if 0
     m_offset += n;

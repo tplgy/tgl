@@ -24,8 +24,8 @@
 namespace tgl {
 namespace impl {
 
-query_get_tos::query_get_tos(const std::function<void(bool, const std::string&)>& callback)
-    : query("get tos", TYPE_TO_PARAM(help_terms_of_service))
+query_get_tos::query_get_tos(user_agent& ua, const std::function<void(bool, const std::string&)>& callback)
+    : query(ua, "get tos", TYPE_TO_PARAM(help_terms_of_service))
     , m_callback(callback)
 { }
 

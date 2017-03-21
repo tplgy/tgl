@@ -40,14 +40,6 @@ void query_messages_send_encrypted_base::on_answer(void* D)
 
     tl_ds_messages_sent_encrypted_message* DS_MSEM = static_cast<tl_ds_messages_sent_encrypted_message*>(D);
 
-    auto ua = get_user_agent();
-    if (!ua) {
-        if (m_callback) {
-            m_callback(false, m_message);
-        }
-        return;
-    }
-
     if (DS_MSEM->date) {
         m_message->set_date(*DS_MSEM->date);
     }
@@ -57,13 +49,13 @@ void query_messages_send_encrypted_base::on_answer(void* D)
         std::static_pointer_cast<document>(doc)->update(DS_MSEM->file);
     }
 
-    ua->callback()->update_messages({m_message});
+    m_user_agent.callback()->update_messages({m_message});
 
     if (m_callback) {
-        m_callback(!!ua, m_message);
+        m_callback(true, m_message);
     }
 
-    ua->callback()->message_sent(m_message->id(), m_message->id(), m_message->date(), m_message->to_id());
+    m_user_agent.callback()->message_sent(m_message->id(), m_message->id(), m_message->date(), m_message->to_id());
 }
 
 int query_messages_send_encrypted_base::on_error(int error_code, const std::string& error_string)
@@ -81,9 +73,7 @@ int query_messages_send_encrypted_base::on_error(int error_code, const std::stri
 
     if (m_message) {
         m_message->set_pending(false).set_send_failed(true);
-        if (auto ua = get_user_agent()) {
-            ua->callback()->update_messages({m_message});
-        }
+        m_user_agent.callback()->update_messages({m_message});
     }
     return 0;
 }
@@ -111,10 +101,8 @@ void query_messages_send_encrypted_base::will_send()
 
     m_message->set_sequence_number(m_secret_chat->out_seq_no());
     m_secret_chat->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
-    if (auto ua = get_user_agent()) {
-        ua->callback()->secret_chat_update(m_secret_chat);
-        ua->callback()->update_messages({m_message});
-    }
+    m_user_agent.callback()->secret_chat_update(m_secret_chat);
+    m_user_agent.callback()->update_messages({m_message});
 }
 
 void query_messages_send_encrypted_base::sent()
@@ -160,9 +148,7 @@ void query_messages_send_encrypted_base::construct_message(int64_t message_id, i
         throw std::runtime_error("failed to reconstruct message from blobs");
     }
     m_message->set_unread(true).set_pending(true);
-    if (auto ua = get_user_agent()) {
-        ua->callback()->update_messages({m_message});
-    }
+    m_user_agent.callback()->update_messages({m_message});
 }
 
 std::vector<std::shared_ptr<query_messages_send_encrypted_base>>
@@ -182,13 +168,13 @@ query_messages_send_encrypted_base::create_by_out_seq_no(const std::shared_ptr<s
         try {
             switch (message->constructor_code()) {
                 case CODE_messages_send_encrypted:
-                    queries.push_back(std::make_shared<query_messages_send_encrypted_message>(sc, message, nullptr));
+                    queries.push_back(std::make_shared<query_messages_send_encrypted_message>(*ua, sc, message, nullptr));
                     break;
                 case CODE_messages_send_encrypted_service:
-                    queries.push_back(std::make_shared<query_messages_send_encrypted_action>(sc, message, nullptr));
+                    queries.push_back(std::make_shared<query_messages_send_encrypted_action>(*ua, sc, message, nullptr));
                     break;
                 case CODE_messages_send_encrypted_file:
-                    queries.push_back(std::make_shared<query_messages_send_encrypted_file>(sc, message, nullptr));
+                    queries.push_back(std::make_shared<query_messages_send_encrypted_file>(*ua, sc, message, nullptr));
                     break;
                 default:
                     TGL_WARNING("unknown constructor code 0x" << std::hex << message->constructor_code()

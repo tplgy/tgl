@@ -29,7 +29,7 @@ namespace impl {
 class query_create_chat: public query
 {
 public:
-    explicit query_create_chat(const std::function<void(int32_t chat_id)>& callback, bool is_channel = false);
+    query_create_chat(user_agent& ua, const std::function<void(int32_t chat_id)>& callback, bool is_channel = false);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     virtual void on_timeout() override;

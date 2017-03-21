@@ -36,9 +36,9 @@ namespace impl {
 class query_delete_message: public query
 {
 public:
-    query_delete_message(const tgl_input_peer_t& chat, int64_t message_id,
+    query_delete_message(user_agent& ua, const tgl_input_peer_t& chat, int64_t message_id,
             const std::function<void(bool)>& callback)
-        : query("delete message", TYPE_TO_PARAM(messages_affected_messages))
+        : query(ua, "delete message", TYPE_TO_PARAM(messages_affected_messages))
         , m_chat(chat)
         , m_message_id(message_id)
         , m_callback(callback)
@@ -47,16 +47,13 @@ public:
     virtual void on_answer(void* D) override
     {
         tl_ds_messages_affected_messages* DS_MAM = static_cast<tl_ds_messages_affected_messages*>(D);
-        auto ua = get_user_agent();
-        if (ua) {
-            ua->callback()->message_deleted(m_message_id, m_chat);
-            if (ua->updater().check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count))) {
-                ua->set_pts(DS_LVAL(DS_MAM->pts));
-            }
+        m_user_agent.callback()->message_deleted(m_message_id, m_chat);
+        if (m_user_agent.updater().check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count))) {
+            m_user_agent.set_pts(DS_LVAL(DS_MAM->pts));
         }
 
         if (m_callback) {
-            m_callback(!!ua);
+            m_callback(true);
         }
     }
 

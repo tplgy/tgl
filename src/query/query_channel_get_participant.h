@@ -33,7 +33,7 @@ namespace impl {
 class query_channel_get_participant: public query
 {
 public:
-    query_channel_get_participant(int32_t channel_id, const std::function<void(bool)>& callback);
+    query_channel_get_participant(user_agent& ua, int32_t channel_id, const std::function<void(bool)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 

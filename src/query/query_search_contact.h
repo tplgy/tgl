@@ -35,29 +35,27 @@ namespace impl {
 class query_search_contact: public query
 {
 public:
-    explicit query_search_contact(const std::function<void(const std::vector<std::shared_ptr<tgl_user>>&,
+    query_search_contact(user_agent& ua, const std::function<void(const std::vector<std::shared_ptr<tgl_user>>&,
             const std::vector<std::shared_ptr<tgl_chat>>&)>& callback)
-        : query("contact search", TYPE_TO_PARAM(contacts_found))
+        : query(ua, "contact search", TYPE_TO_PARAM(contacts_found))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
-        tl_ds_contacts_found* DS_CRU = static_cast<tl_ds_contacts_found*>(D);
+        const tl_ds_contacts_found* DS_CRU = static_cast<const tl_ds_contacts_found*>(D);
         std::vector<std::shared_ptr<tgl_user>> users;
         std::vector<std::shared_ptr<tgl_chat>> chats;
-        if (auto ua = get_user_agent()) {
-            int32_t n = DS_LVAL(DS_CRU->users->cnt);
-            for (int32_t i = 0; i < n; ++i) {
-                if (auto u = user::create(DS_CRU->users->data[i])) {
-                    users.push_back(u);
-                }
+        int32_t n = DS_LVAL(DS_CRU->users->cnt);
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto u = user::create(DS_CRU->users->data[i])) {
+                users.push_back(u);
             }
-            n = DS_LVAL(DS_CRU->chats->cnt);
-            for (int32_t i = 0; i < n; ++i) {
-                if (auto c = chat::create(DS_CRU->chats->data[i])) {
-                    chats.push_back(c);
-                }
+        }
+        n = DS_LVAL(DS_CRU->chats->cnt);
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto c = chat::create(DS_CRU->chats->data[i])) {
+                chats.push_back(c);
             }
         }
         if (m_callback) {

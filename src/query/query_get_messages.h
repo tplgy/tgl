@@ -34,8 +34,8 @@ namespace impl {
 class query_get_messages: public query
 {
 public:
-    explicit query_get_messages(const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback);
-    explicit query_get_messages(const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& multi_callback);
+    query_get_messages(user_agent& ua, const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback);
+    query_get_messages(user_agent& ua, const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& multi_callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 

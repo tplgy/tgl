@@ -32,23 +32,23 @@ namespace impl {
 
 static constexpr struct paramed_type bare_int_type = TYPE_TO_PARAM(bare_int);
 static constexpr struct paramed_type bare_int_array_type[1] = {bare_int_type};
-static constexpr struct paramed_type vector_type = (struct paramed_type) {.type = tl_type_vector, .params=bare_int_array_type};
+static constexpr struct paramed_type vector_type = {.type = tl_type_vector, .params=bare_int_array_type};
 
 class query_export_card: public query
 {
 public:
-    explicit query_export_card(const std::function<void(bool, const std::vector<int>&)>& callback)
-        : query("export card", vector_type)
+    query_export_card(user_agent& ua, const std::function<void(bool, const std::vector<int>&)>& callback)
+        : query(ua, "export card", vector_type)
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
         tl_ds_vector* DS_V = static_cast<tl_ds_vector*>(D);
-        int n = DS_LVAL(DS_V->f1);
+        int32_t n = DS_LVAL(DS_V->f1);
         std::vector<int> card;
-        for (int i = 0; i < n; i++) {
-            card.push_back(*reinterpret_cast<int*>(DS_V->f2[i]));
+        for (int32_t i = 0; i < n; ++i) {
+            card.push_back(*reinterpret_cast<int32_t*>(DS_V->f2[i]));
         }
         if (m_callback) {
             m_callback(true, card);

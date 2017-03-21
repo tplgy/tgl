@@ -30,13 +30,15 @@ class query_messages_send_encrypted_message: public query_messages_send_encrypte
 {
 public:
     query_messages_send_encrypted_message(
+            user_agent& ua,
             const std::shared_ptr<secret_chat>& sc,
             const std::shared_ptr<message>& m,
             const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
-        : query_messages_send_encrypted_base("send encrypted message", sc, m, callback, false)
+        : query_messages_send_encrypted_base(ua, "send encrypted message", sc, m, callback, false)
     { }
 
     query_messages_send_encrypted_message(
+            user_agent& ua,
             const std::shared_ptr<secret_chat>& sc,
             const std::shared_ptr<tgl_unconfirmed_secret_message>& m,
             const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error);

@@ -26,8 +26,8 @@
 namespace tgl {
 namespace impl {
 
-query_help_get_config::query_help_get_config(const std::function<void(bool)>& callback)
-    : query("get config", TYPE_TO_PARAM(config))
+query_help_get_config::query_help_get_config(user_agent& ua, const std::function<void(bool)>& callback)
+    : query(ua, "get config", TYPE_TO_PARAM(config))
     , m_callback(callback)
 {
 }
@@ -36,14 +36,9 @@ void query_help_get_config::on_answer(void* DS)
 {
     tl_ds_config* DS_C = static_cast<tl_ds_config*>(DS);
 
-    bool success = true;
-    if (auto ua = get_user_agent()) {
-        int32_t count = DS_LVAL(DS_C->dc_options->cnt);
-        for (int32_t i = 0; i < count; ++i) {
-            ua->fetch_dc_option(DS_C->dc_options->data[i]);
-        }
-    } else {
-        success = false;
+    int32_t count = DS_LVAL(DS_C->dc_options->cnt);
+    for (int32_t i = 0; i < count; ++i) {
+        m_user_agent.fetch_dc_option(DS_C->dc_options->data[i]);
     }
 
     int max_chat_size = DS_LVAL(DS_C->chat_size_max);
@@ -51,7 +46,7 @@ void query_help_get_config::on_answer(void* DS)
     TGL_DEBUG("chat_size = " << max_chat_size << ", bcast_size = " << max_bcast_size);
 
     if (m_callback) {
-        m_callback(success);
+        m_callback(true);
     }
 }
 

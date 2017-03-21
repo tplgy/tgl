@@ -37,9 +37,9 @@ namespace impl {
 class query_mark_message_read: public query
 {
 public:
-    query_mark_message_read(const tgl_input_peer_t& id, int max_id,
+    query_mark_message_read(user_agent& ua, const tgl_input_peer_t& id, int max_id,
             const std::function<void(bool)>& callback)
-        : query("mark read", id.peer_type == tgl_peer_type::channel ? TYPE_TO_PARAM(bool) : TYPE_TO_PARAM(messages_affected_messages))
+        : query(ua, "mark read", id.peer_type == tgl_peer_type::channel ? TYPE_TO_PARAM(bool) : TYPE_TO_PARAM(messages_affected_messages))
         , m_id(id)
         , m_callback(callback)
     { }
@@ -56,12 +56,10 @@ public:
 
         tl_ds_messages_affected_messages* DS_MAM = static_cast<tl_ds_messages_affected_messages*>(D);
 
-        if (auto ua = get_user_agent()) {
-            if (ua->updater().check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count))) {
-                ua->set_pts(DS_LVAL(DS_MAM->pts));
-            }
-            ua->callback()->mark_messages_read(false, tgl_peer_id_t::from_input_peer(m_id), DS_LVAL(DS_MAM->pts));
+        if (m_user_agent.updater().check_pts_diff(DS_LVAL(DS_MAM->pts), DS_LVAL(DS_MAM->pts_count))) {
+            m_user_agent.set_pts(DS_LVAL(DS_MAM->pts));
         }
+        m_user_agent.callback()->mark_messages_read(false, tgl_peer_id_t::from_input_peer(m_id), DS_LVAL(DS_MAM->pts));
 
         if (m_callback) {
             m_callback(true);

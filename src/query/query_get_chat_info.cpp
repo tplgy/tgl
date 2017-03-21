@@ -28,18 +28,17 @@
 namespace tgl {
 namespace impl {
 
-query_get_chat_info::query_get_chat_info(const std::function<void(bool)>& callback)
-    : query("chat info", TYPE_TO_PARAM(messages_chat_full))
+query_get_chat_info::query_get_chat_info(user_agent& ua, const std::function<void(bool)>& callback)
+    : query(ua, "chat info", TYPE_TO_PARAM(messages_chat_full))
     , m_callback(callback)
 {
 }
 
 void query_get_chat_info::on_answer(void* D)
 {
-    auto ua = get_user_agent();
     auto DS_MCF = static_cast<const tl_ds_messages_chat_full*>(D);
 
-    if (!ua || !DS_MCF) {
+    if (!DS_MCF) {
         if (m_callback) {
             m_callback(false);
         }
@@ -49,7 +48,7 @@ void query_get_chat_info::on_answer(void* D)
     if (DS_MCF->users) {
         for (int32_t i = 0; i < DS_LVAL(DS_MCF->users->cnt); i++) {
             if (auto u = user::create(DS_MCF->users->data[i])) {
-                ua->user_fetched(u);
+                m_user_agent.user_fetched(u);
             }
         }
     }
@@ -57,7 +56,7 @@ void query_get_chat_info::on_answer(void* D)
     if (DS_MCF->chats) {
         for (int i = 0; i < DS_LVAL(DS_MCF->chats->cnt); i++) {
             if (auto c = chat::create(DS_MCF->chats->data[i])) {
-                ua->chat_fetched(c);
+                m_user_agent.chat_fetched(c);
             }
         }
     }
@@ -86,7 +85,7 @@ void query_get_chat_info::on_answer(void* D)
                 participant->is_creator = creator;
                 participants.push_back(participant);
             }
-            ua->callback()->chat_update_participants(DS_LVAL(DS_CF->id), participants);
+            m_user_agent.callback()->chat_update_participants(DS_LVAL(DS_CF->id), participants);
         }
     }
 

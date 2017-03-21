@@ -27,9 +27,10 @@
 namespace tgl {
 namespace impl {
 
-query_messages_accept_encryption::query_messages_accept_encryption(const std::shared_ptr<secret_chat>& sc,
+query_messages_accept_encryption::query_messages_accept_encryption(user_agent& ua,
+        const std::shared_ptr<secret_chat>& sc,
         const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback)
-    : query("send encrypted (chat accept)", TYPE_TO_PARAM(encrypted_chat))
+    : query(ua, "send encrypted (chat accept)", TYPE_TO_PARAM(encrypted_chat))
     , m_secret_chat(sc)
     , m_callback(callback)
 {
@@ -37,16 +38,7 @@ query_messages_accept_encryption::query_messages_accept_encryption(const std::sh
 
 void query_messages_accept_encryption::on_answer(void* D)
 {
-    auto ua = get_user_agent();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        if (m_callback) {
-            m_callback(false, nullptr);
-        }
-        return;
-    }
-
-    std::shared_ptr<secret_chat> sc = ua->allocate_or_update_secret_chat(static_cast<tl_ds_encrypted_chat*>(D));
+    std::shared_ptr<secret_chat> sc = m_user_agent.allocate_or_update_secret_chat(static_cast<tl_ds_encrypted_chat*>(D));
 
     if (sc && sc->state() == tgl_secret_chat_state::ok) {
         sc->send_layer();

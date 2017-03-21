@@ -27,22 +27,22 @@
 namespace tgl {
 namespace impl {
 
-query_channels_get_participants::query_channels_get_participants(const std::shared_ptr<channel_get_participants_state>& state,
+query_channels_get_participants::query_channels_get_participants(user_agent& ua, 
+        const std::shared_ptr<channel_get_participants_state>& state,
         const std::function<void(bool)>& callback)
-    : query("channels get participants", TYPE_TO_PARAM(channels_channel_participants))
+    : query(ua, "channels get participants", TYPE_TO_PARAM(channels_channel_participants))
     , m_state(state)
     , m_callback(callback)
-{ }
+{
+    assemble();
+}
 
 void query_channels_get_participants::on_answer(void* D)
 {
     tl_ds_channels_channel_participants* DS_CP = static_cast<tl_ds_channels_channel_participants*>(D);
-    auto ua = m_state->weak_user_agent.lock();
-    if (ua) {
-        for (int32_t i = 0; i < DS_LVAL(DS_CP->users->cnt); i++) {
-            if (auto u = user::create(DS_CP->users->data[i])) {
-                ua->user_fetched(u);
-            }
+    for (int32_t i = 0; i < DS_LVAL(DS_CP->users->cnt); i++) {
+        if (auto u = user::create(DS_CP->users->data[i])) {
+            m_user_agent.user_fetched(u);
         }
     }
 
@@ -73,12 +73,12 @@ void query_channels_get_participants::on_answer(void* D)
     m_state->offset += count;
 
     if (!count || (m_state->limit > 0 && static_cast<int>(m_state->participants.size()) == m_state->limit)) {
-        if (m_state->participants.size() && ua) {
-            ua->callback()->channel_update_participants(m_state->channel_id.peer_id, m_state->participants);
+        if (m_state->participants.size()) {
+            m_user_agent.callback()->channel_update_participants(m_state->channel_id.peer_id, m_state->participants);
         }
         m_callback(true);
     } else {
-        tgl_do_get_channel_participants(m_state, m_callback);
+        get_more();
     }
 }
 
@@ -91,42 +91,37 @@ int query_channels_get_participants::on_error(int error_code, const std::string&
     return 0;
 }
 
-void tgl_do_get_channel_participants(const std::shared_ptr<struct channel_get_participants_state>& state,
-        const std::function<void(bool)>& callback)
+void query_channels_get_participants::assemble()
 {
-    auto ua = state->weak_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        if (callback) {
-            callback(false);
-        }
-        return;
-    }
+    assert(m_state->channel_id.peer_type == tgl_peer_type::channel);
 
-    auto q = std::make_shared<query_channels_get_participants>(state, callback);
-    q->out_i32(CODE_channels_get_participants);
-    assert(state->channel_id.peer_type == tgl_peer_type::channel);
-    q->out_i32(CODE_input_channel);
-    q->out_i32(state->channel_id.peer_id);
-    q->out_i64(state->channel_id.access_hash);
+    out_i32(CODE_channels_get_participants);
+    out_i32(CODE_input_channel);
+    out_i32(m_state->channel_id.peer_id);
+    out_i64(m_state->channel_id.access_hash);
 
-    switch (state->type) {
+    switch (m_state->type) {
     case tgl_channel_participant_type::admins:
-        q->out_i32(CODE_channel_participants_admins);
+        out_i32(CODE_channel_participants_admins);
         break;
     case tgl_channel_participant_type::kicked:
-        q->out_i32(CODE_channel_participants_kicked);
+        out_i32(CODE_channel_participants_kicked);
         break;
     case tgl_channel_participant_type::recent:
-        q->out_i32(CODE_channel_participants_recent);
+        out_i32(CODE_channel_participants_recent);
         break;
     case tgl_channel_participant_type::bots:
-        q->out_i32(CODE_channel_participants_bots);
+        out_i32(CODE_channel_participants_bots);
         break;
     }
-    q->out_i32(state->offset);
-    q->out_i32(state->limit);
-    q->execute(ua->active_client());
+    out_i32(m_state->offset);
+    out_i32(m_state->limit);
+}
+
+void query_channels_get_participants::get_more()
+{
+    auto q = std::make_shared<query_channels_get_participants>(m_user_agent, m_state, m_callback);
+    q->execute(client());
 }
 
 }

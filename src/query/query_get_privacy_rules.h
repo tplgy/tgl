@@ -33,7 +33,8 @@ namespace impl {
 class query_get_privacy_rules : public query
 {
 public:
-    explicit query_get_privacy_rules(const std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)>& callback);
+    query_get_privacy_rules(user_agent& ua,
+            const std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 

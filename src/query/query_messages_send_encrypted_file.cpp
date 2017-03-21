@@ -63,20 +63,23 @@ struct query_messages_send_encrypted_file::decrypted_message_media {
     tl_ds_decrypted_message_media* media;
 };
 
-query_messages_send_encrypted_file::query_messages_send_encrypted_file(const std::shared_ptr<secret_chat>& sc,
+query_messages_send_encrypted_file::query_messages_send_encrypted_file(
+        user_agent& ua,
+        const std::shared_ptr<secret_chat>& sc,
         const std::shared_ptr<upload_task>& upload,
         const std::shared_ptr<message>& m,
         const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
-    : query_messages_send_encrypted_base("send encrypted file message", sc, m, callback, false)
+    : query_messages_send_encrypted_base(ua, "send encrypted file message", sc, m, callback, false)
     , m_upload(upload)
 {
 }
 
 query_messages_send_encrypted_file::query_messages_send_encrypted_file(
+        user_agent& ua,
         const std::shared_ptr<secret_chat>& sc,
         const std::shared_ptr<tgl_unconfirmed_secret_message>& unconfirmed_message,
         const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error)
-    : query_messages_send_encrypted_base("send encrypted file message (reassembled)", sc, nullptr, callback, true)
+    : query_messages_send_encrypted_base(ua, "send encrypted file message (reassembled)", sc, nullptr, callback, true)
 {
     const auto& blobs = unconfirmed_message->blobs();
     if (unconfirmed_message->constructor_code() != CODE_messages_send_encrypted_file

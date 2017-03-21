@@ -29,14 +29,16 @@
 namespace tgl {
 namespace impl {
 
-query_get_messages::query_get_messages(const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback)
-    : query("get messages (single)", TYPE_TO_PARAM(messages_messages))
+query_get_messages::query_get_messages(user_agent& ua,
+        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback)
+    : query(ua, "get messages (single)", TYPE_TO_PARAM(messages_messages))
     , m_single_callback(single_callback)
     , m_multi_callback(nullptr)
 { }
 
-query_get_messages::query_get_messages(const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& multi_callback)
-    : query("get messages (multi)", TYPE_TO_PARAM(messages_messages))
+query_get_messages::query_get_messages(user_agent& ua,
+        const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& multi_callback)
+    : query(ua, "get messages (multi)", TYPE_TO_PARAM(messages_messages))
     , m_single_callback(nullptr)
     , m_multi_callback(multi_callback)
 { }
@@ -45,38 +47,27 @@ void query_get_messages::on_answer(void* D)
 {
     std::vector<std::shared_ptr<tgl_message>> messages;
 
-    auto ua = get_user_agent();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        if (m_multi_callback) {
-            assert(!m_single_callback);
-            m_multi_callback(false, messages);
-        } else if (m_single_callback) {
-            m_single_callback(false, nullptr);
-        }
-    }
-
     tl_ds_messages_messages* DS_MM = static_cast<tl_ds_messages_messages*>(D);
     int32_t n = DS_LVAL(DS_MM->users->cnt);
     for (int32_t i = 0; i < n; ++i) {
         if (auto u = user::create(DS_MM->users->data[i])) {
-            ua->user_fetched(u);
+            m_user_agent.user_fetched(u);
         }
     }
     n = DS_LVAL(DS_MM->chats->cnt);
     for (int32_t i = 0; i < n; ++i) {
         if (auto c = chat::create(DS_MM->chats->data[i])) {
-            ua->chat_fetched(c);
+            m_user_agent.chat_fetched(c);
         }
     }
 
     n = DS_LVAL(DS_MM->messages->cnt);
     for (int32_t i = 0; i < n; ++i) {
-        if (auto m = message::create(ua->our_id(), DS_MM->messages->data[i])) {
+        if (auto m = message::create(m_user_agent.our_id(), DS_MM->messages->data[i])) {
             messages.push_back(m);
         }
     }
-    ua->callback()->new_messages(messages);
+    m_user_agent.callback()->new_messages(messages);
     if (m_multi_callback) {
         assert(!m_single_callback);
         m_multi_callback(true, messages);

@@ -30,9 +30,9 @@
 namespace tgl {
 namespace impl {
 
-query_get_channel_difference::query_get_channel_difference(const std::shared_ptr<channel>& c,
+query_get_channel_difference::query_get_channel_difference(user_agent& ua, const std::shared_ptr<channel>& c,
         const std::function<void(bool)>& callback)
-    : query("get channel difference", TYPE_TO_PARAM(updates_channel_difference))
+    : query(ua, "get channel difference", TYPE_TO_PARAM(updates_channel_difference))
     , m_channel(c)
     , m_callback(callback)
 { }
@@ -44,52 +44,43 @@ void query_get_channel_difference::on_answer(void* D)
     assert(m_channel->is_diff_locked());
     m_channel->set_diff_locked(false);
 
-    auto ua = get_user_agent();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        if (m_callback) {
-            m_callback(false);
-        }
-        return;
-    }
-
     if (DS_UD->magic == CODE_updates_channel_difference_empty) {
-        TGL_DEBUG("empty difference, seq = " << ua->seq());
+        TGL_DEBUG("empty difference, seq = " << m_user_agent.seq());
         if (m_callback) {
             m_callback(true);
         }
     } else {
         for (int32_t i = 0; i < DS_LVAL(DS_UD->users->cnt); i++) {
             if (auto u = user::create(DS_UD->users->data[i])) {
-                ua->user_fetched(u);
+                m_user_agent.user_fetched(u);
             }
         }
 
         for (int32_t i = 0; i < DS_LVAL(DS_UD->chats->cnt); i++) {
             if (auto c = chat::create(DS_UD->chats->data[i])) {
-                ua->chat_fetched(c);
+                m_user_agent.chat_fetched(c);
             }
         }
 
         for (int32_t i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
-            ua->updater().work_update(DS_UD->other_updates->data[i], nullptr, update_mode::dont_check_and_update_consistency);
+            m_user_agent.updater().work_update(DS_UD->other_updates->data[i], nullptr, update_mode::dont_check_and_update_consistency);
         }
 
         int message_count = DS_LVAL(DS_UD->new_messages->cnt);
         std::vector<std::shared_ptr<tgl_message>> messages;
         for (int32_t i = 0; i < message_count; i++) {
-            if (auto m = message::create(ua->our_id(), DS_UD->new_messages->data[i])) {
+            if (auto m = message::create(m_user_agent.our_id(), DS_UD->new_messages->data[i])) {
                 messages.push_back(m);
             }
         }
-        ua->callback()->new_messages(messages);
+        m_user_agent.callback()->new_messages(messages);
 
         if (DS_UD->magic != CODE_updates_channel_difference_too_long) {
             if (m_callback) {
                 m_callback(true);
             }
         } else {
-            ua->get_channel_difference(m_channel->id(), m_callback);
+            m_user_agent.get_channel_difference(m_channel->id(), m_callback);
         }
     }
 }

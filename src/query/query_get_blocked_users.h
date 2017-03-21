@@ -34,7 +34,7 @@ namespace impl {
 class query_get_blocked_users: public query
 {
 public:
-    explicit query_get_blocked_users(const std::function<void(std::vector<int32_t>)>& callback);
+    query_get_blocked_users(user_agent& ua, const std::function<void(std::vector<int32_t>)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 

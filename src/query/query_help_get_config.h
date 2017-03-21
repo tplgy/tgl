@@ -29,7 +29,7 @@ namespace impl {
 class query_help_get_config: public query
 {
 public:
-    explicit query_help_get_config(const std::function<void(bool)>& callback);
+    query_help_get_config(user_agent& ua, const std::function<void(bool)>& callback);
     virtual void on_answer(void* DS) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     virtual double timeout_interval() const override;

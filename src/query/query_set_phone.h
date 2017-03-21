@@ -34,19 +34,17 @@ namespace impl {
 class query_set_phone: public query
 {
 public:
-    explicit query_set_phone(const std::function<void(bool, const std::shared_ptr<tgl_user>&)>& callback)
-        : query("set phone", TYPE_TO_PARAM(user))
+    query_set_phone(user_agent& ua,
+            const std::function<void(bool, const std::shared_ptr<tgl_user>&)>& callback)
+        : query(ua, "set phone", TYPE_TO_PARAM(user))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
-        std::shared_ptr<user> u;
-        if (auto ua = get_user_agent()) {
-            u = user::create(static_cast<tl_ds_user*>(D));
-            if (u) {
-                ua->user_fetched(u);
-            }
+        std::shared_ptr<user> u = user::create(static_cast<tl_ds_user*>(D));
+        if (u) {
+            m_user_agent.user_fetched(u);
         }
         if (m_callback) {
             m_callback(!!u, u);

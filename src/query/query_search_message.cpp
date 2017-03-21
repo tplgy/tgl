@@ -29,45 +29,39 @@
 namespace tgl {
 namespace impl {
 
-query_search_message::query_search_message(const std::shared_ptr<msg_search_state>& state,
+query_search_message::query_search_message(user_agent& ua,
+        const std::shared_ptr<message_search_state>& state,
         const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback)
-    : query("messages search", TYPE_TO_PARAM(messages_messages))
+    : query(ua, "messages search", TYPE_TO_PARAM(messages_messages))
     , m_state(state)
     , m_callback(callback)
-{ }
+{
+    assemble();
+}
 
 void query_search_message::on_answer(void* D)
 {
-    auto ua = get_user_agent();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        if (m_callback) {
-            m_callback(0, std::vector<std::shared_ptr<tgl_message>>());
-        }
-        return;
-    }
-
-    tl_ds_messages_messages* DS_MM = static_cast<tl_ds_messages_messages*>(D);
+    const tl_ds_messages_messages* DS_MM = static_cast<const tl_ds_messages_messages*>(D);
     int32_t n = DS_LVAL(DS_MM->chats->cnt);
     for (int32_t i = 0; i < n; ++i) {
         if (auto c = chat::create(DS_MM->chats->data[i])) {
-            ua->chat_fetched(c);
+            m_user_agent.chat_fetched(c);
         }
     }
     n = DS_LVAL(DS_MM->users->cnt);
     for (int32_t i = 0; i < n; ++i) {
         if (auto u = user::create(DS_MM->users->data[i])) {
-            ua->user_fetched(u);
+            m_user_agent.user_fetched(u);
         }
     }
 
     n = DS_LVAL(DS_MM->messages->cnt);
     for (int32_t i = 0; i < n; ++i) {
-        if (auto m = message::create(ua->our_id(), DS_MM->messages->data[i])) {
+        if (auto m = message::create(m_user_agent.our_id(), DS_MM->messages->data[i])) {
             m_state->messages.push_back(m);
         }
     }
-    ua->callback()->new_messages(m_state->messages);
+    m_user_agent.callback()->new_messages(m_state->messages);
     m_state->offset += n;
     m_state->limit -= n;
     if (m_state->limit + m_state->offset >= DS_LVAL(DS_MM->count)) {
@@ -85,7 +79,7 @@ void query_search_message::on_answer(void* D)
     } else {
         m_state->max_id = m_state->messages[m_state->messages.size()-1]->id();
         m_state->offset = 0;
-        tgl_do_msg_search(m_state, m_callback);
+        search_more();
     }
 }
 
@@ -98,39 +92,33 @@ int query_search_message::on_error(int error_code, const std::string& error_stri
     return 0;
 }
 
-void tgl_do_msg_search(const std::shared_ptr<msg_search_state>& state,
-        const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback)
+void query_search_message::assemble()
 {
-    auto ua = state->weak_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        if (callback) {
-            callback(false, {});
-        }
-        return;
-    }
-
-    auto q = std::make_shared<query_search_message>(state, callback);
-    if (state->id.peer_type == tgl_peer_type::unknown) {
-        q->out_i32(CODE_messages_search_global);
-        q->out_std_string(state->query);
-        q->out_i32(0);
-        q->out_i32(CODE_input_peer_empty);
-        q->out_i32(state->offset);
-        q->out_i32(state->limit);
+    if (m_state->id.peer_type == tgl_peer_type::unknown) {
+        out_i32(CODE_messages_search_global);
+        out_std_string(m_state->query);
+        out_i32(0);
+        out_i32(CODE_input_peer_empty);
+        out_i32(m_state->offset);
+        out_i32(m_state->limit);
     } else {
-        q->out_i32(CODE_messages_search);
-        q->out_i32(0);
-        q->out_input_peer(ua.get(), state->id);
-        q->out_std_string(state->query);
-        q->out_i32(CODE_input_messages_filter_empty);
-        q->out_i32(state->from);
-        q->out_i32(state->to);
-        q->out_i32(state->offset); // offset
-        q->out_i32(state->max_id); // max_id
-        q->out_i32(state->limit);
+        out_i32(CODE_messages_search);
+        out_i32(0);
+        out_input_peer(m_state->id);
+        out_std_string(m_state->query);
+        out_i32(CODE_input_messages_filter_empty);
+        out_i32(m_state->from);
+        out_i32(m_state->to);
+        out_i32(m_state->offset); // offset
+        out_i32(m_state->max_id); // max_id
+        out_i32(m_state->limit);
     }
-    q->execute(ua->active_client());
+}
+
+void query_search_message::search_more()
+{
+    auto q = std::make_shared<query_search_message>(m_user_agent, m_state, m_callback);
+    q->execute(client());
 }
 
 }

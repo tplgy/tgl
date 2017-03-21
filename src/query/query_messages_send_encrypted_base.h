@@ -41,12 +41,13 @@ class message;
 
 class query_messages_send_encrypted_base: public query {
 public:
-    query_messages_send_encrypted_base(const std::string& name,
+    query_messages_send_encrypted_base(user_agent& ua,
+            const std::string& name,
             const std::shared_ptr<secret_chat>& sc,
             const std::shared_ptr<message>& m,
             const std::function<void(bool, const std::shared_ptr<message>&)>& callback,
             bool assembled)
-        : query(name, TYPE_TO_PARAM(messages_sent_encrypted_message))
+        : query(ua, name, TYPE_TO_PARAM(messages_sent_encrypted_message))
         , m_secret_chat(sc)
         , m_message(m)
         , m_callback(callback)

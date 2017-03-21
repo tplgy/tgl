@@ -34,11 +34,11 @@ class message;
 class query_mark_read_encr: public query
 {
 public:
-    query_mark_read_encr(
+    query_mark_read_encr(user_agent& ua,
             const std::shared_ptr<secret_chat>& sc,
             int32_t max_time,
             const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
-        : query("read encrypted", TYPE_TO_PARAM(bool))
+        : query(ua, "mark read encrypted", TYPE_TO_PARAM(bool))
         , m_secret_chat(sc)
         , m_max_time(max_time)
         , m_callback(callback)
@@ -46,14 +46,9 @@ public:
 
     virtual void on_answer(void*) override
     {
-        bool success = true;
-        if (auto ua = get_user_agent()) {
-            ua->callback()->mark_messages_read(false, tgl_peer_id_t::from_input_peer(m_secret_chat->id()), m_max_time);
-        } else {
-            success = false;
-        }
+        m_user_agent.callback()->mark_messages_read(false, tgl_peer_id_t::from_input_peer(m_secret_chat->id()), m_max_time);
         if (m_callback) {
-            m_callback(success, nullptr);
+            m_callback(true, nullptr);
         }
     }
 

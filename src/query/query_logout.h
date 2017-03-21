@@ -34,17 +34,15 @@ namespace impl {
 class query_logout: public query
 {
 public:
-    explicit query_logout(const std::function<void(bool)>& callback)
-        : query("logout", TYPE_TO_PARAM(bool))
+    query_logout(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "logout", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void*) override
     {
         TGL_DEBUG("logout successfully");
-        if (auto ua = get_user_agent()) {
-            ua->set_client_logged_out(client(), true);
-        }
+        m_user_agent.set_client_logged_out(client(), true);
         if (m_callback) {
             m_callback(true);
         }
@@ -53,9 +51,7 @@ public:
     virtual int on_error(int error_code, const std::string& error_string) override
     {
         TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-        if (auto ua = get_user_agent()) {
-            ua->set_client_logged_out(client(), false);
-        }
+        m_user_agent.set_client_logged_out(client(), false);
         if (m_callback) {
             m_callback(false);
         }
@@ -65,9 +61,7 @@ public:
     virtual void on_timeout() override
     {
         TGL_ERROR("timed out for query #" << msg_id() << " (" << name() << ")");
-        if (auto ua = get_user_agent()) {
-            ua->set_client_logged_out(client(), false);
-        }
+        m_user_agent.set_client_logged_out(client(), false);
         if (m_callback) {
             m_callback(false);
         }

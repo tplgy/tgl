@@ -31,7 +31,8 @@ class secret_chat;
 class query_messages_request_encryption: public query
 {
 public:
-    query_messages_request_encryption(const std::shared_ptr<secret_chat>& sc,
+    query_messages_request_encryption(user_agent& ua,
+            const std::shared_ptr<secret_chat>& sc,
             const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;

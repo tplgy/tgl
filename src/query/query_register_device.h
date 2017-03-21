@@ -33,8 +33,8 @@ namespace impl {
 class query_register_device: public query
 {
 public:
-    explicit query_register_device(const std::function<void(bool)>& callback)
-        : query("register device", TYPE_TO_PARAM(bool))
+    query_register_device(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "register device", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

@@ -32,8 +32,8 @@ namespace impl {
 class query_unregister_device: public query
 {
 public:
-    explicit query_unregister_device(const std::function<void(bool)>& callback)
-        : query("unregister device", TYPE_TO_PARAM(bool))
+    query_unregister_device(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "unregister device", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

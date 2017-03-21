@@ -54,7 +54,12 @@ class mtproto_client: public std::enable_shared_from_this<mtproto_client>
         , public tgl_mtproto_client
         , public tgl_dc {
 public:
-    explicit mtproto_client(const std::weak_ptr<user_agent>& ua, int32_t id);
+    mtproto_client(user_agent& ua, int32_t id);
+
+    mtproto_client(const mtproto_client&) = delete;
+    mtproto_client(mtproto_client&&) = delete;
+    mtproto_client& operator=(const mtproto_client&) = delete;
+    mtproto_client& operator=(mtproto_client&&) = delete;
 
     class connection_status_observer {
     public:
@@ -161,8 +166,6 @@ public:
 
     size_t max_connections() const;
 
-    const std::weak_ptr<user_agent>& weak_user_agent() const { return m_user_agent; }
-
 private:
     void connected(bool pfs_enabled, int32_t temp_key_expire_time);
     void configured(bool success);
@@ -218,13 +221,13 @@ private:
     int64_t send_message_impl(const int32_t* msg, size_t msg_ints,
             int64_t msg_id_override, bool force_send, bool useful, bool allow_secondary_connections, bool count_work_load);
 
-    std::shared_ptr<worker> select_best_worker(const user_agent* ua, bool allow_secondary_workers);
+    std::shared_ptr<worker> select_best_worker(bool allow_secondary_workers);
     void worker_job_done(int64_t id);
 
     void clear_bind_temp_auth_key_query();
 
 private:
-    std::weak_ptr<user_agent> m_user_agent;
+    user_agent& m_user_agent;
     int32_t m_id;
     state m_state;
     std::shared_ptr<struct session> m_session;

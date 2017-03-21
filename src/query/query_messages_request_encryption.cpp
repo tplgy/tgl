@@ -29,25 +29,17 @@ namespace tgl {
 namespace impl {
 
 query_messages_request_encryption::query_messages_request_encryption(
+        user_agent& ua,
         const std::shared_ptr<secret_chat>& sc,
         const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback)
-    : query("send encrypted (chat request)", TYPE_TO_PARAM(encrypted_chat))
+    : query(ua, "send encrypted (chat request)", TYPE_TO_PARAM(encrypted_chat))
     , m_secret_chat(sc)
     , m_callback(callback)
 { }
 
 void query_messages_request_encryption::on_answer(void* D)
 {
-    auto ua = get_user_agent();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        if (m_callback) {
-            m_callback(false, nullptr);
-        }
-        return;
-    }
-
-    std::shared_ptr<secret_chat> sc = ua->allocate_or_update_secret_chat(static_cast<tl_ds_encrypted_chat*>(D));
+    std::shared_ptr<secret_chat> sc = m_user_agent.allocate_or_update_secret_chat(static_cast<tl_ds_encrypted_chat*>(D));
 
     if (!sc) {
         if (m_callback) {
@@ -56,7 +48,7 @@ void query_messages_request_encryption::on_answer(void* D)
         return;
     }
 
-    ua->callback()->secret_chat_update(sc);
+    m_user_agent.callback()->secret_chat_update(sc);
 
     if (m_callback) {
         m_callback(sc->state() != tgl_secret_chat_state::deleted, sc);

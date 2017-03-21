@@ -989,9 +989,9 @@ void secret_chat::send_message(const std::shared_ptr<class message>& message,
                 }
                 return;
             }
-            q = std::make_shared<query_messages_send_encrypted_action>(shared_from_this(), message, callback);
+            q = std::make_shared<query_messages_send_encrypted_action>(*ua, shared_from_this(), message, callback);
         } else {
-            q = std::make_shared<query_messages_send_encrypted_message>(shared_from_this(), message, callback);
+            q = std::make_shared<query_messages_send_encrypted_message>(*ua, shared_from_this(), message, callback);
         }
     }
 
@@ -1086,7 +1086,7 @@ void secret_chat::mark_messages_read(int32_t max_time,
         return;
     }
 
-    auto q = std::make_shared<query_mark_read_encr>(shared_from_this(), max_time, callback);
+    auto q = std::make_shared<query_mark_read_encr>(*ua, shared_from_this(), max_time, callback);
     q->out_i32(CODE_messages_read_encrypted_history);
     q->out_i32(CODE_input_encrypted_chat);
     q->out_i32(id().peer_id);

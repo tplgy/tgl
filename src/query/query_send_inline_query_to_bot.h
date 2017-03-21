@@ -32,7 +32,8 @@ namespace impl {
 class query_send_inline_query_to_bot: public query
 {
 public:
-    explicit query_send_inline_query_to_bot(const std::function<void(bool, const std::string&)>& callback);
+    query_send_inline_query_to_bot(user_agent& ua,
+            const std::function<void(bool, const std::string&)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 

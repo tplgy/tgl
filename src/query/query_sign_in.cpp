@@ -27,8 +27,9 @@
 namespace tgl {
 namespace impl {
 
-query_sign_in::query_sign_in(const std::function<void(bool, const std::shared_ptr<user>&)>& callback)
-    : query("sign in", TYPE_TO_PARAM(auth_authorization))
+query_sign_in::query_sign_in(user_agent& ua,
+        const std::function<void(bool, const std::shared_ptr<user>&)>& callback)
+    : query(ua, "sign in", TYPE_TO_PARAM(auth_authorization))
     , m_callback(callback)
 { }
 
@@ -36,14 +37,11 @@ void query_sign_in::on_answer(void* D)
 {
     TGL_DEBUG("sign_in_on_answer");
     tl_ds_auth_authorization* DS_AA = static_cast<tl_ds_auth_authorization*>(D);
-    std::shared_ptr<user> u;
-    if (auto ua = get_user_agent()) {
-        u = user::create(DS_AA->user);
-        if (u) {
-            ua->user_fetched(u);
-        }
-        ua->set_dc_logged_in(ua->active_client()->id());
+    std::shared_ptr<user> u = user::create(DS_AA->user);
+    if (u) {
+        m_user_agent.user_fetched(u);
     }
+    m_user_agent.set_dc_logged_in(m_user_agent.active_client()->id());
     if (m_callback) {
         m_callback(!!u, u);
     }
@@ -85,38 +83,37 @@ bool query_sign_in::handle_session_password_needed(bool& should_retry)
 {
     should_retry = false;
 
-    auto ua = get_user_agent();
-    if (!ua) {
-        return false;
-    }
+    assert(!m_user_agent.active_client()->is_logged_in());
 
-    assert(!ua->active_client()->is_logged_in());
-
-    if (ua->is_password_locked()) {
+    if (m_user_agent.is_password_locked()) {
         return true;
     }
 
-    ua->set_password_locked(true);
+    m_user_agent.set_password_locked(true);
 
-    auto shared_this = shared_from_this();
-    std::weak_ptr<user_agent> weak_ua = ua;
-    ua->check_password([this, shared_this, weak_ua](bool success) {
-        auto ua = weak_ua.lock();
-        if (!ua || !success) {
-            if (m_callback) {
+    std::weak_ptr<query_sign_in> weak_this(shared_from_this());
+    m_user_agent.check_password([this, weak_this](bool success) {
+        auto shared_this = weak_this.lock();
+        if (!shared_this || !success) {
+            if (shared_this && m_callback) {
                 m_callback(false, nullptr);
             }
             return;
         }
-        ua->set_dc_logged_in(ua->active_client()->id());
-        auto q = std::make_shared<query_user_info>([this, shared_this](bool success, const std::shared_ptr<user>& u) {
+        m_user_agent.set_dc_logged_in(m_user_agent.active_client()->id());
+        auto q = std::make_shared<query_user_info>(m_user_agent, [this, weak_this](bool success, const std::shared_ptr<user>& u) {
+            auto shared_this = weak_this.lock();
+            if (!shared_this) {
+                return;
+            }
+
             if (m_callback) {
                 m_callback(success, u);
             }
         });
         q->out_i32(CODE_users_get_full_user);
         q->out_i32(CODE_input_user_self);
-        q->execute(ua->active_client());
+        q->execute(m_user_agent.active_client());
     });
     return true;
 }

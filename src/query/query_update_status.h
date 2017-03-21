@@ -33,8 +33,8 @@ namespace impl {
 class query_update_status: public query
 {
 public:
-    explicit query_update_status(const std::function<void(bool)>& callback)
-        : query("update status", TYPE_TO_PARAM(bool))
+    query_update_status(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "update status", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

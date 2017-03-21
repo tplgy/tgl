@@ -33,8 +33,8 @@ namespace impl {
 class query_send_typing: public query
 {
 public:
-    explicit query_send_typing(const std::function<void(bool)>& callback)
-        : query("send typing", TYPE_TO_PARAM(bool))
+    query_send_typing(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "send typing", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

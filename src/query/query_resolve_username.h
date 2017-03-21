@@ -35,26 +35,24 @@ namespace impl {
 class query_resolve_username: public query
 {
 public:
-    explicit query_resolve_username(const std::function<void(bool)>& callback)
-        : query("contact resolve username", TYPE_TO_PARAM(contacts_resolved_peer))
+    query_resolve_username(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "contact resolve username", TYPE_TO_PARAM(contacts_resolved_peer))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
-        tl_ds_contacts_resolved_peer* DS_CRU = static_cast<tl_ds_contacts_resolved_peer*>(D);
-        if (auto ua = get_user_agent()) {
-            int32_t n = DS_LVAL(DS_CRU->users->cnt);
-            for (int32_t i = 0; i < n; ++i) {
-                if (auto u = user::create(DS_CRU->users->data[i])) {
-                    ua->user_fetched(u);
-                }
+        const tl_ds_contacts_resolved_peer* DS_CRU = static_cast<const tl_ds_contacts_resolved_peer*>(D);
+        int32_t n = DS_LVAL(DS_CRU->users->cnt);
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto u = user::create(DS_CRU->users->data[i])) {
+                m_user_agent.user_fetched(u);
             }
-            n = DS_LVAL(DS_CRU->chats->cnt);
-            for (int32_t i = 0; i < n; ++i) {
-                if (auto c = chat::create(DS_CRU->chats->data[i])) {
-                    ua->chat_fetched(c);
-                }
+        }
+        n = DS_LVAL(DS_CRU->chats->cnt);
+        for (int32_t i = 0; i < n; ++i) {
+            if (auto c = chat::create(DS_CRU->chats->data[i])) {
+                m_user_agent.chat_fetched(c);
             }
         }
         if (m_callback) {

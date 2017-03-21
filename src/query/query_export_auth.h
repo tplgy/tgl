@@ -35,9 +35,9 @@ class mtproto_client;
 class query_export_auth: public query
 {
 public:
-    query_export_auth(const std::shared_ptr<mtproto_client>& client,
+    query_export_auth(user_agent& ua, const std::shared_ptr<mtproto_client>& client,
             const std::function<void(bool)>& callback)
-        : query("export authorization", TYPE_TO_PARAM(auth_exported_authorization))
+        : query(ua, "export authorization", TYPE_TO_PARAM(auth_exported_authorization))
         , m_client(client)
         , m_callback(callback)
     { }
@@ -45,22 +45,14 @@ public:
     virtual void on_answer(void* D) override
     {
         TGL_DEBUG("export_auth_on_answer " << m_client->id());
-        auto ua = get_user_agent();
-        if (!ua) {
-            TGL_ERROR("the user agent has gone");
-            if (m_callback) {
-                m_callback(false);
-            }
-            return;
-        }
 
         tl_ds_auth_exported_authorization* DS_EA = static_cast<tl_ds_auth_exported_authorization*>(D);
-        ua->set_our_id(DS_LVAL(DS_EA->id));
+        m_user_agent.set_our_id(DS_LVAL(DS_EA->id));
 
-        auto q = std::make_shared<query_import_auth>(m_client, m_callback);
-        q->out_header(ua.get());
+        auto q = std::make_shared<query_import_auth>(m_user_agent, m_client, m_callback);
+        q->out_header();
         q->out_i32(CODE_auth_import_authorization);
-        q->out_i32(ua->our_id().peer_id);
+        q->out_i32(m_user_agent.our_id().peer_id);
         q->out_string(DS_STR(DS_EA->bytes));
         q->execute(m_client, query::execution_option::LOGIN);
     }

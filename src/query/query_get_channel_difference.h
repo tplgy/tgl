@@ -34,7 +34,7 @@ namespace impl {
 class query_get_channel_difference: public query
 {
 public:
-    query_get_channel_difference(const std::shared_ptr<channel>& c,
+    query_get_channel_difference(user_agent& ua, const std::shared_ptr<channel>& c,
             const std::function<void(bool)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;

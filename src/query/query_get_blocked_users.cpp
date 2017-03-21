@@ -27,24 +27,22 @@
 namespace tgl {
 namespace impl {
 
-query_get_blocked_users::query_get_blocked_users(const std::function<void(std::vector<int32_t>)>& callback)
-    : query("get blocked users", TYPE_TO_PARAM(contacts_blocked))
+query_get_blocked_users::query_get_blocked_users(user_agent& ua, const std::function<void(std::vector<int32_t>)>& callback)
+    : query(ua, "get blocked users", TYPE_TO_PARAM(contacts_blocked))
     , m_callback(callback)
 { }
 
 void query_get_blocked_users::on_answer(void* D)
 {
     std::vector<int32_t> blocked_contacts;
-    if (auto ua = get_user_agent()) {
-        tl_ds_contacts_blocked* DS_T = static_cast<tl_ds_contacts_blocked*>(D);
-        if (DS_T->blocked && DS_T->users) {
-            int n = DS_LVAL(DS_T->blocked->cnt);
-            for (int i = 0; i < n; ++i) {
-                if (auto u = user::create(DS_T->users->data[i])) {
-                    u->set_blocked(true);
-                    blocked_contacts.push_back(u->id().peer_id);
-                    ua->user_fetched(u);
-                }
+    const tl_ds_contacts_blocked* DS_T = static_cast<const tl_ds_contacts_blocked*>(D);
+    if (DS_T->blocked && DS_T->users) {
+        int n = DS_LVAL(DS_T->blocked->cnt);
+        for (int i = 0; i < n; ++i) {
+            if (auto u = user::create(DS_T->users->data[i])) {
+                u->set_blocked(true);
+                blocked_contacts.push_back(u->id().peer_id);
+                m_user_agent.user_fetched(u);
             }
         }
     }

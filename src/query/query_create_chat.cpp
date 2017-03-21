@@ -26,8 +26,8 @@
 namespace tgl {
 namespace impl {
 
-query_create_chat::query_create_chat(const std::function<void(int32_t chat_id)>& callback, bool is_channel)
-    : query(is_channel ? "create channel" : "create chat", TYPE_TO_PARAM(updates))
+query_create_chat::query_create_chat(user_agent& ua, const std::function<void(int32_t chat_id)>& callback, bool is_channel)
+    : query(ua, is_channel ? "create channel" : "create chat", TYPE_TO_PARAM(updates))
     , m_callback(callback)
 {
 }
@@ -36,9 +36,7 @@ void query_create_chat::on_answer(void* D)
 {
     tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
 
-    if (auto ua = get_user_agent()) {
-        ua->updater().work_any_updates(DS_U, nullptr);
-    }
+    m_user_agent.updater().work_any_updates(DS_U, nullptr);
 
     int32_t chat_id = 0;
     if (DS_U->magic == CODE_updates && DS_U->chats && DS_U->chats->cnt && *DS_U->chats->cnt == 1) {

@@ -30,38 +30,31 @@
 namespace tgl {
 namespace impl {
 
-query_get_dialogs::query_get_dialogs(const std::shared_ptr<get_dialogs_state>& state,
+query_get_dialogs::query_get_dialogs(user_agent& ua, const std::shared_ptr<get_dialogs_state>& state,
         const std::function<void(bool, const std::vector<tgl_peer_id_t>&, const std::vector<int64_t>&, const std::vector<int>&)>& callback)
-    : query("get dialogs", TYPE_TO_PARAM(messages_dialogs))
+    : query(ua, "get dialogs", TYPE_TO_PARAM(messages_dialogs))
     , m_state(state)
     , m_callback(callback)
-{ }
+{
+    assemble();
+}
 
 void query_get_dialogs::on_answer(void* D)
 {
-    auto ua = m_state->weak_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        if (m_callback) {
-            m_callback(false, std::vector<tgl_peer_id_t>(), std::vector<int64_t>(), std::vector<int>());
-        }
-        return;
-    }
-
     tl_ds_messages_dialogs* DS_MD = static_cast<tl_ds_messages_dialogs*>(D);
     int32_t dl_size = DS_LVAL(DS_MD->dialogs->cnt);
 
     int32_t n = DS_LVAL(DS_MD->chats->cnt);
     for (int32_t i = 0; i < n; ++i) {
         if (auto c = chat::create(DS_MD->chats->data[i])) {
-            ua->chat_fetched(c);
+            m_user_agent.chat_fetched(c);
         }
     }
 
     n = DS_LVAL(DS_MD->users->cnt);
     for (int32_t i = 0; i < n; ++i) {
         if (auto u = user::create(DS_MD->users->data[i])) {
-            ua->user_fetched(u);
+            m_user_agent.user_fetched(u);
         }
     }
 
@@ -72,8 +65,8 @@ void query_get_dialogs::on_answer(void* D)
         m_state->last_message_ids.push_back(DS_LVAL(DS_D->top_message));
         m_state->unread_count.push_back(DS_LVAL(DS_D->unread_count));
         m_state->read_box_max_id.push_back(DS_LVAL(DS_D->read_inbox_max_id));
-        if (DS_D->notify_settings && ua) {
-            ua->callback()->update_notification_settings(peer_id.peer_id, peer_id.peer_type, DS_LVAL(DS_D->notify_settings->mute_until),
+        if (DS_D->notify_settings) {
+            m_user_agent.callback()->update_notification_settings(peer_id.peer_id, peer_id.peer_type, DS_LVAL(DS_D->notify_settings->mute_until),
                     DS_BOOL(DS_D->notify_settings->show_previews), DS_STDSTR(DS_D->notify_settings->sound), DS_LVAL(DS_D->notify_settings->events_mask));
         }
     }
@@ -81,11 +74,11 @@ void query_get_dialogs::on_answer(void* D)
     std::vector<std::shared_ptr<tgl_message>> new_messages;
     n = DS_LVAL(DS_MD->messages->cnt);
     for (int32_t i = 0; i < n; ++i) {
-        if (auto m = message::create(ua->our_id(), DS_MD->messages->data[i])) {
+        if (auto m = message::create(m_user_agent.our_id(), DS_MD->messages->data[i])) {
             new_messages.push_back(m);
         }
     }
-    ua->callback()->new_messages(new_messages);
+    m_user_agent.callback()->new_messages(new_messages);
 
     TGL_DEBUG("dl_size = " << dl_size << ", total = " << m_state->peers.size());
 
@@ -106,7 +99,7 @@ void query_get_dialogs::on_answer(void* D)
             }
 #endif
         }
-        tgl_do_get_dialog_list(m_state, m_callback);
+        get_more();
     } else {
         if (m_callback) {
             m_callback(true, m_state->peers, m_state->last_message_ids, m_state->unread_count);
@@ -123,36 +116,29 @@ int query_get_dialogs::on_error(int error_code, const std::string& error_string)
     return 0;
 }
 
-void tgl_do_get_dialog_list(const std::shared_ptr<get_dialogs_state>& state,
-        const std::function<void(bool, const std::vector<tgl_peer_id_t>&, const std::vector<int64_t>&, const std::vector<int>&)>& callback)
+void query_get_dialogs::assemble()
 {
-    auto ua = state->weak_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        if (callback) {
-            callback(false, std::vector<tgl_peer_id_t>(), std::vector<int64_t>(), std::vector<int>());
-        }
-        return;
-    }
-
-    auto q = std::make_shared<query_get_dialogs>(state, callback);
-    if (state->channels) {
-        q->out_i32(CODE_channels_get_dialogs);
-        q->out_i32(state->offset);
-        q->out_i32(state->limit - state->peers.size());
+    if (m_state->channels) {
+        out_i32(CODE_channels_get_dialogs);
+        out_i32(m_state->offset);
+        out_i32(m_state->limit - m_state->peers.size());
     } else {
-        q->out_i32(CODE_messages_get_dialogs);
-        q->out_i32(state->offset_date);
-        q->out_i32(state->offset);
-        //q->out_i32(0);
-        if (state->offset_peer.peer_type != tgl_peer_type::unknown) {
-            q->out_peer_id(ua.get(), state->offset_peer, 0); // FIXME: do we need an access_hash?
+        out_i32(CODE_messages_get_dialogs);
+        out_i32(m_state->offset_date);
+        out_i32(m_state->offset);
+        if (m_state->offset_peer.peer_type != tgl_peer_type::unknown) {
+            out_peer_id(m_state->offset_peer, 0); // FIXME: do we need an access_hash?
         } else {
-            q->out_i32(CODE_input_peer_empty);
+            out_i32(CODE_input_peer_empty);
         }
-        q->out_i32(state->limit - state->peers.size());
+        out_i32(m_state->limit - m_state->peers.size());
     }
-    q->execute(ua->active_client());
+}
+
+void query_get_dialogs::get_more()
+{
+    auto q = std::make_shared<query_get_dialogs>(m_user_agent, m_state, m_callback);
+    q->execute(client());
 }
 
 }

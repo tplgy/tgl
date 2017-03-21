@@ -28,13 +28,14 @@
 namespace tgl {
 namespace impl {
 
-query_messages_get_dh_config::query_messages_get_dh_config(const std::shared_ptr<secret_chat>& sc,
+query_messages_get_dh_config::query_messages_get_dh_config(user_agent& ua,
+        const std::shared_ptr<secret_chat>& sc,
         const std::function<void(const std::shared_ptr<secret_chat>&,
                 std::array<unsigned char, 256>& random,
                 const std::function<void(bool, const std::shared_ptr<secret_chat>&)>&)>& callback,
         const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& final_callback,
         double timeout)
-    : query("get dh config", TYPE_TO_PARAM(messages_dh_config))
+    : query(ua, "get dh config", TYPE_TO_PARAM(messages_dh_config))
     , m_secret_chat(sc)
     , m_callback(callback)
     , m_final_callback(final_callback)

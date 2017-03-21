@@ -33,8 +33,8 @@ namespace impl {
 class query_update_password_settings: public query
 {
 public:
-    explicit query_update_password_settings(const std::function<void(bool)>& callback)
-        : query("update password settings", TYPE_TO_PARAM(bool))
+    query_update_password_settings(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "update password settings", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

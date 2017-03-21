@@ -29,9 +29,10 @@
 namespace tgl {
 namespace impl {
 
-query_download_file_part::query_download_file_part(const std::shared_ptr<download_task>& download,
+query_download_file_part::query_download_file_part(user_agent& ua,
+        const std::shared_ptr<download_task>& download,
         const std::function<void(const tl_ds_upload_file*)>& callback)
-    : query("download", TYPE_TO_PARAM(upload_file))
+    : query(ua, "download", TYPE_TO_PARAM(upload_file))
     , m_download(download)
     , m_callback(callback)
 {

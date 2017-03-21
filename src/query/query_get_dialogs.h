@@ -35,7 +35,8 @@
 namespace tgl {
 namespace impl {
 
-struct get_dialogs_state {
+struct get_dialogs_state
+{
     std::vector<tgl_peer_id_t> peers;
     std::vector<int64_t> last_message_ids;
     std::vector<int> unread_count;
@@ -46,26 +47,25 @@ struct get_dialogs_state {
     int offset_date;
     int max_id = 0;
     int channels = 0;
-    std::weak_ptr<user_agent> weak_user_agent;
 };
 
 class query_get_dialogs: public query
 {
 public:
-    query_get_dialogs(const std::shared_ptr<get_dialogs_state>& state,
+    query_get_dialogs(user_agent& ua, const std::shared_ptr<get_dialogs_state>& state,
             const std::function<void(bool, const std::vector<tgl_peer_id_t>&, const std::vector<int64_t>&, const std::vector<int>&)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
+
+private:
+    void assemble();
+    void get_more();
 
 private:
     std::shared_ptr<get_dialogs_state> m_state;
     std::function<void(bool, const std::vector<tgl_peer_id_t>&,
             const std::vector<int64_t>&, const std::vector<int>&)> m_callback;
 };
-
-// FIXME: better organize this.
-void tgl_do_get_dialog_list(const std::shared_ptr<get_dialogs_state>& state,
-        const std::function<void(bool, const std::vector<tgl_peer_id_t>&, const std::vector<int64_t>&, const std::vector<int>&)>& callback);
 
 }
 }

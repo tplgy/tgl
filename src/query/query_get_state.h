@@ -33,28 +33,23 @@ namespace impl {
 class query_get_state: public query
 {
 public:
-    explicit query_get_state(const std::function<void(bool)>& callback)
-        : query("get state", TYPE_TO_PARAM(updates_state))
+    query_get_state(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "get state", TYPE_TO_PARAM(updates_state))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
-        bool success = true;
-        if (auto ua = get_user_agent()) {
-            assert(ua->is_diff_locked());
-            tl_ds_updates_state* DS_US = static_cast<tl_ds_updates_state*>(D);
-            ua->set_diff_locked(false);
-            ua->set_pts(DS_LVAL(DS_US->pts));
-            ua->set_qts(DS_LVAL(DS_US->qts));
-            ua->set_date(DS_LVAL(DS_US->date));
-            ua->set_seq(DS_LVAL(DS_US->seq));
-        } else {
-            success = false;
-        }
+        assert(m_user_agent.is_diff_locked());
+        tl_ds_updates_state* DS_US = static_cast<tl_ds_updates_state*>(D);
+        m_user_agent.set_diff_locked(false);
+        m_user_agent.set_pts(DS_LVAL(DS_US->pts));
+        m_user_agent.set_qts(DS_LVAL(DS_US->qts));
+        m_user_agent.set_date(DS_LVAL(DS_US->date));
+        m_user_agent.set_seq(DS_LVAL(DS_US->seq));
 
         if (m_callback) {
-            m_callback(success);
+            m_callback(true);
         }
     }
 

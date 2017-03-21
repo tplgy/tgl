@@ -33,8 +33,8 @@ namespace impl {
 class query_export_chat_link: public query
 {
 public:
-    explicit query_export_chat_link(const std::function<void(bool, const std::string&)>& callback)
-        : query("export chat link", TYPE_TO_PARAM(exported_chat_invite))
+    query_export_chat_link(user_agent& ua, const std::function<void(bool, const std::string&)>& callback)
+        : query(ua, "export chat link", TYPE_TO_PARAM(exported_chat_invite))
         , m_callback(callback)
     { }
 

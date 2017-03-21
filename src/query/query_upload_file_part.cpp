@@ -24,9 +24,10 @@
 namespace tgl {
 namespace impl {
 
-query_upload_file_part::query_upload_file_part(const std::shared_ptr<upload_task>& u,
+query_upload_file_part::query_upload_file_part(user_agent& ua,
+        const std::shared_ptr<upload_task>& u,
         const std::function<void(bool success)>& callback)
-    : query("upload part", TYPE_TO_PARAM(bool))
+    : query(ua, "upload part", TYPE_TO_PARAM(bool))
     , m_upload(u)
     , m_callback(callback)
 {

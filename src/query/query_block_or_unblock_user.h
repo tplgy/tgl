@@ -33,8 +33,8 @@ namespace impl {
 class query_block_or_unblock_user: public query
 {
 public:
-    explicit query_block_or_unblock_user(const std::function<void(bool)>& callback)
-        : query("block or unblock user", TYPE_TO_PARAM(bool))
+    explicit query_block_or_unblock_user(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "block or unblock user", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

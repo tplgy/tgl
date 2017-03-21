@@ -33,8 +33,8 @@ namespace impl {
 class query_update_notify_settings: public query
 {
 public:
-    explicit query_update_notify_settings(const std::function<void(bool)>& callback)
-        : query("update notify settings", TYPE_TO_PARAM(bool))
+    query_update_notify_settings(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "update notify settings", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 

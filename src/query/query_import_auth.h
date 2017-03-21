@@ -34,34 +34,28 @@ namespace impl {
 class query_import_auth: public query
 {
 public:
-    query_import_auth(const std::shared_ptr<mtproto_client>& client,
+    query_import_auth(user_agent& ua, const std::shared_ptr<mtproto_client>& client,
             const std::function<void(bool)>& callback)
-        : query("import authorization", TYPE_TO_PARAM(auth_authorization))
+        : query(ua, "import authorization", TYPE_TO_PARAM(auth_authorization))
         , m_client(client)
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
-        auto ua = get_user_agent();
+        const tl_ds_auth_authorization* DS_AA = static_cast<const tl_ds_auth_authorization*>(D);
 
-        tl_ds_auth_authorization* DS_AA = static_cast<tl_ds_auth_authorization*>(D);
-
-        if (ua) {
-            if (auto u = user::create(DS_AA->user)) {
-                ua->user_fetched(u);
-            }
+        if (auto u = user::create(DS_AA->user)) {
+            m_user_agent.user_fetched(u);
         }
 
         assert(m_client);
 
-        if (ua) {
-            TGL_DEBUG("auth imported from DC " << ua->active_client()->id() << " to DC " << m_client->id());
-            ua->set_dc_logged_in(m_client->id());
-        }
+        TGL_DEBUG("auth imported from DC " << m_user_agent.active_client()->id() << " to DC " << m_client->id());
+        m_user_agent.set_dc_logged_in(m_client->id());
 
         if (m_callback) {
-            m_callback(!!ua);
+            m_callback(true);
         }
     }
 

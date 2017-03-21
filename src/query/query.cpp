@@ -26,7 +26,6 @@
 #include "auto/auto_skip.h"
 #include "query_user_info.h"
 #include "tgl/tgl_timer.h"
-#include "user_agent.h"
 
 namespace tgl {
 namespace impl {
@@ -54,11 +53,6 @@ inline bool query::is_in_the_same_session() const
 
 bool query::send()
 {
-    auto ua = get_user_agent();
-    if (!ua) {
-        return false;
-    }
-
     m_ack_received = false;
 
     will_send();
@@ -74,7 +68,7 @@ bool query::send()
     if (is_logout()) {
         m_client->set_logout_query(shared_from_this());
     }
-    ua->add_query(shared_from_this());
+    m_user_agent.add_query(shared_from_this());
     m_session_id = m_client->session()->session_id;
     timeout_within(timeout_interval());
     sent();
@@ -91,13 +85,8 @@ void query::alarm()
     auto protect = shared_from_this();
     clear_timers();
 
-    auto ua = get_user_agent();
-    if (!ua) {
-        return;
-    }
-
     if (msg_id()) {
-        ua->remove_query(shared_from_this());
+        m_user_agent.remove_query(shared_from_this());
     }
 
     if (!check_logging_out()) {
@@ -146,9 +135,8 @@ void query::timeout_alarm()
     on_timeout();
 
     if (!should_retry_on_timeout()) {
-        auto ua = get_user_agent();
-        if (ua && msg_id()) {
-            ua->remove_query(shared_from_this());
+        if (msg_id()) {
+            m_user_agent.remove_query(shared_from_this());
         }
         m_client->remove_pending_query(shared_from_this());
     } else {
@@ -211,7 +199,7 @@ bool query::execute_after_pending()
     return true;
 }
 
-void query::out_peer_id(const user_agent* ua, const tgl_peer_id_t& id, int64_t access_hash)
+void query::out_peer_id(const tgl_peer_id_t& id, int64_t access_hash)
 {
     switch (id.peer_type) {
     case tgl_peer_type::chat:
@@ -219,7 +207,7 @@ void query::out_peer_id(const user_agent* ua, const tgl_peer_id_t& id, int64_t a
         m_serializer->out_i32(id.peer_id);
         break;
     case tgl_peer_type::user:
-        if (id.peer_id == ua->our_id().peer_id) {
+        if (id.peer_id == m_user_agent.our_id().peer_id) {
             m_serializer->out_i32(CODE_input_peer_self);
         } else {
             m_serializer->out_i32(CODE_input_peer_user);
@@ -237,9 +225,9 @@ void query::out_peer_id(const user_agent* ua, const tgl_peer_id_t& id, int64_t a
     }
 }
 
-void query::out_input_peer(const user_agent* ua, const tgl_input_peer_t& id)
+void query::out_input_peer(const tgl_input_peer_t& id)
 {
-    out_peer_id(ua, tgl_peer_id_t(id.peer_type, id.peer_id), id.access_hash);
+    out_peer_id(tgl_peer_id_t(id.peer_type, id.peer_id), id.access_hash);
 }
 
 void query::ack()
@@ -303,14 +291,8 @@ int query::handle_error(int error_code, const std::string& error_string)
     auto protect = shared_from_this();
     clear_timers();
 
-    auto ua = get_user_agent();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return -1;
-    }
-
     if (msg_id()) {
-        ua->remove_query(shared_from_this());
+        m_user_agent.remove_query(shared_from_this());
     }
 
     int retry_within_seconds = 0;
@@ -323,8 +305,8 @@ int query::handle_error(int error_code, const std::string& error_string)
             TGL_NOTICE("trying to handle migration error of " << error_string);
             int new_dc = get_dc_from_migration(error_string);
             if (new_dc > 0 && new_dc < TGL_MAX_DC_NUM) {
-                ua->set_active_dc(new_dc);
-                auto dc = ua->active_client();
+                m_user_agent.set_active_dc(new_dc);
+                auto dc = m_user_agent.active_client();
 
                 if (!dc->is_authorized()) {
                     dc->restart_authorization();
@@ -335,7 +317,7 @@ int query::handle_error(int error_code, const std::string& error_string)
                 if (m_client) {
                     m_client->remove_connection_status_observer(shared_from_this());
                 }
-                m_client = ua->active_client();
+                m_client = m_user_agent.active_client();
                 m_client->add_connection_status_observer(shared_from_this());
                 if (should_retry_after_recover_from_error() || is_login()) {
                     should_retry = true;
@@ -352,14 +334,14 @@ int query::handle_error(int error_code, const std::string& error_string)
             if (error_string == "SESSION_PASSWORD_NEEDED") {
                 error_handled = handle_session_password_needed(should_retry);
             } else if (error_string == "AUTH_KEY_UNREGISTERED" || error_string == "AUTH_KEY_INVALID") {
-                ua->set_client_logged_out(m_client, true);
-                ua->login();
+                m_user_agent.set_client_logged_out(m_client, true);
+                m_user_agent.login();
                 if (should_retry_after_recover_from_error()) {
                     should_retry = true;
                 }
                 error_handled = true;
             } else if (error_string == "AUTH_KEY_PERM_EMPTY") {
-                assert(ua->pfs_enabled());
+                assert(m_user_agent.pfs_enabled());
                 m_client->restart_temp_authorization();
                 if (should_retry_after_recover_from_error()) {
                     should_retry = true;
@@ -407,55 +389,40 @@ int query::handle_error(int error_code, const std::string& error_string)
 
 bool query::handle_session_password_needed(bool& should_retry)
 {
-    auto ua = get_user_agent();
-    if (!ua) {
-        return false;
-    }
-
-    ua->set_dc_logged_in(ua->active_client()->id(), false);
+    m_user_agent.set_dc_logged_in(m_user_agent.active_client()->id(), false);
     should_retry = true;
 
-    if (ua->is_password_locked()) {
+    if (m_user_agent.is_password_locked()) {
         return true;
     }
 
-    ua->set_password_locked(true);
+    m_user_agent.set_password_locked(true);
 
-    ua->check_password([=](bool success) {
+    m_user_agent.check_password([=](bool success) {
         if (!success) {
             return;
         }
-        ua->set_dc_logged_in(ua->active_client()->id());
-        auto q = std::make_shared<query_user_info>(nullptr);
+        m_user_agent.set_dc_logged_in(m_user_agent.active_client()->id());
+        auto q = std::make_shared<query_user_info>(m_user_agent, nullptr);
         q->out_i32(CODE_users_get_full_user);
         q->out_i32(CODE_input_user_self);
-        q->execute(ua->active_client());
+        q->execute(m_user_agent.active_client());
     });
     return true;
 }
 
 void query::retry_within(double seconds)
 {
-    auto ua = get_user_agent();
-    if (!ua) {
-        return;
-    }
-
     if (!m_retry_timer) {
-        m_retry_timer = ua->timer_factory()->create_timer(std::bind(&query::alarm, shared_from_this()));
+        m_retry_timer = m_user_agent.timer_factory()->create_timer(std::bind(&query::alarm, shared_from_this()));
     }
     m_retry_timer->start(seconds);
 }
 
 void query::timeout_within(double seconds)
 {
-    auto ua = get_user_agent();
-    if (!ua) {
-        return;
-    }
-
     if (!m_timer) {
-        m_timer = ua->timer_factory()->create_timer(std::bind(&query::timeout_alarm, shared_from_this()));
+        m_timer = m_user_agent.timer_factory()->create_timer(std::bind(&query::timeout_alarm, shared_from_this()));
     }
 
     m_timer->start(seconds);
@@ -493,8 +460,7 @@ bool query::check_pending(bool transfer_auth)
 
     if (!m_client->is_logged_in() && !is_login() && !is_force()) {
         pending = true;
-        auto ua = get_user_agent();
-        if (transfer_auth && ua && m_client != ua->active_client()) {
+        if (transfer_auth && m_client != m_user_agent.active_client()) {
             m_client->transfer_auth_to_me();
         }
     }
@@ -568,9 +534,7 @@ int query::handle_result(tgl_in_buffer* in)
     auto protect = shared_from_this();
     clear_timers();
 
-    if (auto ua = get_user_agent()) {
-        ua->remove_query(shared_from_this());
-    }
+    m_user_agent.remove_query(shared_from_this());
 
     if (save_in.ptr) {
         *in = save_in;
@@ -579,27 +543,18 @@ int query::handle_result(tgl_in_buffer* in)
     return 0;
 }
 
-void query::out_header(const user_agent* ua)
+void query::out_header()
 {
     m_serializer->out_i32(CODE_invoke_with_layer);
     m_serializer->out_i32(TGL_SCHEME_LAYER);
 
     // initConnection#69796de9 {X:Type} api_id:int device_model:string system_version:string app_version:string lang_code:string query:!X = X;
     m_serializer->out_i32(CODE_init_connection);
-    m_serializer->out_i32(ua->app_id());
-    m_serializer->out_std_string(ua->device_model());
-    m_serializer->out_std_string(ua->system_version());
-    m_serializer->out_std_string(ua->app_version());
-    m_serializer->out_std_string(ua->lang_code());
-}
-
-std::shared_ptr<user_agent> query::get_user_agent() const
-{
-    std::shared_ptr<user_agent> ua;
-    if (m_client) {
-        ua = m_client->weak_user_agent().lock();
-    }
-    return ua;
+    m_serializer->out_i32(m_user_agent.app_id());
+    m_serializer->out_std_string(m_user_agent.device_model());
+    m_serializer->out_std_string(m_user_agent.system_version());
+    m_serializer->out_std_string(m_user_agent.app_version());
+    m_serializer->out_std_string(m_user_agent.lang_code());
 }
 
 }

@@ -27,10 +27,24 @@
 namespace tgl {
 namespace impl {
 
-query_send_change_code::query_send_change_code(const std::function<void(bool, const std::string&)>& callback)
-    : query("send change phone code", TYPE_TO_PARAM(account_sent_change_phone_code))
+struct change_phone_state {
+    std::string phone;
+    std::string hash;
+    std::string first_name;
+    std::string last_name;
+};
+
+query_send_change_code::query_send_change_code(user_agent& ua, const std::string& phone_number,
+        const std::function<void(bool)>& callback)
+    : query(ua, "send change phone code", TYPE_TO_PARAM(account_sent_change_phone_code))
     , m_callback(callback)
-{ }
+    , m_state(std::make_shared<change_phone_state>())
+{
+    m_state->phone = phone_number;
+    out_header();
+    out_i32(CODE_account_send_change_phone_code);
+    out_std_string(phone_number);
+}
 
 void query_send_change_code::on_answer(void* D)
 {
@@ -39,75 +53,69 @@ void query_send_change_code::on_answer(void* D)
     if (DS_ASCPC->phone_code_hash && DS_ASCPC->phone_code_hash->data) {
         phone_code_hash = std::string(DS_ASCPC->phone_code_hash->data, DS_ASCPC->phone_code_hash->len);
     }
-    if (m_callback) {
-        m_callback(true, phone_code_hash);
-    }
+    set_phone_number_cb(true, phone_code_hash);
 }
 
 int query_send_change_code::on_error(int error_code, const std::string& error_string)
 {
     TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-    if (m_callback) {
-        m_callback(false, std::string());
-    }
+    set_phone_number_cb(false, std::string());
     return 0;
 }
 
-static void tgl_set_number_code(const std::shared_ptr<change_phone_state>& state, const std::string& code, tgl_login_action action);
-
-static void tgl_set_number_result(const std::shared_ptr<change_phone_state>& state, bool success, const std::shared_ptr<tgl_user>&)
+void query_send_change_code::set_number_result(bool success, const std::shared_ptr<tgl_user>&)
 {
     if (success) {
-        if (state->callback) {
-            state->callback(true);
+        if (m_callback) {
+            m_callback(true);
         }
     } else {
         TGL_ERROR("incorrect code");
-        auto ua = state->weak_user_agent.lock();
-        if (!ua) {
-            TGL_ERROR("the user agent has gone");
-            return;
-        }
-        ua->callback()->get_value(std::make_shared<tgl_value_login_code>(
-                std::bind(tgl_set_number_code, state, std::placeholders::_1, std::placeholders::_2)));
+        std::weak_ptr<query_send_change_code> weak_this(shared_from_this());
+        m_user_agent.callback()->get_value(std::make_shared<tgl_value_login_code>(
+                [weak_this](const std::string& code, tgl_login_action action) {
+                    if (auto shared_this = weak_this.lock()) {
+                        shared_this->set_number_code(code, action);
+                    }
+                }));
     }
 }
 
-static void tgl_set_number_code(const std::shared_ptr<change_phone_state>& state, const std::string& code, tgl_login_action action)
+void query_send_change_code::set_number_code(const std::string& code, tgl_login_action action)
 {
-    auto ua = state->weak_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return;
-    }
-
-    auto q = std::make_shared<query_set_phone>(std::bind(tgl_set_number_result, state, std::placeholders::_1, std::placeholders::_2));
+    std::weak_ptr<query_send_change_code> weak_this(shared_from_this());
+    auto q = std::make_shared<query_set_phone>(m_user_agent,
+            [weak_this](bool success, const std::shared_ptr<tgl_user>& user) {
+                if (auto shared_this = weak_this.lock()) {
+                    shared_this->set_number_result(success, user);
+                }
+            });
     q->out_i32(CODE_account_change_phone);
-    q->out_std_string(state->phone);
-    q->out_std_string(state->hash);
+    q->out_std_string(m_state->phone);
+    q->out_std_string(m_state->hash);
     q->out_std_string(code);
-    q->execute(ua->active_client());
+    q->execute(client());
 }
 
-void tgl_set_phone_number_cb(const std::shared_ptr<change_phone_state>& state, bool success, const std::string& hash)
+void query_send_change_code::set_phone_number_cb(bool success, const std::string& hash)
 {
     if (!success) {
         TGL_ERROR("incorrect phone number");
-        if (state->callback) {
-            state->callback(false);
+        if (m_callback) {
+            m_callback(false);
         }
         return;
     }
 
-    auto ua = state->weak_user_agent.lock();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        return;
-    }
+    m_state->hash = hash;
 
-    state->hash = hash;
-    ua->callback()->get_value(std::make_shared<tgl_value_login_code>(
-            std::bind(tgl_set_number_code, state, std::placeholders::_1, std::placeholders::_2)));
+    std::weak_ptr<query_send_change_code> weak_this(shared_from_this());
+    m_user_agent.callback()->get_value(std::make_shared<tgl_value_login_code>(
+            [weak_this](const std::string& code, tgl_login_action action) {
+                if (auto shared_this = weak_this.lock()) {
+                    shared_this->set_number_code(code, action);
+                }
+            }));
 }
 
 }

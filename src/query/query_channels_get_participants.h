@@ -36,25 +36,25 @@ struct channel_get_participants_state {
     tgl_channel_participant_type type = tgl_channel_participant_type::recent;
     int offset = 0;
     int limit = -1;
-    std::weak_ptr<user_agent> weak_user_agent;
 };
 
 class query_channels_get_participants: public query
 {
 public:
-    query_channels_get_participants(const std::shared_ptr<channel_get_participants_state>& state,
+    query_channels_get_participants(user_agent& ua,
+            const std::shared_ptr<channel_get_participants_state>& state,
             const std::function<void(bool)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 
 private:
+    void assemble();
+    void get_more();
+
+private:
     std::shared_ptr<channel_get_participants_state> m_state;
     std::function<void(bool)> m_callback;
 };
-
-//FIXME: better organize this.
-void tgl_do_get_channel_participants(const std::shared_ptr<struct channel_get_participants_state>& state,
-        const std::function<void(bool)>& callback);
 
 }
 }

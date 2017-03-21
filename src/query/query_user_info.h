@@ -30,27 +30,19 @@ namespace impl {
 class query_user_info: public query
 {
 public:
-    explicit query_user_info(const std::function<void(bool, const std::shared_ptr<user>&)>& callback)
-        : query("user info", TYPE_TO_PARAM(user_full))
+    query_user_info(user_agent& ua, const std::function<void(bool, const std::shared_ptr<user>&)>& callback)
+        : query(ua, "user info", TYPE_TO_PARAM(user_full))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
-        auto ua = get_user_agent();
-        if (!ua) {
-            if (m_callback) {
-                m_callback(false, nullptr);
-            }
-            return;
-        }
-
-        auto DS_UF = static_cast<tl_ds_user_full*>(D);
+        auto DS_UF = static_cast<const tl_ds_user_full*>(D);
         std::shared_ptr<user> u;
         if (DS_UF->user && DS_UF->user->magic != CODE_user_empty) {
             u = user::create(DS_UF);
             if (u) {
-                ua->user_fetched(u);
+                m_user_agent.user_fetched(u);
             }
         }
 

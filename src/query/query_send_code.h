@@ -33,8 +33,8 @@ namespace impl {
 class query_send_code: public query
 {
 public:
-    explicit query_send_code(const std::function<void(bool, bool, const std::string&)>& callback)
-        : query("send code", TYPE_TO_PARAM(auth_sent_code))
+    query_send_code(user_agent& ua, const std::function<void(bool, bool, const std::string&)>& callback)
+        : query(ua, "send code", TYPE_TO_PARAM(auth_sent_code))
         , m_callback(callback)
     { }
 

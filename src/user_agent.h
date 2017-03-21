@@ -62,6 +62,11 @@ class user_agent: public std::enable_shared_from_this<user_agent>, public tgl_us
 public:
     user_agent();
 
+    user_agent(const user_agent&) = delete;
+    user_agent(user_agent&&) = delete;
+    user_agent& operator=(const user_agent&) = delete;
+    user_agent& operator=(user_agent&&) = delete;
+
     // == tgl_user_agent ==
     virtual int32_t app_id() const override { return m_app_id; }
     virtual const std::string& app_version() const override { return m_app_version; };

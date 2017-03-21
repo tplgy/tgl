@@ -30,10 +30,10 @@ namespace impl {
 class query_messages_discard_encryption: public query
 {
 public:
-    query_messages_discard_encryption(
+    query_messages_discard_encryption(user_agent& ua,
             const std::shared_ptr<tgl_secret_chat>& secret_chat,
             const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
-        : query("send encrypted (chat discard)", TYPE_TO_PARAM(bool))
+        : query(ua, "send encrypted (chat discard)", TYPE_TO_PARAM(bool))
         , m_secret_chat(secret_chat)
         , m_callback(callback)
     { }

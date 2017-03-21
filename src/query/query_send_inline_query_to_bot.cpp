@@ -23,8 +23,9 @@
 namespace tgl {
 namespace impl {
 
-query_send_inline_query_to_bot::query_send_inline_query_to_bot(const std::function<void(bool, const std::string&)>& callback)
-    : query("send inline query to bot", TYPE_TO_PARAM(messages_bot_results))
+query_send_inline_query_to_bot::query_send_inline_query_to_bot(user_agent& ua,
+        const std::function<void(bool, const std::string&)>& callback)
+    : query(ua, "send inline query to bot", TYPE_TO_PARAM(messages_bot_results))
     , m_callback(callback)
 { }
 
@@ -32,7 +33,7 @@ void query_send_inline_query_to_bot::on_answer(void* D)
 {
     if (m_callback) {
         std::string response;
-        tl_ds_messages_bot_results* bot_results = static_cast<tl_ds_messages_bot_results*>(D);
+        const tl_ds_messages_bot_results* bot_results = static_cast<const tl_ds_messages_bot_results*>(D);
         if (bot_results->results && DS_LVAL(bot_results->results->cnt) == 1
                 && bot_results->results->data[0]->magic == CODE_bot_inline_result) {
             tl_ds_bot_inline_message* inline_message = bot_results->results->data[0]->send_message;

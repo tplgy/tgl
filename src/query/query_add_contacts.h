@@ -35,8 +35,8 @@ namespace impl {
 class query_add_contacts: public query
 {
 public:
-    explicit query_add_contacts(const std::function<void(bool, const std::vector<int32_t>&)>& callback)
-        : query("add contacts", TYPE_TO_PARAM(contacts_imported_contacts))
+    query_add_contacts(user_agent& ua, const std::function<void(bool, const std::vector<int32_t>&)>& callback)
+        : query(ua, "add contacts", TYPE_TO_PARAM(contacts_imported_contacts))
         , m_callback(callback)
     { }
 
@@ -45,20 +45,15 @@ public:
         tl_ds_contacts_imported_contacts* DS_CIC = static_cast<tl_ds_contacts_imported_contacts*>(D);
         TGL_DEBUG(DS_LVAL(DS_CIC->imported->cnt) << " contact(s) added");
         std::vector<int32_t> users;
-        bool success = true;
-        if (auto ua = get_user_agent()) {
-            int32_t n = DS_LVAL(DS_CIC->users->cnt);
-            for (int32_t i = 0; i < n; i++) {
-                if (auto u = user::create(DS_CIC->users->data[i])) {
-                    ua->user_fetched(u);
-                    users.push_back(u->id().peer_id);
-                }
+        int32_t n = DS_LVAL(DS_CIC->users->cnt);
+        for (int32_t i = 0; i < n; i++) {
+            if (auto u = user::create(DS_CIC->users->data[i])) {
+                m_user_agent.user_fetched(u);
+                users.push_back(u->id().peer_id);
             }
-        } else {
-            success = false;
         }
         if (m_callback) {
-            m_callback(success, users);
+            m_callback(true, users);
         }
     }
 

@@ -33,7 +33,7 @@ class secret_chat;
 class query_messages_get_dh_config: public query
 {
 public:
-    query_messages_get_dh_config(const std::shared_ptr<secret_chat>& sc,
+    query_messages_get_dh_config(user_agent& ua, const std::shared_ptr<secret_chat>& sc,
             const std::function<void(const std::shared_ptr<secret_chat>&,
                     std::array<unsigned char, 256>& random,
                     const std::function<void(bool, const std::shared_ptr<secret_chat>&)>&)>& callback,

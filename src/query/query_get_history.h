@@ -36,7 +36,7 @@ namespace impl {
 class query_get_history: public query
 {
 public:
-    query_get_history(const tgl_input_peer_t& id, int limit, int offset, int max_id,
+    query_get_history(user_agent& ua, const tgl_input_peer_t& id, int limit, int offset, int max_id,
             const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;

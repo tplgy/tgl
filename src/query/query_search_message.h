@@ -33,8 +33,9 @@
 namespace tgl {
 namespace impl {
 
-struct msg_search_state {
-    msg_search_state(const tgl_input_peer_t& id, int from, int to, int limit, int offset, const std::string &query) :
+struct message_search_state
+{
+    message_search_state(const tgl_input_peer_t& id, int from, int to, int limit, int offset, const std::string &query) :
         id(id), from(from), to(to), limit(limit), offset(offset), query(query) {}
     std::vector<std::shared_ptr<tgl_message>> messages;
     tgl_input_peer_t id;
@@ -44,25 +45,24 @@ struct msg_search_state {
     int offset;
     int max_id = 0;
     std::string query;
-    std::weak_ptr<user_agent> weak_user_agent;
 };
 
 class query_search_message: public query
 {
 public:
-    query_search_message(const std::shared_ptr<msg_search_state>& state,
+    query_search_message(user_agent& ua, const std::shared_ptr<message_search_state>& state,
             const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
 
 private:
-    std::shared_ptr<msg_search_state> m_state;
+    void assemble();
+    void search_more();
+
+private:
+    std::shared_ptr<message_search_state> m_state;
     std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)> m_callback;
 };
-
-//FIXME: better organize this.
-void tgl_do_msg_search(const std::shared_ptr<msg_search_state>& state,
-        const std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>&)>& callback);
 
 }
 }

@@ -35,8 +35,8 @@ namespace impl {
 class query_bind_temp_auth_key: public query
 {
 public:
-    query_bind_temp_auth_key(const std::shared_ptr<mtproto_client>& client, int64_t message_id)
-        : query("bind temp auth key", TYPE_TO_PARAM(bool), message_id)
+    query_bind_temp_auth_key(user_agent& ua, const std::shared_ptr<mtproto_client>& client, int64_t message_id)
+        : query(ua, "bind temp auth key", TYPE_TO_PARAM(bool), message_id)
         , m_client(client)
     { }
 

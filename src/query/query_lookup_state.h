@@ -33,29 +33,24 @@ namespace impl {
 class query_lookup_state: public query
 {
 public:
-    explicit query_lookup_state(const std::function<void(bool)>& callback)
-        : query("lookup state", TYPE_TO_PARAM(updates_state))
+    query_lookup_state(user_agent& ua, const std::function<void(bool)>& callback)
+        : query(ua, "lookup state", TYPE_TO_PARAM(updates_state))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override
     {
-        bool success = true;
-        if (auto ua = get_user_agent()) {
-            tl_ds_updates_state* DS_US = static_cast<tl_ds_updates_state*>(D);
-            int pts = DS_LVAL(DS_US->pts);
-            int qts = DS_LVAL(DS_US->qts);
-            int seq = DS_LVAL(DS_US->seq);
-            if (pts > ua->pts() || qts > ua->qts() || seq > ua->seq()) {
-                ua->get_difference(false, m_callback);
-                return;
-            }
-        } else {
-            success = false;
+        tl_ds_updates_state* DS_US = static_cast<tl_ds_updates_state*>(D);
+        int pts = DS_LVAL(DS_US->pts);
+        int qts = DS_LVAL(DS_US->qts);
+        int seq = DS_LVAL(DS_US->seq);
+        if (pts > m_user_agent.pts() || qts > m_user_agent.qts() || seq > m_user_agent.seq()) {
+            m_user_agent.get_difference(false, m_callback);
+            return;
         }
 
         if (m_callback) {
-            m_callback(success);
+            m_callback(true);
         }
     }
 

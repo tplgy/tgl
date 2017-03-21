@@ -34,11 +34,9 @@ struct change_password_state {
     std::string current_salt;
     std::string new_salt;
     std::string hint;
-    std::function<void(bool)> callback;
-    std::weak_ptr<user_agent> weak_user_agent;
 };
 
-static void tgl_do_act_set_password(const std::shared_ptr<user_agent>& ua,
+static void set_password(user_agent& ua,
         const std::string& current_password,
         const std::string& new_password,
         const std::string& current_salt,
@@ -58,7 +56,7 @@ static void tgl_do_act_set_password(const std::shared_ptr<user_agent>& ua,
         return;
     }
 
-    std::shared_ptr<query> q = std::make_shared<query_update_password_settings>(callback);
+    std::shared_ptr<query> q = std::make_shared<query_update_password_settings>(ua, callback);
     q->out_i32(CODE_account_update_password_settings);
 
     if (current_password.size() && current_salt.size()) {
@@ -100,56 +98,44 @@ static void tgl_do_act_set_password(const std::shared_ptr<user_agent>& ua,
         q->out_string("");
     }
 
-    q->execute(ua->active_client());
+    q->execute(ua.active_client());
 }
 
-static void tgl_on_new_pwd(const std::shared_ptr<change_password_state>& state,
+void query_get_and_set_password::on_new_password(const std::shared_ptr<change_password_state>& state,
         const std::string& new_password, const std::string& confirm_password, const std::string& new_hint)
 {
-    auto ua = state->weak_user_agent.lock();
-    if (!ua) {
-        if (state->callback) {
-            state->callback(false);
-        }
-        return;
-    }
-
     state->new_password = new_password;
     state->hint = new_hint;
 
     if (state->new_password != confirm_password) {
         TGL_ERROR("passwords do not match");
-        ua->callback()->get_value(std::make_shared<tgl_value_new_password>(
-                std::bind(tgl_on_new_pwd, state, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
+        std::weak_ptr<query_get_and_set_password> weak_this(shared_from_this());
+        m_user_agent.callback()->get_value(std::make_shared<tgl_value_new_password>(
+                [weak_this, state](const std::string& new_password, const std::string& confirm_password, const std::string& new_hint) {
+                    if (auto shared_this = weak_this.lock()) {
+                        shared_this->on_new_password(state, new_password, confirm_password, new_hint);
+                    }
+                }));
         return;
     }
 
-    tgl_do_act_set_password(ua,
+    set_password(m_user_agent,
             state->current_password,
             state->new_password,
             state->current_salt,
             state->new_salt,
             state->hint,
-            state->callback);
+            m_callback);
 }
 
-query_get_and_set_password::query_get_and_set_password(
+query_get_and_set_password::query_get_and_set_password(user_agent& ua,
         const std::function<void(bool)>& callback)
-    : query("get and set password", TYPE_TO_PARAM(account_password))
+    : query(ua, "get and set password", TYPE_TO_PARAM(account_password))
     , m_callback(callback)
 { }
 
 void query_get_and_set_password::on_answer(void* D)
 {
-    auto ua = get_user_agent();
-    if (!ua) {
-        TGL_ERROR("the user agent has gone");
-        if (m_callback) {
-            m_callback(false);
-        }
-        return;
-    }
-
     tl_ds_account_password* DS_AP = static_cast<tl_ds_account_password*>(D);
     std::shared_ptr<change_password_state> state = std::make_shared<change_password_state>();
 
@@ -157,20 +143,25 @@ void query_get_and_set_password::on_answer(void* D)
     state->new_salt = DS_STDSTR(DS_AP->new_salt);
     state->hint = DS_STDSTR(DS_AP->hint);
 
-    state->callback = m_callback;
-    state->weak_user_agent = ua;
+    std::weak_ptr<query_get_and_set_password> weak_this(shared_from_this());
 
     if (DS_AP->magic == CODE_account_no_password) {
-        ua->callback()->get_value(std::make_shared<tgl_value_new_password>(
-                std::bind(tgl_on_new_pwd, state, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
+        m_user_agent.callback()->get_value(std::make_shared<tgl_value_new_password>(
+                [weak_this, state](const std::string& new_password, const std::string& confirm_password, const std::string& new_hint) {
+                    if (auto shared_this = weak_this.lock()) {
+                        shared_this->on_new_password(state, new_password, confirm_password, new_hint);
+                    }
+                }));
     } else {
-        ua->callback()->get_value(std::make_shared<tgl_value_current_and_new_password>(
-            [=](const std::string& current_password,
+        m_user_agent.callback()->get_value(std::make_shared<tgl_value_current_and_new_password>(
+            [weak_this, state](const std::string& current_password,
                     const std::string& new_password,
                     const std::string& confirm_password,
                     const std::string& new_hint) {
-                state->current_password = current_password;
-                tgl_on_new_pwd(state, new_password, confirm_password, new_hint);
+                if (auto shared_this = weak_this.lock()) {
+                    state->current_password = current_password;
+                    shared_this->on_new_password(state, new_password, confirm_password, new_hint);
+                }
             }, state->hint));
     }
 }

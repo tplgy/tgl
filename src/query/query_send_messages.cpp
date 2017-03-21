@@ -26,9 +26,10 @@
 namespace tgl {
 namespace impl {
 
-query_send_messages::query_send_messages(const std::shared_ptr<messages_send_extra>& extra,
+query_send_messages::query_send_messages(user_agent& ua,
+        const std::shared_ptr<messages_send_extra>& extra,
         const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback)
-    : query("send messages (single)", TYPE_TO_PARAM(updates))
+    : query(ua, "send messages (single)", TYPE_TO_PARAM(updates))
     , m_extra(extra)
     , m_single_callback(single_callback)
     , m_multi_callback(nullptr)
@@ -39,9 +40,10 @@ query_send_messages::query_send_messages(const std::shared_ptr<messages_send_ext
     assert(!m_extra->multi);
 }
 
-query_send_messages::query_send_messages(const std::shared_ptr<messages_send_extra>& extra,
+query_send_messages::query_send_messages(user_agent& ua,
+        const std::shared_ptr<messages_send_extra>& extra,
         const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& multi_callback)
-    : query("send messages (multi)", TYPE_TO_PARAM(updates))
+    : query(ua, "send messages (multi)", TYPE_TO_PARAM(updates))
     , m_extra(extra)
     , m_single_callback(nullptr)
     , m_multi_callback(multi_callback)
@@ -52,8 +54,9 @@ query_send_messages::query_send_messages(const std::shared_ptr<messages_send_ext
     assert(m_extra->multi);
 }
 
-query_send_messages::query_send_messages(const std::function<void(bool)>& bool_callback)
-    : query("send messages (bool callback)", TYPE_TO_PARAM(updates))
+query_send_messages::query_send_messages(user_agent& ua,
+        const std::function<void(bool)>& bool_callback)
+    : query(ua, "send messages (bool callback)", TYPE_TO_PARAM(updates))
     , m_extra(nullptr)
     , m_single_callback(nullptr)
     , m_multi_callback(nullptr)
@@ -63,11 +66,9 @@ query_send_messages::query_send_messages(const std::function<void(bool)>& bool_c
 
 void query_send_messages::on_answer(void* D)
 {
-    tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
+    const tl_ds_updates* DS_U = static_cast<const tl_ds_updates*>(D);
 
-    if (auto ua = get_user_agent()) {
-        ua->updater().work_any_updates(DS_U, m_message);
-    }
+    m_user_agent.updater().work_any_updates(DS_U, m_message);
 
     if (!m_extra) {
         if (m_bool_callback) {

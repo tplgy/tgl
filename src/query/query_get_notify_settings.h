@@ -33,9 +33,9 @@ namespace impl {
 class query_get_notify_settings: public query
 {
 public:
-    explicit query_get_notify_settings(
+    query_get_notify_settings(user_agent& ua,
             const std::function<void(bool, int32_t)>& callback)
-        : query("get notify settings", TYPE_TO_PARAM(peer_notify_settings))
+        : query(ua, "get notify settings", TYPE_TO_PARAM(peer_notify_settings))
         , m_callback(callback)
     { }
 
