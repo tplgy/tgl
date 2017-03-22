@@ -201,6 +201,7 @@ void user_agent::shut_down()
     m_online_status_observers.clear();
     m_clients.clear();
     m_active_queries.clear();
+    m_retry_queries.clear();
     m_secret_chats.clear();
 }
 
@@ -246,10 +247,6 @@ void user_agent::set_dc_option(bool is_v6, int id, const std::string& ip, int po
 
     if (!m_clients[id]) {
         m_clients[id] = allocate_client(id);
-        if (pfs_enabled()) {
-          //dc->ev = user_agent::instance()->timer_factory()->create_timer(std::bind(&regen_temp_key_gw, DC));
-          //dc->ev->start(0);
-        }
     }
     if (is_v6) {
         m_clients[id]->add_ipv6_option(ip, port);
@@ -439,7 +436,7 @@ std::shared_ptr<secret_chat> user_agent::secret_chat_for_id(int chat_id) const
     return secret_chat_it->second;
 }
 
-void user_agent::add_query(const std::shared_ptr<query>& q)
+void user_agent::add_active_query(const std::shared_ptr<query>& q)
 {
     auto id = q->msg_id();
     assert(id);
@@ -451,7 +448,7 @@ void user_agent::add_query(const std::shared_ptr<query>& q)
     }
 }
 
-std::shared_ptr<query> user_agent::get_query(int64_t id) const
+std::shared_ptr<query> user_agent::get_active_query(int64_t id) const
 {
     assert(id);
     auto it = m_active_queries.find(id);
@@ -461,7 +458,7 @@ std::shared_ptr<query> user_agent::get_query(int64_t id) const
     return it->second;
 }
 
-void user_agent::remove_query(const std::shared_ptr<query>& q)
+void user_agent::remove_active_query(const std::shared_ptr<query>& q)
 {
     auto id = q->msg_id();
     assert(id);
@@ -472,9 +469,14 @@ void user_agent::remove_query(const std::shared_ptr<query>& q)
     }
 }
 
-void user_agent::remove_all_queries()
+void user_agent::add_retry_query(const std::shared_ptr<query>& q)
 {
-    m_active_queries.clear();
+    m_retry_queries.insert(q);
+}
+
+void user_agent::remove_retry_query(const std::shared_ptr<query>& q)
+{
+    m_retry_queries.erase(q);
 }
 
 std::shared_ptr<mtproto_client> user_agent::client_at(int id) const
@@ -2129,7 +2131,7 @@ void user_agent::set_client_logged_out(const std::shared_ptr<mtproto_client>& fr
         auto q = from_client->logout_query();
         q->clear_timers();
         if (q->msg_id()) {
-            remove_query(q);
+            remove_active_query(q);
         }
         from_client->set_logout_query(nullptr);
     }
@@ -2149,7 +2151,7 @@ void user_agent::set_client_logged_out(const std::shared_ptr<mtproto_client>& fr
             auto q = from_client->logout_query();
             q->clear_timers();
             if (q->msg_id()) {
-                remove_query(q);
+                remove_active_query(q);
             }
             from_client->set_logout_query(nullptr);
         }

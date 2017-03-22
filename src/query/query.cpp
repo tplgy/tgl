@@ -68,7 +68,7 @@ bool query::send()
     if (is_logout()) {
         m_client->set_logout_query(shared_from_this());
     }
-    m_user_agent.add_query(shared_from_this());
+    m_user_agent.add_active_query(shared_from_this());
     m_session_id = m_client->session()->session_id;
     timeout_within(timeout_interval());
     sent();
@@ -80,13 +80,10 @@ void query::alarm()
 {
     TGL_DEBUG("alarm query #" << msg_id() << " (type '" << m_name << "') to DC " << m_client->id());
 
-    // The query could be referred by the timer only. In this case clear_timers
-    // will led to the destruction of the query. So we need to prevent this.
-    auto protect = shared_from_this();
     clear_timers();
 
     if (msg_id()) {
-        m_user_agent.remove_query(shared_from_this());
+        m_user_agent.remove_active_query(shared_from_this());
     }
 
     if (!check_logging_out()) {
@@ -130,13 +127,12 @@ void query::regen()
 
 void query::timeout_alarm()
 {
-    auto protect = shared_from_this();
     clear_timers();
     on_timeout();
 
     if (!should_retry_on_timeout()) {
         if (msg_id()) {
-            m_user_agent.remove_query(shared_from_this());
+            m_user_agent.remove_active_query(shared_from_this());
         }
         m_client->remove_pending_query(shared_from_this());
     } else {
@@ -288,11 +284,10 @@ static int get_dc_from_migration(const std::string& migration_error_string)
 
 int query::handle_error(int error_code, const std::string& error_string)
 {
-    auto protect = shared_from_this();
     clear_timers();
 
     if (msg_id()) {
-        m_user_agent.remove_query(shared_from_this());
+        m_user_agent.remove_active_query(shared_from_this());
     }
 
     int retry_within_seconds = 0;
@@ -413,8 +408,16 @@ bool query::handle_session_password_needed(bool& should_retry)
 
 void query::retry_within(double seconds)
 {
+    m_user_agent.add_retry_query(shared_from_this());
+
     if (!m_retry_timer) {
-        m_retry_timer = m_user_agent.timer_factory()->create_timer(std::bind(&query::alarm, shared_from_this()));
+        std::weak_ptr<query> weak_this(shared_from_this());
+        m_retry_timer = m_user_agent.timer_factory()->create_timer([weak_this] {
+            if (auto shared_this = weak_this.lock()) {
+                shared_this->m_user_agent.remove_retry_query(shared_this);
+                shared_this->alarm();
+            }
+        });
     }
     m_retry_timer->start(seconds);
 }
@@ -422,7 +425,12 @@ void query::retry_within(double seconds)
 void query::timeout_within(double seconds)
 {
     if (!m_timer) {
-        m_timer = m_user_agent.timer_factory()->create_timer(std::bind(&query::timeout_alarm, shared_from_this()));
+        std::weak_ptr<query> weak_this(shared_from_this());
+        m_timer = m_user_agent.timer_factory()->create_timer([weak_this] {
+            if (auto shared_this = weak_this.lock()) {
+                shared_this->timeout_alarm();
+            }
+        });
     }
 
     m_timer->start(seconds);
@@ -531,10 +539,9 @@ int query::handle_result(tgl_in_buffer* in)
 
     assert(in->ptr == in->end);
 
-    auto protect = shared_from_this();
     clear_timers();
 
-    m_user_agent.remove_query(shared_from_this());
+    m_user_agent.remove_active_query(shared_from_this());
 
     if (save_in.ptr) {
         *in = save_in;

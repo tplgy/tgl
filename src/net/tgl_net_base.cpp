@@ -102,7 +102,12 @@ void tgl_connection_base::start_ping_timer()
 {
     stop_ping_timer();
     if (!m_ping_timer && m_timer_factory) {
-        m_ping_timer = m_timer_factory->create_timer(std::bind(&tgl_connection_base::ping, shared_from_this()));
+        std::weak_ptr<tgl_connection_base> weak_this(shared_from_this());
+        m_ping_timer = m_timer_factory->create_timer([weak_this] {
+            if (auto shared_this = weak_this.lock()) {
+                shared_this->ping();
+            }
+        });
     }
 
     if (m_ping_timer) {
@@ -238,7 +243,12 @@ void tgl_connection_base::schedule_restart()
     }
 
     if (m_timer_factory) {
-        m_restart_timer = m_timer_factory->create_timer(std::bind(&tgl_connection_base::restart, shared_from_this()));
+        std::weak_ptr<tgl_connection_base> weak_this(shared_from_this());
+        m_restart_timer = m_timer_factory->create_timer([weak_this] {
+            if (auto shared_this = weak_this.lock()) {
+                shared_this->restart();
+            }
+        });
         m_restart_timer->start(timeout.count() / 1000.0);
     }
 }

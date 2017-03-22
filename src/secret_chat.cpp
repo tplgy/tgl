@@ -471,7 +471,7 @@ void secret_chat::queue_unconfirmed_incoming_message(const secret_message& m,
 
     if (!m_skip_hole_timer) {
         std::weak_ptr<secret_chat> weak_secret_chat(shared_from_this());
-        m_skip_hole_timer = ua->timer_factory()->create_timer([=] {
+        m_skip_hole_timer = ua->timer_factory()->create_timer([weak_secret_chat] {
             auto sc = weak_secret_chat.lock();
             if (!sc) {
                 return;
@@ -495,7 +495,7 @@ void secret_chat::queue_unconfirmed_incoming_message(const secret_message& m,
 
     if (!m_fill_hole_timer) {
         std::weak_ptr<secret_chat> weak_secret_chat(shared_from_this());
-        m_fill_hole_timer = ua->timer_factory()->create_timer([=] {
+        m_fill_hole_timer = ua->timer_factory()->create_timer([weak_secret_chat] {
             auto sc = weak_secret_chat.lock();
             if (!sc) {
                 return;
@@ -505,8 +505,8 @@ void secret_chat::queue_unconfirmed_incoming_message(const secret_message& m,
             int32_t hole_end = hole.second;
             if (hole_start >= 0 && hole_end >= 0) {
                 assert(hole_end >= hole_start);
-                assert(hole_start == in_seq_no());
-                request_resend_messages(hole_start, hole_end);
+                assert(hole_start == sc->in_seq_no());
+                sc->request_resend_messages(hole_start, hole_end);
                 if (sc->m_qos == secret_chat::qos::real_time) {
                     sc->m_skip_hole_timer->start(HOLE_TTL);
                 }

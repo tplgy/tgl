@@ -296,10 +296,12 @@ public:
     std::shared_ptr<secret_chat> secret_chat_for_id(const tgl_input_peer_t& id) const { return secret_chat_for_id(id.peer_id); }
     const std::map<int32_t, std::shared_ptr<secret_chat>>& secret_chats() const { return m_secret_chats; }
 
-    void add_query(const std::shared_ptr<query>& q);
-    std::shared_ptr<query> get_query(int64_t id) const;
-    void remove_query(const std::shared_ptr<query>& q);
-    void remove_all_queries();
+    void add_active_query(const std::shared_ptr<query>& q);
+    std::shared_ptr<query> get_active_query(int64_t id) const;
+    void remove_active_query(const std::shared_ptr<query>& q);
+
+    void add_retry_query(const std::shared_ptr<query>& q);
+    void remove_retry_query(const std::shared_ptr<query>& q);
 
     bool is_diff_locked() const { return m_diff_locked; }
     bool is_password_locked() const { return m_password_locked; }
@@ -405,6 +407,7 @@ private:
     std::vector<std::shared_ptr<rsa_public_key>> m_rsa_keys;
     std::map<int32_t/*peer id*/, std::shared_ptr<secret_chat>> m_secret_chats;
     std::map<int64_t/*msg_id*/, std::shared_ptr<query>> m_active_queries;
+    std::set<std::shared_ptr<query>> m_retry_queries;
     std::set<std::weak_ptr<tgl_online_status_observer>, std::owner_less<std::weak_ptr<tgl_online_status_observer>>> m_online_status_observers;
 };
 

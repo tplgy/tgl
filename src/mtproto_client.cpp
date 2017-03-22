@@ -724,7 +724,7 @@ void mtproto_client::clear_bind_temp_auth_key_query()
 
     m_bind_temp_auth_key_query->clear_timers();
     if (m_bind_temp_auth_key_query->msg_id()) {
-        m_user_agent.remove_query(m_bind_temp_auth_key_query);
+        m_user_agent.remove_active_query(m_bind_temp_auth_key_query);
     }
     m_bind_temp_auth_key_query = nullptr;
 }
@@ -931,7 +931,7 @@ std::shared_ptr<worker> mtproto_client::select_best_worker(bool allow_secondary_
                 m_ipv4_options, m_ipv6_options, weak_this);
         connection->open();
         best_worker = std::make_shared<worker>(connection);
-        best_worker->live_timer = m_user_agent.timer_factory()->create_timer([=] {
+        best_worker->live_timer = m_user_agent.timer_factory()->create_timer([best_worker, weak_this]{
             if (best_worker->work_load.size()) {
                 TGL_DEBUG("a worker idle timer fired but it still has " << best_worker->work_load.size() << " jobs to do, refreshing the timer");
                 best_worker->live_timer->start(MAX_SECONDARY_WORKER_IDLE_TIME);
@@ -1036,7 +1036,7 @@ int mtproto_client::work_new_session_created(tgl_in_buffer* in, int64_t msg_id)
 
 void mtproto_client::ack_query(int64_t msg_id)
 {
-    std::shared_ptr<query> q = m_user_agent.get_query(msg_id);
+    std::shared_ptr<query> q = m_user_agent.get_active_query(msg_id);
     if (q) {
         q->ack();
     }
@@ -1094,7 +1094,7 @@ int mtproto_client::query_error(tgl_in_buffer* in, int64_t id)
     int error_len = prefetch_strlen(in);
     std::string error_string = std::string(fetch_str(in, error_len), error_len);
 
-    std::shared_ptr<query> q = m_user_agent.get_query(id);
+    std::shared_ptr<query> q = m_user_agent.get_active_query(id);
     if (!q) {
         TGL_WARNING("error for unknown query #" << id << " #" << error_code << ": " << error_string);
     } else {
@@ -1107,7 +1107,7 @@ int mtproto_client::query_error(tgl_in_buffer* in, int64_t id)
 
 int mtproto_client::query_result(tgl_in_buffer* in, int64_t id)
 {
-    std::shared_ptr<query> q = m_user_agent.get_query(id);
+    std::shared_ptr<query> q = m_user_agent.get_active_query(id);
     if (!q) {
         in->ptr = in->end;
         return 0;
@@ -1151,7 +1151,7 @@ int mtproto_client::work_packed(tgl_in_buffer* in, int64_t msg_id)
 
 void mtproto_client::restart_query(int64_t msg_id)
 {
-    std::shared_ptr<query> q = m_user_agent.get_query(msg_id);
+    std::shared_ptr<query> q = m_user_agent.get_active_query(msg_id);
     if (q) {
         TGL_DEBUG("restarting query " << msg_id);
         q->alarm();
@@ -1207,7 +1207,7 @@ static int work_new_detailed_info(tgl_in_buffer* in)
 
 void mtproto_client::regen_query(int64_t msg_id)
 {
-    std::shared_ptr<query> q = m_user_agent.get_query(msg_id);
+    std::shared_ptr<query> q = m_user_agent.get_active_query(msg_id);
     if (!q) {
         return;
     }
@@ -1603,12 +1603,11 @@ void mtproto_client::create_session()
     m_session->primary_worker = std::make_shared<worker>(m_user_agent.connection_factory()->create_connection(
             m_ipv4_options, m_ipv6_options, weak_this));
     m_session->primary_worker->connection->open();
-    m_session->ev = m_user_agent.timer_factory()->create_timer(
-            [weak_this]() {
-                if (auto shared_this = weak_this.lock()) {
-                    shared_this->send_all_acks();
-                }
-            });
+    m_session->ev = m_user_agent.timer_factory()->create_timer([weak_this] {
+        if (auto shared_this = weak_this.lock()) {
+            shared_this->send_all_acks();
+        }
+    });
 }
 
 void mtproto_client::reset_authorization()
@@ -1662,12 +1661,11 @@ void mtproto_client::decrease_active_queries(size_t num)
     if (!m_active_queries && m_pending_queries.empty() && m_user_agent.active_client().get() != this) {
         if (!m_session_cleanup_timer) {
             std::weak_ptr<mtproto_client> weak_this(shared_from_this());
-            m_session_cleanup_timer = m_user_agent.timer_factory()->create_timer(
-                    [weak_this]() {
-                        if (auto shared_this = weak_this.lock()) {
-                            shared_this->cleanup_timer_expired();
-                        }
-                    });
+            m_session_cleanup_timer = m_user_agent.timer_factory()->create_timer([weak_this] {
+                if (auto shared_this = weak_this.lock()) {
+                    shared_this->cleanup_timer_expired();
+                }
+            });
         }
         m_session_cleanup_timer->start(SESSION_CLEANUP_TIMEOUT);
     }
