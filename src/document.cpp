@@ -28,6 +28,7 @@
 #include "auto/auto_fetch_ds.h"
 #include "auto/constants.h"
 #include "photo.h"
+#include "tools.h"
 
 #include <algorithm>
 #include <cassert>
@@ -162,7 +163,7 @@ document::document(const tl_ds_decrypted_message_media* DS_DMM)
     if (DS_DMM->mime_type && DS_DMM->mime_type->data) {
         m_mime_type.resize(DS_DMM->mime_type->len);
         std::transform(DS_DMM->mime_type->data, DS_DMM->mime_type->data + DS_DMM->mime_type->len,
-                m_mime_type.begin(), ::tolower);
+                m_mime_type.begin(), A_Z_to_a_z);
     }
 
     switch (DS_DMM->magic) {

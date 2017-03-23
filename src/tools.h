@@ -99,5 +99,10 @@ static inline std::string tgl_binary_to_hex(const char* buffer, size_t length)
     return std::string(result.data(), result.size());
 }
 
+static inline char A_Z_to_a_z(char c)
+{
+    return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
+}
+
 }
 }
