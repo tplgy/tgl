@@ -1292,7 +1292,7 @@ void mtproto_client::restart_session()
     if (m_session) {
         TGL_WARNING("failing session " << m_session->session_id);
         m_session->clear();
-        m_session = nullptr;
+        m_session.reset();
     }
     create_session();
 }
@@ -1592,7 +1592,7 @@ void mtproto_client::insert_msg_id(int64_t id)
 void mtproto_client::create_session()
 {
     assert(!m_session);
-    m_session = std::make_shared<struct session>();
+    m_session = std::make_unique<struct session>();
     while (!m_session->session_id) {
         tgl_secure_random(reinterpret_cast<unsigned char*>(&m_session->session_id), 8);
     }

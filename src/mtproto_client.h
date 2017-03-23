@@ -103,13 +103,13 @@ public:
     virtual const std::array<unsigned char, 256>& auth_key() const override { return m_auth_key; }
     virtual double time_difference() const override { return m_server_time_delta; }
 
-    const std::shared_ptr<struct session>& session() const { return m_session; }
+    struct session* session() const { return m_session.get(); }
 
     void clear_session()
     {
         if (m_session) {
             m_session->clear();
-            m_session = nullptr;
+            m_session.reset();
         }
     }
 
@@ -230,7 +230,7 @@ private:
     user_agent& m_user_agent;
     int32_t m_id;
     state m_state;
-    std::shared_ptr<struct session> m_session;
+    std::unique_ptr<struct session> m_session;
     std::array<unsigned char, 256> m_auth_key;
     std::array<unsigned char, 256> m_temp_auth_key;
     std::array<unsigned char, 16> m_nonce;
