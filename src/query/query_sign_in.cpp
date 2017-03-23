@@ -91,12 +91,22 @@ bool query_sign_in::handle_session_password_needed(bool& should_retry)
 
     m_user_agent.set_password_locked(true);
 
+    // handle_session_password_needed is called in error
+    // handling code in the super class. As a result
+    // the query has been popped off from the user_agent.
+    // We need to add it into the user_agent again to keep
+    // it going.
+    m_user_agent.add_active_query(shared_from_this());
+
     std::weak_ptr<query_sign_in> weak_this(shared_from_this());
     m_user_agent.check_password([this, weak_this](bool success) {
         auto shared_this = weak_this.lock();
         if (!shared_this || !success) {
-            if (shared_this && m_callback) {
-                m_callback(false, nullptr);
+            if (shared_this) {
+                m_user_agent.remove_active_query(shared_this);
+                if (m_callback) {
+                    m_callback(false, nullptr);
+                }
             }
             return;
         }
@@ -106,6 +116,7 @@ bool query_sign_in::handle_session_password_needed(bool& should_retry)
             if (!shared_this) {
                 return;
             }
+            m_user_agent.remove_active_query(shared_this);
 
             if (m_callback) {
                 m_callback(success, u);

@@ -2203,6 +2203,8 @@ void user_agent::signed_in()
 
 void user_agent::sign_in_code(const std::string& phone, const std::string& hash, const std::string& code, tgl_login_action action)
 {
+    set_password_locked(false);
+
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
 
     auto try_again = [weak_ua, phone, hash](const std::string& code, tgl_login_action action) {
