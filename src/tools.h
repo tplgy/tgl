@@ -104,5 +104,26 @@ static inline char A_Z_to_a_z(char c)
     return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
 }
 
+static inline void str_to_256(unsigned char* dst, const char* src, int src_len)
+{
+    if (src_len >= 256) {
+        memcpy(dst, src + src_len - 256, 256);
+    } else {
+        memset(dst, 0, 256 - src_len);
+        memcpy(dst + 256 - src_len, src, src_len);
+    }
+}
+
+static inline void str_to_32(unsigned char* dst, const char* src, int src_len)
+{
+    if (src_len >= 32) {
+        memcpy(dst, src + src_len - 32, 32);
+    } else {
+        memset(dst, 0, 32 - src_len);
+        memcpy(dst + 32 - src_len, src, src_len);
+    }
+}
+
+
 }
 }

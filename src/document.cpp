@@ -35,16 +35,6 @@
 #include <cctype>
 #include <cstring>
 
-inline static void str_to_32(unsigned char* dst, const char* src, int src_len)
-{
-    if (src_len >= 32) {
-        memcpy(dst, src + src_len - 32, 32);
-    } else {
-        memset(dst, 0, 32 - src_len);
-        memcpy(dst + 32 - src_len, src, src_len);
-    }
-}
-
 namespace tgl {
 namespace impl {
 

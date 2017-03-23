@@ -29,6 +29,7 @@
 #include "photo.h"
 #include "secret_chat.h"
 #include "tgl/tgl_log.h"
+#include "tools.h"
 #include "typing_status.h"
 #include "webpage.h"
 
@@ -38,16 +39,6 @@
 
 namespace tgl {
 namespace impl {
-
-inline static void str_to_256(unsigned char* dst, const char* src, int src_len)
-{
-    if (src_len >= 256) {
-        memcpy(dst, src + src_len - 256, 256);
-    } else {
-        memset(dst, 0, 256 - src_len);
-        memcpy(dst + 256 - src_len, src, src_len);
-    }
-}
 
 static std::shared_ptr<tgl_message_entity> make_message_entity(const tl_ds_message_entity* DS_ME)
 {

@@ -50,16 +50,6 @@ namespace impl {
 constexpr double REQUEST_RESEND_DELAY = 1.0; // seconds
 constexpr double HOLE_TTL = 3.0; // seconds
 
-inline static void str_to_256(unsigned char* dst, const char* src, int src_len)
-{
-    if (src_len >= 256) {
-        memcpy(dst, src + src_len - 256, 256);
-    } else {
-        memset(dst, 0, 256 - src_len);
-        memcpy(dst + 256 - src_len, src, src_len);
-    }
-}
-
 std::shared_ptr<secret_chat> secret_chat::create(const std::weak_ptr<user_agent>& weak_ua,
         const tgl_input_peer_t& chat_id, int32_t user_id)
 {
