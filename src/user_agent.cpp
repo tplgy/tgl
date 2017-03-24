@@ -84,7 +84,7 @@
 #include "query/query_send_code.h"
 #include "query/query_send_inline_query_to_bot.h"
 #include "query/query_send_messages.h"
-#include "query/query_send_typing.h"
+#include "query/query_send_typing_status.h"
 #include "query/query_set_phone.h"
 #include "query/query_set_profile_name.h"
 #include "query/query_sign_in.h"
@@ -1759,11 +1759,11 @@ void user_agent::start_bot(const tgl_input_peer_t& bot, const tgl_peer_id_t& cha
     q->execute(active_client());
 }
 
-void user_agent::send_typing(const tgl_input_peer_t& id, tgl_typing_status status,
+void user_agent::send_typing_status(const tgl_input_peer_t& id, tgl_typing_status status,
         const std::function<void(bool success)>& callback)
 {
     if (id.peer_type != tgl_peer_type::enc_chat) {
-        auto q = std::make_shared<query_send_typing>(*this, callback);
+        auto q = std::make_shared<query_send_typing_status>(*this, callback);
         q->out_i32(CODE_messages_set_typing);
         q->out_input_peer(id);
         switch (status) {

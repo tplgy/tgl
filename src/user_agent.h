@@ -212,7 +212,7 @@ public:
     virtual void update_contact_list(const std::function<void(bool, const std::vector<std::shared_ptr<tgl_user>>&)>& callback) override;
     virtual void get_history(const tgl_input_peer_t& id, int32_t offset, int32_t limit,
             const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& list)>& callback) override;
-    virtual void send_typing(const tgl_input_peer_t& id, enum tgl_typing_status status,
+    virtual void send_typing_status(const tgl_input_peer_t& id, enum tgl_typing_status status,
             const std::function<void(bool success)>& callback) override;
     virtual void search_message(const tgl_input_peer_t& id, int32_t from, int32_t to, int32_t limit, int32_t offset, const std::string& query,
             const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback) override;

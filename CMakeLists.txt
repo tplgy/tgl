@@ -197,7 +197,7 @@ set(PRIVATE_HEADERS
     src/query/query_send_code.h
     src/query/query_send_inline_query_to_bot.h
     src/query/query_send_messages.h
-    src/query/query_send_typing.h
+    src/query/query_send_typing_status.h
     src/query/query_set_phone.h
     src/query/query_set_profile_name.h
     src/query/query_sign_in.h

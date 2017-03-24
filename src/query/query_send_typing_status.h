@@ -30,10 +30,10 @@
 namespace tgl {
 namespace impl {
 
-class query_send_typing: public query
+class query_send_typing_status: public query
 {
 public:
-    query_send_typing(user_agent& ua, const std::function<void(bool)>& callback)
+    query_send_typing_status(user_agent& ua, const std::function<void(bool)>& callback)
         : query(ua, "send typing", TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }

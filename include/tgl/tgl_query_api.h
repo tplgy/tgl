@@ -224,7 +224,7 @@ public:
 
     // Sends typing event to chat.
     // Set status=tgl_typing_typing for default typing event.
-    virtual void send_typing(const tgl_input_peer_t& id, enum tgl_typing_status status,
+    virtual void send_typing_status(const tgl_input_peer_t& id, enum tgl_typing_status status,
             const std::function<void(bool success)>& callback) = 0;
 
     // Search messages with ids *from* .. *to* in dialog id
