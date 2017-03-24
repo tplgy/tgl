@@ -66,9 +66,7 @@ tgl_connection_base::~tgl_connection_base()
     // In the destructor we can not call disconnect() which is a pure virtual function.
     close_internal(false);
 
-    if (auto client = m_mtproto_client.lock()) {
-         TGL_DEBUG("connection to mtproto_client " << client->id() << " destroyed");
-    }
+    TGL_DEBUG("connection to mtproto_client " << client_id() << " destroyed");
 }
 
 void tgl_connection_base::ping()
@@ -314,8 +312,9 @@ void tgl_connection_base::close_internal(bool call_disconnect)
         return;
     }
 
+    TGL_DEBUG("connection to mtproto_client " << client_id() << " closed");
+
     if (auto client = m_mtproto_client.lock()) {
-        TGL_DEBUG("connection to mtproto_client " << client->id() << " closed");
         client->remove_online_status_observer(m_this_weak_observer);
     }
 
@@ -344,11 +343,7 @@ void tgl_connection_base::data_received(const std::shared_ptr<tgl_net_buffer>& b
         return;
     }
 
-    if (auto client = m_mtproto_client.lock()) {
-        TGL_DEBUG("received " << buffer->size() << " bytes from mtproto_client " << client->id());
-    } else {
-        TGL_DEBUG("received " << buffer->size() << " bytes");
-    }
+    TGL_DEBUG("received " << buffer->size() << " bytes from mtproto_client " << client_id());
 
     if (buffer->size() > 0) {
         m_last_receive_time = std::chrono::steady_clock::now();
@@ -482,4 +477,12 @@ void tgl_connection_base::bytes_received(size_t bytes)
     if (auto client = m_mtproto_client.lock()) {
         client->bytes_received(bytes);
     }
+}
+
+int32_t tgl_connection_base::client_id() const
+{
+    if (auto client = m_mtproto_client.lock()) {
+        return client->id();
+    }
+    return -1;
 }

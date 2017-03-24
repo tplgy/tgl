@@ -114,6 +114,7 @@ protected:
     bool ipv6_enabled() const;
     void try_read();
     void try_write();
+    int32_t client_id() const;
 
     void close_internal(bool);
     void connect_finished(bool success);
