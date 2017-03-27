@@ -90,17 +90,7 @@ void download_task::init_from_document(const std::shared_ptr<tgl_download_docume
         return;
     }
 
-    switch (document->type) {
-    case tgl_document_type::audio:
-        type = CODE_input_audio_file_location;
-        break;
-    case tgl_document_type::video:
-        type = CODE_input_video_file_location;
-        break;
-    default:
-        type = CODE_input_document_file_location;
-        break;
-    }
+    type = CODE_input_document_file_location;
 }
 
 void download_task::set_status(tgl_download_status status)

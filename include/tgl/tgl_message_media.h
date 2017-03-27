@@ -40,8 +40,6 @@ enum class tgl_message_media_type {
     unsupported,
     webpage,
     venue,
-    video,
-    audio,
 };
 
 struct tgl_geo {
@@ -100,16 +98,4 @@ struct tgl_message_media_venue: public tgl_message_media {
     std::string address;
     std::string provider;
     std::string venue_id;
-};
-
-struct tgl_message_media_video: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type::video; }
-    std::shared_ptr<tgl_document> document;
-    std::string caption;
-};
-
-struct tgl_message_media_audio: public tgl_message_media {
-    virtual tgl_message_media_type type() override { return tgl_message_media_type::audio; }
-    std::shared_ptr<tgl_document> document;
-    std::string caption;
 };

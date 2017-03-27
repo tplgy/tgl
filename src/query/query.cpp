@@ -30,7 +30,7 @@
 namespace tgl {
 namespace impl {
 
-constexpr int32_t TGL_SCHEME_LAYER = 45;
+constexpr int32_t TGL_SCHEME_LAYER = 51;
 constexpr int TGL_MAX_DC_NUM = 100;
 
 void query::clear_timers()
@@ -527,6 +527,8 @@ int query::handle_result(tgl_in_buffer* in)
         TGL_ERROR("0x" << std::hex << *(in->ptr - 1) << " 0x" << *(in->ptr) << " 0x" << *(in->ptr + 1) << " 0x" << *(in->ptr + 2));
         TGL_ERROR(in->print_buffer());
         assert(false);
+        handle_error(600, "invaid response from the server");
+        return 0;
     }
 
     assert(skip_in.ptr == skip_in.end);

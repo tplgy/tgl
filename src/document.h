@@ -26,19 +26,15 @@
 namespace tgl {
 namespace impl {
 
-struct tl_ds_audio;
 struct tl_ds_decrypted_message_media;
 struct tl_ds_document;
 struct tl_ds_document_attribute;
 struct tl_ds_encrypted_file;
-struct tl_ds_video;
 
 class document: public tgl_document
 {
 public:
     explicit document(const tl_ds_document*);
-    explicit document(const tl_ds_audio*);
-    explicit document(const tl_ds_video*);
     explicit document(const tl_ds_decrypted_message_media*);
 
     virtual tgl_document_type type() const override { return m_type; }

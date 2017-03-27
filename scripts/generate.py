@@ -153,8 +153,7 @@ AUTO_DIR = os.path.join(ROOT_DIR, "src", "auto")
 
 auto_srcs = [os.path.join(AUTO_DIR, "scheme.tl"), \
              os.path.join(AUTO_DIR, "encrypted_scheme.tl"), \
-             os.path.join(AUTO_DIR, "mtproto.tl"), \
-             os.path.join(AUTO_DIR, "append.tl")]
+             os.path.join(AUTO_DIR, "mtproto.tl")]
 
 concatenate_small_files(auto_srcs, os.path.join("auto", "scheme.tl"))
 

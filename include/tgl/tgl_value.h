@@ -21,8 +21,11 @@
 
 #pragma once
 
+#include "tgl_login_context.h"
+
 #include <cassert>
 #include <iostream>
+#include <memory>
 #include <functional>
 #include <string>
 
@@ -38,7 +41,6 @@ enum class tgl_value_type {
 
 enum class tgl_login_action {
     none,
-    call_me,
     resend_code,
 };
 
@@ -93,12 +95,17 @@ class tgl_value_login_code: public tgl_value
 {
 public:
     using acceptor = std::function<void(const std::string& login_code, tgl_login_action action)>;
-    explicit tgl_value_login_code(const acceptor& a): m_acceptor(a) { }
+    tgl_value_login_code(const acceptor& a, const std::shared_ptr<tgl_login_context>& context)
+        : m_acceptor(a)
+        , m_login_context(context)
+    { }
     virtual tgl_value_type type() const override { return tgl_value_type::login_code; }
+    const std::shared_ptr<tgl_login_context>& login_context() const { return m_login_context; }
     void accept(const std::string& login_code) { m_acceptor(login_code, tgl_login_action::none); }
     void accept(tgl_login_action action) { assert(action != tgl_login_action::none); m_acceptor("", action); }
 private:
     acceptor m_acceptor;
+    std::shared_ptr<tgl_login_context> m_login_context;
 };
 
 class tgl_value_register_info: public tgl_value

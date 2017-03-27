@@ -34,6 +34,7 @@ struct tl_ds_decrypted_message_media;
 struct tl_ds_decrypted_message_action;
 struct tl_ds_encrypted_file;
 struct tl_ds_message;
+struct tl_ds_message_fwd_header;
 struct tl_ds_message_media;
 struct tl_ds_message_action;
 struct tl_ds_reply_markup;
@@ -51,8 +52,7 @@ public:
     message(int64_t message_id,
             const tgl_peer_id_t& from_id,
             const tgl_input_peer_t& to_id,
-            const tgl_peer_id_t* forward_from_id,
-            const int64_t* forward_date,
+            const tl_ds_message_fwd_header* forward_header,
             const int64_t* date,
             const std::string& text,
             const tl_ds_message_media* media,

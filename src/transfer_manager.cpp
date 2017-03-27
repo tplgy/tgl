@@ -179,7 +179,7 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_
             });
 
     auto m = std::make_shared<message>(u->message_id, ua->our_id(), u->to_id,
-            nullptr, nullptr, nullptr, std::string(), nullptr, nullptr, 0, nullptr);
+            nullptr, nullptr, std::string(), nullptr, nullptr, 0, nullptr);
     q->set_message(m);
 
     q->out_i32(CODE_messages_send_media);
@@ -240,9 +240,8 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_
         } else if (u->is_audio()) {
             q->out_i32(2);
             q->out_i32(CODE_document_attribute_audio);
+            q->out_i32(0);
             q->out_i32(u->duration);
-            q->out_std_string("");
-            q->out_std_string("");
             q->out_i32(CODE_document_attribute_filename);
             q->out_std_string(file_name);
         } else if (u->is_video()) {

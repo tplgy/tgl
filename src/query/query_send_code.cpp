@@ -19,35 +19,54 @@
     Copyright Topology LP 2016-2017
 */
 
-#include "bot_info.h"
+#include "query_send_code.h"
 
 #include "auto/auto.h"
 #include "auto/auto_types.h"
 #include "auto/constants.h"
+#include "sent_code.h"
 
 namespace tgl {
 namespace impl {
 
-std::shared_ptr<tgl_bot_info> create_bot_info(const tl_ds_bot_info* DS_BI)
+void query_send_code::on_answer(void* D)
 {
-    if (!DS_BI) {
-        return nullptr;
+    if (m_callback) {
+        m_callback(std::make_unique<sent_code>(static_cast<const tl_ds_auth_sent_code*>(D)));
     }
+}
 
-    std::shared_ptr<tgl_bot_info> bot = std::make_shared<tgl_bot_info>();
-    bot->description = DS_STDSTR(DS_BI->description);
-
-    int commands_num = DS_LVAL(DS_BI->commands->cnt);
-    bot->commands.resize(commands_num);
-    for (int i = 0; i < commands_num; i++) {
-        const tl_ds_bot_command* bot_command = DS_BI->commands->data[i];
-        bot->commands[i] = std::make_shared<tgl_bot_command>();
-        bot->commands[i]->command = DS_STDSTR(bot_command->command);
-        bot->commands[i]->description = DS_STDSTR(bot_command->description);
+int query_send_code::on_error(int error_code, const std::string& error_string)
+{
+    TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
+    if (m_callback) {
+        m_callback(nullptr);
     }
-    return bot;
+    return 0;
+}
+
+void query_send_code::on_timeout()
+{
+    TGL_ERROR("timed out for query #" << msg_id() << " (" << name() << ")");
+    if (m_callback) {
+        m_callback(nullptr);
+    }
+}
+
+double query_send_code::timeout_interval() const
+{
+    return 20;
+}
+
+bool query_send_code::should_retry_on_timeout() const
+{
+    return false;
+}
+
+void query_send_code::will_be_pending()
+{
+    timeout_within(timeout_interval());
 }
 
 }
 }
-

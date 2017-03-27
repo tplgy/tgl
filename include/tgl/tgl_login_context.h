@@ -15,23 +15,26 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-    Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2017
 */
 
 #pragma once
 
 #include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
 
-struct tgl_bot_command {
-    std::string command;
-    std::string description;
+enum class tgl_login_code_type {
+    unknown,
+    app,
+    sms,
+    call,
+    flash_call,
 };
 
-struct tgl_bot_info {
-    std::string description;
-    std::vector<std::shared_ptr<tgl_bot_command>> commands;
+class tgl_login_context
+{
+public:
+    virtual tgl_login_code_type sent_code_type() const = 0;
+    virtual tgl_login_code_type next_code_type() const = 0;
+    virtual int32_t call_for_login_code_timeout() const = 0;
+    virtual ~tgl_login_context() { }
 };

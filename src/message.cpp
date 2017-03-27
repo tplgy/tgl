@@ -98,25 +98,9 @@ static std::shared_ptr<tgl_message_media> make_message_media(const tl_ds_message
     case CODE_message_media_empty:
         return std::make_shared<tgl_message_media_none>();
     case CODE_message_media_photo:
-    case CODE_message_media_photo_l27:
     {
         auto media = std::make_shared<tgl_message_media_photo>();
         media->photo = create_photo(DS_MM->photo);
-        media->caption = DS_STDSTR(DS_MM->caption);
-        return media;
-    }
-    case CODE_message_media_video:
-    case CODE_message_media_video_l27:
-    {
-        auto media = std::make_shared<tgl_message_media_video>();
-        media->document = std::make_shared<document>(DS_MM->video);
-        media->caption = DS_STDSTR(DS_MM->caption);
-        return media;
-    }
-    case CODE_message_media_audio:
-    {
-        auto media = std::make_shared<tgl_message_media_audio>();
-        media->document = std::make_shared<document>(DS_MM->audio);
         media->caption = DS_STDSTR(DS_MM->caption);
         return media;
     }
@@ -179,7 +163,6 @@ static std::shared_ptr<tgl_message_media> make_message_media_encrypted(const tl_
         return std::make_shared<tgl_message_media_none>();
     case CODE_decrypted_message_media_photo:
     case CODE_decrypted_message_media_video:
-    case CODE_decrypted_message_media_video_l12:
     case CODE_decrypted_message_media_document:
     case CODE_decrypted_message_media_audio:
     {
@@ -404,20 +387,11 @@ std::shared_ptr<message> message::create(const tgl_peer_id_t& our_id, const tl_d
 
     int64_t message_id = DS_LVAL(DS_M->id);
 
-    tgl_peer_id_t fwd_from_id;
-    if (DS_M->fwd_from_id) {
-        fwd_from_id = create_peer_id(DS_M->fwd_from_id);
-    } else {
-        fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
-    }
-
-    int64_t fwd_date = DS_LVAL(DS_M->fwd_date);
     int64_t date = DS_LVAL(DS_M->date);
     auto m = std::make_shared<message>(message_id,
             from_id,
             to_id,
-            DS_M->fwd_from_id ? &fwd_from_id : nullptr,
-            &fwd_date,
+            DS_M->fwd_from,
             &date,
             DS_STDSTR(DS_M->message),
             DS_M->media,
@@ -436,20 +410,11 @@ std::shared_ptr<message> message::create_from_short_update(const tgl_peer_id_t& 
     int64_t message_id = DS_LVAL(DS_U->id);
     int32_t flags = DS_LVAL(DS_U->flags);
 
-    tgl_peer_id_t fwd_from_id;
-    if (DS_U->fwd_from_id) {
-        fwd_from_id = create_peer_id(DS_U->fwd_from_id);
-    } else {
-        fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
-    }
-
-    int64_t fwd_date = DS_LVAL(DS_U->fwd_date);
     int64_t date = DS_LVAL(DS_U->date);
     std::shared_ptr<message> m = std::make_shared<message>(message_id,
             (flags & 2) ? our_id : peer_id,
             (flags & 2) ? tgl_input_peer_t(peer_id.peer_type, peer_id.peer_id, 0) : tgl_input_peer_t(our_id.peer_type, our_id.peer_id, 0),
-            DS_U->fwd_from_id ? &fwd_from_id : NULL,
-            &fwd_date,
+            DS_U->fwd_from,
             &date,
             DS_STDSTR(DS_U->message),
             DS_U->media,
@@ -472,20 +437,11 @@ std::shared_ptr<message> message::create_chat_message_from_short_update(const tl
     struct tl_ds_message_media media;
     media.magic = CODE_message_media_empty;
 
-    tgl_peer_id_t fwd_from_id;
-    if (DS_U->fwd_from_id) {
-        fwd_from_id = create_peer_id(DS_U->fwd_from_id);
-    } else {
-        fwd_from_id = tgl_peer_id_t(tgl_peer_type::user, 0);
-    }
-
-    int64_t fwd_date = DS_LVAL(DS_U->fwd_date);
     int64_t date = DS_LVAL(DS_U->date);
     auto m = std::make_shared<message>(message_id,
             from_id,
             to_id,
-            DS_U->fwd_from_id ? &fwd_from_id : nullptr,
-            &fwd_date,
+            DS_U->fwd_from,
             &date,
             DS_STDSTR(DS_U->message),
             &media,
@@ -515,8 +471,7 @@ message::message()
 message::message(int64_t message_id,
         const tgl_peer_id_t& from_id,
         const tgl_input_peer_t& to_id,
-        const tgl_peer_id_t* forward_from_id,
-        const int64_t* forward_date,
+        const tl_ds_message_fwd_header* forward_header,
         const int64_t* date,
         const std::string& text,
         const tl_ds_message_media* media,
@@ -533,12 +488,14 @@ message::message(int64_t message_id,
         m_date = *date;
     }
 
-    if (forward_from_id) {
-        m_forward_from_id = *forward_from_id;
-    }
-
-    if (forward_date) {
-        m_forward_date = *forward_date;
+    if (forward_header) {
+        int32_t flags = DS_LVAL(forward_header->flags);
+        if (flags & (1 << 0)) {
+            m_forward_from_id = tgl_peer_id_t(tgl_peer_type::user, DS_LVAL(forward_header->from_id));
+        }
+        if (forward_header->date) {
+            m_forward_date = *forward_header->date;
+        }
     }
 
     if (action) {
@@ -568,7 +525,7 @@ message::message(const std::shared_ptr<secret_chat>& sc,
         const tl_ds_decrypted_message_media* media,
         const tl_ds_decrypted_message_action* action,
         const tl_ds_encrypted_file* file)
-    : message(message_id, from_id, sc->id(), nullptr, nullptr, date, text, nullptr, nullptr, 0, nullptr)
+    : message(message_id, from_id, sc->id(), nullptr, date, text, nullptr, nullptr, 0, nullptr)
 {
     if (action) {
         if (action->magic == CODE_decrypted_message_action_opaque_message

@@ -34,6 +34,7 @@
 #include "crypto/crypto_rand.h"
 #include "crypto/crypto_rsa_pem.h"
 #include "crypto/crypto_sha.h"
+#include "login_context.h"
 #include "message.h"
 #include "mtproto_client.h"
 #include "mtproto_common.h"
@@ -75,7 +76,6 @@
 #include "query/query_messages_get_dh_config.h"
 #include "query/query_messages_request_encryption.h"
 #include "query/query_msg_send.h"
-#include "query/query_phone_call.h"
 #include "query/query_register_device.h"
 #include "query/query_resolve_username.h"
 #include "query/query_search_contact.h"
@@ -580,45 +580,6 @@ void user_agent::clear_all_locks()
     m_phone_number_input_locked = false;
 }
 
-void user_agent::send_code(const std::string& phone, const std::function<void(bool, bool, const std::string&)>& callback)
-{
-    TGL_NOTICE("requesting confirmation code from dc " << active_client()->id());
-    auto q = std::make_shared<query_send_code>(*this, callback);
-    q->out_i32(CODE_auth_send_code);
-    q->out_std_string(phone);
-    q->out_i32(0);
-    q->out_i32(app_id());
-    q->out_std_string(app_hash());
-    q->out_string("en");
-    q->execute(active_client(), query::execution_option::LOGIN);
-}
-
-void user_agent::call_me(const std::string& phone, const std::string& hash,
-        const std::function<void(bool)>& callback)
-{
-    TGL_DEBUG("calling user at phone number: " << phone);
-
-    auto q = std::make_shared<query_phone_call>(*this, callback);
-    q->out_header();
-    q->out_i32(CODE_auth_send_call);
-    q->out_std_string(phone);
-    q->out_std_string(hash);
-    q->execute(active_client(), query::execution_option::LOGIN);
-}
-
-void user_agent::send_code_result(const std::string& phone,
-        const std::string& hash,
-        const std::string& code,
-        const std::function<void(bool success, const std::shared_ptr<user>&)>& callback)
-{
-    auto q = std::make_shared<query_sign_in>(*this, callback);
-    q->out_i32(CODE_auth_sign_in);
-    q->out_std_string(phone);
-    q->out_std_string(hash);
-    q->out_std_string(code);
-    q->execute(active_client(), query::execution_option::LOGIN);
-}
-
 void user_agent::logout()
 {
     auto dc = active_client();
@@ -786,7 +747,7 @@ int64_t user_agent::send_text_message(const tgl_input_peer_t& peer_id,
         } else {
             from_id = our_id();
         }
-        auto m = std::make_shared<message>(message_id, from_id, peer_id, nullptr, nullptr, &date, text, &TDSM, nullptr, reply_id, nullptr);
+        auto m = std::make_shared<message>(message_id, from_id, peer_id, nullptr, &date, text, &TDSM, nullptr, reply_id, nullptr);
         m->set_unread(true).set_outgoing(true).set_pending(true);
         send_text_message(m, disable_preview, callback);
     } else {
@@ -864,6 +825,7 @@ void user_agent::get_history(const tgl_input_peer_t& id, int offset, int limit,
     auto q = std::make_shared<query_get_history>(*this, id, limit, offset, 0/*max_id*/, callback);
     q->out_i32(CODE_messages_get_history);
     q->out_input_peer(id);
+    q->out_i32(0); // offset_date
     q->out_i32(0); // offset_id
     q->out_i32(offset); // add_offset
     q->out_i32(limit);
@@ -907,6 +869,7 @@ void user_agent::set_profile_name(const std::string& first_name, const std::stri
 {
     auto q = std::make_shared<query_set_profile_name>(*this, callback);
     q->out_i32(CODE_account_update_profile);
+    q->out_i32(3);
     q->out_std_string(first_name);
     q->out_std_string(last_name);
     q->execute(active_client());
@@ -1975,7 +1938,7 @@ void user_agent::send_broadcast(const std::vector<tgl_input_peer_t>& peers, cons
         struct tl_ds_message_media TDSM;
         TDSM.magic = CODE_message_media_empty;
 
-        auto m = std::make_shared<message>(message_id, our_id(), peers[i], nullptr, nullptr, &date, text, &TDSM, nullptr, 0, nullptr);
+        auto m = std::make_shared<message>(message_id, our_id(), peers[i], nullptr, &date, text, &TDSM, nullptr, 0, nullptr);
         m->set_unread(true).set_outgoing(true).set_pending(true);
         m_callback->new_messages({m});
     }
@@ -2053,16 +2016,19 @@ void user_agent::update_notify_settings(const tgl_input_peer_t& peer_id,
         int32_t mute_until, const std::string& sound, bool show_previews, int32_t mask,
         const std::function<void(bool)>& callback)
 {
+    int32_t flags = 0;
+    if (show_previews) {
+        flags |= (1 << 0);
+    }
+
     auto q = std::make_shared<query_update_notify_settings>(*this, callback);
     q->out_i32(CODE_account_update_notify_settings);
     q->out_i32(CODE_input_notify_peer);
     q->out_input_peer(peer_id);
     q->out_i32(CODE_input_peer_notify_settings);
+    q->out_i32(flags);
     q->out_i32(mute_until);
     q->out_std_string(sound);
-    q->out_i32(show_previews ? CODE_bool_true : CODE_bool_false);
-    q->out_i32(CODE_input_peer_notify_events_all);
-
     q->execute(active_client());
 }
 
@@ -2201,28 +2167,19 @@ void user_agent::signed_in()
     m_state_lookup_timer->start(3600);
 }
 
-void user_agent::sign_in_code(const std::string& phone, const std::string& hash, const std::string& code, tgl_login_action action)
+void user_agent::sign_in_code(const std::shared_ptr<login_context>& context)
 {
+    assert(context->sent_code);
+
     set_password_locked(false);
-
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
-
-    auto try_again = [weak_ua, phone, hash](const std::string& code, tgl_login_action action) {
-        if (auto ua = weak_ua.lock()) {
-            ua->sign_in_code(phone, hash, code, action);
-        }
-    };
-
-    if (action == tgl_login_action::call_me) {
-        call_me(phone, hash, nullptr);
-        callback()->get_value(std::make_shared<tgl_value_login_code>(try_again));
-        return;
-    } else if (action == tgl_login_action::resend_code) {
-        sign_in_phone(phone);
+    if (context->action == tgl_login_action::resend_code) {
+        assert(!context->sent_code->hash.empty());
+        sign_in_phone(context);
         return;
     }
 
-    send_code_result(phone, hash, code, [weak_ua, try_again](bool success, const std::shared_ptr<user>&) {
+    auto q = std::make_shared<query_sign_in>(*this, [weak_ua, context](bool success, const std::shared_ptr<user>&) {
         TGL_DEBUG("sign in result: " << std::boolalpha << success);
         auto ua = weak_ua.lock();
         if (!ua) {
@@ -2231,33 +2188,38 @@ void user_agent::sign_in_code(const std::string& phone, const std::string& hash,
         }
         if (!success) {
             TGL_ERROR("incorrect code");
-            ua->callback()->get_value(std::make_shared<tgl_value_login_code>(try_again));
+            ua->callback()->get_value(std::make_shared<tgl_value_login_code>(
+                [weak_ua, context](const std::string& code, tgl_login_action action) {
+                    context->code = code;
+                    context->action = action;
+                    if (auto ua = weak_ua.lock()) {
+                        ua->sign_in_code(context);
+                    }
+                }, context));
             return;
         }
         ua->signed_in();
     });
+
+    q->out_i32(CODE_auth_sign_in);
+    q->out_std_string(context->phone);
+    q->out_std_string(context->sent_code->hash);
+    q->out_std_string(context->code);
+    q->execute(active_client(), query::execution_option::LOGIN);
 }
 
-void user_agent::sign_up_code(const std::string& phone, const std::string& hash,
-        const std::string& first_name, const std::string& last_name, const std::string& code, tgl_login_action action)
+void user_agent::sign_up_code(const std::shared_ptr<login_context>& context)
 {
-    std::weak_ptr<user_agent> weak_ua = shared_from_this();
-    auto try_again = [weak_ua, phone, hash, first_name, last_name](const std::string& code, tgl_login_action action) {
-        if (auto ua = weak_ua.lock()) {
-            ua->sign_up_code(phone, hash, first_name, last_name, code, action);
-        }
-    };
+    assert(context->sent_code);
 
-    if (action == tgl_login_action::call_me) {
-        call_me(phone, hash, nullptr);
-        callback()->get_value(std::make_shared<tgl_value_login_code>(try_again));
-        return;
-    } else if (action == tgl_login_action::resend_code) {
-        sign_in_phone(phone); // there is no sign_up_phone(), so this is okay
+    std::weak_ptr<user_agent> weak_ua = shared_from_this();
+    if (context->action == tgl_login_action::resend_code) {
+        assert(!context->sent_code->hash.empty());
+        sign_in_phone(context);
         return;
     }
 
-    auto q = std::make_shared<query_sign_in>(*this, [weak_ua, try_again](bool success, const std::shared_ptr<user>&) {
+    auto q = std::make_shared<query_sign_in>(*this, [weak_ua, context](bool success, const std::shared_ptr<user>&) {
         auto ua = weak_ua.lock();
         if (!ua) {
             TGL_ERROR("the user agent has gone");
@@ -2266,38 +2228,49 @@ void user_agent::sign_up_code(const std::string& phone, const std::string& hash,
 
         if (!success) {
             TGL_ERROR("incorrect code");
-            ua->callback()->get_value(std::make_shared<tgl_value_login_code>(try_again));
+            ua->callback()->get_value(std::make_shared<tgl_value_login_code>(
+                [weak_ua, context](const std::string& code, tgl_login_action action) {
+                    context->code = code;
+                    context->action = action;
+                    if (auto ua = weak_ua.lock()) {
+                        ua->sign_up_code(context);
+                    }
+                }, context));
             return;
         }
         ua->signed_in();
     });
 
     q->out_i32(CODE_auth_sign_up);
-    q->out_std_string(phone);
-    q->out_std_string(hash);
-    q->out_std_string(code);
-    q->out_std_string(first_name);
-    q->out_std_string(last_name);
+    q->out_std_string(context->phone);
+    q->out_std_string(context->sent_code->hash);
+    q->out_std_string(context->code);
+    q->out_std_string(context->first_name);
+    q->out_std_string(context->last_name);
     q->execute(active_client(), query::execution_option::LOGIN);
 }
 
-void user_agent::register_me(const std::string& phone, const std::string& hash,
-        bool register_user, const std::string& first_name, const std::string& last_name)
+void user_agent::register_me(const std::shared_ptr<login_context>& context)
 {
-    if (register_user) {
+    if (context->register_user) {
         std::weak_ptr<user_agent> weak_ua = shared_from_this();
-        if (first_name.size() >= 1) {
+        if (!context->first_name.empty()) {
             callback()->get_value(std::make_shared<tgl_value_login_code>(
-                    [weak_ua, phone, hash, first_name, last_name](const std::string& code, tgl_login_action action) {
+                    [weak_ua, context](const std::string& code, tgl_login_action action) {
+                        context->code = code;
+                        context->action = action;
                         if (auto ua = weak_ua.lock()) {
-                            ua->sign_up_code(phone, hash, first_name, last_name, code, action);
+                            ua->sign_up_code(context);
                         }
-                    }));
+                    }, context));
         } else {
             callback()->get_value(std::make_shared<tgl_value_register_info>(
-                    [weak_ua, phone, hash](bool register_user, const std::string& first_name, const std::string& last_name) {
+                    [weak_ua, context](bool register_user, const std::string& first_name, const std::string& last_name) {
+                        context->register_user = register_user;
+                        context->first_name = first_name;
+                        context->last_name = last_name;
                         if (auto ua = weak_ua.lock()) {
-                            ua->register_me(phone, hash, register_user, first_name, last_name);
+                            ua->register_me(context);
                         }
                     }));
         }
@@ -2307,13 +2280,13 @@ void user_agent::register_me(const std::string& phone, const std::string& hash,
     }
 }
 
-void user_agent::sign_in_phone(const std::string& phone)
+void user_agent::sign_in_phone(const std::shared_ptr<login_context>& context)
 {
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
 
     set_phone_number_input_locked(true);
 
-    send_code(phone, [weak_ua, phone](bool success, bool registered, const std::string& hash) {
+    auto callback = [weak_ua, context](std::unique_ptr<struct sent_code>&& sent_code) {
         auto ua = weak_ua.lock();
         if (!ua) {
             TGL_ERROR("the user agent has gone");
@@ -2322,35 +2295,60 @@ void user_agent::sign_in_phone(const std::string& phone)
 
         ua->set_phone_number_input_locked(false);
 
-        if (!success) {
+        if (!sent_code) {
             ua->callback()->logged_in(false);
-            ua->callback()->get_value(std::make_shared<tgl_value_phone_number>(
-                    [weak_ua](const std::string& phone) {
-                        if (auto ua = weak_ua.lock()) {
-                            ua->sign_in_phone(phone);
-                        }
-                    }));
+            ua->callback()->get_value(std::make_shared<tgl_value_phone_number>([weak_ua](const std::string& phone) {
+                if (auto ua = weak_ua.lock()) {
+                    ua->sign_in_phone(std::make_shared<login_context>(phone));
+                }
+            }));
             return;
         }
 
-        if (registered) {
+        context->sent_code = std::move(sent_code);
+
+        if (context->sent_code->registered) {
             TGL_DEBUG("already registered, need code");
             ua->callback()->get_value(std::make_shared<tgl_value_login_code>(
-                    [weak_ua, phone, hash](const std::string& code, tgl_login_action action) {
+                    [weak_ua, context](const std::string& code, tgl_login_action action) {
+                        context->code = code;
+                        context->action = action;
                         if (auto ua = weak_ua.lock()) {
-                            ua->sign_in_code(phone, hash, code, action);
+                            ua->sign_in_code(context);
                         }
-                    }));
+                    }, context));
         } else {
             TGL_DEBUG("not registered");
             ua->callback()->get_value(std::make_shared<tgl_value_register_info>(
-                    [weak_ua, phone, hash](bool register_user, const std::string& first_name, const std::string& last_name) {
+                    [weak_ua, context](bool register_user, const std::string& first_name, const std::string& last_name) {
+                        context->register_user = register_user;
+                        context->first_name = first_name;
+                        context->last_name = last_name;
                         if (auto ua = weak_ua.lock()) {
-                            ua->register_me(phone, hash, register_user, first_name, last_name);
+                            ua->register_me(context);
                         }
                     }));
         }
-    });
+    };
+
+    if (!context->sent_code || context->sent_code->hash.empty()) {
+        TGL_DEBUG("requesting confirmation code from dc " << active_client()->id());
+        auto q = std::make_shared<query_send_code>(*this, callback);
+        q->out_i32(CODE_auth_send_code);
+        q->out_i32(0);
+        q->out_std_string(context->phone);
+        q->out_i32(app_id());
+        q->out_std_string(app_hash());
+        q->out_std_string(lang_code());
+        q->execute(active_client(), query::execution_option::LOGIN);
+    } else {
+        TGL_DEBUG("re-requesting confirmation code from dc " << active_client()->id());
+        auto q = std::make_shared<query_send_code>(*this, callback);
+        q->out_i32(CODE_auth_resend_code);
+        q->out_std_string(context->phone);
+        q->out_std_string(context->sent_code->hash);
+        q->execute(active_client(), query::execution_option::LOGIN);
+    }
 }
 
 void user_agent::sign_in()
@@ -2367,7 +2365,7 @@ void user_agent::sign_in()
     callback()->get_value(std::make_shared<tgl_value_phone_number>(
             [weak_ua](const std::string& phone) {
                 if (auto ua = weak_ua.lock()) {
-                    ua->sign_in_phone(phone);
+                    ua->sign_in_phone(std::make_shared<login_context>(phone));
                 }
             }));
 }
@@ -2412,7 +2410,9 @@ void user_agent::send_inline_query_to_bot(const tgl_input_peer_t& bot, const std
 {
     auto q = std::make_shared<query_send_inline_query_to_bot>(*this, callback);
     q->out_i32(CODE_messages_get_inline_bot_results);
+    q->out_i32(0);
     q->out_input_peer(bot);
+    q->out_peer_id(our_id(), 0); // FIXME: correct?
     q->out_std_string(query);
     q->out_std_string(std::string());
     q->execute(active_client());

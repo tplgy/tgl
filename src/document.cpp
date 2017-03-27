@@ -62,10 +62,6 @@ document::document(const tl_ds_document* DS_D)
         return;
     }
 
-    if (DS_D->magic == CODE_document_empty) {
-        return;
-    }
-
     m_id = DS_LVAL(DS_D->id);
     m_access_hash = DS_LVAL(DS_D->access_hash);
     m_date = DS_LVAL(DS_D->date);
@@ -85,64 +81,11 @@ document::document(const tl_ds_document* DS_D)
     }
 }
 
-document::document(const tl_ds_audio* DS_A)
-    : document()
-{
-    if (!DS_A) {
-        return;
-    }
-
-    if (DS_A->magic == CODE_audio_empty) {
-        return;
-    }
-
-    m_id = DS_LVAL(DS_A->id);
-    m_type = tgl_document_type::audio;
-    m_access_hash = DS_LVAL(DS_A->access_hash);
-    m_date = DS_LVAL(DS_A->date);
-    m_duration = DS_LVAL(DS_A->duration);
-    m_mime_type = DS_STDSTR(DS_A->mime_type);
-    m_size = DS_LVAL(DS_A->size);
-    m_dc_id = DS_LVAL(DS_A->dc_id);
-}
-
-document::document(const tl_ds_video* DS_V)
-    : document()
-{
-    if (!DS_V) {
-        return;
-    }
-
-    if (DS_V->magic == CODE_video_empty) {
-        return;
-    }
-
-    m_id = DS_LVAL(DS_V->id);
-    m_type = tgl_document_type::video;
-    m_access_hash = DS_LVAL(DS_V->access_hash);
-    m_date = DS_LVAL(DS_V->date);
-    m_duration = DS_LVAL(DS_V->duration);
-    m_mime_type = DS_STDSTR(DS_V->mime_type);
-    if (m_mime_type.empty()) {
-        m_mime_type = "video/";
-    }
-    m_size = DS_LVAL(DS_V->size);
-
-    if (DS_V->thumb && DS_V->thumb->magic != CODE_photo_size_empty) {
-        m_thumb = create_photo_size(DS_V->thumb);
-    }
-
-    m_dc_id = DS_LVAL(DS_V->dc_id);
-    m_width = DS_LVAL(DS_V->w);
-    m_height = DS_LVAL(DS_V->h);
-}
-
 document::document(const tl_ds_decrypted_message_media* DS_DMM)
     : document()
 {
     if (!(DS_DMM->magic == CODE_decrypted_message_media_photo
             || DS_DMM->magic == CODE_decrypted_message_media_video
-            || DS_DMM->magic == CODE_decrypted_message_media_video_l12
             || DS_DMM->magic == CODE_decrypted_message_media_document
             || DS_DMM->magic == CODE_decrypted_message_media_audio))
     {
@@ -164,7 +107,6 @@ document::document(const tl_ds_decrypted_message_media* DS_DMM)
         }
         break;
     case CODE_decrypted_message_media_video:
-    case CODE_decrypted_message_media_video_l12:
         m_type = tgl_document_type::video;
         break;
     case CODE_decrypted_message_media_document:

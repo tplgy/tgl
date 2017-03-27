@@ -88,6 +88,7 @@ set(PUBLIC_HEADERS
     include/tgl/tgl_document.h
     include/tgl/tgl_file_location.h
     include/tgl/tgl_log.h
+    include/tgl/tgl_login_context.h
     include/tgl/tgl_message.h
     include/tgl/tgl_message_action.h
     include/tgl/tgl_message_entity.h
@@ -135,6 +136,7 @@ set(PRIVATE_HEADERS
     src/document.h
     src/download_task.h
     src/file_location.h
+    src/login_context.h
     src/message.h
     src/mtproto_client.h
     src/mtproto_common.h
@@ -210,6 +212,7 @@ set(PRIVATE_HEADERS
     src/rsa_public_key.h
     src/secret_chat.h
     src/secret_chat_encryptor.h
+    src/sent_code.h
     src/session.h
     src/tools.h
     src/transfer_manager.h
@@ -273,6 +276,7 @@ set(SOURCES
     src/query/query_messages_send_encrypted_message.cpp
     src/query/query_search_message.cpp
     src/query/query_send_change_code.cpp
+    src/query/query_send_code.cpp
     src/query/query_send_inline_query_to_bot.cpp
     src/query/query_send_messages.cpp
     src/query/query_sign_in.cpp
@@ -306,7 +310,6 @@ set(GENERATE_DEPENDS
     generator/tree.h
     scripts/generate.py
     scripts/build_lib.py
-    src/auto/append.tl
     src/auto/encrypted_scheme.tl
     src/auto/mtproto.tl
     src/auto/scheme.tl

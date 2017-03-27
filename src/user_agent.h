@@ -43,6 +43,7 @@ class tgl_timer;
 namespace tgl {
 namespace impl {
 
+struct login_context;
 struct tl_ds_dc_option;
 struct tl_ds_encrypted_chat;
 struct tgl_bn_context;
@@ -329,18 +330,10 @@ private:
     void sign_in();
     void signed_in();
     void export_all_auth();
-    void send_code(const std::string& phone, const std::function<void(bool, bool, const std::string&)>& callback);
-    void send_code_result(const std::string& phone,
-            const std::string& hash,
-            const std::string& code,
-            const std::function<void(bool success, const std::shared_ptr<user>&)>& callback);
-    void sign_in_code(const std::string& phone, const std::string& hash,
-            const std::string& code, tgl_login_action action);
-    void register_me(const std::string& phone, const std::string& hash,
-            bool register_user, const std::string& first_name, const std::string& last_name);
-    void sign_in_phone(const std::string& phone_number);
-    void sign_up_code(const std::string& phone, const std::string& hash,
-            const std::string& first_name, const std::string& last_name, const std::string& code, tgl_login_action action);
+    void sign_in_code(const std::shared_ptr<login_context>& context);;
+    void register_me(const std::shared_ptr<login_context>& context);
+    void sign_in_phone(const std::shared_ptr<login_context>& context);
+    void sign_up_code(const std::shared_ptr<login_context>& context);
     void lookup_state();
 
     void send_text_message(const std::shared_ptr<message>& m, bool disable_preview,
@@ -354,8 +347,6 @@ private:
             const std::shared_ptr<secret_chat>& sc,
             std::array<unsigned char, 256>& random,
             const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback);
-    void call_me(const std::string& phone, const std::string& hash,
-            const std::function<void(bool)>& callback);
     void password_got(const std::string& current_salt, const std::string& password,
             const std::function<void(bool)>& callback);
 

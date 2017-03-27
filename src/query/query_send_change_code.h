@@ -32,7 +32,8 @@ class tgl_user;
 namespace tgl {
 namespace impl {
 
-struct change_phone_state;
+struct login_context;
+struct sent_code;
 
 class query_send_change_code: public query
 {
@@ -45,12 +46,11 @@ public:
 
 private:
     void set_number_code(const std::string& code, tgl_login_action action);
-    void set_number_result(bool success, const std::shared_ptr<tgl_user>&);
-    void set_phone_number_cb(bool success, const std::string& hash);
+    void set_phone_number_cb(std::unique_ptr<sent_code>&&);
 
 private:
     std::function<void(bool)> m_callback;
-    std::shared_ptr<change_phone_state> m_state;
+    std::shared_ptr<login_context> m_context;
 };
 
 }

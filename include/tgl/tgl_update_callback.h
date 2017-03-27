@@ -90,7 +90,7 @@ public:
     virtual void avatar_update(int32_t peer_id, tgl_peer_type peer_type, const tgl_file_location &photo_small, const tgl_file_location &photo_big) = 0;
     virtual void chat_update(const std::shared_ptr<tgl_chat>& chat) = 0;
     virtual void chat_update_participants(int32_t chat_id, const std::vector<std::shared_ptr<tgl_chat_participant>>& participants) = 0;
-    virtual void update_notification_settings(int32_t peer_id, tgl_peer_type peer_type, int64_t mute_until, bool show_previews, const std::string& sound, int32_t event_mask) = 0;
+    virtual void update_notification_settings(int32_t peer_id, tgl_peer_type peer_type, int64_t mute_until, bool show_previews, const std::string& sound) = 0;
     virtual void chat_delete_user(int32_t chat_id, int32_t user) = 0;
     virtual void channel_update_participants(int32_t channel_id, const std::vector<std::shared_ptr<tgl_channel_participant>>& participants) = 0;
     virtual void secret_chat_update(const std::shared_ptr<tgl_secret_chat>& secret_chat) = 0;

@@ -104,7 +104,7 @@ user::user(const tl_ds_user* DS_U) throw(std::runtime_error)
 user::user(const tl_ds_user_full* DS_UF) throw(std::runtime_error)
     : user(DS_UF->user)
 {
-    set_blocked(DS_BVAL(DS_UF->blocked));
+    set_blocked(DS_LVAL(DS_UF->flags) & (1 << 0));
 }
 
 tgl_user_status create_user_status(const tl_ds_user_status* DS_US)

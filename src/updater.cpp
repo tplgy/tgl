@@ -369,8 +369,8 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
             std::map<tgl_user_update_type, std::string> updates;
             int32_t mute_until = DS_LVAL(DS_NS->mute_until);
             std::string notification_sound = DS_STDSTR(DS_NS->sound);
-            bool show_previews = DS_BOOL(DS_NS->show_previews);
-            int32_t event_mask = DS_LVAL(DS_NS->events_mask);
+            int32_t flags = DS_LVAL(DS_NS->flags);
+            bool show_previews = flags & (1 << 0);
             int32_t peer_id = 0;
             tgl_peer_type peer_type = tgl_peer_type::unknown;
 
@@ -394,7 +394,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
                 TGL_DEBUG("update_notify_settings, peer_id " << peer_id << " type " << static_cast<int32_t>(peer_type) << "; mute until " << mute_until
                            << " show previews " << show_previews << " sound " << notification_sound);
                 m_user_agent.callback()->update_notification_settings(peer_id, peer_type, mute_until,
-                        show_previews, notification_sound, event_mask);
+                        show_previews, notification_sound);
             }
         }
         break;

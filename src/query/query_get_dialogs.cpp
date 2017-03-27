@@ -66,8 +66,10 @@ void query_get_dialogs::on_answer(void* D)
         m_state->unread_count.push_back(DS_LVAL(DS_D->unread_count));
         m_state->read_box_max_id.push_back(DS_LVAL(DS_D->read_inbox_max_id));
         if (DS_D->notify_settings) {
+            int32_t flags = DS_LVAL(DS_D->notify_settings->flags);
+            bool show_previews = flags & (1 << 0);
             m_user_agent.callback()->update_notification_settings(peer_id.peer_id, peer_id.peer_type, DS_LVAL(DS_D->notify_settings->mute_until),
-                    DS_BOOL(DS_D->notify_settings->show_previews), DS_STDSTR(DS_D->notify_settings->sound), DS_LVAL(DS_D->notify_settings->events_mask));
+                    show_previews, DS_STDSTR(DS_D->notify_settings->sound));
         }
     }
 

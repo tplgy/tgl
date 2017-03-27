@@ -30,58 +30,25 @@
 namespace tgl {
 namespace impl {
 
+struct sent_code;
+
 class query_send_code: public query
 {
 public:
-    query_send_code(user_agent& ua, const std::function<void(bool, bool, const std::string&)>& callback)
+    query_send_code(user_agent& ua, const std::function<void(std::unique_ptr<sent_code>&&)>& callback)
         : query(ua, "send code", TYPE_TO_PARAM(auth_sent_code))
         , m_callback(callback)
     { }
 
-    virtual void on_answer(void* D) override
-    {
-        if (m_callback) {
-            tl_ds_auth_sent_code* DS_ASC = static_cast<tl_ds_auth_sent_code*>(D);
-            std::string phone_code_hash = DS_STDSTR(DS_ASC->phone_code_hash);
-            bool registered = DS_BVAL(DS_ASC->phone_registered);;
-            m_callback(true, registered, phone_code_hash);
-        }
-    }
-
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_ERROR("RPC_CALL_FAIL " << error_code << " " << error_string);
-        if (m_callback) {
-            m_callback(false, false, std::string());
-        }
-        return 0;
-    }
-
-    virtual void on_timeout() override
-    {
-        TGL_ERROR("timed out for query #" << msg_id() << " (" << name() << ")");
-        if (m_callback) {
-            m_callback(false, false, "TIME_OUT");
-        }
-    }
-
-    virtual double timeout_interval() const override
-    {
-        return 20;
-    }
-
-    virtual bool should_retry_on_timeout() const override
-    {
-        return false;
-    }
-
-    virtual void will_be_pending() override
-    {
-        timeout_within(timeout_interval());
-    }
+    virtual void on_answer(void* D) override;
+    virtual int on_error(int error_code, const std::string& error_string) override;
+    virtual void on_timeout() override;
+    virtual double timeout_interval() const override;
+    virtual bool should_retry_on_timeout() const override;
+    virtual void will_be_pending() override;
 
 private:
-    std::function<void(bool, bool, const std::string)> m_callback;
+    std::function<void(std::unique_ptr<sent_code>&&)> m_callback;
 };
 
 }
