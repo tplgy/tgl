@@ -499,6 +499,13 @@ void transfer_manager::upload_document(const tgl_input_peer_t& to_id,
         return;
     }
 
+    if (!u->size) {
+        TGL_ERROR("can not upload empty file");
+        u->set_status(tgl_upload_status::failed);
+        upload_end(u);
+        return;
+    }
+
     auto ua = m_user_agent.lock();
     if (!ua) {
         TGL_ERROR("the user agent has gone");
