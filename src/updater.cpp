@@ -492,7 +492,7 @@ void updater::work_update(const tl_ds_update* DS_U, update_mode mode)
     }
 }
 
-void updater::work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, update_mode mode)
+void updater::work_updates(const tl_ds_updates* DS_U, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         return;
@@ -706,7 +706,7 @@ void updater::work_any_updates(const tl_ds_updates* DS_U, const std::shared_ptr<
         work_updates_combined(DS_U, mode);
         return;
     case CODE_updates:
-        work_updates(DS_U, extra, mode);
+        work_updates(DS_U, mode);
         return;
     case CODE_update_short_sent_message:
         work_update_short_sent_message(DS_U, extra, mode);
