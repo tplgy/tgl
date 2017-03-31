@@ -956,13 +956,6 @@ void user_agent::forward_messages(const tgl_input_peer_t& from_id, const tgl_inp
 void user_agent::forward_message(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id, int64_t message_id,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback)
 {
-    if (from_id.peer_type == tgl_peer_type::temp_id) {
-        TGL_ERROR("unknown message");
-        if (callback) {
-            callback(false, nullptr);
-        }
-        return;
-    }
     if (from_id.peer_type == tgl_peer_type::enc_chat) {
         TGL_ERROR("can not forward messages from secret chat");
         if (callback) {
@@ -1021,29 +1014,6 @@ void user_agent::send_contact(const tgl_input_peer_t& id,
 
     q->execute(active_client());
 }
-
-//void tgl_do_reply_contact(tgl_message_id_t *_reply_id, const std::string& phone, const std::string& first_name, const std::string& last_name,
-//        unsigned long long flags, std::function<void(bool success, const std::shared_ptr<tgl_message>& M, float progress)> callback)
-//{
-//  tgl_message_id_t reply_id = *_reply_id;
-//  if (reply_id.peer_type == tgl_peer_type::temp_id) {
-//    TGL_ERROR("unknown message");
-//    if (callback) {
-//      callback(0, 0, 0);
-//    }
-//    return;
-//  }
-//  if (reply_id.peer_type == tgl_peer_type::enc_chat) {
-//    TGL_ERROR("can not reply on message from secret chat");
-//    if (callback) {
-//      callback(0, 0, 0);
-//    }
-
-//    tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id(reply_id);
-
-//    tgl_do_send_contact(peer_id, phone, first_name, last_name, flags | TGL_SEND_MSG_FLAG_REPLY(reply_id.id), callback);
-//  }
-//}
 
 void user_agent::forward_media(const tgl_input_peer_t& to_id, int64_t message_id, bool post_as_channel_message,
         const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback)
@@ -1153,31 +1123,6 @@ void user_agent::send_location(const tgl_input_peer_t& peer_id, double latitude,
         q->execute(active_client());
     }
 }
-
-#if 0
-void tgl_do_reply_location(tgl_message_id_t *_reply_id, double latitude, double longitude, unsigned long long flags, std::function<void(bool success, struct tgl_message* M)> callback) {
-  tgl_message_id_t reply_id = *_reply_id;
-  if (reply_id.peer_type == tgl_peer_type::temp_id) {
-    reply_id = tgl_convert_temp_msg_id(reply_id);
-  }
-  if (reply_id.peer_type == tgl_peer_type::temp_id) {
-    TGL_ERROR("unknown message");
-    if (callback) {
-      callback(0, 0);
-    }
-    return;
-  }
-  if (reply_id.peer_type == tgl_peer_type::enc_chat) {
-    TGL_ERROR("can not reply on message from secret chat");
-    if (callback) {
-      callback(0, 0);
-    }
-
-  tgl_peer_id_t peer_id = tgl_msg_id_to_peer_id(reply_id);
-
-  tgl_do_send_location(peer_id, latitude, longitude, flags | TGL_SEND_MSG_FLAG_REPLY(reply_id.id), callback, callback_extra);
-}
-#endif
 
 void user_agent::rename_chat(const tgl_input_peer_t& id, const std::string& new_title,
                         const std::function<void(bool success)>& callback)
@@ -1658,13 +1603,6 @@ void user_agent::delete_message(const tgl_input_peer_t& chat, int64_t message_id
         return;
     }
 
-    if (chat.peer_type == tgl_peer_type::temp_id) {
-        TGL_ERROR("unknown message");
-        if (callback) {
-            callback(false);
-        }
-        return;
-    }
     auto q = std::make_shared<query_delete_message>(*this, chat, message_id, callback);
     if (chat.peer_type == tgl_peer_type::channel) {
         q->out_i32(CODE_channels_delete_messages);

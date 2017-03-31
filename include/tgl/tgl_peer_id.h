@@ -24,14 +24,11 @@
 #include <cstdint>
 
 enum class tgl_peer_type {
-    unknown = 0,
-    user = 1,
-    chat = 2,
-    geo_chat = 3,
-    enc_chat = 4,
-    channel = 5,
-    temp_id = 100,
-    random_id = 101
+    unknown,
+    user,
+    chat,
+    enc_chat,
+    channel,
 };
 
 struct tgl_peer_id_t;
