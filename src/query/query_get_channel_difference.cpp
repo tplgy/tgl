@@ -63,7 +63,7 @@ void query_get_channel_difference::on_answer(void* D)
         }
 
         for (int32_t i = 0; i < DS_LVAL(DS_UD->other_updates->cnt); i++) {
-            m_user_agent.updater().work_update(DS_UD->other_updates->data[i], nullptr, update_mode::dont_check_and_update_consistency);
+            m_user_agent.updater().work_update(DS_UD->other_updates->data[i], update_mode::dont_check_and_update_consistency);
         }
 
         int message_count = DS_LVAL(DS_UD->new_messages->cnt);

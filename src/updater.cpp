@@ -155,7 +155,7 @@ bool updater::check_seq_diff(int32_t seq)
     }
 }
 
-void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& extra, update_mode mode)
+void updater::work_update(const tl_ds_update* DS_U, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         TGL_WARNING("update during get_difference, dropping update");
@@ -199,11 +199,7 @@ void updater::work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>&
         }
         break;
     case CODE_update_message_id:
-        if (auto message = std::static_pointer_cast<tgl_message>(extra)) {
-            m_user_agent.callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), message->to_id());
-        } else {
-            m_user_agent.callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id), tgl_input_peer_t());
-        }
+        m_user_agent.callback()->message_id_updated(DS_LVAL(DS_U->random_id), DS_LVAL(DS_U->id));
         break;
     case CODE_update_user_typing:
         {
@@ -528,7 +524,7 @@ void updater::work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void
     if (DS_U->updates) {
         int32_t n = DS_LVAL(DS_U->updates->cnt);
         for (int32_t i = 0; i < n; ++i) {
-            work_update(DS_U->updates->data[i], extra, mode);
+            work_update(DS_U->updates->data[i], mode);
         }
     }
 
@@ -568,7 +564,7 @@ void updater::work_updates_combined(const tl_ds_updates* DS_U, update_mode mode)
 
     n = DS_LVAL(DS_U->updates->cnt);
     for (int32_t i = 0; i < n; ++i) {
-        work_update(DS_U->updates->data[i], nullptr, mode);
+        work_update(DS_U->updates->data[i], mode);
     }
 
     if (mode != update_mode::check_and_update_consistency) {
@@ -655,7 +651,7 @@ void updater::work_update_short(const tl_ds_updates* DS_U, update_mode mode)
         return;
     }
 
-    work_update(DS_U->update, nullptr, mode);
+    work_update(DS_U->update, mode);
 }
 
 void updater::work_update_short_sent_message(const tl_ds_updates* DS_U,

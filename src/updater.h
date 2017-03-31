@@ -47,8 +47,7 @@ public:
     { }
 
     bool check_pts_diff(int32_t pts, int32_t pts_count);
-    void work_update(const tl_ds_update* DS_U, const std::shared_ptr<void>& extra,
-            update_mode mode = update_mode::check_and_update_consistency);
+    void work_update(const tl_ds_update* DS_U, update_mode mode = update_mode::check_and_update_consistency);
     void work_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra,
             update_mode mode = update_mode::check_and_update_consistency);
     void work_any_updates(tgl_in_buffer* in);
