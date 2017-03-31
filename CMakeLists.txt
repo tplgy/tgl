@@ -138,6 +138,7 @@ set(PRIVATE_HEADERS
     src/file_location.h
     src/login_context.h
     src/message.h
+    src/message_entity.h
     src/mtproto_client.h
     src/mtproto_common.h
     src/mtproto_utils.h
@@ -189,7 +190,7 @@ set(PRIVATE_HEADERS
     src/query/query_messages_send_encrypted_base.h
     src/query/query_messages_send_encrypted_file.h
     src/query/query_messages_send_encrypted_message.h
-    src/query/query_msg_send.h
+    src/query/query_messages_send_message.h
     src/query/query_phone_call.h
     src/query/query_register_device.h
     src/query/query_resolve_username.h
@@ -242,6 +243,7 @@ set(SOURCES
     src/file_location.cpp
     src/log.cpp
     src/message.cpp
+    src/message_entity.cpp
     src/mime_type.cpp
     src/mtproto_client.cpp
     src/mtproto_common.cpp
@@ -274,6 +276,7 @@ set(SOURCES
     src/query/query_messages_send_encrypted_base.cpp
     src/query/query_messages_send_encrypted_file.cpp
     src/query/query_messages_send_encrypted_message.cpp
+    src/query/query_messages_send_message.cpp
     src/query/query_search_message.cpp
     src/query/query_send_change_code.cpp
     src/query/query_send_code.cpp

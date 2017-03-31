@@ -25,6 +25,7 @@
 #include "auto/auto_types.h"
 #include "auto/constants.h"
 #include "document.h"
+#include "message_entity.h"
 #include "peer_id.h"
 #include "photo.h"
 #include "secret_chat.h"
@@ -40,55 +41,7 @@
 namespace tgl {
 namespace impl {
 
-static std::shared_ptr<tgl_message_entity> make_message_entity(const tl_ds_message_entity* DS_ME)
-{
-    auto entity = std::make_shared<tgl_message_entity>();
-    entity->start = DS_LVAL(DS_ME->offset);
-    entity->length = DS_LVAL(DS_ME->length);
-    switch (DS_ME->magic) {
-    case CODE_message_entity_unknown:
-        entity->type = tgl_message_entity_type::unknown;
-        break;
-    case CODE_message_entity_mention:
-        entity->type = tgl_message_entity_type::mention;
-        break;
-    case CODE_message_entity_hashtag:
-        entity->type = tgl_message_entity_type::hashtag;
-        break;
-    case CODE_message_entity_bot_command:
-        entity->type = tgl_message_entity_type::bot_command;
-        break;
-    case CODE_message_entity_url:
-        entity->type = tgl_message_entity_type::url;
-        break;
-    case CODE_message_entity_email:
-        entity->type = tgl_message_entity_type::email;
-        break;
-    case CODE_message_entity_bold:
-        entity->type = tgl_message_entity_type::bold;
-        break;
-    case CODE_message_entity_italic:
-        entity->type = tgl_message_entity_type::italic;
-        break;
-    case CODE_message_entity_code:
-        entity->type = tgl_message_entity_type::code;
-        break;
-    case CODE_message_entity_pre:
-        entity->type = tgl_message_entity_type::pre;
-        break;
-    case CODE_message_entity_text_url:
-        entity->type = tgl_message_entity_type::text_url;
-        entity->text_url = DS_STDSTR(DS_ME->url);
-        break;
-    default:
-        assert(false);
-        break;
-    }
-
-    return entity;
-}
-
-static std::shared_ptr<tgl_message_media> make_message_media(const tl_ds_message_media* DS_MM)
+static std::shared_ptr<tgl_message_media> create_message_media(const tl_ds_message_media* DS_MM)
 {
     if (!DS_MM) {
         return nullptr;
@@ -152,7 +105,7 @@ static std::shared_ptr<tgl_message_media> make_message_media(const tl_ds_message
     }
 }
 
-static std::shared_ptr<tgl_message_media> make_message_media_encrypted(const tl_ds_decrypted_message_media* DS_DMM)
+static std::shared_ptr<tgl_message_media> create_message_media_encrypted(const tl_ds_decrypted_message_media* DS_DMM)
 {
     if (!DS_DMM) {
         return nullptr;
@@ -192,7 +145,7 @@ static std::shared_ptr<tgl_message_media> make_message_media_encrypted(const tl_
     }
 }
 
-static std::shared_ptr<tgl_message_action> make_message_action(const tl_ds_message_action* DS_MA)
+static std::shared_ptr<tgl_message_action> create_message_action(const tl_ds_message_action* DS_MA)
 {
     if (!DS_MA) {
         return nullptr;
@@ -254,7 +207,7 @@ static std::shared_ptr<tgl_message_action> make_message_action(const tl_ds_messa
     }
 }
 
-static std::shared_ptr<tgl_message_action> make_message_action_encrypted(const tl_ds_decrypted_message_action* DS_DMA)
+static std::shared_ptr<tgl_message_action> create_message_action_encrypted(const tl_ds_decrypted_message_action* DS_DMA)
 {
     if (!DS_DMA) {
         return nullptr;
@@ -331,7 +284,7 @@ static std::shared_ptr<tgl_message_action> make_message_action_encrypted(const t
     }
 }
 
-static std::shared_ptr<tgl_message_reply_markup> make_message_reply_markup(const tl_ds_reply_markup* DS_RM)
+static std::shared_ptr<tgl_message_reply_markup> create_message_reply_markup(const tl_ds_reply_markup* DS_RM)
 {
     if (!DS_RM) {
         return nullptr;
@@ -499,21 +452,21 @@ message::message(int64_t message_id,
     }
 
     if (action) {
-        m_action = make_message_action(action);
+        m_action = create_message_action(action);
         set_service(true);
     }
 
     m_text = text;
 
     if (media) {
-        m_media = make_message_media(media);
+        m_media = create_message_media(media);
         assert(!is_service());
     }
 
     m_reply_id = reply_id;
 
     if (reply_markup) {
-        m_reply_markup = make_message_reply_markup(reply_markup);
+        m_reply_markup = create_message_reply_markup(reply_markup);
     }
 }
 
@@ -532,13 +485,13 @@ message::message(const std::shared_ptr<secret_chat>& sc,
                 && !sc->opaque_service_message_enabled()) {
             // ignore the action.
         } else {
-            m_action = make_message_action_encrypted(action);
+            m_action = create_message_action_encrypted(action);
             set_service(true);
         }
     }
 
     if (media) {
-        m_media = make_message_media_encrypted(media);
+        m_media = create_message_media_encrypted(media);
         assert(!is_service());
     }
 
@@ -558,7 +511,7 @@ message::message(const std::shared_ptr<secret_chat>& sc,
 void message::set_decrypted_message_media(const tl_ds_decrypted_message_media* media)
 {
     if (media) {
-        m_media = make_message_media_encrypted(media);
+        m_media = create_message_media_encrypted(media);
         assert(!is_service());
     } else {
         m_media = nullptr;
@@ -569,10 +522,11 @@ void message::set_decrypted_message_media(const tl_ds_decrypted_message_media* m
 void message::update_entities(const tl_ds_vector* DS)
 {
     int32_t entities_num = DS_LVAL(DS->f1);
-    m_entities.resize(entities_num);
     for (int32_t i = 0; i < entities_num; ++i) {
         const tl_ds_message_entity* entity = static_cast<const tl_ds_message_entity*>(DS->f2[i]);
-        m_entities[i] = make_message_entity(entity);
+        if (auto e = create_message_entity(entity)) {
+            m_entities.push_back(e);
+        }
     }
 }
 

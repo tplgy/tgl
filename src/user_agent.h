@@ -336,8 +336,6 @@ private:
     void sign_up_code(const std::shared_ptr<login_context>& context);
     void lookup_state();
 
-    void send_text_message(const std::shared_ptr<message>& m, bool disable_preview,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback);
     void mark_encrypted_message_read(const tgl_input_peer_t& id, int32_t max_time,
             const std::function<void(bool success)>& callback);
     void send_accept_encr_chat(const std::shared_ptr<secret_chat>& sc,

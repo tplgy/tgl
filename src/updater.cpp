@@ -655,7 +655,7 @@ void updater::work_update_short(const tl_ds_updates* DS_U, update_mode mode)
 }
 
 void updater::work_update_short_sent_message(const tl_ds_updates* DS_U,
-        const std::shared_ptr<void>& extra, update_mode mode)
+        const std::shared_ptr<message>& old_message, update_mode mode)
 {
     if (mode == update_mode::check_and_update_consistency
             && DS_U->pts
@@ -663,7 +663,7 @@ void updater::work_update_short_sent_message(const tl_ds_updates* DS_U,
         return;
     }
 
-    if (auto old_message = std::static_pointer_cast<message>(extra)) {
+    if (old_message) {
         if (auto new_message = message::create_from_short_update(m_user_agent.our_id(), DS_U)) {
             if (new_message->media()) {
                 old_message->set_media(new_message->media());
@@ -683,7 +683,7 @@ void updater::work_update_short_sent_message(const tl_ds_updates* DS_U,
     }
 }
 
-void updater::work_any_updates(const tl_ds_updates* DS_U, const std::shared_ptr<void>& extra, update_mode mode)
+void updater::work_any_updates(const tl_ds_updates* DS_U, const std::shared_ptr<class message>& message, update_mode mode)
 {
     if (m_user_agent.is_diff_locked()) {
         return;
@@ -709,7 +709,7 @@ void updater::work_any_updates(const tl_ds_updates* DS_U, const std::shared_ptr<
         work_updates(DS_U, mode);
         return;
     case CODE_update_short_sent_message:
-        work_update_short_sent_message(DS_U, extra, mode);
+        work_update_short_sent_message(DS_U, message, mode);
         return;
     default:
         assert(false);

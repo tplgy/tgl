@@ -35,37 +35,15 @@
 namespace tgl {
 namespace impl {
 
-class query_msg_send: public query
+class query_messages_send_message: public query
 {
 public:
-    query_msg_send(user_agent& ua, const std::shared_ptr<message>& m,
-            const std::function<void(bool, const std::shared_ptr<message>&)>& callback)
-        : query(ua, "send message", TYPE_TO_PARAM(updates))
-        , m_message(m)
-        , m_callback(callback)
-    { }
+    query_messages_send_message(user_agent& ua, const std::shared_ptr<message>& m, bool disable_preview,
+            const std::function<void(bool, const std::shared_ptr<message>&)>& callback);
 
-    virtual void on_answer(void* D) override
-    {
-        tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
-        m_user_agent.updater().work_any_updates(DS_U, m_message);
-        if (m_callback) {
-            m_callback(true, m_message);
-        }
-    }
+    virtual void on_answer(void* D) override;
+    virtual int on_error(int error_code, const std::string& error_string) override;
 
-    virtual int on_error(int error_code, const std::string& error_string) override
-    {
-        TGL_ERROR("RPC_CALL_FAIL " <<  error_code << " " << error_string);
-        m_message->set_pending(false).set_send_failed(true);
-
-        if (m_callback) {
-            m_callback(false, m_message);
-        }
-
-        m_user_agent.callback()->update_messages({m_message});
-        return 0;
-    }
 private:
     std::shared_ptr<message> m_message;
     std::function<void(bool, const std::shared_ptr<message>&)> m_callback;

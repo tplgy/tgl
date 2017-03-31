@@ -119,7 +119,7 @@ int query_send_messages::on_error(int error_code, const std::string& error_strin
     return 0;
 }
 
-void query_send_messages::set_message(const std::shared_ptr<tgl_message>& message)
+void query_send_messages::set_message(const std::shared_ptr<class message>& message)
 {
     m_message = message;
 }

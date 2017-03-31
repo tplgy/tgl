@@ -75,7 +75,7 @@
 #include "query/query_messages_discard_encryption.h"
 #include "query/query_messages_get_dh_config.h"
 #include "query/query_messages_request_encryption.h"
-#include "query/query_msg_send.h"
+#include "query/query_messages_send_message.h"
 #include "query/query_register_device.h"
 #include "query/query_resolve_username.h"
 #include "query/query_search_contact.h"
@@ -624,86 +624,6 @@ void user_agent::update_contact_list(const std::function<void(bool, const std::v
     q->execute(active_client());
 }
 
-void user_agent::send_text_message(const std::shared_ptr<class message>& message, bool disable_preview,
-        const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& callback)
-{
-    if (message->to_id().peer_type == tgl_peer_type::enc_chat) {
-        assert(false);
-        return;
-    }
-
-    auto q = std::make_shared<query_msg_send>(*this, message, callback);
-    q->out_i32(CODE_messages_send_message);
-
-    unsigned f = (disable_preview ? 2 : 0) | (message->reply_id() ? 1 : 0) | (message->reply_markup() ? 4 : 0) | (message->entities().size() > 0 ? 8 : 0);
-    if (message->from_id().peer_type == tgl_peer_type::channel) {
-        f |= 16;
-    }
-    q->out_i32(f);
-    q->out_input_peer(message->to_id());
-    if (message->reply_id()) {
-        q->out_i32(message->reply_id());
-    }
-    q->out_std_string(message->text());
-    q->out_i64(message->id());
-
-    if (message->reply_markup()) {
-        if (!message->reply_markup()->button_matrix.empty()) {
-            q->out_i32(CODE_reply_keyboard_markup);
-            q->out_i32(message->reply_markup()->flags);
-            q->out_i32(CODE_vector);
-            q->out_i32(message->reply_markup()->button_matrix.size());
-            for (size_t i = 0; i < message->reply_markup()->button_matrix.size(); ++i) {
-                q->out_i32(CODE_keyboard_button_row);
-                q->out_i32(CODE_vector);
-                q->out_i32(message->reply_markup()->button_matrix[i].size());
-                for (size_t j = 0; j < message->reply_markup()->button_matrix[i].size(); ++j) {
-                    q->out_i32(CODE_keyboard_button);
-                    q->out_std_string(message->reply_markup()->button_matrix[i][j]);
-                }
-            }
-        } else {
-            q->out_i32(CODE_reply_keyboard_hide);
-        }
-    }
-
-    if (message->entities().size() > 0) {
-        q->out_i32(CODE_vector);
-        q->out_i32(message->entities().size());
-        for (size_t i = 0; i < message->entities().size(); i++) {
-            auto entity = message->entities()[i];
-            switch (entity->type) {
-            case tgl_message_entity_type::bold:
-                q->out_i32(CODE_message_entity_bold);
-                q->out_i32(entity->start);
-                q->out_i32(entity->length);
-                break;
-            case tgl_message_entity_type::italic:
-                q->out_i32(CODE_message_entity_italic);
-                q->out_i32(entity->start);
-                q->out_i32(entity->length);
-                break;
-            case tgl_message_entity_type::code:
-                q->out_i32(CODE_message_entity_code);
-                q->out_i32(entity->start);
-                q->out_i32(entity->length);
-                break;
-            case tgl_message_entity_type::text_url:
-                q->out_i32(CODE_message_entity_text_url);
-                q->out_i32(entity->start);
-                q->out_i32(entity->length);
-                q->out_std_string(entity->text_url);
-                break;
-            default:
-                assert(0);
-            }
-        }
-    }
-
-    m_callback->new_messages({message});
-    q->execute(active_client());
-}
-
 int64_t user_agent::send_text_message(const tgl_input_peer_t& peer_id,
         const std::string& text,
         int64_t message_id,
@@ -749,7 +669,9 @@ int64_t user_agent::send_text_message(const tgl_input_peer_t& peer_id,
         }
         auto m = std::make_shared<message>(message_id, from_id, peer_id, nullptr, &date, text, &TDSM, nullptr, reply_id, nullptr);
         m->set_unread(true).set_outgoing(true).set_pending(true);
-        send_text_message(m, disable_preview, callback);
+        auto q = std::make_shared<query_messages_send_message>(*this, m, disable_preview, callback);
+        m_callback->new_messages({m});
+        q->execute(active_client());
     } else {
         assert(sc);
         if (send_as_secret_chat_service_message) {

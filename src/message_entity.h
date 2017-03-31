@@ -16,36 +16,24 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
     Copyright Vitaly Valtman 2013-2015
-    Copyright Topology LP 2016
+    Copyright Topology LP 2016-2017
 */
 
 #pragma once
 
-#include <cstdint>
-#include <string>
+#include "tgl/tgl_message_entity.h"
 
-enum class tgl_message_entity_type {
-    unknown,
-    mention,
-    hashtag,
-    bot_command,
-    url,
-    email,
-    bold,
-    italic,
-    code,
-    pre,
-    text_url
-};
+#include <memory>
 
-struct tgl_message_entity {
-    tgl_message_entity_type type;
-    int32_t start;
-    int32_t length;
-    std::string text_url_or_language;
-    tgl_message_entity()
-        : type(tgl_message_entity_type::unknown)
-        , start(0)
-        , length(0)
-    { }
-};
+namespace tgl {
+namespace impl {
+
+class mtprotocol_serializer;
+
+struct tl_ds_message_entity;
+
+std::shared_ptr<tgl_message_entity> create_message_entity(const tl_ds_message_entity*);
+void serialize_message_entity(mtprotocol_serializer* s, const tgl_message_entity* entity);
+
+}
+}
