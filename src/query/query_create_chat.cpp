@@ -36,7 +36,7 @@ void query_create_chat::on_answer(void* D)
 {
     tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
 
-    m_user_agent.updater().work_any_updates(DS_U, nullptr);
+    m_user_agent.updater().work_any_updates(DS_U);
 
     int32_t chat_id = 0;
     if (DS_U->magic == CODE_updates && DS_U->chats && DS_U->chats->cnt && *DS_U->chats->cnt == 1) {

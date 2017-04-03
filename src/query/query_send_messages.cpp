@@ -36,7 +36,7 @@ query_send_messages::query_send_messages(user_agent& ua,
 void query_send_messages::on_answer(void* D)
 {
     const tl_ds_updates* DS_U = static_cast<const tl_ds_updates*>(D);
-    m_user_agent.updater().work_any_updates(DS_U, m_message);
+    m_user_agent.updater().work_any_updates(DS_U, update_context(m_message));
     if (m_callback) {
         m_callback(true);
     }

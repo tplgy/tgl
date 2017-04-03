@@ -82,7 +82,7 @@ query_messages_send_message::query_messages_send_message(user_agent& ua, const s
 void query_messages_send_message::on_answer(void* D)
 {
     tl_ds_updates* DS_U = static_cast<tl_ds_updates*>(D);
-    m_user_agent.updater().work_any_updates(DS_U, m_message);
+    m_user_agent.updater().work_any_updates(DS_U, update_context(m_message));
     if (m_callback) {
         m_callback(true, m_message);
     }

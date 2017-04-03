@@ -68,7 +68,7 @@ void query_get_difference::on_answer(void* D)
 
         n = DS_LVAL(DS_UD->other_updates->cnt);
         for (int32_t i = 0; i < n; ++i) {
-            m_user_agent.updater().work_update(DS_UD->other_updates->data[i], update_mode::dont_check_and_update_consistency);
+            m_user_agent.updater().work_update(DS_UD->other_updates->data[i], update_context(update_mode::dont_check_and_update_consistency));
         }
 
         int32_t message_count = DS_LVAL(DS_UD->new_messages->cnt);
