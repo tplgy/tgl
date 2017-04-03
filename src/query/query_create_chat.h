@@ -21,21 +21,19 @@
 
 #pragma once
 
-#include "query.h"
+#include "query_with_timeout.h"
 
 namespace tgl {
 namespace impl {
 
-class query_create_chat: public query
+class query_create_chat: public query_with_timeout
 {
 public:
-    query_create_chat(user_agent& ua, const std::function<void(int32_t chat_id)>& callback, bool is_channel = false);
+    query_create_chat(user_agent& ua, double timeout_seconds,
+            const std::function<void(int32_t chat_id)>& callback, bool is_channel = false);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     virtual void on_timeout() override;
-    virtual double timeout_interval() const override;
-    virtual bool should_retry_on_timeout() const override;
-    virtual void will_be_pending() override;
 
 private:
     std::function<void(int32_t)> m_callback;

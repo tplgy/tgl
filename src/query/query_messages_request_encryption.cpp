@@ -30,9 +30,9 @@ namespace impl {
 
 query_messages_request_encryption::query_messages_request_encryption(
         user_agent& ua,
-        const std::shared_ptr<secret_chat>& sc,
+        const std::shared_ptr<secret_chat>& sc, double timeout_seconds,
         const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback)
-    : query(ua, "send encrypted (chat request)", TYPE_TO_PARAM(encrypted_chat))
+    : query_with_timeout(ua, "send encrypted (chat request)", timeout_seconds, TYPE_TO_PARAM(encrypted_chat))
     , m_secret_chat(sc)
     , m_callback(callback)
 { }
@@ -71,21 +71,6 @@ void query_messages_request_encryption::on_timeout()
     if (m_callback) {
         m_callback(false, m_secret_chat);
     }
-}
-
-double query_messages_request_encryption::timeout_interval() const
-{
-    return 10;
-}
-
-bool query_messages_request_encryption::should_retry_on_timeout() const
-{
-    return false;
-}
-
-void query_messages_request_encryption::will_be_pending()
-{
-    timeout_within(timeout_interval());
 }
 
 }

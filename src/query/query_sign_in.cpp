@@ -27,9 +27,9 @@
 namespace tgl {
 namespace impl {
 
-query_sign_in::query_sign_in(user_agent& ua,
+query_sign_in::query_sign_in(user_agent& ua, double timeout_seconds,
         const std::function<void(bool, const std::shared_ptr<user>&)>& callback)
-    : query(ua, "sign in", TYPE_TO_PARAM(auth_authorization))
+    : query_with_timeout(ua, "sign in", timeout_seconds, TYPE_TO_PARAM(auth_authorization))
     , m_callback(callback)
 { }
 
@@ -62,21 +62,6 @@ void query_sign_in::on_timeout()
     if (m_callback) {
         m_callback(false, nullptr);
     }
-}
-
-double query_sign_in::timeout_interval() const
-{
-    return 20;
-}
-
-bool query_sign_in::should_retry_on_timeout() const
-{
-    return false;
-}
-
-void query_sign_in::will_be_pending()
-{
-    timeout_within(timeout_interval());
 }
 
 bool query_sign_in::handle_session_password_needed(bool& should_retry)

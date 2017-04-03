@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "query.h"
+#include "query_with_timeout.h"
 #include "tgl/tgl_log.h"
 
 #include <functional>
@@ -29,20 +29,17 @@
 namespace tgl {
 namespace impl {
 
-class query_unregister_device: public query
+class query_unregister_device: public query_with_timeout
 {
 public:
-    query_unregister_device(user_agent& ua, const std::function<void(bool)>& callback)
-        : query(ua, "unregister device", TYPE_TO_PARAM(bool))
+    query_unregister_device(user_agent& ua, double timeout_seconds, const std::function<void(bool)>& callback)
+        : query_with_timeout(ua, "unregister device", timeout_seconds, TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     virtual void on_timeout() override;
-    virtual double timeout_interval() const override;
-    virtual bool should_retry_on_timeout() const override;
-    virtual void will_be_pending() override;
 
 private:
     std::function<void(bool)> m_callback;

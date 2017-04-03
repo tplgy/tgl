@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "query.h"
+#include "query_with_timeout.h"
 #include "tgl/tgl_log.h"
 #include "user_agent.h"
 
@@ -31,11 +31,11 @@
 namespace tgl {
 namespace impl {
 
-class query_logout: public query
+class query_logout: public query_with_timeout
 {
 public:
-    query_logout(user_agent& ua, const std::function<void(bool)>& callback)
-        : query(ua, "logout", TYPE_TO_PARAM(bool))
+    query_logout(user_agent& ua, double timeout_seconds, const std::function<void(bool)>& callback)
+        : query_with_timeout(ua, "logout", timeout_seconds, TYPE_TO_PARAM(bool))
         , m_callback(callback)
     { }
 
@@ -65,21 +65,6 @@ public:
         if (m_callback) {
             m_callback(false);
         }
-    }
-
-    virtual double timeout_interval() const override
-    {
-        return 20;
-    }
-
-    virtual bool should_retry_on_timeout() const override
-    {
-        return false;
-    }
-
-    virtual void will_be_pending() override
-    {
-        timeout_within(timeout_interval());
     }
 
 private:

@@ -191,7 +191,6 @@ set(PRIVATE_HEADERS
     src/query/query_messages_send_encrypted_file.h
     src/query/query_messages_send_encrypted_message.h
     src/query/query_messages_send_message.h
-    src/query/query_phone_call.h
     src/query/query_register_device.h
     src/query/query_resolve_username.h
     src/query/query_search_contact.h
@@ -210,6 +209,7 @@ set(PRIVATE_HEADERS
     src/query/query_update_status.h
     src/query/query_upload_file_part.h
     src/query/query_user_info.h
+    src/query/query_with_timeout.h
     src/rsa_public_key.h
     src/secret_chat.h
     src/secret_chat_encryptor.h

@@ -48,20 +48,5 @@ void query_unregister_device::on_timeout()
     }
 }
 
-double query_unregister_device::timeout_interval() const
-{
-    return 5;
-}
-
-bool query_unregister_device::should_retry_on_timeout() const
-{
-    return false;
-}
-
-void query_unregister_device::will_be_pending()
-{
-    timeout_within(timeout_interval());
-}
-
 }
 }

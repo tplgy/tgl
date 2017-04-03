@@ -26,8 +26,9 @@
 namespace tgl {
 namespace impl {
 
-query_create_chat::query_create_chat(user_agent& ua, const std::function<void(int32_t chat_id)>& callback, bool is_channel)
-    : query(ua, is_channel ? "create channel" : "create chat", TYPE_TO_PARAM(updates))
+query_create_chat::query_create_chat(user_agent& ua, double timeout_seconds,
+        const std::function<void(int32_t chat_id)>& callback, bool is_channel)
+    : query_with_timeout(ua, is_channel ? "create channel" : "create chat", timeout_seconds, TYPE_TO_PARAM(updates))
     , m_callback(callback)
 {
 }
@@ -67,21 +68,6 @@ void query_create_chat::on_timeout()
     if (m_callback) {
         m_callback(0);
     }
-}
-
-double query_create_chat::timeout_interval() const
-{
-    return 10;
-}
-
-bool query_create_chat::should_retry_on_timeout() const
-{
-    return false;
-}
-
-void query_create_chat::will_be_pending()
-{
-    timeout_within(timeout_interval());
 }
 
 }

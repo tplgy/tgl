@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "query.h"
+#include "query_with_timeout.h"
 #include "tgl/tgl_log.h"
 
 #include <functional>
@@ -33,17 +33,14 @@ namespace impl {
 
 class user;
 
-class query_sign_in: public query
+class query_sign_in: public query_with_timeout
 {
 public:
-    query_sign_in(user_agent& ua, const std::function<void(bool, const std::shared_ptr<user>&)>& callback);
+    query_sign_in(user_agent& ua, double timeout_seconds, const std::function<void(bool, const std::shared_ptr<user>&)>& callback);
     std::shared_ptr<query_sign_in> shared_from_this() { return std::static_pointer_cast<query_sign_in>(query::shared_from_this()); }
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     virtual void on_timeout() override;
-    virtual double timeout_interval() const override;
-    virtual bool should_retry_on_timeout() const override;
-    virtual void will_be_pending() override;
 
 private:
     virtual bool handle_session_password_needed(bool& should_retry) override;

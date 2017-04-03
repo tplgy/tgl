@@ -598,7 +598,7 @@ void user_agent::logout()
 
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
     auto do_logout = [=] {
-        auto q = std::make_shared<query_logout>(*this, [=](bool success) {
+        auto q = std::make_shared<query_logout>(*this, 20.0, [=](bool success) {
             if (auto ua = weak_ua.lock()) {
                 ua->callback()->logged_out(success);
             }
@@ -1436,7 +1436,7 @@ void user_agent::delete_user_from_channel(const tgl_input_peer_t& channel_id, co
 void user_agent::create_group_chat(const std::vector<tgl_input_peer_t>& user_ids, const std::string& chat_topic,
         const std::function<void(int32_t chat_id)>& callback)
 {
-    auto q = std::make_shared<query_create_chat>(*this, callback);
+    auto q = std::make_shared<query_create_chat>(*this, 10.0, callback);
     q->out_i32(CODE_messages_create_chat);
     q->out_i32(CODE_vector);
     q->out_i32(user_ids.size()); // Number of users, currently we support only 1 user.
@@ -1469,7 +1469,7 @@ void user_agent::create_channel(const std::string& topic, const std::string& abo
     if (mega_group) {
         flags |= 2;
     }
-    auto q = std::make_shared<query_create_chat>(*this, callback, true);
+    auto q = std::make_shared<query_create_chat>(*this, 10.0, callback, true);
     q->out_i32(CODE_channels_create_channel);
     q->out_i32(flags);
     q->out_std_string(topic);
@@ -1905,7 +1905,7 @@ void user_agent::register_device(int32_t token_type, const std::string& token,
 void user_agent::unregister_device(int32_t token_type, const std::string& token,
         const std::function<void(bool success)>& callback)
 {
-    auto q = std::make_shared<query_unregister_device>(*this, callback);
+    auto q = std::make_shared<query_unregister_device>(*this, 5.0, callback);
     q->out_i32(CODE_account_unregister_device);
     q->out_i32(token_type);
     q->out_std_string(token);
@@ -2008,7 +2008,7 @@ void user_agent::sign_in_code(const std::shared_ptr<login_context>& context)
         return;
     }
 
-    auto q = std::make_shared<query_sign_in>(*this, [weak_ua, context](bool success, const std::shared_ptr<user>&) {
+    auto q = std::make_shared<query_sign_in>(*this, 20.0, [weak_ua, context](bool success, const std::shared_ptr<user>&) {
         TGL_DEBUG("sign in result: " << std::boolalpha << success);
         auto ua = weak_ua.lock();
         if (!ua) {
@@ -2048,7 +2048,7 @@ void user_agent::sign_up_code(const std::shared_ptr<login_context>& context)
         return;
     }
 
-    auto q = std::make_shared<query_sign_in>(*this, [weak_ua, context](bool success, const std::shared_ptr<user>&) {
+    auto q = std::make_shared<query_sign_in>(*this, 20.0, [weak_ua, context](bool success, const std::shared_ptr<user>&) {
         auto ua = weak_ua.lock();
         if (!ua) {
             TGL_ERROR("the user agent has gone");
@@ -2162,7 +2162,7 @@ void user_agent::sign_in_phone(const std::shared_ptr<login_context>& context)
 
     if (!context->sent_code || context->sent_code->hash.empty()) {
         TGL_DEBUG("requesting confirmation code from dc " << active_client()->id());
-        auto q = std::make_shared<query_send_code>(*this, callback);
+        auto q = std::make_shared<query_send_code>(*this, 20.0, callback);
         q->out_i32(CODE_auth_send_code);
         q->out_i32(0);
         q->out_std_string(context->phone);
@@ -2172,7 +2172,7 @@ void user_agent::sign_in_phone(const std::shared_ptr<login_context>& context)
         q->execute(active_client(), query::execution_option::LOGIN);
     } else {
         TGL_DEBUG("re-requesting confirmation code from dc " << active_client()->id());
-        auto q = std::make_shared<query_send_code>(*this, callback);
+        auto q = std::make_shared<query_send_code>(*this, 20.0, callback);
         q->out_i32(CODE_auth_resend_code);
         q->out_std_string(context->phone);
         q->out_std_string(context->sent_code->hash);
@@ -2354,7 +2354,7 @@ void user_agent::send_create_encr_chat(const tgl_input_peer_t& user_id,
     sc->set_state(tgl_secret_chat_state::waiting);
     m_callback->secret_chat_update(sc);
 
-    auto q = std::make_shared<query_messages_request_encryption>(*this, sc, callback);
+    auto q = std::make_shared<query_messages_request_encryption>(*this, sc, 10.0, callback);
     q->out_i32(CODE_messages_request_encryption);
     q->out_i32(CODE_input_user);
     q->out_i32(user_id.peer_id);
