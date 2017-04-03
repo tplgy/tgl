@@ -910,7 +910,6 @@ std::shared_ptr<worker> mtproto_client::select_best_worker(bool allow_secondary_
     std::shared_ptr<worker> best_worker = m_session->primary_worker;
 
     if (!allow_secondary_workers) {
-        TGL_DEBUG("selected the primary worker with work_load " << best_worker->work_load.size());
         return best_worker;
     }
 
