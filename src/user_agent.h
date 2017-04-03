@@ -148,19 +148,19 @@ public:
             bool send_as_secret_chat_service_message = false,
             const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback = nullptr) override;
     virtual void forward_message(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id, int64_t message_id,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback) override;
+            const std::function<void(bool success)>& callback) override;
     virtual void forward_messages(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id, const std::vector<int64_t>& message_ids,
-            bool post_as_channel_message, const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback) override;
+            bool post_as_channel_message, const std::function<void(bool success)>& callback) override;
     virtual void mark_message_read(const tgl_input_peer_t& id, int32_t max_id_or_time, const std::function<void(bool success)>& callback) override;
     virtual void send_contact(const tgl_input_peer_t& id,
             const std::string& phone, const std::string& first_name, const std::string& last_name, int32_t reply_id,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback) override;
+            const std::function<void(bool success)>& callback) override;
     virtual void forward_media(const tgl_input_peer_t& to_id, int64_t message_id, bool post_as_channel_message,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback) override;
+            const std::function<void(bool success)>& callback) override;
     virtual void send_location(const tgl_input_peer_t& id, double latitude, double longitude, int32_t reply_id = 0, bool post_as_channel_message = false,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback = nullptr) override;
+            const std::function<void(bool success, const std::shared_ptr<tgl_message>&)>& callback = nullptr) override;
     virtual void send_broadcast(const std::vector<tgl_input_peer_t>& peers, const std::string& text,
-            const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback) override;
+            const std::function<void(bool success)>& callback) override;
     virtual void set_profile_name(const std::string& first_name, const std::string& last_name,
             const std::function<void(bool success)>& callback) override;
     virtual void check_username(const std::string& username, const std::function<void(int result)>& callback) override;

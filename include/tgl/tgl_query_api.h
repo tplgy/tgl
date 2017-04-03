@@ -70,34 +70,34 @@ public:
     // Forward message *msg_id* to peer *id*
     // message can not be encrypted and peer can not be secret chat
     virtual void forward_message(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id, int64_t message_id,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>& M)>& callback) = 0;
+            const std::function<void(bool success)>& callback) = 0;
 
     // Forward messages *ids* to peer *id*
     // messages can not be encrypted and peer can not be secret chat
     virtual void forward_messages(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id, const std::vector<int64_t>& message_ids,
-            bool post_as_channel_message, const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback) = 0;
+            bool post_as_channel_message, const std::function<void(bool success)>& callback) = 0;
 
     virtual void mark_message_read(const tgl_input_peer_t& id, int32_t max_id_or_time, const std::function<void(bool success)>& callback) = 0;
 
     // Sends contact to another user. This contact may be or may not be telegram user
     virtual void send_contact(const tgl_input_peer_t& id,
             const std::string& phone, const std::string& first_name, const std::string& last_name, int32_t reply_id,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback) = 0;
+            const std::function<void(bool success)>& callback) = 0;
 
     // Sends media from message *msg_id* to another dialog
     // a bit different from forwarding message with media
     // secret message media can be forwarded to secret chats
     // and non-secret - to non-secret chats and users
     virtual void forward_media(const tgl_input_peer_t& to_id, int64_t message_id, bool post_as_channel_message,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback) = 0;
+            const std::function<void(bool success)>& callback) = 0;
 
     // Sends location to chat *id*
     virtual void send_location(const tgl_input_peer_t& id, double latitude, double longitude, int32_t reply_id = 0, bool post_as_channel_message = false,
-            const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback = nullptr) = 0;
+            const std::function<void(bool success, const std::shared_ptr<tgl_message>&)>& callback = nullptr) = 0;
 
     // Sends broadcast (i.e. message to several users at once)
     virtual void send_broadcast(const std::vector<tgl_input_peer_t>& peers, const std::string& text,
-            const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback) = 0;
+            const std::function<void(bool success)>& callback) = 0;
 
     // Rename self account
     virtual void set_profile_name(const std::string& first_name, const std::string& last_name,

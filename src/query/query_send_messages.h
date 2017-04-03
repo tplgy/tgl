@@ -34,30 +34,16 @@ namespace impl {
 
 class message;
 
-struct messages_send_extra {
-    bool multi = false;
-    int64_t id = 0;
-    int count = 0;
-    std::vector<int64_t> message_ids;
-};
-
 class query_send_messages: public query
 {
 public:
-    query_send_messages(user_agent& ua, const std::shared_ptr<messages_send_extra>& extra,
-            const std::function<void(bool, const std::shared_ptr<tgl_message>&)>& single_callback);
-    query_send_messages(user_agent& ua, const std::shared_ptr<messages_send_extra>& extra,
-            const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& multi_callback);
-    explicit query_send_messages(user_agent& ua, const std::function<void(bool)>& bool_callback);
+    explicit query_send_messages(user_agent& ua, const std::function<void(bool)>& callback);
     virtual void on_answer(void* D) override;
     virtual int on_error(int error_code, const std::string& error_string) override;
     void set_message(const std::shared_ptr<class message>& message);
 
 private:
-    std::shared_ptr<messages_send_extra> m_extra;
-    std::function<void(bool, const std::shared_ptr<tgl_message>&)> m_single_callback;
-    std::function<void(bool, const std::vector<std::shared_ptr<tgl_message>>& messages)> m_multi_callback;
-    std::function<void(bool)> m_bool_callback;
+    std::function<void(bool)> m_callback;
     std::shared_ptr<message> m_message;
 };
 

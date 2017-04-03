@@ -171,12 +171,9 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_
         return;
     }
 
-    auto extra = std::make_shared<messages_send_extra>();
-    extra->id = u->message_id;
-    auto q = std::make_shared<query_send_messages>(*ua, extra,
-            [=](bool success, const std::shared_ptr<tgl_message>& message) {
-                u->set_status(success ? tgl_upload_status::succeeded : tgl_upload_status::failed);
-            });
+    auto q = std::make_shared<query_send_messages>(*ua, [u](bool success) {
+        u->set_status(success ? tgl_upload_status::succeeded : tgl_upload_status::failed);
+    });
 
     auto m = std::make_shared<message>(u->message_id, ua->our_id(), u->to_id,
             nullptr, nullptr, std::string(), nullptr, nullptr, 0, nullptr);
@@ -267,7 +264,7 @@ void transfer_manager::upload_unencrypted_file_end(const std::shared_ptr<upload_
         q->out_std_string(u->caption);
     }
 
-    q->out_i64(extra->id);
+    q->out_i64(u->message_id);
 
     q->execute(ua->active_client());
 }

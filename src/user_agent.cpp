@@ -834,21 +834,17 @@ void user_agent::resolve_username(const std::string& name, const std::function<v
 
 void user_agent::forward_messages(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id,
         const std::vector<int64_t>& message_ids, bool post_as_channel_message,
-        const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback)
+        const std::function<void(bool success)>& callback)
 {
     if (to_id.peer_type == tgl_peer_type::enc_chat) {
         TGL_ERROR("can not forward messages to secret chats");
         if (callback) {
-            callback(false, std::vector<std::shared_ptr<tgl_message>>());
+            callback(false);
         }
         return;
     }
 
-    std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-    E->multi = true;
-    E->count = message_ids.size();
-
-    auto q = std::make_shared<query_send_messages>(*this, E, callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_forward_messages);
 
     unsigned f = 0;
@@ -866,9 +862,10 @@ void user_agent::forward_messages(const tgl_input_peer_t& from_id, const tgl_inp
     q->out_i32(CODE_vector);
     q->out_i32(message_ids.size());
     for (size_t i = 0; i < message_ids.size(); i++) {
-        int64_t new_message_id;
-        tgl_secure_random(reinterpret_cast<unsigned char*>(&new_message_id), 8);
-        E->message_ids.push_back(new_message_id);
+        int64_t new_message_id = 0;
+        while (!new_message_id) {
+            tgl_secure_random(reinterpret_cast<unsigned char*>(&new_message_id), sizeof(new_message_id));
+        }
         q->out_i64(new_message_id);
     }
     q->out_input_peer(to_id);
@@ -876,51 +873,56 @@ void user_agent::forward_messages(const tgl_input_peer_t& from_id, const tgl_inp
 }
 
 void user_agent::forward_message(const tgl_input_peer_t& from_id, const tgl_input_peer_t& to_id, int64_t message_id,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback)
+        const std::function<void(bool success)>& callback)
 {
     if (from_id.peer_type == tgl_peer_type::enc_chat) {
         TGL_ERROR("can not forward messages from secret chat");
         if (callback) {
-            callback(false, nullptr);
+            callback(false);
         }
         return;
     }
     if (to_id.peer_type == tgl_peer_type::enc_chat) {
         TGL_ERROR("can not forward messages to secret chats");
         if (callback) {
-            callback(false, nullptr);
+            callback(false);
         }
         return;
     }
 
-    std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-    tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
-    auto q = std::make_shared<query_send_messages>(*this, E, callback);
+    int64_t new_message_id = 0;
+    while (!new_message_id) {
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&new_message_id), sizeof(new_message_id));
+    }
+
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_forward_message);
     q->out_input_peer(from_id);
     q->out_i32(message_id);
 
-    q->out_i64(E->id);
+    q->out_i64(new_message_id);
     q->out_input_peer(to_id);
     q->execute(active_client());
 }
 
 void user_agent::send_contact(const tgl_input_peer_t& id,
       const std::string& phone, const std::string& first_name, const std::string& last_name, int32_t reply_id,
-      const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback)
+      const std::function<void(bool success)>& callback)
 {
     if (id.peer_type == tgl_peer_type::enc_chat) {
         TGL_ERROR("can not send contact to secret chat");
         if (callback) {
-            callback(false, nullptr);
+            callback(false);
         }
         return;
     }
 
-    std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-    tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
+    int64_t message_id = 0;
+    while (!message_id) {
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), sizeof(message_id));
+    }
 
-    auto q = std::make_shared<query_send_messages>(*this, E, callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_send_media);
     q->out_i32(reply_id ? 1 : 0);
     if (reply_id) {
@@ -932,46 +934,26 @@ void user_agent::send_contact(const tgl_input_peer_t& id,
     q->out_std_string(first_name);
     q->out_std_string(last_name);
 
-    q->out_i64(E->id);
+    q->out_i64(message_id);
 
     q->execute(active_client());
 }
 
 void user_agent::forward_media(const tgl_input_peer_t& to_id, int64_t message_id, bool post_as_channel_message,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback)
+        const std::function<void(bool success)>& callback)
 {
     if (to_id.peer_type == tgl_peer_type::enc_chat) {
         TGL_ERROR("can not forward messages to secret chats");
         if (callback) {
-            callback(false, nullptr);
+            callback(false);
         }
         return;
     }
-#if 0
-    struct tgl_message* M = tgl_message_get(&msg_id);
-    if (!M || !(M->flags & TGLMF_CREATED) || (M->flags & TGLMF_ENCRYPTED)) {
-        if (!M || !(M->flags & TGLMF_CREATED)) {
-            TGL_ERROR("unknown message");
-        } else {
-            TGL_ERROR("can not forward message from secret chat");
-        }
-        if (callback) {
-            callback(false, nullptr);
-        }
-        return;
+    while (!message_id) {
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), sizeof(message_id));
     }
-    if (M->media.type != tgl_message_media_photo && M->media.type != tgl_message_media_document && M->media.type != tgl_message_media_audio && M->media.type != tgl_message_media_video) {
-        TGL_ERROR("can only forward photo/document");
-        if (callback) {
-            callback(false, nullptr);
-        }
-        return;
-    }
-#endif
-    std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-    tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
 
-    auto q = std::make_shared<query_send_messages>(*this, E, callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_send_media);
     int f = 0;
     if (post_as_channel_message) {
@@ -979,37 +961,12 @@ void user_agent::forward_media(const tgl_input_peer_t& to_id, int64_t message_id
     }
     q->out_i32(f);
     q->out_input_peer(to_id);
-#if 0
-    switch (M->media.type) {
-    case tgl_message_media_photo:
-        assert(M->media.photo);
-        out_i32(CODE_input_media_photo);
-        out_i32(CODE_input_photo);
-        out_i64(M->media.photo->id);
-        out_i64(M->media.photo->access_hash);
-        out_string("");
-        break;
-    case tgl_message_media_document:
-    case tgl_message_media_audio:
-    case tgl_message_media_video:
-        assert(M->media.document);
-        out_i32(CODE_input_media_document);
-        out_i32(CODE_input_document);
-        out_i64(M->media.document->id);
-        out_i64(M->media.document->access_hash);
-        out_string("");
-        break;
-    default:
-       assert(0);
-    }
-#endif
-
-  q->out_i64(E->id);
-  q->execute(active_client());
+    q->out_i64(message_id);
+    q->execute(active_client());
 }
 
 void user_agent::send_location(const tgl_input_peer_t& peer_id, double latitude, double longitude, int32_t reply_id, bool post_as_channel_message,
-        const std::function<void(bool success, const std::shared_ptr<tgl_message>& message)>& callback)
+        const std::function<void(bool success, const std::shared_ptr<tgl_message>&)>& callback)
 {
     if (peer_id.peer_type == tgl_peer_type::enc_chat) {
         auto sc = secret_chat_for_id(peer_id);
@@ -1021,10 +978,30 @@ void user_agent::send_location(const tgl_input_peer_t& peer_id, double latitude,
             }
         }
     } else {
-        std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-        tgl_secure_random(reinterpret_cast<unsigned char*>(&E->id), 8);
-
-        auto q = std::make_shared<query_send_messages>(*this, E, callback);
+        tl_ds_geo_point geo = { CODE_geo_point, &longitude, &latitude };
+        tl_ds_message_media media;
+        media.magic = CODE_message_media_geo;
+        media.geo = &geo;
+        tgl_peer_id_t from_id;
+        if (post_as_channel_message) {
+            from_id = tgl_peer_id_t::from_input_peer(peer_id);
+        } else {
+            from_id = our_id();
+        }
+        int64_t date = tgl_get_system_time();
+        int64_t message_id = 0;
+        while (!message_id) {
+            tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), sizeof(message_id));
+        }
+        auto m = std::make_shared<message>(message_id, from_id, peer_id, nullptr, &date, std::string(), &media, nullptr, reply_id, nullptr);
+        m->set_unread(true).set_outgoing(true).set_pending(true);
+        m_callback->new_messages({m});
+        auto q = std::make_shared<query_send_messages>(*this, [m, callback](bool success) {
+            if (callback) {
+                callback(success, m);
+            }
+        });
+        q->set_message(m);
         q->out_i32(CODE_messages_send_media);
         unsigned f = reply_id ? 1 : 0;
         if (post_as_channel_message) {
@@ -1039,9 +1016,7 @@ void user_agent::send_location(const tgl_input_peer_t& peer_id, double latitude,
         q->out_i32(CODE_input_geo_point);
         q->out_double(latitude);
         q->out_double(longitude);
-
-        q->out_i64(E->id);
-
+        q->out_i64(message_id);
         q->execute(active_client());
     }
 }
@@ -1094,15 +1069,9 @@ void user_agent::leave_channel(const tgl_input_peer_t& id, const std::function<v
 
 void user_agent::delete_channel(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback)
 {
-    std::shared_ptr<messages_send_extra> extra = std::make_shared<messages_send_extra>();
-    extra->multi = true;
-    auto q = std::make_shared<query_send_messages>(*this, extra, [=](bool success, const std::vector<std::shared_ptr<tgl_message>>&) {
-        if (callback) {
-            callback(success);
-        }
-    });
-    q->out_i32(CODE_channels_delete_channel);
     assert(channel_id.peer_type == tgl_peer_type::channel);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
+    q->out_i32(CODE_channels_delete_channel);
     q->out_i32(CODE_input_channel);
     q->out_i32(channel_id.peer_id);
     q->out_i64(channel_id.access_hash);
@@ -1774,40 +1743,39 @@ void user_agent::check_password(const std::function<void(bool success)>& callbac
 }
 
 void user_agent::send_broadcast(const std::vector<tgl_input_peer_t>& peers, const std::string& text,
-        const std::function<void(bool success, const std::vector<std::shared_ptr<tgl_message>>& messages)>& callback)
+        const std::function<void(bool success)>& callback)
 {
     if (peers.size() > 1000) {
         if (callback) {
-            callback(false, std::vector<std::shared_ptr<tgl_message>>());
+            callback(false);
         }
         return;
     }
 
-    std::shared_ptr<messages_send_extra> E = std::make_shared<messages_send_extra>();
-    E->multi = true;
-    E->count = peers.size();
-
+    std::vector<int64_t> message_ids;
     for (size_t i = 0; i < peers.size(); i++) {
         assert(peers[i].peer_type == tgl_peer_type::user);
 
-        int64_t message_id;
-        tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), 8);
-        E->message_ids.push_back(message_id);
+        int64_t message_id = 0;
+        while (!message_id) {
+            tgl_secure_random(reinterpret_cast<unsigned char*>(&message_id), sizeof(message_id));
+        }
+        message_ids.push_back(message_id);
 
         int64_t date = tgl_get_system_time();
-        struct tl_ds_message_media TDSM;
-        TDSM.magic = CODE_message_media_empty;
+        struct tl_ds_message_media media;
+        media.magic = CODE_message_media_empty;
 
-        auto m = std::make_shared<message>(message_id, our_id(), peers[i], nullptr, &date, text, &TDSM, nullptr, 0, nullptr);
+        auto m = std::make_shared<message>(message_id, our_id(), peers[i], nullptr, &date, text, &media, nullptr, 0, nullptr);
         m->set_unread(true).set_outgoing(true).set_pending(true);
         m_callback->new_messages({m});
     }
 
-    auto q = std::make_shared<query_send_messages>(*this, E, callback);
+    auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_send_broadcast);
     q->out_i32(CODE_vector);
     q->out_i32(peers.size());
-    for (size_t i = 0; i < peers.size(); i++) {
+    for (size_t i = 0; i < peers.size(); ++i) {
         assert(peers[i].peer_type == tgl_peer_type::user);
 
         q->out_i32(CODE_input_user);
@@ -1816,9 +1784,10 @@ void user_agent::send_broadcast(const std::vector<tgl_input_peer_t>& peers, cons
     }
 
     q->out_i32(CODE_vector);
-    q->out_i32(peers.size());
-    for (size_t i = 0; i < peers.size(); i++) {
-        q->out_i64(E->message_ids[i]);
+    assert(peers.size() == message_ids.size());
+    q->out_i32(message_ids.size());
+    for (size_t i = 0; i < message_ids.size(); ++i) {
+        q->out_i64(message_ids[i]);
     }
     q->out_std_string(text);
 
