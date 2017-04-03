@@ -1078,7 +1078,7 @@ void user_agent::delete_channel(const tgl_input_peer_t& channel_id, const std::f
     q->execute(active_client());
 }
 
-void user_agent::channel_edit_title(const tgl_input_peer_t& channel_id,
+void user_agent::edit_channel_title(const tgl_input_peer_t& channel_id,
         const std::string& title,
         const std::function<void(bool success)>& callback)
 {
@@ -1092,7 +1092,7 @@ void user_agent::channel_edit_title(const tgl_input_peer_t& channel_id,
      q->execute(active_client());
 }
 
-void user_agent::channel_set_about(const tgl_input_peer_t& id, const std::string& about,
+void user_agent::set_channel_about(const tgl_input_peer_t& id, const std::string& about,
         const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_channels_set_about>(*this, callback);
@@ -1105,7 +1105,7 @@ void user_agent::channel_set_about(const tgl_input_peer_t& id, const std::string
     q->execute(active_client());
 }
 
-void user_agent::channel_set_username(const tgl_input_peer_t& id, const std::string& username,
+void user_agent::set_channel_username(const tgl_input_peer_t& id, const std::string& username,
         const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_channels_set_about>(*this, callback);
@@ -1118,7 +1118,7 @@ void user_agent::channel_set_username(const tgl_input_peer_t& id, const std::str
     q->execute(active_client());
 }
 
-void user_agent::channel_set_admin(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id, int type,
+void user_agent::set_channel_admin(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id, int type,
         const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_send_messages>(*this, callback);
@@ -1387,7 +1387,7 @@ void user_agent::delete_user_from_chat(int32_t chat_id, const tgl_input_peer_t& 
     q->execute(active_client());
 }
 
-void user_agent::channel_invite_user(const tgl_input_peer_t& channel_id, const std::vector<tgl_input_peer_t>& user_ids,
+void user_agent::invite_user_to_channel(const tgl_input_peer_t& channel_id, const std::vector<tgl_input_peer_t>& user_ids,
         const std::function<void(bool success)>& callback)
 {
     if (user_ids.empty()) {
@@ -1415,7 +1415,7 @@ void user_agent::channel_invite_user(const tgl_input_peer_t& channel_id, const s
     q->execute(active_client());
 }
 
-void user_agent::channel_delete_user(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id,
+void user_agent::delete_user_from_channel(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id,
     const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_send_messages>(*this, callback);
@@ -1912,7 +1912,7 @@ void user_agent::unregister_device(int32_t token_type, const std::string& token,
     q->execute(active_client());
 }
 
-void user_agent::upgrade_group(const tgl_peer_id_t& id, const std::function<void(bool success)>& callback)
+void user_agent::migrate_group_chat(const tgl_peer_id_t& id, const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_send_messages>(*this, callback);
     q->out_i32(CODE_messages_migrate_chat);
@@ -2382,7 +2382,7 @@ void user_agent::discard_secret_chat(const tgl_input_peer_t& chat_id,
     q->execute(active_client());
 }
 
-void user_agent::accept_encr_chat_request(const tgl_input_peer_t& chat_id,
+void user_agent::accept_secret_chat_request(const tgl_input_peer_t& chat_id,
         const std::function<void(bool, const std::shared_ptr<tgl_secret_chat>&)>& callback)
 {
     auto sc = secret_chat_for_id(chat_id);

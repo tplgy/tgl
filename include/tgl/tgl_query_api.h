@@ -183,7 +183,7 @@ public:
             const std::function<void(bool, int32_t mute_until)>& callback) = 0;
 
     // Accepts secret chat request. It can fail if another device will be first to accept it
-    virtual void accept_encr_chat_request(const tgl_input_peer_t& chat_id,
+    virtual void accept_secret_chat_request(const tgl_input_peer_t& chat_id,
             const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback) = 0;
 
     // Sets ttl of secret chat
@@ -251,13 +251,13 @@ public:
 
     virtual void delete_channel(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback) = 0;
 
-    virtual void channel_invite_user(const tgl_input_peer_t& channel_id, const std::vector<tgl_input_peer_t>& user_ids,
+    virtual void invite_user_to_channel(const tgl_input_peer_t& channel_id, const std::vector<tgl_input_peer_t>& user_ids,
             const std::function<void(bool success)>& callback) = 0;
 
-    virtual void channel_delete_user(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id,
+    virtual void delete_user_from_channel(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id,
             const std::function<void(bool success)>& callback) = 0;
 
-    virtual void channel_edit_title(const tgl_input_peer_t& channel_id, const std::string& title,
+    virtual void edit_channel_title(const tgl_input_peer_t& channel_id, const std::string& title,
             const std::function<void(bool success)>& callback) = 0;
 
     virtual void create_channel(const std::string& topic, const std::string& about,
@@ -272,24 +272,25 @@ public:
 
     virtual void get_difference(bool sync_from_start, const std::function<void(bool success)>& callback) = 0;
 
-    virtual void rename_channel(const tgl_input_peer_t& id, const std::string& name,
+    virtual void rename_channel(const tgl_input_peer_t& channel_id, const std::string& name,
             const std::function<void(bool success)>& callback) = 0;
 
-    virtual void join_channel(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback) = 0;
+    virtual void join_channel(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback) = 0;
 
-    virtual void channel_set_about(const tgl_input_peer_t& id, const std::string& about,
+    virtual void set_channel_about(const tgl_input_peer_t& channel_id, const std::string& about,
             const std::function<void(bool success)>& callback) = 0;
 
-    virtual void channel_set_username(const tgl_input_peer_t& id, const std::string& username,
+    virtual void set_channel_username(const tgl_input_peer_t& channel_id, const std::string& username,
             const std::function<void(bool success)>& callback) = 0;
 
     virtual void get_channel_difference(const tgl_input_peer_t& channel_id,
             const std::function<void(bool success)>& callback) = 0;
 
-    virtual void export_channel_link(const tgl_input_peer_t& id,
+    virtual void export_channel_link(const tgl_input_peer_t& channel_id,
             const std::function<void(bool success, const std::string& link)>& callback) = 0;
 
-    virtual void upgrade_group(const tgl_peer_id_t& id, const std::function<void(bool success)>& callback) = 0;
+    virtual void migrate_group_chat(const tgl_peer_id_t& chat_id, const std::function<void(bool success)>& callback) = 0;
+
     virtual void get_channels_dialog_list(int limit, int offset,
             const std::function<void(bool success,
                     const std::vector<tgl_peer_id_t>& peers,

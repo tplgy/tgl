@@ -194,7 +194,7 @@ public:
             int32_t mute_until, const std::string& sound, bool show_previews, int32_t mask, const std::function<void(bool)>& callback) override;
     virtual void get_notify_settings(const tgl_input_peer_t& peer_id,
             const std::function<void(bool, int32_t mute_until)>& callback) override;
-    virtual void accept_encr_chat_request(const tgl_input_peer_t& chat_id,
+    virtual void accept_secret_chat_request(const tgl_input_peer_t& chat_id,
             const std::function<void(bool success, const std::shared_ptr<tgl_secret_chat>&)>& callback) override;
     virtual void set_secret_chat_ttl(const tgl_input_peer_t& chat_id, int32_t ttl) override;
     virtual void discard_secret_chat(const tgl_input_peer_t& chat_id,
@@ -226,11 +226,11 @@ public:
     virtual void get_privacy_rules(std::function<void(bool, const std::vector<std::pair<tgl_privacy_rule, const std::vector<int32_t>>>&)> callback) override;
     virtual void leave_channel(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback) override;
     virtual void delete_channel(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback) override;
-    virtual void channel_invite_user(const tgl_input_peer_t& channel_id, const std::vector<tgl_input_peer_t>& user_ids,
+    virtual void invite_user_to_channel(const tgl_input_peer_t& channel_id, const std::vector<tgl_input_peer_t>& user_ids,
             const std::function<void(bool success)>& callback) override;
-    virtual void channel_delete_user(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id,
+    virtual void delete_user_from_channel(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id,
             const std::function<void(bool success)>& callback) override;
-    virtual void channel_edit_title(const tgl_input_peer_t& channel_id, const std::string& title,
+    virtual void edit_channel_title(const tgl_input_peer_t& channel_id, const std::string& title,
             const std::function<void(bool success)>& callback) override;
     virtual void create_channel(const std::string& topic, const std::string& about,
             bool broadcast, bool mega_group,
@@ -238,18 +238,18 @@ public:
     virtual void send_inline_query_to_bot(const tgl_input_peer_t& bot, const std::string& query,
             const std::function<void(bool success, const std::string& response)>& callback) override;
     virtual void get_difference(bool sync_from_start, const std::function<void(bool success)>& callback) override;
-    virtual void rename_channel(const tgl_input_peer_t& id, const std::string& name,
+    virtual void rename_channel(const tgl_input_peer_t& channel_id, const std::string& name,
             const std::function<void(bool success)>& callback) override;
-    virtual void join_channel(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback) override;
-    virtual void channel_set_about(const tgl_input_peer_t& id, const std::string& about,
+    virtual void join_channel(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback) override;
+    virtual void set_channel_about(const tgl_input_peer_t& channel_id, const std::string& about,
             const std::function<void(bool success)>& callback) override;
-    virtual void channel_set_username(const tgl_input_peer_t& id, const std::string& username,
+    virtual void set_channel_username(const tgl_input_peer_t& channel_id, const std::string& username,
             const std::function<void(bool success)>& callback) override;
     virtual void get_channel_difference(const tgl_input_peer_t& channel_id,
             const std::function<void(bool success)>& callback) override;
-    virtual void export_channel_link(const tgl_input_peer_t& id,
+    virtual void export_channel_link(const tgl_input_peer_t& channel_id,
             const std::function<void(bool success, const std::string& link)>& callback) override;
-    virtual void upgrade_group(const tgl_peer_id_t& id, const std::function<void(bool success)>& callback) override;
+    virtual void migrate_group_chat(const tgl_peer_id_t& chat_id, const std::function<void(bool success)>& callback) override;
     virtual void get_channels_dialog_list(int limit, int offset,
             const std::function<void(bool success,
                     const std::vector<tgl_peer_id_t>& peers,
@@ -258,7 +258,7 @@ public:
     // == tgl_query_api ==
 
     // FIXME: expose to tgl_query_api once we have a enum for type.
-    void channel_set_admin(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id, int type,
+    void set_channel_admin(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id, int type,
             const std::function<void(bool success)>& callback);
 
     // == internal ==
