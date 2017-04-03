@@ -393,15 +393,32 @@ bool query::handle_session_password_needed(bool& should_retry)
 
     m_user_agent.set_password_locked(true);
 
-    m_user_agent.check_password([=](bool success) {
-        if (!success) {
+    m_user_agent.add_active_query(shared_from_this());
+    std::weak_ptr<query> weak_this(shared_from_this());
+    m_user_agent.check_password([weak_this](bool success) {
+        auto shared_this = weak_this.lock();
+        if (!shared_this || !success) {
+            if (shared_this) {
+                shared_this->m_user_agent.remove_active_query(shared_this);
+                shared_this->on_error_internal(600, "FAILED_TO_CHECK_PASSWORD");
+            }
             return;
         }
-        m_user_agent.set_dc_logged_in(m_user_agent.active_client()->id());
-        auto q = std::make_shared<query_user_info>(m_user_agent, nullptr);
+        shared_this->m_user_agent.set_dc_logged_in(shared_this->m_user_agent.active_client()->id());
+        auto q = std::make_shared<query_user_info>(shared_this->m_user_agent, [weak_this](bool success, const std::shared_ptr<user>& u) {
+            auto shared_this = weak_this.lock();
+            if (!shared_this || !success) {
+                if (shared_this) {
+                    shared_this->m_user_agent.remove_active_query(shared_this);
+                    shared_this->on_error_internal(600, "FAILED_TO_GET_USER_INFO");
+                }
+                return;
+            }
+            shared_this->retry_within(0);
+        });
         q->out_i32(CODE_users_get_full_user);
         q->out_i32(CODE_input_user_self);
-        q->execute(m_user_agent.active_client());
+        q->execute(shared_this->m_user_agent.active_client());
     });
     return true;
 }
