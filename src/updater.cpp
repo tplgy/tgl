@@ -460,6 +460,18 @@ void updater::work_update(const tl_ds_update* DS_U, const update_context& contex
         break;
     case CODE_update_bot_inline_query:
         break;
+    case CODE_update_bot_inline_send:
+        break;
+    case CODE_update_edit_channel_message:
+        break;
+    case CODE_update_channel_pinned_message:
+        break;
+    case CODE_update_bot_callback_query:
+        break;
+    case CODE_update_edit_message:
+        break;
+    case CODE_update_inline_bot_callback_query:
+        break;
     default:
         assert(false);
     }
