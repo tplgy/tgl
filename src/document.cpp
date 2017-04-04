@@ -81,13 +81,38 @@ document::document(const tl_ds_document* DS_D)
     }
 }
 
+inline static bool is_decrypted_photo(uint32_t magic)
+{
+    return magic == CODE_decrypted_message_media_photo
+            || magic == CODE_decrypted_message_media_photo_layer8;
+}
+
+inline static bool is_decrypted_video(uint32_t magic)
+{
+    return magic == CODE_decrypted_message_media_video
+            || magic == CODE_decrypted_message_media_video_layer8
+            || magic == CODE_decrypted_message_media_video_layer17;
+}
+
+inline static bool is_decrypted_audio(uint32_t magic)
+{
+    return magic == CODE_decrypted_message_media_audio
+            || magic == CODE_decrypted_message_media_audio_layer8;
+}
+
+inline static bool is_decrypted_document(uint32_t magic)
+{
+    return magic == CODE_decrypted_message_media_document
+            || magic == CODE_decrypted_message_media_external_document;
+}
+
 document::document(const tl_ds_decrypted_message_media* DS_DMM)
     : document()
 {
-    if (!(DS_DMM->magic == CODE_decrypted_message_media_photo
-            || DS_DMM->magic == CODE_decrypted_message_media_video
-            || DS_DMM->magic == CODE_decrypted_message_media_document
-            || DS_DMM->magic == CODE_decrypted_message_media_audio))
+    if (!is_decrypted_photo(DS_DMM->magic)
+            && !is_decrypted_video(DS_DMM->magic)
+            && !is_decrypted_document(DS_DMM->magic)
+            && !is_decrypted_audio(DS_DMM->magic))
     {
         assert(false);
         return;
@@ -99,17 +124,14 @@ document::document(const tl_ds_decrypted_message_media* DS_DMM)
                 m_mime_type.begin(), A_Z_to_a_z);
     }
 
-    switch (DS_DMM->magic) {
-    case CODE_decrypted_message_media_photo:
+    if (is_decrypted_photo(DS_DMM->magic)) {
         m_type = tgl_document_type::image;
         if (m_mime_type.empty()) {
             m_mime_type = "image/jpeg"; // Default mime in case there is no mime from the message media
         }
-        break;
-    case CODE_decrypted_message_media_video:
+    } else if (is_decrypted_video(DS_DMM->magic)) {
         m_type = tgl_document_type::video;
-        break;
-    case CODE_decrypted_message_media_document:
+    } else if (is_decrypted_document(DS_DMM->magic)) {
         if (m_mime_type.size() >= 6) {
             if (!m_mime_type.compare(0, 6, "image/")) {
                 m_type = tgl_document_type::image;
@@ -122,10 +144,11 @@ document::document(const tl_ds_decrypted_message_media* DS_DMM)
                 m_type = tgl_document_type::audio;
             }
         }
-        break;
-    case CODE_decrypted_message_media_audio:
+    } else if (is_decrypted_audio(DS_DMM->magic)) {
         m_type = tgl_document_type::audio;
-        break;
+    } else {
+        assert(false);
+        return;
     }
 
     m_width = DS_LVAL(DS_DMM->w);
@@ -137,11 +160,11 @@ document::document(const tl_ds_decrypted_message_media* DS_DMM)
         m_thumb = create_photo_size(DS_DMM->thumb);
     }
 
-    if (DS_DMM->str_thumb && DS_DMM->str_thumb->data) {
+    if (DS_DMM->thumb_bytes && DS_DMM->thumb_bytes->data) {
         m_thumb_width = DS_LVAL(DS_DMM->thumb_w);
         m_thumb_height = DS_LVAL(DS_DMM->thumb_h);
-        m_thumb_data.resize(DS_DMM->str_thumb->len);
-        memcpy(m_thumb_data.data(), DS_DMM->str_thumb->data, DS_DMM->str_thumb->len);
+        m_thumb_data.resize(DS_DMM->thumb_bytes->len);
+        memcpy(m_thumb_data.data(), DS_DMM->thumb_bytes->data, DS_DMM->thumb_bytes->len);
     }
 
     m_key.resize(32);

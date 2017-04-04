@@ -115,9 +115,15 @@ static std::shared_ptr<tgl_message_media> create_message_media_encrypted(const t
     case CODE_decrypted_message_media_empty:
         return std::make_shared<tgl_message_media_none>();
     case CODE_decrypted_message_media_photo:
+    case CODE_decrypted_message_media_photo_layer8:
     case CODE_decrypted_message_media_video:
+    case CODE_decrypted_message_media_video_layer8:
+    case CODE_decrypted_message_media_video_layer17:
     case CODE_decrypted_message_media_document:
+    case CODE_decrypted_message_media_document_layer8:
+    case CODE_decrypted_message_media_external_document:
     case CODE_decrypted_message_media_audio:
+    case CODE_decrypted_message_media_audio_layer8:
     {
         auto media = std::make_shared<tgl_message_media_document>();
         media->document = std::make_shared<document>(DS_DMM);
@@ -501,11 +507,6 @@ message::message(const std::shared_ptr<secret_chat>& sc,
     }
 
     set_outgoing(from_id.peer_id == sc->our_id().peer_id);
-
-    if (action && !is_outgoing() && m_action && m_action->type() == tgl_message_action_type::notify_layer) {
-        // FIXME is following right?
-        sc->set_layer(std::static_pointer_cast<tgl_message_action_notify_layer>(m_action)->layer);
-    }
 }
 
 void message::set_decrypted_message_media(const tl_ds_decrypted_message_media* media)

@@ -41,8 +41,6 @@ class tgl_unconfirmed_secret_message;
 namespace tgl {
 namespace impl {
 
-static constexpr int32_t TGL_ENCRYPTED_LAYER = 17;
-
 class message;
 class query;
 class user_agent;
@@ -119,7 +117,7 @@ public:
     void set_dh_params(int32_t root, unsigned char* prime, int32_t version);
     const std::shared_ptr<query>& last_depending_query() const { return m_last_depending_query; }
     void set_last_depending_query(const std::shared_ptr<query>& q) { m_last_depending_query = q; }
-    void set_layer(int32_t layer) { m_layer = layer; }
+    void set_layer(int32_t layer);
     void set_ttl(int32_t ttl) { m_ttl = ttl; }
     void set_out_seq_no(int32_t out_seq_no) { m_out_seq_no = out_seq_no; }
     void set_in_seq_no(int32_t in_seq_no) { m_in_seq_no = in_seq_no; }

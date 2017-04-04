@@ -5,7 +5,7 @@ Unofficial C++ Telegram client library.
 Current versions:
 
 - scheme.tl: Layer 51
-- encrypted_scheme.tl: Layer 23
+- encrypted_scheme.tl: Layer 46
 
 ### API, Protocol documentation
 

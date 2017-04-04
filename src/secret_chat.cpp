@@ -47,8 +47,10 @@
 namespace tgl {
 namespace impl {
 
-constexpr double REQUEST_RESEND_DELAY = 1.0; // seconds
-constexpr double HOLE_TTL = 3.0; // seconds
+static constexpr int32_t TGL_ENCRYPTED_LAYER = 46;
+
+static constexpr double REQUEST_RESEND_DELAY = 1.0; // seconds
+static constexpr double HOLE_TTL = 3.0; // seconds
 
 std::shared_ptr<secret_chat> secret_chat::create(const std::weak_ptr<user_agent>& weak_ua,
         const tgl_input_peer_t& chat_id, int32_t user_id)
@@ -225,7 +227,7 @@ secret_chat::secret_chat()
     , m_admin_id(0)
     , m_date(0)
     , m_ttl(0)
-    , m_layer(0)
+    , m_layer(TGL_ENCRYPTED_LAYER)
     , m_in_seq_no(0)
     , m_last_in_seq_no(0)
     , m_encr_root(0)
@@ -824,17 +826,18 @@ secret_chat::fetch_message(tgl_in_buffer& in, const tgl_peer_id_t& from_id, int6
         }
 
         free_ds_type_decrypted_message_layer(DS_DML, &decrypted_message_layer);
-    } else {
-        struct paramed_type decrypted_message = TYPE_TO_PARAM(decrypted_message);
+    } else if (*in.ptr == CODE_decrypted_message_layer8 || *in.ptr == CODE_decrypted_message_service_layer8) {
+        struct paramed_type type = TYPE_TO_PARAM(decrypted_message);
         tgl_in_buffer skip_in = in;
-        if (skip_type_decrypted_message(&skip_in, &decrypted_message) < 0 || skip_in.ptr != skip_in.end) {
+        if (skip_type_decrypted_message(&skip_in, &type) < 0 || skip_in.ptr != skip_in.end) {
             TGL_WARNING("can not fetch message");
             return std::make_pair(m, nullptr);;
         }
-
-        struct tl_ds_decrypted_message* DS_DM = fetch_ds_type_decrypted_message(&in, &decrypted_message);
-        assert(DS_DM);
-
+        struct tl_ds_decrypted_message* DS_DM = fetch_ds_type_decrypted_message(&in, &type);
+        if (!DS_DM) {
+            TGL_WARNING("failed to fetch secret chat message");
+            return std::make_pair(m, nullptr);
+        }
         m.message = std::make_shared<message>(shared_from_this(),
                 message_id,
                 from_id,
@@ -843,8 +846,12 @@ secret_chat::fetch_message(tgl_in_buffer& in, const tgl_peer_id_t& from_id, int6
                 DS_DM->media,
                 DS_DM->action,
                 file);
+        free_ds_type_decrypted_message(DS_DM, &type);
         m.raw_in_seq_no = -1;
         m.raw_out_seq_no = -1;
+    } else {
+        TGL_WARNING("unknown secret chat message received, dropping");
+        return std::make_pair(m, nullptr);
     }
 
     if (construct_unconfirmed_message && unconfirmed_message && file && m.message->media()
@@ -1051,7 +1058,7 @@ void secret_chat::send_layer()
     struct tl_ds_decrypted_message_action action;
     memset(&action, 0, sizeof(action));
     action.magic = CODE_decrypted_message_action_notify_layer;
-    int layer = TGL_ENCRYPTED_LAYER;
+    int layer = this->layer();
     action.layer = &layer;
 
     std::weak_ptr<user_agent> weak_ua = m_user_agent;
@@ -1143,30 +1150,47 @@ void secret_chat::resend_messages(int32_t start_seq_no, int32_t end_seq_no)
     }
 }
 
+void secret_chat::set_layer(int32_t layer)
+{
+     if (layer < 8) {
+         return;
+     }
+
+     layer = std::min(TGL_ENCRYPTED_LAYER, layer);
+     if (layer == m_layer) {
+         return;
+     }
+     m_layer = layer;
+
+     if (auto ua = m_user_agent.lock()) {
+         ua->callback()->secret_chat_update(shared_from_this());
+     }
+}
+
 void secret_chat::request_key_exchange()
 {
-    assert(false);
+    // FIXME: implement.
 }
 
 void secret_chat::accept_key_exchange(
         int64_t exchange_id, const std::vector<unsigned char>& ga)
 {
-    assert(false);
+    // FIXME: implement.
 }
 
 void secret_chat::confirm_key_exchange(int sen_nop)
 {
-    assert(false);
+    // FIXME: implement.
 }
 
 void secret_chat::commit_key_exchange(const std::vector<unsigned char>& gb)
 {
-    assert(false);
+    // FIXME: implement.
 }
 
 void secret_chat::abort_key_exchange()
 {
-    assert(false);
+    // FIXME: implement.
 }
 
 }

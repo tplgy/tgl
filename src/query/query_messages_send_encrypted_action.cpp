@@ -56,11 +56,13 @@ query_messages_send_encrypted_action::query_messages_send_encrypted_action(user_
     encryptor.end();
 
     construct_message(unconfirmed_message->message_id(), unconfirmed_message->date(), layer_blob);
+    m_user_agent.callback()->update_messages({m_message});
 }
 
 void query_messages_send_encrypted_action::assemble()
 {
     assert(m_message->action());
+    int32_t layer = m_secret_chat->layer();
 
     out_i32(CODE_messages_send_encrypted_service);
     out_i32(CODE_input_encrypted_chat);
@@ -70,13 +72,24 @@ void query_messages_send_encrypted_action::assemble()
     secret_chat_encryptor encryptor(m_secret_chat, serializer());
     encryptor.start();
     size_t start = begin_unconfirmed_message(CODE_messages_send_encrypted_service);
-    out_i32(CODE_decrypted_message_layer);
-    out_random(15 + 4 * (tgl_random<int>() % 3));
-    out_i32(TGL_ENCRYPTED_LAYER);
-    out_i32(m_secret_chat->raw_in_seq_no());
-    out_i32(m_secret_chat->raw_out_seq_no());
-    out_i32(CODE_decrypted_message_service);
-    out_i64(m_message->id());
+
+    if (layer >= 17) {
+        out_i32(CODE_decrypted_message_layer);
+        out_random(15 + 4 * (tgl_random<int>() % 3));
+        out_i32(layer);
+        out_i32(m_secret_chat->raw_in_seq_no());
+        out_i32(m_secret_chat->raw_out_seq_no());
+        out_i32(CODE_decrypted_message_service);
+        out_i64(m_message->id());
+    } else {
+        out_i32(CODE_decrypted_message_service_layer8);
+        out_i64(m_message->id());
+        out_random(15 + 4 * (tgl_random<int>() % 3));
+        if (layer < 8) {
+            TGL_ERROR("invalid secret chat layer " << layer);
+            assert(false);
+        }
+    }
 
     switch (m_message->action()->type()) {
     case tgl_message_action_type::notify_layer:

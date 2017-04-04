@@ -58,7 +58,7 @@ private:
 private:
     struct decrypted_message_media;
     std::shared_ptr<upload_task> m_upload;
-    std::unique_ptr<decrypted_message_media> m_message_media;
+    std::unique_ptr<decrypted_message_media> m_decrypted_message_media;
 };
 
 }

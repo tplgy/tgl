@@ -57,10 +57,13 @@ query_messages_send_encrypted_message::query_messages_send_encrypted_message(
     encryptor.end();
 
     construct_message(unconfirmed_message->message_id(), unconfirmed_message->date(), layer_blob);
+    m_user_agent.callback()->update_messages({m_message});
 }
 
 void query_messages_send_encrypted_message::assemble()
 {
+    int32_t layer = m_secret_chat->layer();
+
     out_i32(CODE_messages_send_encrypted);
     out_i32(CODE_input_encrypted_chat);
     out_i32(m_secret_chat->id().peer_id);
@@ -69,14 +72,34 @@ void query_messages_send_encrypted_message::assemble()
     secret_chat_encryptor encryptor(m_secret_chat, serializer());
     encryptor.start();
     size_t start = begin_unconfirmed_message(CODE_messages_send_encrypted);
-    out_i32(CODE_decrypted_message_layer);
-    out_random(15 + 4 * (tgl_random<int>() % 3));
-    out_i32(TGL_ENCRYPTED_LAYER);
-    out_i32(m_secret_chat->raw_in_seq_no());
-    out_i32(m_secret_chat->raw_out_seq_no());
-    out_i32(CODE_decrypted_message);
-    out_i64(m_message->id());
-    out_i32(m_secret_chat->ttl());
+
+    if (layer >= 17) {
+        out_i32(CODE_decrypted_message_layer);
+        out_random(15 + 4 * (tgl_random<int>() % 3));
+        out_i32(layer);
+        out_i32(m_secret_chat->raw_in_seq_no());
+        out_i32(m_secret_chat->raw_out_seq_no());
+    }
+
+    if (layer >= 46 ) {
+        out_i32(CODE_decrypted_message);
+        out_i32(1 << 9);
+        out_i64(m_message->id());
+        out_i32(m_secret_chat->ttl());
+    } else if (layer >= 17) {
+        out_i32(CODE_decrypted_message_layer17);
+        out_i64(m_message->id());
+        out_i32(m_secret_chat->ttl());
+    } else {
+        out_i32(CODE_decrypted_message_layer8);
+        out_i64(m_message->id());
+        out_random(15 + 4 * (tgl_random<int>() % 3));
+        if (layer < 8) {
+            TGL_ERROR("invalid secret chat layer " << layer);
+            assert(false);
+        }
+    }
+
     out_std_string(m_message->text());
     assert(m_message->media());
     switch (m_message->media()->type()) {

@@ -148,7 +148,6 @@ void query_messages_send_encrypted_base::construct_message(int64_t message_id, i
         throw std::runtime_error("failed to reconstruct message from blobs");
     }
     m_message->set_unread(true).set_pending(true);
-    m_user_agent.callback()->update_messages({m_message});
 }
 
 std::vector<std::shared_ptr<query_messages_send_encrypted_base>>

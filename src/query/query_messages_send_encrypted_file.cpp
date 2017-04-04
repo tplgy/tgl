@@ -105,6 +105,10 @@ query_messages_send_encrypted_file::query_messages_send_encrypted_file(
     out_i32s(reinterpret_cast<const int32_t*>(input_file_info_blob.data()), input_file_info_blob.size() / 4);
 
     construct_message(unconfirmed_message->message_id(), unconfirmed_message->date(), layer_blob);
+    auto media = m_message->media();
+    m_message->set_media(std::make_shared<tgl_message_media_none>());
+    m_user_agent.callback()->update_messages({m_message});
+    m_message->set_media(media);
 }
 
 query_messages_send_encrypted_file::~query_messages_send_encrypted_file()
@@ -143,6 +147,7 @@ void query_messages_send_encrypted_file::set_message_media(const tl_ds_decrypted
 void query_messages_send_encrypted_file::assemble()
 {
     const auto& u = m_upload;
+    int32_t layer = m_secret_chat->layer();
 
     out_i32(CODE_messages_send_encrypted_file);
     out_i32(CODE_input_encrypted_chat);
@@ -152,26 +157,64 @@ void query_messages_send_encrypted_file::assemble()
     secret_chat_encryptor encryptor(m_secret_chat, serializer());
     encryptor.start();
     size_t capture_start = begin_unconfirmed_message(CODE_messages_send_encrypted_file);
-    out_i32(CODE_decrypted_message_layer);
-    out_random(15 + 4 * (tgl_random<int>() % 3));
-    out_i32(TGL_ENCRYPTED_LAYER);
-    out_i32(m_secret_chat->raw_in_seq_no());
-    out_i32(m_secret_chat->raw_out_seq_no());
-    out_i32(CODE_decrypted_message);
-    out_i64(m_message->id());
-    out_i32(m_secret_chat->ttl());
+
+    if (layer >= 17) {
+        out_i32(CODE_decrypted_message_layer);
+        out_random(15 + 4 * (tgl_random<int>() % 3));
+        out_i32(m_secret_chat->layer());
+        out_i32(m_secret_chat->raw_in_seq_no());
+        out_i32(m_secret_chat->raw_out_seq_no());
+    }
+
+    if (layer >= 46) {
+        out_i32(CODE_decrypted_message);
+        out_i32(1 << 9);
+        out_i64(m_message->id());
+        out_i32(m_secret_chat->ttl());
+    } else if (layer >= 17) {
+        out_i32(CODE_decrypted_message_layer17);
+        out_i64(m_message->id());
+        out_i32(m_secret_chat->ttl());
+    } else {
+        out_i32(CODE_decrypted_message_layer8);
+        out_i64(m_message->id());
+        out_random(15 + 4 * (tgl_random<int>() % 3));
+        if (layer < 8) {
+            TGL_ERROR("invalid secret chat layer " << layer);
+            assert(false);
+        }
+    }
+
     out_string("");
 
     size_t start = serializer()->i32_size();
 
     if (u->as_photo) {
-        out_i32(CODE_decrypted_message_media_photo);
+        if (layer >= 17) {
+            out_i32(CODE_decrypted_message_media_photo);
+        } else {
+            out_i32(CODE_decrypted_message_media_photo_layer8);
+        }
     } else if (u->is_video()) {
-        out_i32(CODE_decrypted_message_media_video);
+        if (layer >= 46) {
+            out_i32(CODE_decrypted_message_media_video);
+        } else if (layer >= 17) {
+            out_i32(CODE_decrypted_message_media_video_layer17);
+        } else {
+            out_i32(CODE_decrypted_message_media_video_layer8);
+        }
     } else if (u->is_audio()) {
-        out_i32(CODE_decrypted_message_media_audio);
+        if (layer >= 17) {
+            out_i32(CODE_decrypted_message_media_audio);
+        } else {
+            out_i32(CODE_decrypted_message_media_audio_layer8);
+        }
     } else {
-        out_i32(CODE_decrypted_message_media_document);
+        if (layer >= 46 ) {
+            out_i32(CODE_decrypted_message_media_document);
+        } else {
+            out_i32(CODE_decrypted_message_media_document_layer8);
+        }
     }
     if (u->as_photo || !u->is_audio()) {
         TGL_DEBUG("secret chat thumb data " << u->thumb.size() << " bytes @ " << u->thumb_width << "x" << u->thumb_height);
@@ -180,29 +223,58 @@ void query_messages_send_encrypted_file::assemble()
         out_i32(u->thumb_height);
     }
 
+    bool is_document = false;
     if (u->as_photo) {
         out_i32(u->width);
         out_i32(u->height);
     } else if (u->is_video()) {
         out_i32(u->duration);
-        out_std_string(tgl_mime_type_by_filename(u->file_name));
+        if (layer >= 17) {
+            out_std_string(tgl_mime_type_by_filename(u->file_name));
+        }
         out_i32(u->width);
         out_i32(u->height);
     } else if (u->is_audio()) {
         out_i32(u->duration);
-        out_std_string(tgl_mime_type_by_filename(u->file_name));
-    } else { // document
-        boost::filesystem::path path(u->file_name);
-        out_std_string(path.filename().string());
-        out_std_string(tgl_mime_type_by_filename(u->file_name));
+        if (layer >= 17) {
+            out_std_string(tgl_mime_type_by_filename(u->file_name));
+        }
+    } else {
+        is_document = true;
+        if (layer >= 46) {
+            out_std_string(tgl_mime_type_by_filename(u->file_name));
+        } else {
+            boost::filesystem::path path(u->file_name);
+            out_std_string(path.filename().string());
+            out_std_string(tgl_mime_type_by_filename(u->file_name));
+        }
     }
 
     out_i32(u->size);
     out_string(reinterpret_cast<const char*>(u->key.data()), u->key.size());
     out_string(reinterpret_cast<const char*>(u->init_iv.data()), u->init_iv.size());
 
+    if (layer >= 46) {
+        if (u->is_video()) {
+            out_string(""); // caption
+        } else if (is_document) {
+            boost::filesystem::path path(u->file_name);
+            out_i32(CODE_vector);
+            out_i32(1);
+            out_i32(CODE_document_attribute_filename);
+            out_std_string(path.filename().string());
+            out_string(""); // caption
+        }
+    }
+
+    if (layer >= 17) {
+        if (u->as_photo) {
+            out_string(""); // caption
+        }
+    }
+
     tgl_in_buffer in = { serializer()->i32_data() + start, serializer()->i32_data() + serializer()->i32_size() };
-    m_message_media = std::make_unique<decrypted_message_media>(in);
+    m_decrypted_message_media = std::make_unique<decrypted_message_media>(in);
 
     append_blob_to_unconfirmed_message(capture_start);
 
@@ -233,9 +305,9 @@ void query_messages_send_encrypted_file::assemble()
 
 void query_messages_send_encrypted_file::on_answer(void* D)
 {
-    if (m_message_media) {
-        set_message_media(m_message_media->media);
-        m_message_media = nullptr;
+    if (m_decrypted_message_media) {
+        set_message_media(m_decrypted_message_media->media);
+        m_decrypted_message_media = nullptr;
     }
 
     query_messages_send_encrypted_base::on_answer(D);
