@@ -81,6 +81,11 @@ query_messages_send_encrypted_file::query_messages_send_encrypted_file(
         const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error)
     : query_messages_send_encrypted_base(ua, "send encrypted file message (reassembled)", sc, nullptr, callback, true)
 {
+    if (sc->layer() < 17) {
+        throw std::runtime_error("we shouldn't have tried to construct a query from unconfirmed message "
+                "for the secret chat with layer less than 17");
+    }
+
     const auto& blobs = unconfirmed_message->blobs();
     if (unconfirmed_message->constructor_code() != CODE_messages_send_encrypted_file
             || blobs.size() != 2) {
@@ -156,9 +161,10 @@ void query_messages_send_encrypted_file::assemble()
     out_i64(m_message->id());
     secret_chat_encryptor encryptor(m_secret_chat, serializer());
     encryptor.start();
-    size_t capture_start = begin_unconfirmed_message(CODE_messages_send_encrypted_file);
+    size_t capture_start = 0;
 
     if (layer >= 17) {
+        capture_start = begin_unconfirmed_message(CODE_messages_send_encrypted_file);
         out_i32(CODE_decrypted_message_layer);
         out_random(15 + 4 * (tgl_random<int>() % 3));
         out_i32(m_secret_chat->layer());
@@ -276,7 +282,9 @@ void query_messages_send_encrypted_file::assemble()
     tgl_in_buffer in = { serializer()->i32_data() + start, serializer()->i32_data() + serializer()->i32_size() };
     m_decrypted_message_media = std::make_unique<decrypted_message_media>(in);
 
-    append_blob_to_unconfirmed_message(capture_start);
+    if (layer >= 17) {
+        append_blob_to_unconfirmed_message(capture_start);
+    }
 
     encryptor.end();
 
@@ -300,7 +308,9 @@ void query_messages_send_encrypted_file::assemble()
     int32_t key_fingerprint = (*(int32_t *)md5) ^ (*(int32_t *)(md5 + 4));
     out_i32(key_fingerprint);
 
-    append_blob_to_unconfirmed_message(capture_start);
+    if (layer >= 17) {
+        append_blob_to_unconfirmed_message(capture_start);
+    }
 }
 
 void query_messages_send_encrypted_file::on_answer(void* D)

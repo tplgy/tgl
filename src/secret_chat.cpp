@@ -42,6 +42,7 @@
 #include "unconfirmed_secret_message.h"
 #include "user_agent.h"
 
+#include <algorithm>
 #include <cstring>
 
 namespace tgl {

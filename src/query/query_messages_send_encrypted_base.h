@@ -66,7 +66,6 @@ public:
 protected:
     size_t begin_unconfirmed_message(uint32_t constructor_code);
     void append_blob_to_unconfirmed_message(size_t buffer_position_start);
-    void end_unconfirmed_message();
     void construct_message(int64_t message_id, int64_t date,
             const std::string& layer_blob) throw(std::runtime_error);
 

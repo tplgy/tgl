@@ -99,9 +99,12 @@ void query_messages_send_encrypted_base::will_send()
         m_unconfirmed_message = nullptr;
     }
 
-    m_message->set_sequence_number(m_secret_chat->out_seq_no());
-    m_secret_chat->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
-    m_user_agent.callback()->secret_chat_update(m_secret_chat);
+    if (m_secret_chat->layer() >= 17) {
+        m_message->set_sequence_number(m_secret_chat->out_seq_no());
+        m_secret_chat->set_out_seq_no(m_secret_chat->out_seq_no() + 1);
+        m_user_agent.callback()->secret_chat_update(m_secret_chat);
+    }
+
     m_user_agent.callback()->update_messages({m_message});
 }
 
@@ -114,6 +117,7 @@ size_t query_messages_send_encrypted_base::begin_unconfirmed_message(uint32_t co
 {
     assert(!m_unconfirmed_message);
     assert(m_message);
+    assert(m_secret_chat->layer() >= 17);
     m_unconfirmed_message = tgl_unconfirmed_secret_message::create_default_impl(
             m_message->id(),
             m_message->date(),
@@ -127,6 +131,7 @@ size_t query_messages_send_encrypted_base::begin_unconfirmed_message(uint32_t co
 
 void query_messages_send_encrypted_base::append_blob_to_unconfirmed_message(size_t start)
 {
+    assert(m_secret_chat->layer() >= 17);
     assert(serializer()->char_size() > start);
     const char* buffer = (serializer()->char_data()) + start;
     size_t size = serializer()->char_size() - start;
@@ -134,13 +139,10 @@ void query_messages_send_encrypted_base::append_blob_to_unconfirmed_message(size
     m_unconfirmed_message->append_blob(std::string(buffer, size));
 }
 
-void query_messages_send_encrypted_base::end_unconfirmed_message()
-{
-}
-
 void query_messages_send_encrypted_base::construct_message(int64_t message_id, int64_t date,
         const std::string& layer_blob) throw(std::runtime_error)
 {
+    assert(m_secret_chat->layer() >= 17);
     m_message = m_secret_chat->construct_message(
             m_secret_chat->our_id(),
             message_id, date, layer_blob, std::string());
@@ -154,6 +156,7 @@ std::vector<std::shared_ptr<query_messages_send_encrypted_base>>
 query_messages_send_encrypted_base::create_by_out_seq_no(const std::shared_ptr<secret_chat>& sc,
             int32_t out_seq_no_start, int32_t out_seq_no_end)
 {
+    assert(sc->layer() >= 17);
     std::vector<std::shared_ptr<query_messages_send_encrypted_base>> queries;
     auto ua = sc->weak_user_agent().lock();
     if (!ua) {

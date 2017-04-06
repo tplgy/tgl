@@ -35,6 +35,11 @@ query_messages_send_encrypted_message::query_messages_send_encrypted_message(
         const std::function<void(bool, const std::shared_ptr<message>&)>& callback) throw(std::runtime_error)
     : query_messages_send_encrypted_base(ua, "send encrypted message (reassembled)", sc, nullptr, callback, true)
 {
+    if (sc->layer() < 17) {
+        throw std::runtime_error("we shouldn't have tried to construct a query from unconfirmed message "
+                "for the secret chat with layer less than 17");
+    }
+
     const auto& blobs = unconfirmed_message->blobs();
     if (unconfirmed_message->constructor_code() != CODE_messages_send_encrypted
             || blobs.size() != 1) {
@@ -71,9 +76,10 @@ void query_messages_send_encrypted_message::assemble()
     out_i64(m_message->id());
     secret_chat_encryptor encryptor(m_secret_chat, serializer());
     encryptor.start();
-    size_t start = begin_unconfirmed_message(CODE_messages_send_encrypted);
+    size_t start = 0;
 
     if (layer >= 17) {
+        start = begin_unconfirmed_message(CODE_messages_send_encrypted);
         out_i32(CODE_decrypted_message_layer);
         out_random(15 + 4 * (tgl_random<int>() % 3));
         out_i32(layer);
@@ -117,9 +123,10 @@ void query_messages_send_encrypted_message::assemble()
     default:
         assert(false);
     }
-    append_blob_to_unconfirmed_message(start);
+    if (layer >= 17) {
+        append_blob_to_unconfirmed_message(start);
+    }
     encryptor.end();
-    end_unconfirmed_message();
 }
 
 }
