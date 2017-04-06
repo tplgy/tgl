@@ -37,7 +37,10 @@ enum class tgl_channel_participant_type
 
 struct tgl_channel_participant: public tgl_chat_participant
 {
-    bool is_editor;
+    bool is_editor = false;
+    bool is_self = false;
+    bool is_moderator = false;
+    bool is_kicked = false;
 };
 
 class tgl_channel: virtual public tgl_chat

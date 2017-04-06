@@ -21,6 +21,7 @@
 
 #include "query_channels_get_participants.h"
 
+#include "channel.h"
 #include "tgl/tgl_update_callback.h"
 #include "user.h"
 
@@ -40,35 +41,22 @@ query_channels_get_participants::query_channels_get_participants(user_agent& ua,
 void query_channels_get_participants::on_answer(void* D)
 {
     tl_ds_channels_channel_participants* DS_CP = static_cast<tl_ds_channels_channel_participants*>(D);
-    for (int32_t i = 0; i < DS_LVAL(DS_CP->users->cnt); i++) {
+    for (int32_t i = 0; i < DS_LVAL(DS_CP->users->cnt); ++i) {
         if (auto u = user::create(DS_CP->users->data[i])) {
             m_user_agent.user_fetched(u);
         }
     }
 
-    int count = DS_LVAL(DS_CP->participants->cnt);
+    int32_t count = DS_LVAL(DS_CP->participants->cnt);
     if (m_state->limit > 0) {
         int current_size = static_cast<int>(m_state->participants.size());
         assert(m_state->limit > current_size);
         count = std::min(count, m_state->limit - current_size);
     }
-    for (int i = 0; i < count; i++) {
-        bool admin = false;
-        bool creator = false;
-        auto magic = DS_CP->participants->data[i]->magic;
-        if (magic == CODE_channel_participant_moderator || magic == CODE_channel_participant_editor) {
-            admin = true;
-        } else if (magic == CODE_channel_participant_creator) {
-            creator = true;
-            admin = true;
+    for (int32_t i = 0; i < count; ++i) {
+        if (auto participant = create_channel_participant(DS_CP->participants->data[i])) {
+            m_state->participants.push_back(participant);
         }
-        auto participant = std::make_shared<tgl_channel_participant>();
-        participant->user_id = DS_LVAL(DS_CP->participants->data[i]->user_id);
-        participant->inviter_id = DS_LVAL(DS_CP->participants->data[i]->inviter_id);
-        participant->date = DS_LVAL(DS_CP->participants->data[i]->date);
-        participant->is_creator = creator;
-        participant->is_admin = admin;
-        m_state->participants.push_back(participant);
     }
     m_state->offset += count;
 

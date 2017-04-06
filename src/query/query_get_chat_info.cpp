@@ -68,22 +68,9 @@ void query_get_chat_info::on_answer(void* D)
             std::vector<std::shared_ptr<tgl_chat_participant>> participants;
             int32_t n = DS_LVAL(DS_CF->participants->participants->cnt);
             for (int32_t i = 0; i < n; ++i) {
-                bool admin = false;
-                bool creator = false;
-                auto p = DS_CF->participants->participants->data[i];
-                if (p->magic == CODE_chat_participant_admin) {
-                    admin = true;
-                } else if (p->magic == CODE_chat_participant_creator) {
-                    creator = true;
-                    admin = true;
+                if (auto participant = create_chat_participant(DS_CF->participants->participants->data[i])) {
+                    participants.push_back(participant);
                 }
-                auto participant = std::make_shared<tgl_chat_participant>();
-                participant->user_id = DS_LVAL(p->user_id);
-                participant->inviter_id = DS_LVAL(p->inviter_id);
-                participant->date = DS_LVAL(p->date);
-                participant->is_admin = admin;
-                participant->is_creator = creator;
-                participants.push_back(participant);
             }
             m_user_agent.callback()->chat_update_participants(DS_LVAL(DS_CF->id), participants);
         }

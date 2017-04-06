@@ -30,6 +30,7 @@ namespace tgl {
 namespace impl {
 
 struct tl_ds_chat;
+struct tl_ds_chat_participant;
 
 class chat: virtual public tgl_chat
 {
@@ -89,6 +90,8 @@ protected:
     tgl_file_location m_photo_big;
     tgl_file_location m_photo_small;
 };
+
+std::shared_ptr<tgl_chat_participant> create_chat_participant(const tl_ds_chat_participant*);
 
 }
 }

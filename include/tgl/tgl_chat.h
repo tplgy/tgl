@@ -28,25 +28,17 @@
 #include "tgl_peer_id.h"
 
 struct tgl_chat_user {
-    int32_t user_id;
-    int32_t inviter_id;
-    int64_t date;
-    tgl_chat_user(): user_id(0), inviter_id(0), date(0) { }
+    int32_t user_id = 0;
+    int32_t inviter_id = 0;
+    int64_t date = 0;
 };
 
 struct tgl_chat_participant{
-    int32_t user_id;
-    int32_t inviter_id;
-    int64_t date;
-    bool is_admin;
-    bool is_creator;
-    tgl_chat_participant()
-        : user_id(0)
-        , inviter_id(0)
-        , date(0)
-        , is_admin(false)
-        , is_creator(false)
-    { }
+    int32_t user_id = 0;
+    int32_t inviter_id = 0;
+    int64_t date = 0;
+    bool is_admin = false;
+    bool is_creator = false;
 };
 
 class tgl_chat

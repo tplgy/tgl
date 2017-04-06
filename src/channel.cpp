@@ -76,5 +76,39 @@ channel::channel(const tl_ds_chat* DS_C) throw(std::runtime_error)
     m_is_mega_group = flags & 256;
 }
 
+std::shared_ptr<tgl_channel_participant> create_channel_participant(const tl_ds_channel_participant* DS_CP)
+{
+    if (!DS_CP) {
+        return nullptr;
+    }
+
+    auto participant = std::make_shared<tgl_channel_participant>();
+    switch (DS_CP->magic) {
+    case CODE_channel_participant_self:
+        participant->is_self = true;
+        break;
+    case CODE_channel_participant_moderator:
+        participant->is_moderator = true;
+        break;
+    case CODE_channel_participant_editor:
+        participant->is_editor = true;
+        break;
+    case CODE_channel_participant_creator:
+        participant->is_creator = true;
+        break;
+    case CODE_channel_participant_kicked:
+        participant->is_kicked = true;
+        break;
+    case CODE_channel_participant:
+        break;
+    default:
+        break;
+    }
+    participant->user_id = DS_LVAL(DS_CP->user_id);
+    participant->inviter_id = DS_LVAL(DS_CP->inviter_id);
+    participant->date = DS_LVAL(DS_CP->date);
+    return participant;
+}
+
 }
 }

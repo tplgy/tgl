@@ -24,10 +24,13 @@
 #include "chat.h"
 #include "tgl/tgl_channel.h"
 
+#include <memory>
+
 namespace tgl {
 namespace impl {
 
 struct tl_ds_chat;
+struct tl_ds_channel_participant;
 
 class channel: public chat, virtual public tgl_channel
 {
@@ -59,6 +62,8 @@ private:
     bool m_is_broadcast;
     bool m_is_diff_locked;
 };
+
+std::shared_ptr<tgl_channel_participant> create_channel_participant(const tl_ds_channel_participant*);
 
 }
 }

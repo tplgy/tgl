@@ -21,7 +21,9 @@
 
 #include "query_channel_get_participant.h"
 
+#include "channel.h"
 #include "tgl/tgl_update_callback.h"
+#include "user.h"
 
 namespace tgl {
 namespace impl {
@@ -36,27 +38,16 @@ query_channel_get_participant::query_channel_get_participant(user_agent& ua,
 void query_channel_get_participant::on_answer(void* D)
 {
     tl_ds_channels_channel_participant* DS_CP = static_cast<tl_ds_channels_channel_participant*>(D);
-    if (!DS_CP->participant) {
-        return;
+
+    for (int32_t i = 0; i < DS_LVAL(DS_CP->users->cnt); ++i) {
+        if (auto u = user::create(DS_CP->users->data[i])) {
+            m_user_agent.user_fetched(u);
+        }
     }
 
-    bool admin = false;
-    bool creator = false;
-    auto magic = DS_CP->participant->magic;
-    if (magic == CODE_channel_participant_moderator || magic == CODE_channel_participant_editor) {
-        admin = true;
-    } else if (magic == CODE_channel_participant_creator) {
-        creator = true;
-        admin = true;
+    if (auto participant = create_channel_participant(DS_CP->participant)) {
+        m_user_agent.callback()->channel_update_participants(m_channel_id, {participant});
     }
-
-    auto participant = std::make_shared<tgl_channel_participant>();
-    participant->user_id = DS_LVAL(DS_CP->participant->user_id);
-    participant->inviter_id = DS_LVAL(DS_CP->participant->inviter_id);
-    participant->date = DS_LVAL(DS_CP->participant->date);
-    participant->is_creator = creator;
-    participant->is_admin = admin;
-    m_user_agent.callback()->channel_update_participants(m_channel_id, {participant});
 
     if (m_callback) {
         m_callback(true);

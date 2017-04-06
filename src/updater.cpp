@@ -252,28 +252,14 @@ void updater::work_update(const tl_ds_update* DS_U, const update_context& contex
     case CODE_update_chat_participants:
         if (DS_U->participants->magic == CODE_chat_participants) {
             tgl_peer_id_t chat_id = tgl_peer_id_t(tgl_peer_type::chat, DS_LVAL(DS_U->participants->chat_id));
-            int count = DS_LVAL(DS_U->participants->participants->cnt);
+            int32_t count = DS_LVAL(DS_U->participants->participants->cnt);
             std::vector<std::shared_ptr<tgl_chat_participant>> participants;
-            for (int i = 0; i < count; ++i) {
-                bool admin = false;
-                bool creator = false;
-                if (DS_U->participants->participants->data[i]->magic == CODE_chat_participant_admin) {
-                    admin = true;
-                } else if (DS_U->participants->participants->data[i]->magic == CODE_chat_participant_creator) {
-                    creator = true;
-                    admin = true;
+            for (int32_t i = 0; i < count; ++i) {
+                if (auto participant = create_chat_participant(DS_U->participants->participants->data[i])) {
+                    participants.push_back(participant);
                 }
-                auto participant = std::make_shared<tgl_chat_participant>();
-                participant->user_id = DS_LVAL(DS_U->participants->participants->data[i]->user_id);
-                participant->inviter_id = DS_LVAL(DS_U->participants->participants->data[i]->inviter_id);
-                participant->date = DS_LVAL(DS_U->participants->participants->data[i]->date);
-                participant->is_admin = admin;
-                participant->is_creator = creator;
-                participants.push_back(participant);
             }
-            if (participants.size()) {
-                m_user_agent.callback()->chat_update_participants(chat_id.peer_id, participants);
-            }
+            m_user_agent.callback()->chat_update_participants(chat_id.peer_id, participants);
         }
         break;
     case CODE_update_contact_registered:

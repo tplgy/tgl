@@ -114,5 +114,30 @@ chat::chat(const tl_ds_chat* DS_C) throw(std::runtime_error)
     assert(DS_C->magic == CODE_chat || DS_C->magic == CODE_chat_forbidden);
 }
 
+std::shared_ptr<tgl_chat_participant> create_chat_participant(const tl_ds_chat_participant* DS_CP)
+{
+    if (!DS_CP) {
+        return nullptr;
+    }
+
+    auto participant = std::make_shared<tgl_chat_participant>();
+    switch(DS_CP->magic) {
+    case CODE_chat_participant_admin:
+        participant->is_admin = true;
+        break;
+    case CODE_chat_participant_creator:
+        participant->is_creator = true;
+        break;
+    case CODE_chat_participant:
+        break;
+    default:
+        break;
+    }
+    participant->user_id = DS_LVAL(DS_CP->user_id);
+    participant->inviter_id = DS_LVAL(DS_CP->inviter_id);
+    participant->date = DS_LVAL(DS_CP->date);
+    return participant;
+}
+
 }
 }
