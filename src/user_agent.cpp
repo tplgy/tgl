@@ -2493,7 +2493,7 @@ void user_agent::chat_fetched(const std::shared_ptr<chat>& c)
         m_callback->chat_update(c);
     }
 
-    m_callback->avatar_update(c->id().peer_id, c->id().peer_type, c->photo_big(), c->photo_small());
+    m_callback->avatar_update(c->id().peer_id, c->id().peer_type, c->photo_small(), c->photo_big());
 }
 
 }
