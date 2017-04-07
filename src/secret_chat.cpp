@@ -775,7 +775,7 @@ secret_chat::fetch_message(tgl_in_buffer& in, const tgl_peer_id_t& from_id, int6
     secret_message m;
     std::shared_ptr<tgl_unconfirmed_secret_message> unconfirmed_message;
 
-    if (*in.ptr == CODE_decrypted_message_layer) {
+    if (static_cast<uint32_t>(*in.ptr) == CODE_decrypted_message_layer) {
         struct paramed_type decrypted_message_layer = TYPE_TO_PARAM(decrypted_message_layer);
         tgl_in_buffer skip_in = in;
         if (skip_type_decrypted_message_layer(&skip_in, &decrypted_message_layer) < 0 || skip_in.ptr != skip_in.end) {
@@ -827,7 +827,7 @@ secret_chat::fetch_message(tgl_in_buffer& in, const tgl_peer_id_t& from_id, int6
         }
 
         free_ds_type_decrypted_message_layer(DS_DML, &decrypted_message_layer);
-    } else if (*in.ptr == CODE_decrypted_message_layer8 || *in.ptr == CODE_decrypted_message_service_layer8) {
+    } else if (static_cast<uint32_t>(*in.ptr) == CODE_decrypted_message_layer8 || static_cast<uint32_t>(*in.ptr) == CODE_decrypted_message_service_layer8) {
         struct paramed_type type = TYPE_TO_PARAM(decrypted_message);
         tgl_in_buffer skip_in = in;
         if (skip_type_decrypted_message(&skip_in, &type) < 0 || skip_in.ptr != skip_in.end) {
