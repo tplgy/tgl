@@ -172,7 +172,7 @@ public:
     virtual void get_chat_info(int32_t id, const std::function<void(bool success)>& callback) override;
     virtual void get_channel_info(const tgl_input_peer_t& id, const std::function<void(bool success)>& callback) override;
     virtual void get_channel_participants(const tgl_input_peer_t& channel_id, int limit, int offset,
-            tgl_channel_participant_type type, const std::function<void(bool success)>& callback) override;
+            tgl_channel_participant_filter filter, const std::function<void(bool success)>& callback) override;
     virtual void get_channel_participant_self(const tgl_input_peer_t& channel_id, const std::function<void(bool success)>& callback) override;
     virtual void add_user_to_chat(const tgl_peer_id_t& chat_id, const tgl_input_peer_t& user_id, int32_t limit,
             const std::function<void(bool success)>& callback) override;
@@ -249,6 +249,9 @@ public:
             const std::function<void(bool success)>& callback) override;
     virtual void export_channel_link(const tgl_input_peer_t& channel_id,
             const std::function<void(bool success, const std::string& link)>& callback) override;
+    virtual void set_channel_participant_role(const tgl_input_peer_t& channel_id,
+            const tgl_input_peer_t& user_id, tgl_channel_participant_role role,
+            const std::function<void(bool success)>& callback) override;
     virtual void migrate_group_chat(const tgl_peer_id_t& chat_id, const std::function<void(bool success)>& callback) override;
     virtual void get_channels_dialog_list(int limit, int offset,
             const std::function<void(bool success,
@@ -256,10 +259,6 @@ public:
                     const std::vector<int64_t>& last_msg_ids,
                     const std::vector<int>& unread_count)>& callback) override;
     // == tgl_query_api ==
-
-    // FIXME: expose to tgl_query_api once we have a enum for type.
-    void set_channel_admin(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id, int type,
-            const std::function<void(bool success)>& callback);
 
     // == internal ==
     int32_t qts() const { return m_qts; }

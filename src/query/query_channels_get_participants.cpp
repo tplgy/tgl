@@ -88,17 +88,17 @@ void query_channels_get_participants::assemble()
     out_i32(m_state->channel_id.peer_id);
     out_i64(m_state->channel_id.access_hash);
 
-    switch (m_state->type) {
-    case tgl_channel_participant_type::admins:
+    switch (m_state->filter) {
+    case tgl_channel_participant_filter::admins:
         out_i32(CODE_channel_participants_admins);
         break;
-    case tgl_channel_participant_type::kicked:
+    case tgl_channel_participant_filter::kicked:
         out_i32(CODE_channel_participants_kicked);
         break;
-    case tgl_channel_participant_type::recent:
+    case tgl_channel_participant_filter::recent:
         out_i32(CODE_channel_participants_recent);
         break;
-    case tgl_channel_participant_type::bots:
+    case tgl_channel_participant_filter::bots:
         out_i32(CODE_channel_participants_bots);
         break;
     }

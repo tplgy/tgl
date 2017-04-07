@@ -1118,7 +1118,8 @@ void user_agent::set_channel_username(const tgl_input_peer_t& id, const std::str
     q->execute(active_client());
 }
 
-void user_agent::set_channel_admin(const tgl_input_peer_t& channel_id, const tgl_input_peer_t& user_id, int type,
+void user_agent::set_channel_participant_role(const tgl_input_peer_t& channel_id,
+        const tgl_input_peer_t& user_id, tgl_channel_participant_role role,
         const std::function<void(bool success)>& callback)
 {
     auto q = std::make_shared<query_send_messages>(*this, callback);
@@ -1131,14 +1132,14 @@ void user_agent::set_channel_admin(const tgl_input_peer_t& channel_id, const tgl
     q->out_i32(CODE_input_user);
     q->out_i32(user_id.peer_id);
     q->out_i64(user_id.access_hash);
-    switch (type) {
-    case 1:
+    switch (role) {
+    case tgl_channel_participant_role::moderator:
         q->out_i32(CODE_channel_role_moderator);
         break;
-    case 2:
+    case tgl_channel_participant_role::editor:
         q->out_i32(CODE_channel_role_editor);
         break;
-    default:
+    case tgl_channel_participant_role::normal:
         q->out_i32(CODE_channel_role_empty);
         break;
     }
@@ -1146,11 +1147,11 @@ void user_agent::set_channel_admin(const tgl_input_peer_t& channel_id, const tgl
     q->execute(active_client());
 }
 
-void user_agent::get_channel_participants(const tgl_input_peer_t& channel_id, int limit, int offset, tgl_channel_participant_type type,
+void user_agent::get_channel_participants(const tgl_input_peer_t& channel_id, int limit, int offset, tgl_channel_participant_filter filter,
         const std::function<void(bool success)>& callback)
 {
     std::shared_ptr<channel_get_participants_state> state = std::make_shared<channel_get_participants_state>();
-    state->type = type;
+    state->filter = filter;
     state->channel_id = channel_id;
     state->limit = limit;
     state->offset = offset;

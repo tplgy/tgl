@@ -27,12 +27,19 @@
 #include "tgl_chat.h"
 #include "tgl_file_location.h"
 
-enum class tgl_channel_participant_type
+enum class tgl_channel_participant_filter
 {
     admins,
     recent,
     kicked,
     bots,
+};
+
+enum class tgl_channel_participant_role
+{
+    normal,
+    moderator,
+    editor,
 };
 
 struct tgl_channel_participant: public tgl_chat_participant

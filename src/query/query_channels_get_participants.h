@@ -33,7 +33,7 @@ namespace impl {
 struct channel_get_participants_state {
     tgl_input_peer_t channel_id;
     std::vector<std::shared_ptr<tgl_channel_participant>> participants;
-    tgl_channel_participant_type type = tgl_channel_participant_type::recent;
+    tgl_channel_participant_filter filter = tgl_channel_participant_filter::recent;
     int offset = 0;
     int limit = -1;
 };
