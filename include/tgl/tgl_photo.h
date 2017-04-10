@@ -42,7 +42,6 @@ struct tgl_photo
     int64_t id = 0;
     int64_t access_hash = 0;
     int32_t date = 0;
-    std::string caption;
     std::vector<std::shared_ptr<tgl_photo_size>> sizes;
 };
 

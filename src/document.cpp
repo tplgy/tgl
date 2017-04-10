@@ -186,7 +186,7 @@ void document::init_attribute(const tl_ds_document_attribute* DS_DA)
         return;
     case CODE_document_attribute_sticker:
         m_type = tgl_document_type::sticker;
-        m_caption = DS_STDSTR(DS_DA->alt);
+        m_sticker_alt = DS_STDSTR(DS_DA->alt);
         return;
     case CODE_document_attribute_video:
         m_type = tgl_document_type::video;

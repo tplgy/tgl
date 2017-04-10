@@ -53,9 +53,9 @@ public:
     virtual int32_t duration() const = 0;
     virtual bool is_animated() const = 0;
     virtual const std::shared_ptr<tgl_photo_size>& thumb() const = 0;
-    virtual const std::string& caption() const = 0;
     virtual const std::string& mime_type() const = 0;
     virtual const std::string& file_name() const = 0;
+    virtual const std::string& sticker_alt() const = 0;
 
     bool is_encrypted() const { return !key().empty() && !iv().empty() && key_fingerprint() != 0; }
 

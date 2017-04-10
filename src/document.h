@@ -48,9 +48,9 @@ public:
     virtual int32_t duration() const override { return m_duration; }
     virtual bool is_animated() const override { return m_is_animated; }
     virtual const std::shared_ptr<tgl_photo_size>& thumb() const override { return m_thumb; }
-    virtual const std::string& caption() const override { return m_caption; }
     virtual const std::string& mime_type() const override { return m_mime_type; }
     virtual const std::string& file_name() const override { return m_file_name; }
+    virtual const std::string& sticker_alt() const override { return m_sticker_alt; }
 
     // For encrypted document.
     virtual const std::vector<unsigned char>& key() const override { return m_key; }
@@ -82,9 +82,9 @@ private:
     tgl_document_type m_type;
     bool m_is_animated;
     std::shared_ptr<tgl_photo_size> m_thumb;
-    std::string m_caption;
     std::string m_mime_type;
     std::string m_file_name;
+    std::string m_sticker_alt;
 
     std::vector<unsigned char> m_key;
     std::vector<unsigned char> m_iv;
