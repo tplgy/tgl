@@ -113,6 +113,7 @@ if not (len(sys.argv) == 3 or len(sys.argv) == 4):
 
 ROOT_DIR = sys.argv[1]
 BUILD_DIR = sys.argv[2]
+CC = ""
 if len(sys.argv) == 4:
     CC = sys.argv[3]
 if len(CC) == 0:
