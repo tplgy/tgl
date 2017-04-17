@@ -113,9 +113,10 @@ if not (len(sys.argv) == 3 or len(sys.argv) == 4):
 
 ROOT_DIR = sys.argv[1]
 BUILD_DIR = sys.argv[2]
-CC = "cc"
 if len(sys.argv) == 4:
     CC = sys.argv[3]
+if len(CC) == 0:
+    CC = "cc"
 
 if not os.path.isdir(BUILD_DIR) or not os.path.exists(BUILD_DIR):
     print("build directory doesn't exist")
