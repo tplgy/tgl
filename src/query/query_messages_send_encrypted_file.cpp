@@ -103,7 +103,7 @@ query_messages_send_encrypted_file::query_messages_send_encrypted_file(
     out_i32(m_secret_chat->id().peer_id);
     out_i64(m_secret_chat->id().access_hash);
     out_i64(unconfirmed_message->message_id());
-    secret_chat_encryptor encryptor(m_secret_chat, serializer());
+    secret_chat_encryptor encryptor(m_secret_chat->key_fingerprint(), m_secret_chat->encryption_key(), serializer());
     encryptor.start();
     out_i32s(reinterpret_cast<const int32_t*>(layer_blob.data()), layer_blob.size() / 4);
     encryptor.end();
@@ -159,7 +159,7 @@ void query_messages_send_encrypted_file::assemble()
     out_i32(u->to_id.peer_id);
     out_i64(m_secret_chat->id().access_hash);
     out_i64(m_message->id());
-    secret_chat_encryptor encryptor(m_secret_chat, serializer());
+    secret_chat_encryptor encryptor(m_secret_chat->key_fingerprint(), m_secret_chat->encryption_key(), serializer());
     encryptor.start();
     size_t capture_start = 0;
 

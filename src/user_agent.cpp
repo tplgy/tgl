@@ -397,13 +397,15 @@ std::shared_ptr<secret_chat> user_agent::allocate_or_update_secret_chat(const tl
 std::shared_ptr<tgl_secret_chat> user_agent::load_secret_chat(int32_t chat_id, int64_t access_hash, int32_t user_id,
         int32_t admin, int32_t date, int32_t ttl, int32_t layer,
         int32_t in_seq_no, int32_t out_seq_no,
-        int32_t encr_root, int32_t encr_param_version,
-        tgl_secret_chat_state state, tgl_secret_chat_exchange_state exchange_state,
+        tgl_secret_chat_state state,
+        tgl_secret_chat_exchange_state exchange_state,
+        int32_t encryption_root,
+        int32_t encryption_version,
+        const unsigned char* encryption_prime,
+        const unsigned char* encryption_key,
+        const unsigned char* encryption_random,
         int64_t exchange_id,
-        const unsigned char* key, size_t key_length,
-        const unsigned char* encr_prime, size_t encr_prime_length,
-        const unsigned char* g_key, size_t g_key_length,
-        const unsigned char* exchange_key, size_t exchange_key_length)
+        const unsigned char* exchange_key)
 {
     if (m_secret_chats.find(chat_id) != m_secret_chats.end()) {
         TGL_WARNING("can't load a secret chat with an id " << chat_id << " used by another secret chat");
@@ -413,12 +415,14 @@ std::shared_ptr<tgl_secret_chat> user_agent::load_secret_chat(int32_t chat_id, i
     auto sc = secret_chat::create(std::weak_ptr<user_agent>(shared_from_this()),
             chat_id, access_hash, user_id, admin, date, ttl, layer,
             in_seq_no, out_seq_no,
-            encr_root, encr_param_version,
-            state, exchange_state, exchange_id,
-            key, key_length,
-            encr_prime, encr_prime_length,
-            g_key, g_key_length,
-            exchange_key, exchange_key_length);
+            state, exchange_state,
+            encryption_root,
+            encryption_version,
+            encryption_prime,
+            encryption_key,
+            encryption_random,
+            exchange_id,
+            exchange_key);
 
     if (sc) {
         m_secret_chats[chat_id] = sc;
@@ -2263,35 +2267,22 @@ void user_agent::set_secret_chat_ttl(const tgl_input_peer_t& chat_id, int ttl)
 }
 
 void user_agent::send_accept_encr_chat(const std::shared_ptr<secret_chat>& sc,
-        std::array<unsigned char, 256>& random,
         const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback)
 {
-    bool ok = false;
-    const int* key = reinterpret_cast<const int*>(sc->key());
-    for (int i = 0; i < 64; i++) {
-        if (key[i]) {
-            ok = true;
-            break;
-        }
-    }
-    if (ok) {
-        // Already generated key for this chat
-        if (callback) {
-            callback(true, sc);
-        }
-        return;
+    assert(!sc->encryption_key().empty());
+    assert(bn_ctx()->ctx);
+
+    unsigned char random[secret_chat::KEY_SIZE];
+    tgl_secure_random(random, secret_chat::KEY_SIZE);
+    const auto& encryption_random = sc->encryption_random();
+    for (size_t i = 0; i < secret_chat::KEY_SIZE; i++) {
+        random[i] ^= encryption_random[i];
     }
 
-    assert(!sc->g_key().empty());
-    assert(bn_ctx()->ctx);
-    unsigned char random_here[256];
-    tgl_secure_random(random_here, 256);
-    for (int i = 0; i < 256; i++) {
-        random[i] ^= random_here[i];
-    }
-    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> b(TGLC_bn_bin2bn(random.data(), 256, 0));
-    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_a(TGLC_bn_bin2bn(sc->g_key().data(), 256, 0));
-    if (tglmp_check_g_a(sc->encr_prime_bn()->bn, g_a.get()) < 0) {
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> b(TGLC_bn_bin2bn(random, secret_chat::KEY_SIZE, 0));
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_a(TGLC_bn_bin2bn(sc->encryption_key().data(), secret_chat::KEY_SIZE, 0));
+    TGLC_bn* p = sc->encryption_prime_bn()->bn;
+    if (tglmp_check_g_a(p, g_a.get()) < 0) {
         if (callback) {
             callback(false, sc);
         }
@@ -2299,59 +2290,58 @@ void user_agent::send_accept_encr_chat(const std::shared_ptr<secret_chat>& sc,
         return;
     }
 
-    TGLC_bn* p = sc->encr_prime_bn()->bn;
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
     check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, bn_ctx()->ctx));
-    unsigned char buffer[256];
+    unsigned char buffer[secret_chat::KEY_SIZE];
     memset(buffer, 0, sizeof(buffer));
-    TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
+    TGLC_bn_bn2bin(r.get(), buffer + (secret_chat::KEY_SIZE - TGLC_bn_num_bytes(r.get())));
 
-    sc->set_key(buffer);
+    sc->set_encryption_key(buffer);
     sc->set_state(tgl_secret_chat_state::ok);
 
     memset(buffer, 0, sizeof(buffer));
-    check_crypto_result(TGLC_bn_set_word(g_a.get(), sc->encr_root()));
+    check_crypto_result(TGLC_bn_set_word(g_a.get(), sc->encryption_root()));
     check_crypto_result(TGLC_bn_mod_exp(r.get(), g_a.get(), b.get(), p, bn_ctx()->ctx));
-    TGLC_bn_bn2bin(r.get(), buffer + (256 - TGLC_bn_num_bytes(r.get())));
+    TGLC_bn_bn2bin(r.get(), buffer + (secret_chat::KEY_SIZE - TGLC_bn_num_bytes(r.get())));
 
     auto q = std::make_shared<query_messages_accept_encryption>(*this, sc, callback);
     q->out_i32(CODE_messages_accept_encryption);
     q->out_i32(CODE_input_encrypted_chat);
     q->out_i32(sc->id().peer_id);
     q->out_i64(sc->id().access_hash);
-    q->out_string(reinterpret_cast<const char*>(buffer), 256);
+    q->out_string(reinterpret_cast<const char*>(buffer), secret_chat::KEY_SIZE);
     q->out_i64(sc->key_fingerprint());
     q->execute(active_client());
 }
 
 void user_agent::send_create_encr_chat(const tgl_input_peer_t& user_id,
         const std::shared_ptr<secret_chat>& sc,
-        std::array<unsigned char, 256>& random,
         const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& callback)
 {
-    unsigned char random_here[256];
-    tgl_secure_random(random_here, 256);
-    for (int i = 0; i < 256; i++) {
-        random[i] ^= random_here[i];
+    unsigned char random[secret_chat::KEY_SIZE];
+    tgl_secure_random(random, secret_chat::KEY_SIZE);
+    const auto& encryption_random = sc->encryption_random();
+    for (size_t i = 0; i < secret_chat::KEY_SIZE; i++) {
+        random[i] ^= encryption_random[i];
     }
 
-    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(random.data(), 256, 0));
-    TGLC_bn* p = sc->encr_prime_bn()->bn;
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(random, secret_chat::KEY_SIZE, 0));
+    TGLC_bn* p = sc->encryption_prime_bn()->bn;
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g(TGLC_bn_new());
-    check_crypto_result(TGLC_bn_set_word(g.get(), sc->encr_root()));
+    check_crypto_result(TGLC_bn_set_word(g.get(), sc->encryption_root()));
 
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
 
     check_crypto_result(TGLC_bn_mod_exp(r.get(), g.get(), a.get(), p, bn_ctx()->ctx));
 
-    char g_a[256];
+    char g_a[secret_chat::KEY_SIZE];
     memset(g_a, 0, sizeof(g_a));
 
-    TGLC_bn_bn2bin(r.get(), reinterpret_cast<unsigned char*>(g_a + (256 - TGLC_bn_num_bytes(r.get()))));
+    TGLC_bn_bn2bin(r.get(), reinterpret_cast<unsigned char*>(g_a + (secret_chat::KEY_SIZE - TGLC_bn_num_bytes(r.get()))));
 
     sc->set_admin_id(our_id().peer_id);
-    sc->set_key(random.data());
+    sc->set_encryption_key(random, false);
     sc->set_state(tgl_secret_chat_state::waiting);
     m_callback->secret_chat_update(sc);
 
@@ -2397,11 +2387,10 @@ void user_agent::accept_secret_chat_request(const tgl_input_peer_t& chat_id,
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
     auto q = std::make_shared<query_messages_get_dh_config>(*this, sc,
             [weak_ua](const std::shared_ptr<secret_chat>& sc,
-                    std::array<unsigned char, 256>& random,
                     const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& cb)
             {
                 if (auto ua = weak_ua.lock()) {
-                    ua->send_accept_encr_chat(sc, random, cb);
+                    ua->send_accept_encr_chat(sc, cb);
                 } else {
                     TGL_ERROR("the user agent has gone");
                     if (cb) {
@@ -2411,8 +2400,8 @@ void user_agent::accept_secret_chat_request(const tgl_input_peer_t& chat_id,
             }, callback);
 
     q->out_i32(CODE_messages_get_dh_config);
-    q->out_i32(sc->encr_param_version());
-    q->out_i32(256);
+    q->out_i32(sc->encryption_version());
+    q->out_i32(secret_chat::KEY_SIZE);
     q->execute(active_client());
 }
 
@@ -2431,11 +2420,10 @@ void user_agent::create_secret_chat(const tgl_input_peer_t& user_id, int32_t new
     std::weak_ptr<user_agent> weak_ua = shared_from_this();
     auto q = std::make_shared<query_messages_get_dh_config>(*this, sc,
             [weak_ua, user_id](const std::shared_ptr<secret_chat>& sc,
-                    std::array<unsigned char, 256>& random,
                     const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& cb)
             {
                 if (auto ua = weak_ua.lock()) {
-                    ua->send_create_encr_chat(user_id, sc, random, cb);
+                    ua->send_create_encr_chat(user_id, sc, cb);
                 } else {
                     TGL_ERROR("the user agent has gone");
                     if (cb) {
@@ -2446,7 +2434,7 @@ void user_agent::create_secret_chat(const tgl_input_peer_t& user_id, int32_t new
 
     q->out_i32(CODE_messages_get_dh_config);
     q->out_i32(0);
-    q->out_i32(256);
+    q->out_i32(secret_chat::KEY_SIZE);
     q->execute(active_client());
 }
 

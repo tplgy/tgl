@@ -35,7 +35,6 @@ class query_messages_get_dh_config: public query
 public:
     query_messages_get_dh_config(user_agent& ua, const std::shared_ptr<secret_chat>& sc,
             const std::function<void(const std::shared_ptr<secret_chat>&,
-                    std::array<unsigned char, 256>& random,
                     const std::function<void(bool, const std::shared_ptr<secret_chat>&)>&)>& callback,
             const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& final_callback,
             double timeout = 0);
@@ -49,7 +48,6 @@ public:
 private:
     std::shared_ptr<secret_chat> m_secret_chat;
     std::function<void(const std::shared_ptr<secret_chat>&,
-             std::array<unsigned char, 256>& random,
              const std::function<void(bool, const std::shared_ptr<secret_chat>&)>&)> m_callback;
     std::function<void(bool, const std::shared_ptr<secret_chat>&)> m_final_callback;
     double m_timeout;

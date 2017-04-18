@@ -24,14 +24,14 @@
 #include "crypto/crypto_aes.h"
 #include "crypto/crypto_sha.h"
 #include "mtproto_common.h"
-#include "tgl/tgl_secret_chat.h"
+#include "secret_chat.h"
 
 #include <string.h>
 
 namespace tgl {
 namespace impl {
 
-static void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+static void encrypt_decrypted_message(const std::array<unsigned char, tgl_secret_chat::KEY_SIZE>& k,
         const unsigned char msg_sha[20], const int32_t* encr_ptr, const int32_t* encr_end, char* encrypted_data)
 {
     unsigned char sha1a_buffer[20];
@@ -47,7 +47,7 @@ static void encrypt_decrypted_message(const std::shared_ptr<tgl_secret_chat>& se
 
     unsigned char buf[64];
     memset(buf, 0, sizeof(buf));
-    const int* encryption_key = reinterpret_cast<const int*>(secret_chat->key());
+    const int* encryption_key = reinterpret_cast<const int*>(k.data());
     memcpy(buf, msg_key, 16);
     memcpy(buf + 16, encryption_key, 32);
     TGLC_sha1(buf, 48, sha1a_buffer);
@@ -99,7 +99,7 @@ void secret_chat_encryptor::end()
     }
 
     m_serializer->out_i32_at(m_encr_base, (m_serializer->i32_size() - m_encr_base - 1) * 4 * 256 + 0xfe); // str len
-    m_serializer->out_i64_at(m_encr_base + 1, m_secret_chat->key_fingerprint()); // fingerprint
+    m_serializer->out_i64_at(m_encr_base + 1, m_key_fingerprint); // fingerprint
     m_serializer->out_i32_at(m_encr_base + 1 + 2 + 4, length * 4); // len
 
     const int32_t* encr_ptr = m_serializer->i32_data() + m_encr_base + 1 + 2 + 4;
@@ -110,7 +110,7 @@ void secret_chat_encryptor::end()
     TGLC_sha1(reinterpret_cast<const unsigned char*>(encr_ptr), (length + 1) * 4, sha1_buffer);
     m_serializer->out_i32s_at(m_encr_base + 1 + 2, reinterpret_cast<int32_t*>(sha1_buffer + 4), 4); // msg_key
 
-    encrypt_decrypted_message(m_secret_chat, sha1_buffer, encr_ptr, encr_end, reinterpret_cast<char*>(const_cast<int32_t*>(encr_ptr)));
+    encrypt_decrypted_message(m_key, sha1_buffer, encr_ptr, encr_end, reinterpret_cast<char*>(const_cast<int32_t*>(encr_ptr)));
 }
 
 }

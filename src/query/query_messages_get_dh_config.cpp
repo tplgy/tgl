@@ -31,7 +31,6 @@ namespace impl {
 query_messages_get_dh_config::query_messages_get_dh_config(user_agent& ua,
         const std::shared_ptr<secret_chat>& sc,
         const std::function<void(const std::shared_ptr<secret_chat>&,
-                std::array<unsigned char, 256>& random,
                 const std::function<void(bool, const std::shared_ptr<secret_chat>&)>&)>& callback,
         const std::function<void(bool, const std::shared_ptr<secret_chat>&)>& final_callback,
         double timeout)
@@ -49,25 +48,23 @@ void query_messages_get_dh_config::on_answer(void* D)
 
     bool fail = false;
     if (DS_MDC->magic == CODE_messages_dh_config) {
-        if (DS_MDC->p->len == 256) {
-            m_secret_chat->set_dh_params(DS_LVAL(DS_MDC->g),
-                    reinterpret_cast<unsigned char*>(DS_MDC->p->data), DS_LVAL(DS_MDC->version));
+        if (DS_MDC->p && DS_MDC->p->len == 256 && DS_MDC->random && DS_MDC->random->len == 256) {
+            if (!m_secret_chat->set_dh_parameters(DS_LVAL(DS_MDC->version), DS_LVAL(DS_MDC->g),
+                    reinterpret_cast<unsigned char*>(DS_MDC->p->data), reinterpret_cast<unsigned char*>(DS_MDC->random->data))) {
+                fail = true;
+            }
         } else {
             TGL_WARNING("the prime got from the server is not of size 256");
             fail = true;
         }
     } else if (DS_MDC->magic == CODE_messages_dh_config_not_modified) {
         TGL_NOTICE("secret chat dh config version not modified");
-        if (m_secret_chat->encr_param_version() != DS_LVAL(DS_MDC->version)) {
+        if (m_secret_chat->encryption_version() != DS_LVAL(DS_MDC->version)) {
             TGL_WARNING("encryption parameter versions mismatch");
             fail = true;
         }
     } else {
         TGL_WARNING("the server sent us something wrong");
-        fail = true;
-    }
-
-    if (DS_MDC->random->len != 256) {
         fail = true;
     }
 
@@ -80,9 +77,7 @@ void query_messages_get_dh_config::on_answer(void* D)
     }
 
     if (m_callback) {
-        std::array<unsigned char, 256> random;
-        memcpy(random.data(), DS_MDC->random->data, 256);
-        m_callback(m_secret_chat, random, m_final_callback);
+        m_callback(m_secret_chat, m_final_callback);
     }
 }
 

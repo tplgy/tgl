@@ -21,9 +21,9 @@
 
 #pragma once
 
-#include <memory>
+#include "tgl/tgl_secret_chat.h"
 
-class tgl_secret_chat;
+#include <memory>
 
 namespace tgl {
 namespace impl {
@@ -33,9 +33,10 @@ class mtprotocol_serializer;
 class secret_chat_encryptor
 {
 public:
-    secret_chat_encryptor(const std::shared_ptr<tgl_secret_chat>& secret_chat,
+    secret_chat_encryptor(int64_t key_fingerprint, const std::array<unsigned char, tgl_secret_chat::KEY_SIZE>& key,
             const std::shared_ptr<mtprotocol_serializer>& serializer)
-        : m_secret_chat(secret_chat)
+        : m_key_fingerprint(key_fingerprint)
+        , m_key(key)
         , m_serializer(serializer)
         , m_encr_base(0)
     { }
@@ -44,7 +45,8 @@ public:
     void end();
 
 private:
-    std::shared_ptr<tgl_secret_chat> m_secret_chat;
+    int64_t m_key_fingerprint;
+    const std::array<unsigned char, tgl_secret_chat::KEY_SIZE>& m_key;
     std::shared_ptr<mtprotocol_serializer> m_serializer;
     size_t m_encr_base;
 };

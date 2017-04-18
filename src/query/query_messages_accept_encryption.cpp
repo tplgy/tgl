@@ -41,7 +41,7 @@ void query_messages_accept_encryption::on_answer(void* D)
     std::shared_ptr<secret_chat> sc = m_user_agent.allocate_or_update_secret_chat(static_cast<tl_ds_encrypted_chat*>(D));
 
     if (sc && sc->state() == tgl_secret_chat_state::ok) {
-        sc->send_layer();
+        sc->notify_layer();
     }
 
     if (sc) {

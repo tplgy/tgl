@@ -27,6 +27,7 @@
 #include "tgl/tgl_timer.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstring>
 #include <functional>
@@ -71,21 +72,22 @@ public:
             int32_t chat_id, int64_t access_hash, int32_t user_id,
             int32_t admin, int32_t date, int32_t ttl, int32_t layer,
             int32_t in_seq_no, int32_t out_seq_no,
-            int32_t encr_root, int32_t encr_param_version,
-            tgl_secret_chat_state state, tgl_secret_chat_exchange_state exchange_state,
+            tgl_secret_chat_state state,
+            tgl_secret_chat_exchange_state exchange_state,
+            int32_t encryption_root,
+            int32_t encryption_version,
+            const unsigned char* encryption_prime,
+            const unsigned char* encryption_key,
+            const unsigned char* encryption_random,
             int64_t exchange_id,
-            const unsigned char* key, size_t key_length,
-            const unsigned char* encr_prime, size_t encr_prime_length,
-            const unsigned char* g_key, size_t g_key_length,
-            const unsigned char* exchange_key, size_t exchange_key_length);
+            const unsigned char* exchange_key);
 
     virtual tgl_secret_chat::qos quality_of_service() const override { return m_qos; }
     virtual void set_quality_of_service(qos q) override { m_qos = q; }
     virtual bool opaque_service_message_enabled() const override { return m_opaque_service_message_enabled; }
     virtual void set_opaque_service_message_enabled(bool b) override { m_opaque_service_message_enabled = b; }
     virtual const tgl_input_peer_t& id() const override { return m_id; }
-    virtual int64_t exchange_id() const override { return m_exchange_id; }
-    virtual int64_t exchange_key_fingerprint() const override { return m_exchange_key_fingerprint; }
+    virtual tgl_secret_chat_state state() const override { return m_state; }
     virtual int32_t user_id() const override { return m_user_id; }
     virtual int32_t admin_id() const override { return m_admin_id; }
     virtual int32_t date() const override { return m_date; }
@@ -94,34 +96,26 @@ public:
     virtual int32_t in_seq_no() const override { return m_in_seq_no; }
     virtual int32_t out_seq_no() const override { return m_out_seq_no; }
     virtual int32_t last_in_seq_no() const override { return m_last_in_seq_no; }
-    virtual int32_t encr_root() const override { return m_encr_root; }
-    virtual int32_t encr_param_version() const override { return m_encr_param_version; }
-    virtual tgl_secret_chat_state state() const override { return m_state; }
+    virtual int32_t encryption_root() const override { return m_encryption_root; }
+    virtual int32_t encryption_version() const override { return m_encryption_version; }
+    virtual const std::array<unsigned char, KEY_SIZE>& encryption_prime() const override { return m_encryption_prime; }
+    virtual const std::array<unsigned char, KEY_SIZE>& encryption_key() const override { return m_encryption_key; }
+    virtual const std::array<unsigned char, KEY_SIZE>& encryption_random() const override { return m_encryption_random; }
+
+    virtual int64_t exchange_id() const override { return m_exchange_id; }
     virtual tgl_secret_chat_exchange_state exchange_state() const override { return m_exchange_state; }
-    virtual const std::vector<unsigned char>& encr_prime() const override { return m_encr_prime; }
-    virtual int64_t key_fingerprint() const override
-    {
-        int64_t fingerprint;
-        // Telegram secret chat key fingerprints are the last 64 bits of SHA1(key)
-        memcpy(&fingerprint, m_key_sha + 12, 8);
-        return fingerprint;
-    }
-    virtual const unsigned char* key() const override { return m_key; }
-    virtual const unsigned char* key_sha() const override { return m_key_sha; }
-    virtual const std::vector<unsigned char>& g_key() const override { return m_g_key; }
-    virtual const unsigned char* exchange_key() const override { return reinterpret_cast<const unsigned char*>(m_exchange_key); }
+    virtual const std::array<unsigned char, KEY_SIZE>& exchange_key() const override { return m_exchange_key; }
 
     const std::weak_ptr<user_agent>& weak_user_agent() const { return m_user_agent; }
-    bool create_keys_end();
     std::pair<int32_t, int32_t> first_hole() const;
-    void set_dh_params(int32_t root, unsigned char* prime, int32_t version);
+    bool set_dh_parameters(int32_t encryption_version, int32_t encryption_root, const unsigned char* encryption_prime, const unsigned char* encryption_random);
     const std::shared_ptr<query>& last_depending_query() const { return m_last_depending_query; }
     void set_last_depending_query(const std::shared_ptr<query>& q) { m_last_depending_query = q; }
     void set_layer(int32_t layer);
     void set_ttl(int32_t ttl) { m_ttl = ttl; }
     void set_out_seq_no(int32_t out_seq_no) { m_out_seq_no = out_seq_no; }
     void set_in_seq_no(int32_t in_seq_no) { m_in_seq_no = in_seq_no; }
-    const tgl_bn* encr_prime_bn() const { return m_encr_prime_bn.get(); }
+    const tgl_bn* encryption_prime_bn() const { return m_encryption_prime_bn.get(); }
     void set_access_hash(int64_t access_hash) { m_id.access_hash = access_hash; }
     void set_date(int64_t date) { m_date = date; }
     void set_admin_id(int32_t admin_id) { m_admin_id = admin_id; }
@@ -134,33 +128,10 @@ public:
     int64_t last_depending_query_id() const { return m_last_depending_query_id; }
     void set_last_depending_query_id(int64_t query_id) { m_last_depending_query_id = query_id; }
     const tgl_peer_id_t& our_id() { return m_our_id; }
-
-    void set_key(const unsigned char* key)
-    {
-        auto key_size = tgl_secret_chat::key_size();
-        TGLC_sha1(key, key_size, m_key_sha);
-        memcpy(m_key, key, key_size);
-    }
-
-    void set_encr_prime(const unsigned char* prime, size_t length)
-    {
-        m_encr_prime.resize(length);
-        m_encr_prime_bn.reset(new tgl_bn(TGLC_bn_new()));
-        memcpy(m_encr_prime.data(), prime, length);
-        TGLC_bn_bin2bn(m_encr_prime.data(), length, m_encr_prime_bn->bn);
-    }
-
-    void set_g_key(const unsigned char* g_key, size_t length)
-    {
-        m_g_key.resize(length);
-        memcpy(m_g_key.data(), g_key, length);
-    }
-
-    void set_exchange_key(const unsigned char* exchange_key, size_t length)
-    {
-        assert(length == sizeof(m_exchange_key));
-        memcpy(m_exchange_key, exchange_key, sizeof(m_exchange_key));
-    }
+    void set_encryption_key(const unsigned char* key, bool update_key_fingerprint = true);
+    void set_exchange_key(const unsigned char* exchange_key, bool update_key_fingerprint = true);
+    int64_t key_fingerprint() const { return m_key_fingerprint; }
+    int64_t exchange_key_fingerprint() const { return m_exchange_key_fingerprint; }
 
     void imbue_encrypted_message(const tl_ds_encrypted_message*);
 
@@ -180,7 +151,7 @@ public:
     void send_location(double latitude, double longitude,
             const std::function<void(bool success, const std::shared_ptr<message>&)>& callback);
 
-    void send_layer();
+    void notify_layer();
 
     void mark_messages_read(int32_t max_time,
             const std::function<void(bool, const std::shared_ptr<message>&)>& callback);
@@ -191,10 +162,6 @@ public:
     void set_deleted();
 
     void request_key_exchange();
-    void accept_key_exchange(int64_t exchange_id, const std::vector<unsigned char>& ga);
-    void confirm_key_exchange(int sen_nop);
-    void commit_key_exchange(const std::vector<unsigned char>& gb);
-    void abort_key_exchange();
 
 private:
     secret_chat();
@@ -217,12 +184,18 @@ private:
     void request_resend_messages(int32_t start_seq_no, int32_t end_seq_no);
     void resend_messages(int32_t start_seq_no, int32_t end_seq_no);
 
+    bool create_keys_end(const std::array<unsigned char, KEY_SIZE>& gb);
+
+    void accept_key_exchange(int64_t exchange_id, const std::vector<unsigned char>& ga);
+    void confirm_key_exchange(bool send_noop);
+    void commit_key_exchange(const std::vector<unsigned char>& gb);
+    void abort_key_exchange();
+
 private:
     int64_t m_temp_key_fingerprint;
-    int32_t m_exchange_key[64];
-    std::vector<unsigned char> m_g_key;
     tgl_input_peer_t m_id;
     tgl_peer_id_t m_our_id;
+    int64_t m_key_fingerprint;
     int64_t m_exchange_id;
     int64_t m_exchange_key_fingerprint;
     int32_t m_user_id;
@@ -232,15 +205,16 @@ private:
     int32_t m_layer;
     int32_t m_in_seq_no;
     int32_t m_last_in_seq_no;
-    int32_t m_encr_root;
-    int32_t m_encr_param_version;
+    int32_t m_encryption_root;
+    int32_t m_encryption_version;
     tgl_secret_chat_state m_state;
     tgl_secret_chat_exchange_state m_exchange_state;
 
-    std::vector<unsigned char> m_encr_prime;
-    std::unique_ptr<tgl_bn> m_encr_prime_bn;
-    unsigned char m_key[256];
-    unsigned char m_key_sha[20];
+    std::unique_ptr<tgl_bn> m_encryption_prime_bn;
+    std::array<unsigned char, KEY_SIZE> m_encryption_prime;
+    std::array<unsigned char, KEY_SIZE> m_encryption_key;
+    std::array<unsigned char, KEY_SIZE> m_exchange_key;
+    std::array<unsigned char, KEY_SIZE> m_encryption_random;
     int32_t m_out_seq_no;
     std::shared_ptr<query> m_last_depending_query;
     std::map<int32_t, secret_message> m_unconfirmed_incoming_messages;

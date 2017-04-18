@@ -36,7 +36,6 @@
 #include "query/query_send_messages.h"
 #include "query/query_upload_file_part.h"
 #include "secret_chat.h"
-#include "secret_chat_encryptor.h"
 #include "tools.h"
 #include "tgl/tgl_mime_type.h"
 #include "tgl/tgl_secure_random.h"

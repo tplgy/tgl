@@ -23,6 +23,7 @@
 
 #include "tgl_peer_id.h"
 
+#include <array>
 #include <cassert>
 #include <iostream>
 #include <string>
@@ -100,6 +101,8 @@ inline static std::ostream& operator<<(std::ostream& os, tgl_secret_chat_exchang
 class tgl_secret_chat
 {
 public:
+    static constexpr size_t KEY_SIZE = 256;
+
     enum class qos { real_time, normal };
     virtual ~tgl_secret_chat() { }
 
@@ -110,8 +113,7 @@ public:
     virtual void set_opaque_service_message_enabled(bool b) = 0;
 
     virtual const tgl_input_peer_t& id() const = 0;
-    virtual int64_t exchange_id() const = 0;
-    virtual int64_t exchange_key_fingerprint() const = 0;
+    virtual tgl_secret_chat_state state() const = 0;
     virtual int32_t user_id() const = 0;
     virtual int32_t admin_id() const = 0; // creator
     virtual int32_t date() const = 0;
@@ -120,19 +122,14 @@ public:
     virtual int32_t in_seq_no() const = 0;
     virtual int32_t out_seq_no() const = 0;
     virtual int32_t last_in_seq_no() const = 0;
-    virtual int32_t encr_root() const = 0;
-    virtual int32_t encr_param_version() const = 0;
-    virtual tgl_secret_chat_state state() const = 0;
+
+    virtual int32_t encryption_root() const = 0;
+    virtual int32_t encryption_version() const = 0;
+    virtual const std::array<unsigned char, KEY_SIZE>& encryption_prime() const = 0;
+    virtual const std::array<unsigned char, KEY_SIZE>& encryption_key() const = 0;
+    virtual const std::array<unsigned char, KEY_SIZE>& encryption_random() const = 0;
+
+    virtual int64_t exchange_id() const = 0;
     virtual tgl_secret_chat_exchange_state exchange_state() const = 0;
-    virtual const std::vector<unsigned char>& encr_prime() const = 0;
-    virtual const std::vector<unsigned char>& g_key() const = 0;
-
-    virtual const unsigned char* exchange_key() const = 0;
-    virtual const unsigned char* key() const = 0;
-    virtual const unsigned char* key_sha() const = 0;
-    virtual int64_t key_fingerprint() const = 0;
-
-    static size_t key_size() { return 256; }
-    static size_t key_sha_size() { return 20; }
-    static size_t exchange_key_size() { return 256; }
+    virtual const std::array<unsigned char, KEY_SIZE>& exchange_key() const = 0;
 };

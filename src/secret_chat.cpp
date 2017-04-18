@@ -128,8 +128,6 @@ std::shared_ptr<secret_chat> secret_chat::create_or_update(const std::weak_ptr<u
         return sc;
     }
 
-    unsigned char g_key[256];
-    memset(g_key, 0, sizeof(g_key));
     if (is_new) {
         if (DS_EC->magic != CODE_encrypted_chat_requested) {
             TGL_DEBUG("new secret chat " << chat_id.peer_id << " but not in requested state");
@@ -137,7 +135,9 @@ std::shared_ptr<secret_chat> secret_chat::create_or_update(const std::weak_ptr<u
         }
         TGL_DEBUG("updating new secret chat " << chat_id.peer_id);
 
-        str_to_256(g_key, DS_STR(DS_EC->g_a));
+        unsigned char ga[KEY_SIZE];
+        memset(ga, 0, sizeof(ga));
+        str_to_256(ga, DS_STR(DS_EC->g_a));
 
         int32_t user_id = DS_LVAL(DS_EC->participant_id) + DS_LVAL(DS_EC->admin_id) - ua->our_id().peer_id;
         if (DS_EC->access_hash) {
@@ -150,24 +150,32 @@ std::shared_ptr<secret_chat> secret_chat::create_or_update(const std::weak_ptr<u
             sc->set_admin_id(*(DS_EC->admin_id));
         }
         sc->set_user_id(user_id);
-        sc->set_g_key(g_key, sizeof(g_key));
+        sc->set_encryption_key(ga, false);
         sc->set_state(tgl_secret_chat_state::request);
     } else {
         TGL_DEBUG("updating existing secret chat " << chat_id.peer_id);
-        tgl_secret_chat_state state;
-        if (DS_EC->magic == CODE_encrypted_chat_waiting) {
-            state = tgl_secret_chat_state::waiting;
-        } else {
-            state = tgl_secret_chat_state::ok;
-            str_to_256(g_key, DS_STR(DS_EC->g_a_or_b));
-            sc->set_temp_key_fingerprint(DS_LVAL(DS_EC->key_fingerprint));
-            sc->set_g_key(g_key, sizeof(g_key));
-        }
         if (DS_EC->access_hash) {
             sc->set_access_hash(*(DS_EC->access_hash));
         }
         if (DS_EC->date) {
             sc->set_date(*(DS_EC->date));
+        }
+        tgl_secret_chat_state state;
+        if (DS_EC->magic == CODE_encrypted_chat_waiting) {
+            state = tgl_secret_chat_state::waiting;
+        } else if (DS_EC->magic == CODE_encrypted_chat) {
+            state = tgl_secret_chat_state::ok;
+            std::array<unsigned char, KEY_SIZE> gb;
+            memset(gb.data(), 0, gb.size());
+            str_to_256(gb.data(), DS_STR(DS_EC->g_a_or_b));
+            sc->set_temp_key_fingerprint(DS_LVAL(DS_EC->key_fingerprint));
+            if (sc->m_state == tgl_secret_chat_state::waiting) {
+                if (!sc->create_keys_end(gb)) {
+                    state = tgl_secret_chat_state::deleted;
+                }
+            }
+        } else {
+            state = tgl_secret_chat_state::deleted;
         }
         sc->set_state(state);
     }
@@ -179,13 +187,14 @@ std::shared_ptr<secret_chat> secret_chat::create(const std::weak_ptr<user_agent>
         int32_t chat_id, int64_t access_hash, int32_t user_id,
         int32_t admin, int32_t date, int32_t ttl, int32_t layer,
         int32_t in_seq_no, int32_t out_seq_no,
-        int32_t encr_root, int32_t encr_param_version,
         tgl_secret_chat_state state, tgl_secret_chat_exchange_state exchange_state,
+        int32_t encryption_root,
+        int32_t encryption_version,
+        const unsigned char* encryption_prime,
+        const unsigned char* encryption_key,
+        const unsigned char* encryption_random,
         int64_t exchange_id,
-        const unsigned char* key, size_t key_length,
-        const unsigned char* encr_prime, size_t encr_prime_length,
-        const unsigned char* g_key, size_t g_key_length,
-        const unsigned char* exchange_key, size_t exchange_key_length)
+        const unsigned char* exchange_key)
 {
     auto ua = weak_ua.lock();
     if (!ua) {
@@ -204,39 +213,38 @@ std::shared_ptr<secret_chat> secret_chat::create(const std::weak_ptr<user_agent>
     sc->m_layer = layer;
     sc->m_in_seq_no = in_seq_no;
     sc->m_out_seq_no = out_seq_no;
-    sc->m_encr_root = encr_root;
-    sc->m_encr_param_version = encr_param_version;
     sc->m_state = state;
     sc->m_exchange_state = exchange_state;
-    assert(key_length == secret_chat::key_size());
-    sc->set_key(key);
-    sc->set_encr_prime(encr_prime, encr_prime_length);
-    sc->set_g_key(g_key, g_key_length);
-    sc->set_exchange_key(exchange_key, exchange_key_length);
+    sc->set_encryption_key(encryption_key,
+            state == tgl_secret_chat_state::ok || state == tgl_secret_chat_state::deleted);
+    sc->set_exchange_key(exchange_key,
+            exchange_state == tgl_secret_chat_exchange_state::accepted || exchange_state == tgl_secret_chat_exchange_state::committed);
+    if (!sc->set_dh_parameters(encryption_version, encryption_root, encryption_prime, encryption_random)) {
+        return nullptr;
+    }
 
     return sc;
 }
 
 secret_chat::secret_chat()
     : m_temp_key_fingerprint(0)
-    , m_g_key()
     , m_id()
     , m_our_id()
+    , m_key_fingerprint(0)
     , m_exchange_id(0)
     , m_exchange_key_fingerprint(0)
     , m_user_id(0)
     , m_admin_id(0)
     , m_date(0)
     , m_ttl(0)
-    , m_layer(TGL_ENCRYPTED_LAYER)
+    , m_layer(8)
     , m_in_seq_no(0)
     , m_last_in_seq_no(0)
-    , m_encr_root(0)
-    , m_encr_param_version(0)
+    , m_encryption_root(0)
+    , m_encryption_version(0)
     , m_state(tgl_secret_chat_state::none)
     , m_exchange_state(tgl_secret_chat_exchange_state::none)
-    , m_encr_prime()
-    , m_encr_prime_bn(nullptr)
+    , m_encryption_prime_bn(nullptr)
     , m_out_seq_no(0)
     , m_last_depending_query_id(0)
     , m_unconfirmed_incoming_messages_loaded(false)
@@ -244,21 +252,23 @@ secret_chat::secret_chat()
     , m_opaque_service_message_enabled(false)
     , m_qos(secret_chat::qos::normal)
 {
-    memset(m_key, 0, sizeof(m_key));
-    memset(m_key_sha, 0, sizeof(m_key_sha));
-    memset(m_exchange_key, 0, sizeof(m_exchange_key));
+    memset(m_encryption_key.data(), 0, m_encryption_key.size());
+    memset(m_exchange_key.data(), 0, m_exchange_key.size());
+    memset(m_encryption_random.data(), 0, m_encryption_random.size());
+    memset(m_encryption_prime.data(), 0, m_encryption_prime.size());
 }
 
 
-bool secret_chat::create_keys_end()
+bool secret_chat::create_keys_end(const std::array<unsigned char, KEY_SIZE>& gb)
 {
-    assert(!encr_prime().empty());
-    if (encr_prime().empty()) {
+    if (m_encryption_prime.empty()) {
+        assert(false);
         return false;
     }
 
-    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_b(TGLC_bn_bin2bn(m_g_key.data(), 256, 0));
-    if (tglmp_check_g_a(encr_prime_bn()->bn, g_b.get()) < 0) {
+    TGLC_bn* p = m_encryption_prime_bn->bn;
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_b(TGLC_bn_bin2bn(gb.data(), KEY_SIZE, 0));
+    if (tglmp_check_g_a(p, g_b.get()) < 0) {
         return false;
     }
 
@@ -267,15 +277,15 @@ bool secret_chat::create_keys_end()
         return false;
     }
 
-    TGLC_bn* p = encr_prime_bn()->bn;
     std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> r(TGLC_bn_new());
-    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(this->key(), secret_chat::key_size(), 0));
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(m_encryption_key.data(), KEY_SIZE, 0));
     check_crypto_result(TGLC_bn_mod_exp(r.get(), g_b.get(), a.get(), p, ua->bn_ctx()->ctx));
 
-    std::vector<unsigned char> key(secret_chat::key_size(), 0);
+    unsigned char key[KEY_SIZE];
+    memset(key, 0, sizeof(key));
 
-    TGLC_bn_bn2bin(r.get(), (key.data() + (secret_chat::key_size() - TGLC_bn_num_bytes(r.get()))));
-    set_key(key.data());
+    TGLC_bn_bn2bin(r.get(), (key + (KEY_SIZE - TGLC_bn_num_bytes(r.get()))));
+    set_encryption_key(key);
 
     if (key_fingerprint() != m_temp_key_fingerprint) {
         TGL_WARNING("key fingerprint mismatch (my 0x" << std::hex
@@ -287,33 +297,34 @@ bool secret_chat::create_keys_end()
     return true;
 }
 
-void secret_chat::set_dh_params(int32_t root, unsigned char* prime, int32_t version)
+bool secret_chat::set_dh_parameters(int32_t encryption_version, int32_t encryption_root,
+        const unsigned char* encryption_prime, const unsigned char* encryption_random)
 {
     auto ua = m_user_agent.lock();
     if (!ua) {
         TGL_ERROR("the user agent has gone");
-        return;
+        return false;
     }
 
-    m_encr_root = root;
-    set_encr_prime(prime, 256);
-    m_encr_param_version = version;
+    memcpy(m_encryption_prime.data(), encryption_prime, m_encryption_prime.size());
+    m_encryption_prime_bn.reset(new tgl_bn(TGLC_bn_new()));
+    TGLC_bn_bin2bn(m_encryption_prime.data(), m_encryption_prime.size(), m_encryption_prime_bn->bn);
 
-    auto res = tglmp_check_DH_params(ua->bn_ctx()->ctx, encr_prime_bn()->bn, encr_root());
-    TGL_ASSERT_UNUSED(res, res >= 0);
+    m_encryption_root = encryption_root;
+    m_encryption_version = encryption_version;
+
+    memcpy(m_encryption_random.data(), encryption_random, m_encryption_random.size());
+
+    if (tglmp_check_DH_params(ua->bn_ctx()->ctx, m_encryption_prime_bn->bn, m_encryption_root) < 0) {
+        TGL_ERROR("faild to check dh parameters");
+        return false;
+    }
+    return true;
 }
 
 void secret_chat::set_state(const tgl_secret_chat_state& new_state)
 {
-    if (m_state == tgl_secret_chat_state::waiting && new_state == tgl_secret_chat_state::ok) {
-        if (create_keys_end()) {
-            m_state = new_state;
-        } else {
-            m_state = tgl_secret_chat_state::deleted;
-        }
-    } else {
-        m_state = new_state;
-    }
+    m_state = new_state;
 }
 
 void secret_chat::message_received(const secret_message& m,
@@ -599,7 +610,7 @@ void secret_chat::process_messages(const std::vector<secret_message>& messages)
         } else if (action_type == tgl_message_action_type::commit_key) {
             auto action = std::static_pointer_cast<tgl_message_action_commit_key>(message->action());
             if (exchange_state() == tgl_secret_chat_exchange_state::accepted && exchange_id() == action->exchange_id) {
-                confirm_key_exchange(1);
+                confirm_key_exchange(true);
             } else {
                 TGL_WARNING("secret_chat exchange: incorrect state (received commit, state = " << exchange_state() << ")");
             }
@@ -675,7 +686,7 @@ bool secret_chat::decrypt_message(int32_t*& decr_ptr, int32_t* decr_end)
     memset(buf, 0, sizeof(buf));
 
     const int32_t* e_key = exchange_state() != tgl_secret_chat_exchange_state::committed
-        ? reinterpret_cast<const int32_t*>(key()) : reinterpret_cast<const int32_t*>(exchange_key());
+        ? reinterpret_cast<const int32_t*>(m_encryption_key.data()) : reinterpret_cast<const int32_t*>(m_exchange_key.data());
 
     memcpy(buf, msg_key, 16);
     memcpy(buf + 16, e_key, 32);
@@ -708,7 +719,7 @@ bool secret_chat::decrypt_message(int32_t*& decr_ptr, int32_t* decr_end)
     memcpy(iv + 24, sha1d_buffer + 0, 8);
 
     TGLC_aes_key aes_key;
-    TGLC_aes_set_decrypt_key(key, 256, &aes_key);
+    TGLC_aes_set_decrypt_key(key, KEY_SIZE, &aes_key);
     TGLC_aes_ige_encrypt(reinterpret_cast<const unsigned char*>(decr_ptr),
             reinterpret_cast<unsigned char*>(decr_ptr), 4 * (decr_end - decr_ptr), &aes_key, iv, 0);
     memset(&aes_key, 0, sizeof(aes_key));
@@ -740,14 +751,16 @@ secret_chat::fetch_message(const tl_ds_encrypted_message* DS_EM, bool construct_
     int64_t message_id = DS_LVAL(DS_EM->random_id);
     int32_t* decr_ptr = reinterpret_cast<int32_t*>(DS_EM->bytes->data);
     int32_t* decr_end = decr_ptr + (DS_EM->bytes->len / 4);
+    int64_t peer_key_fingerprint = *(reinterpret_cast<int64_t*>(decr_ptr));
 
-    if (exchange_state() == tgl_secret_chat_exchange_state::committed && key_fingerprint() == *(int64_t*)decr_ptr) {
-        confirm_key_exchange(0);
+    if (exchange_state() == tgl_secret_chat_exchange_state::committed && exchange_key_fingerprint() == peer_key_fingerprint) {
+        confirm_key_exchange(false);
         assert(exchange_state() == tgl_secret_chat_exchange_state::none);
     }
 
-    int64_t key_fingerprint = exchange_state() != tgl_secret_chat_exchange_state::committed ? this->key_fingerprint() : exchange_key_fingerprint();
-    if (*(int64_t*)decr_ptr != key_fingerprint) {
+    int64_t my_key_fingerprint = exchange_state() != tgl_secret_chat_exchange_state::committed ? key_fingerprint() : exchange_key_fingerprint();
+
+    if (peer_key_fingerprint != my_key_fingerprint) {
         TGL_WARNING("encrypted message with bad fingerprint to chat " << id().peer_id);
         return message_pair;
     }
@@ -1054,12 +1067,12 @@ void secret_chat::send_location(double latitude, double longitude,
     send_message(m, callback);
 }
 
-void secret_chat::send_layer()
+void secret_chat::notify_layer()
 {
     struct tl_ds_decrypted_message_action action;
     memset(&action, 0, sizeof(action));
     action.magic = CODE_decrypted_message_action_notify_layer;
-    int layer = this->layer();
+    int layer = TGL_ENCRYPTED_LAYER;
     action.layer = &layer;
 
     std::weak_ptr<user_agent> weak_ua = m_user_agent;
@@ -1168,30 +1181,202 @@ void secret_chat::set_layer(int32_t layer)
      }
 }
 
+void secret_chat::set_encryption_key(const unsigned char* key, bool update_key_fingerprint)
+{
+    if (update_key_fingerprint) {
+        unsigned char key_sha[20];
+        memset(key_sha, 0, sizeof(key_sha));
+        TGLC_sha1(key, KEY_SIZE, key_sha);
+        memcpy(&m_key_fingerprint, key_sha + 12, 8);
+    }
+    memcpy(m_encryption_key.data(), key, KEY_SIZE);
+}
+
+void secret_chat::set_exchange_key(const unsigned char* exchange_key, bool update_key_fingerprint)
+{
+    if (update_key_fingerprint) {
+        unsigned char exchange_key_sha[20];
+        memset(exchange_key_sha, 0, sizeof(exchange_key_sha));
+        TGLC_sha1(exchange_key, KEY_SIZE, exchange_key_sha);
+        memcpy(&m_exchange_key_fingerprint, exchange_key_sha + 12, 8);
+    }
+    memcpy(m_exchange_key.data(), exchange_key, KEY_SIZE);
+}
+
 void secret_chat::request_key_exchange()
 {
-    // FIXME: implement.
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        return;
+    }
+
+    m_exchange_id = 0;
+    while (!m_exchange_id) {
+        tgl_secure_random(reinterpret_cast<unsigned char*>(&m_exchange_id), sizeof(m_exchange_id));
+    }
+
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g(TGLC_bn_new());
+    check_crypto_result(TGLC_bn_set_word(g.get(), m_encryption_root));
+
+    unsigned char random[KEY_SIZE];
+    tgl_secure_random(random, KEY_SIZE);
+    for (size_t i = 0; i < KEY_SIZE; i++) {
+        random[i] ^= m_encryption_random[i];
+    }
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(random, KEY_SIZE, 0));
+
+    TGLC_bn* p = m_encryption_prime_bn->bn;
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_a(TGLC_bn_new());
+    check_crypto_result(TGLC_bn_mod_exp(g_a.get(), g.get(), a.get(), p, ua->bn_ctx()->ctx));
+
+    unsigned char ga[KEY_SIZE];
+    memset(ga, 0, sizeof(ga));
+    TGLC_bn_bn2bin(g_a.get(), reinterpret_cast<unsigned char*>(ga + (KEY_SIZE - TGLC_bn_num_bytes(g_a.get()))));
+
+    struct tl_ds_decrypted_message_action action;
+    memset(&action, 0, sizeof(action));
+    action.magic = CODE_decrypted_message_action_request_key;
+    struct tl_ds_string ga_string = { KEY_SIZE, reinterpret_cast<char*>(ga) };
+    action.g_a = &ga_string;
+    action.exchange_id = &m_exchange_id;
+    send_action(action, 0, nullptr);
+
+    m_exchange_state = tgl_secret_chat_exchange_state::requested;
+    set_exchange_key(random, false);
+    ua->callback()->secret_chat_update(shared_from_this());
 }
 
 void secret_chat::accept_key_exchange(
         int64_t exchange_id, const std::vector<unsigned char>& ga)
 {
-    // FIXME: implement.
+    m_exchange_id = exchange_id;
+
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        abort_key_exchange();
+        return;
+    }
+
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_a(TGLC_bn_bin2bn(ga.data(), KEY_SIZE, 0));
+    TGLC_bn* p = m_encryption_prime_bn->bn;
+    if (tglmp_check_g_a(p, g_a.get()) < 0) {
+        abort_key_exchange();
+        return;
+    }
+
+    assert(ua->bn_ctx()->ctx);
+
+    unsigned char random[KEY_SIZE];
+    tgl_secure_random(random, KEY_SIZE);
+    for (size_t i = 0; i < KEY_SIZE; i++) {
+        random[i] ^= m_encryption_random[i];
+    }
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> b(TGLC_bn_bin2bn(random, KEY_SIZE, 0));
+
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> key(TGLC_bn_new());
+    check_crypto_result(TGLC_bn_mod_exp(key.get(), g_a.get(), b.get(), p, ua->bn_ctx()->ctx));
+    unsigned char key_buffer[KEY_SIZE];
+    memset(key_buffer, 0, sizeof(key_buffer));
+    TGLC_bn_bn2bin(key.get(), key_buffer + (KEY_SIZE - TGLC_bn_num_bytes(key.get())));
+
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g(TGLC_bn_new());
+    check_crypto_result(TGLC_bn_set_word(g.get(), m_encryption_root));
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_b(TGLC_bn_new());
+    check_crypto_result(TGLC_bn_mod_exp(g_b.get(), g.get(), b.get(), p, ua->bn_ctx()->ctx));
+    if (tglmp_check_g_a(p, g_b.get()) < 0) {
+        abort_key_exchange();
+        return;
+    }
+
+    unsigned char gb[KEY_SIZE];
+    memset(gb, 0, sizeof(gb));
+    TGLC_bn_bn2bin(g_b.get(), reinterpret_cast<unsigned char*>(gb + (KEY_SIZE - TGLC_bn_num_bytes(g_b.get()))));
+
+    set_exchange_key(key_buffer);
+    m_exchange_state = tgl_secret_chat_exchange_state::accepted;
+    ua->callback()->secret_chat_update(shared_from_this());
+
+    struct tl_ds_decrypted_message_action action;
+    memset(&action, 0, sizeof(action));
+    action.magic = CODE_decrypted_message_action_accept_key;
+    struct tl_ds_string gb_string = { KEY_SIZE, reinterpret_cast<char*>(gb) };
+    action.g_b = &gb_string;
+    action.key_fingerprint = &m_exchange_key_fingerprint;
+    action.exchange_id = &exchange_id;
+    send_action(action, 0, nullptr);
 }
 
-void secret_chat::confirm_key_exchange(int sen_nop)
+void secret_chat::confirm_key_exchange(bool send_noop)
 {
-    // FIXME: implement.
+    set_encryption_key(m_exchange_key.data());
+
+    memset(m_exchange_key.data(), 0, m_exchange_key.size());
+    m_exchange_key_fingerprint = 0;
+    m_exchange_state = tgl_secret_chat_exchange_state::none;
+    m_exchange_id = 0;
+
+    if (auto ua = m_user_agent.lock()) {
+        ua->callback()->secret_chat_update(shared_from_this());
+    }
+
+    if (send_noop) {
+        struct tl_ds_decrypted_message_action action;
+        memset(&action, 0, sizeof(action));
+        action.magic = CODE_decrypted_message_action_noop;
+        send_action(action, 0, nullptr);
+    }
 }
 
 void secret_chat::commit_key_exchange(const std::vector<unsigned char>& gb)
 {
-    // FIXME: implement.
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> a(TGLC_bn_bin2bn(m_exchange_key.data(), m_exchange_key.size(), 0));
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g(TGLC_bn_new());
+    check_crypto_result(TGLC_bn_set_word(g.get(), m_encryption_root));
+
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> g_b(TGLC_bn_bin2bn(gb.data(), KEY_SIZE, 0));
+    TGLC_bn* p = m_encryption_prime_bn->bn;
+    if (tglmp_check_g_a(p, g_b.get()) < 0) {
+        abort_key_exchange();
+        return;
+    }
+
+    auto ua = m_user_agent.lock();
+    if (!ua) {
+        abort_key_exchange();
+        return;
+    }
+
+    assert(ua->bn_ctx()->ctx);
+    std::unique_ptr<TGLC_bn, TGLC_bn_clear_deleter> key(TGLC_bn_new());
+    check_crypto_result(TGLC_bn_mod_exp(key.get(), g_b.get(), a.get(), p, ua->bn_ctx()->ctx));
+    unsigned char key_buffer[KEY_SIZE];
+    memset(key_buffer, 0, sizeof(key_buffer));
+    TGLC_bn_bn2bin(key.get(), key_buffer + (KEY_SIZE - TGLC_bn_num_bytes(key.get())));
+
+    set_exchange_key(key_buffer);
+    m_exchange_state = tgl_secret_chat_exchange_state::committed;
+    ua->callback()->secret_chat_update(shared_from_this());
+
+    struct tl_ds_decrypted_message_action action;
+    memset(&action, 0, sizeof(action));
+    action.magic = CODE_decrypted_message_action_commit_key;
+    action.key_fingerprint = &m_exchange_key_fingerprint;
+    action.exchange_id = &m_exchange_id;
+    send_action(action, 0, nullptr);
 }
 
 void secret_chat::abort_key_exchange()
 {
-    // FIXME: implement.
+    struct tl_ds_decrypted_message_action action;
+    memset(&action, 0, sizeof(action));
+    action.magic = CODE_decrypted_message_action_abort_key;
+    action.exchange_id = &m_exchange_id;
+    send_action(action, 0, nullptr);
+    m_exchange_state = tgl_secret_chat_exchange_state::aborted;
+
+    if (auto ua = m_user_agent.lock()) {
+        ua->callback()->secret_chat_update(shared_from_this());
+    }
 }
 
 }

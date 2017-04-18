@@ -281,7 +281,7 @@ void updater::work_update(const tl_ds_update* DS_U, const update_context& contex
         if (auto sc = m_user_agent.allocate_or_update_secret_chat(DS_U->encr_chat)) {
             m_user_agent.callback()->secret_chat_update(sc);
             if (sc->state() == tgl_secret_chat_state::ok) {
-                sc->send_layer();
+                sc->notify_layer();
             }
         }
         break;
