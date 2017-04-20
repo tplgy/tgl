@@ -47,6 +47,11 @@ MAIN_DIR = build_lib.get_main_dir()
 BUILD_DIR = build_lib.get_build_dir(args.release)
 INSTALL_PREFIX = build_lib.get_host_install_prefix(args.release)
 DJINNI_MODULE_PATH = os.path.join(DEV_DIR, "djinni_modules")
+if build_lib.is_osx_host():
+    PKG_CONFIG_ENV = "PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR=" + os.path.join(INSTALL_PREFIX, "lib", "pkgconfig") + " "
+else:
+    PKG_CONFIG_ENV = "PKG_CONFIG_PATH=" + os.path.join(INSTALL_PREFIX, "lib", "pkgconfig") + " "
+
 if not os.path.exists(DJINNI_MODULE_PATH):
     os.makedirs(DJINNI_MODULE_PATH)
 
@@ -55,8 +60,7 @@ if args.clean and os.path.exists(BUILD_DIR):
 
 os.environ["CMAKE_PREFIX_PATH"] = INSTALL_PREFIX + os.pathsep + os.getenv("CMAKE_PREFIX_PATH", "")
 
-CMAKE_COMMAND = "PKG_CONFIG_PATH=" + \
-    " PKG_CONFIG_LIBDIR=" + os.path.join(INSTALL_PREFIX, "lib", "pkgconfig") + \
+CMAKE_COMMAND = PKG_CONFIG_ENV + \
     " cmake -G Ninja" +  \
     " -D CMAKE_INSTALL_PREFIX=" + INSTALL_PREFIX + \
     " -D CMAKE_BUILD_TYPE=" + ("Release" if args.release else "Debug") + \
