@@ -163,6 +163,8 @@ public:
 
     void request_key_exchange();
 
+    void will_send_query();
+
 private:
     secret_chat();
 

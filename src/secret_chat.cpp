@@ -1379,5 +1379,12 @@ void secret_chat::abort_key_exchange()
     }
 }
 
+void secret_chat::will_send_query()
+{
+    if (m_exchange_state == tgl_secret_chat_exchange_state::committed) {
+        confirm_key_exchange(false);
+    }
+}
+
 }
 }

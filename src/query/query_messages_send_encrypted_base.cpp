@@ -106,6 +106,8 @@ void query_messages_send_encrypted_base::will_send()
     }
 
     m_user_agent.callback()->update_messages({m_message});
+
+    m_secret_chat->will_send_query();
 }
 
 void query_messages_send_encrypted_base::sent()
