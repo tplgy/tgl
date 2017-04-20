@@ -240,7 +240,7 @@ static std::shared_ptr<tgl_message_action> create_message_action_encrypted(const
         std::vector<int64_t> messages_deleted;
         if (DS_DMA->random_ids) {
             for (int32_t i=0; i<*(DS_DMA->random_ids->cnt); ++i) {
-                messages_deleted.push_back((*(DS_DMA->random_ids->data))[i]);
+                messages_deleted.push_back(DS_LVAL(DS_DMA->random_ids->data[i]));
             }
         }
         return std::make_shared<tgl_message_action_delete_messages>(messages_deleted);
